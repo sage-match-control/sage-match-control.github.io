@@ -357,6 +357,18 @@
   .tag.round{background:var(--cork); color:#fff;}
   .tag.pool{background:rgba(201,162,39,.14); color:#8A6A12;}
 
+  .score{
+    flex-shrink:0;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    font-size:20px;
+    color:var(--muted);
+    min-width:26px;
+    text-align:center;
+    padding-top:2px;
+  }
+  .score.win{color:var(--cork);}
+
   .matchup{
     display:flex;
     align-items:center;
@@ -489,7 +501,8 @@ function rowsToMatches(rows){
   const idx = name => header.indexOf(name);
   const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
         iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
-        iP2b = idx('team2Player2'), iSched = idx('Schedule');
+        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
+        iS1 = idx('team1Score'), iS2 = idx('team2Score');
 
   const out = [];
   for(let r = 1; r < rows.length; r++){
@@ -506,10 +519,17 @@ function rowsToMatches(rows){
     // Placeholder bracket slots repeat the team code as the player name
     if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
     if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
+    // Scores are optional — only present once a match has been played
+    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
+    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
+    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
+    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
+    const played = t1Score !== null && t2Score !== null;
     out.push({
       num,
       time: (row[iSched]||'').trim(),
-      t1, t1p1, t1p2, t2, t2p1, t2p2
+      t1, t1p1, t1p2, t2, t2p1, t2p2,
+      t1Score, t2Score, played
     });
   }
   out.sort((a,b) => a.num - b.num);
@@ -659,7 +679,16 @@ function ticketHTML(m, teamCode){
   const oppRound = roundLabel(parseCode(opp.code).rest);
   const tag = oppRound
     ? `<span class="tag round">${oppRound}</span>`
-    : `<span class="tag pool">Pool Play</span>`;
+    : `<span class="tag pool">Round Robin</span>`;
+
+  const youScore = isT1 ? m.t1Score : m.t2Score;
+  const oppScore = isT1 ? m.t2Score : m.t1Score;
+  const youWon = m.played && youScore > oppScore;
+  const oppWon = m.played && oppScore > youScore;
+  const youScoreHTML = m.played
+    ? `<div class="score ${youWon ? 'win':''}">${escapeHtml(String(youScore))}</div>` : '';
+  const oppScoreHTML = m.played
+    ? `<div class="score ${oppWon ? 'win':''}">${escapeHtml(String(oppScore))}</div>` : '';
 
   return `
   <div class="ticket">
@@ -676,7 +705,9 @@ function ticketHTML(m, teamCode){
           <div class="code">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
+        ${youScoreHTML}
         <div class="vs">VS</div>
+        ${oppScoreHTML}
         <div class="side ${oppTBD ? 'tbd':''}">
           <div class="code">${escapeHtml(opp.code)}</div>
           <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
