@@ -319,85 +319,55 @@
     background:var(--paper);
     border-radius:16px;
     box-shadow:var(--card-shadow);
-    display:flex;
     margin-bottom:16px;
     overflow:hidden;
     position:relative;
     border-left:6px solid var(--court);
   }
   .ticket-body{
-    padding:16px 20px 16px 22px;
-    flex:1;
-    min-width:0;
+    padding:18px 20px 20px;
   }
-  .ticket-top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:12px;
-    flex-wrap:wrap;
-    gap:6px;
-  }
-  .ticket-time{
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:600;
-    font-size:15px;
-    color:var(--court);
-  }
-  .ticket-tags{display:flex; gap:6px; flex-wrap:wrap;}
-  .tag{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    padding:3px 8px;
-    border-radius:100px;
-  }
-  .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
-  .tag.round{background:var(--cork); color:#fff;}
-  .tag.pool{background:rgba(201,162,39,.14); color:#8A6A12;}
 
-  .score{
-    flex-shrink:0;
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:700;
-    font-size:20px;
-    color:var(--muted);
-    min-width:26px;
+  .time-row{
     text-align:center;
-    padding-top:2px;
+    margin-bottom:12px;
   }
-  .score.win{color:var(--cork);}
+  .center-pill{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    font-weight:700;
+    color:var(--court);
+    background:rgba(20,27,44,.06);
+    border-radius:100px;
+    padding:6px 16px;
+  }
 
-  .matchup{
+  .names-row{
     display:flex;
-    align-items:center;
+    align-items:flex-start;
+    justify-content:space-between;
     gap:12px;
+    margin-bottom:12px;
   }
-  .side{flex:1; min-width:0;}
-  .side .code{
+  .team-block{flex:1; min-width:0; text-align:left;}
+  .team-block.right{text-align:right;}
+  .team-block .team-name{
     font-family:'IBM Plex Mono',monospace;
     font-weight:600;
     font-size:14px;
     letter-spacing:.02em;
-  }
-  .side.you .code{color:var(--cork);}
-  .side .players{
-    font-size:13.5px;
     color:var(--ink);
-    margin-top:2px;
-    line-height:1.4;
   }
-  .side .players .p{display:block;}
-  .side.tbd .players{color:var(--muted); font-style:italic;}
-  .vs{
-    font-family:'Cinzel',serif;
+  .team-block .players{
+    font-size:16px;
     font-weight:600;
-    font-size:13px;
-    color:var(--muted);
-    flex-shrink:0;
-    padding-top:2px;
+    color:var(--ink);
+    margin-top:4px;
+    line-height:1.45;
   }
+  .team-block .players .p{display:block;}
+  .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
   .you-badge{
     display:inline-block;
     font-family:'IBM Plex Mono',monospace;
@@ -412,6 +382,52 @@
     vertical-align:middle;
   }
 
+  .score-row{
+    text-align:center;
+    margin-bottom:14px;
+    font-family:'Cinzel',serif;
+    font-weight:700;
+    font-size:34px;
+    color:var(--ink);
+    letter-spacing:.02em;
+  }
+  .score-row .score-colon{color:var(--muted); margin:0 10px; font-size:26px;}
+  .score-row .score-num.win{color:var(--cork);}
+  .score-row .vs-text{
+    font-size:16px;
+    color:var(--muted);
+    letter-spacing:.1em;
+  }
+
+  .meta-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .meta-chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    background:rgba(20,27,44,.06);
+    padding:4px 10px;
+    border-radius:100px;
+  }
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:4px 10px;
+    border-radius:100px;
+  }
+  .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
+  .tag.round{background:var(--cork); color:#fff;}
+  .tag.pool{background:rgba(201,162,39,.14); color:#8A6A12;}
+
   footer{
     text-align:center;
     color:rgba(241,231,200,.5);
@@ -425,6 +441,15 @@
   @media (max-width:520px){
     .search-row{flex-direction:column;}
     button#searchBtn{padding:13px;}
+  }
+
+  @media (max-width:480px){
+    .ticket-body{padding:16px 16px 18px;}
+    .center-pill{font-size:13px; padding:5px 14px;}
+    .names-row{gap:8px; margin-bottom:14px;}
+    .team-block .players{font-size:14px;}
+    .score-row{font-size:30px;}
+    .meta-row{justify-content:center;}
   }
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
@@ -447,9 +472,9 @@
   <p class="subtitle">Find your team's full match schedule — every round, every opponent, in order.</p>
 
   <div class="search-panel">
-    <label class="search-label" for="teamInput">Enter your team code</label>
+    <label class="search-label" for="teamInput">Enter your pair's names</label>
     <div class="search-row autocomplete">
-      <input id="teamInput" type="text" placeholder="e.g. BMD_1" autocomplete="off" inputmode="latin" />
+      <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
       <div id="acList" class="ac-list"></div>
       <button id="searchBtn">Find matches</button>
     </div>
@@ -603,12 +628,34 @@ chipDefs.forEach(c => {
   chipsEl.appendChild(el);
 });
 
-// Build unique team list for autocomplete (rebuilt whenever MATCHES refreshes)
+// Build unique pair (team) list for autocomplete (rebuilt whenever MATCHES refreshes)
+// Grouped by player names *within the same division/event* so a pair that
+// advances under a new bracket code (e.g. pool code -> playoff code) still
+// shows up as a single entry, while same-named pairs in different
+// divisions/events never get merged together.
 let allTeams = [];
+function pairKey(code, p1, p2){
+  const { division, event } = parseCode(code);
+  const names = [p1.trim().toLowerCase(), p2.trim().toLowerCase()].sort().join('|');
+  return `${division||''}|${event||''}|${names}`;
+}
 function rebuildTeamIndex(){
-  const teamSet = new Set();
-  MATCHES.forEach(m => { teamSet.add(m.t1); teamSet.add(m.t2); });
-  allTeams = Array.from(teamSet).sort();
+  const byPair = new Map();
+  const addSide = (code, p1, p2) => {
+    if(p1 === 'TBD') return;
+    const key = pairKey(code, p1, p2);
+    if(!byPair.has(key)){
+      byPair.set(key, { p1, p2, label: `${p1} / ${p2}`, codes: new Set() });
+    }
+    byPair.get(key).codes.add(code);
+  };
+  MATCHES.forEach(m => {
+    addSide(m.t1, m.t1p1, m.t1p2);
+    addSide(m.t2, m.t2p1, m.t2p2);
+  });
+  allTeams = Array.from(byPair.values())
+    .map(t => ({...t, codes: Array.from(t.codes)}))
+    .sort((a,b) => a.label.localeCompare(b.label));
   // Re-run current search/intro against the freshly loaded data
   if(input.value.trim()) runSearch(); else renderIntro();
 }
@@ -617,21 +664,31 @@ const input = document.getElementById('teamInput');
 const acList = document.getElementById('acList');
 const resultsEl = document.getElementById('results');
 let acIndex = -1;
+let selectedTeam = null; // holds the chosen entry from allTeams (p1, p2, label, codes)
 
 function renderAutocomplete(query){
-  const q = query.trim().toUpperCase();
+  const q = query.trim().toLowerCase();
   if(!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
-  const matches = allTeams.filter(t => t.toUpperCase().includes(q)).slice(0, 8);
+  const matches = allTeams.filter(t =>
+    t.p1.toLowerCase().includes(q) || t.p2.toLowerCase().includes(q) || t.label.toLowerCase().includes(q)
+  ).slice(0, 8);
   if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
   acList.innerHTML = matches.map((t,i) => {
-    const label = divisionLabel(t);
-    return `<div class="ac-item" data-code="${t}" data-i="${i}"><span>${t}</span>${label ? `<small>${label}</small>` : ''}</div>`;
+    const label = divisionLabel(t.codes[0]);
+    return `<div class="ac-item" data-idx="${allTeams.indexOf(t)}" data-i="${i}"><span>${escapeHtml(t.label)}</span>${label ? `<small>${label}</small>` : ''}</div>`;
   }).join('');
   acList.classList.add('show');
   acIndex = -1;
 }
 
-input.addEventListener('input', () => renderAutocomplete(input.value));
+function selectAcItem(el){
+  const team = allTeams[parseInt(el.dataset.idx, 10)];
+  if(!team) return;
+  input.value = team.label;
+  selectedTeam = team;
+}
+
+input.addEventListener('input', () => { selectedTeam = null; renderAutocomplete(input.value); });
 input.addEventListener('focus', () => renderAutocomplete(input.value));
 document.addEventListener('click', (e) => {
   if(!e.target.closest('.autocomplete')) acList.classList.remove('show');
@@ -639,7 +696,7 @@ document.addEventListener('click', (e) => {
 acList.addEventListener('click', (e) => {
   const item = e.target.closest('.ac-item');
   if(!item) return;
-  input.value = item.dataset.code;
+  selectAcItem(item);
   acList.classList.remove('show');
   runSearch();
 });
@@ -650,13 +707,13 @@ input.addEventListener('keydown', (e) => {
     acIndex = Math.min(acIndex+1, items.length-1);
     items.forEach(it=>it.classList.remove('active'));
     items[acIndex].classList.add('active');
-    input.value = items[acIndex].dataset.code;
+    selectAcItem(items[acIndex]);
   } else if(e.key === 'ArrowUp' && items.length){
     e.preventDefault();
     acIndex = Math.max(acIndex-1, 0);
     items.forEach(it=>it.classList.remove('active'));
     items[acIndex].classList.add('active');
-    input.value = items[acIndex].dataset.code;
+    selectAcItem(items[acIndex]);
   } else if(e.key === 'Enter'){
     acList.classList.remove('show');
     runSearch();
@@ -685,36 +742,49 @@ function ticketHTML(m, teamCode){
   const oppScore = isT1 ? m.t2Score : m.t1Score;
   const youWon = m.played && youScore > oppScore;
   const oppWon = m.played && oppScore > youScore;
-  const youScoreHTML = m.played
-    ? `<div class="score ${youWon ? 'win':''}">${escapeHtml(String(youScore))}</div>` : '';
-  const oppScoreHTML = m.played
-    ? `<div class="score ${oppWon ? 'win':''}">${escapeHtml(String(oppScore))}</div>` : '';
+
+  const scoreHTML = m.played
+    ? `<span class="score-num ${youWon?'win':''}">${escapeHtml(String(youScore))}</span><span class="score-colon">:</span><span class="score-num ${oppWon?'win':''}">${escapeHtml(String(oppScore))}</span>`
+    : `<span class="vs-text">VS</span>`;
 
   return `
   <div class="ticket">
     <div class="ticket-body">
-      <div class="ticket-top">
-        <span class="ticket-time">${escapeHtml(m.time)}</span>
-        <div class="ticket-tags">
-          <span class="tag match-no">Match #${m.num}</span>
-          ${tag}
-        </div>
+      <div class="time-row">
+        <span class="center-pill">${escapeHtml(m.time)}</span>
       </div>
-      <div class="matchup">
-        <div class="side you ${youTBD ? 'tbd':''}">
-          <div class="code">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
+      <div class="names-row">
+        <div class="team-block ${youTBD ? 'tbd':''}">
+          <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
-        ${youScoreHTML}
-        <div class="vs">VS</div>
-        ${oppScoreHTML}
-        <div class="side ${oppTBD ? 'tbd':''}">
-          <div class="code">${escapeHtml(opp.code)}</div>
+        <div class="team-block right ${oppTBD ? 'tbd':''}">
+          <div class="team-name">${escapeHtml(opp.code)}</div>
           <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
         </div>
       </div>
+      <div class="score-row">${scoreHTML}</div>
+      <div class="meta-row">
+        <span class="meta-chip">Match #${m.num}</span>
+        ${tag}
+      </div>
     </div>
   </div>`;
+}
+
+function resolveTeam(raw){
+  if(selectedTeam) return { team: selectedTeam, ambiguous: null };
+  const q = raw.trim().toLowerCase();
+  if(!q) return { team: null, ambiguous: null };
+  // exact match on full pair label or either player's name
+  let exact = allTeams.filter(t => t.label.toLowerCase() === q || t.p1.toLowerCase() === q || t.p2.toLowerCase() === q);
+  if(exact.length === 1) return { team: exact[0], ambiguous: null };
+  if(exact.length > 1) return { team: null, ambiguous: exact };
+  // partial match on either player's name or the combined label
+  let partial = allTeams.filter(t => t.p1.toLowerCase().includes(q) || t.p2.toLowerCase().includes(q) || t.label.toLowerCase().includes(q));
+  if(partial.length === 1) return { team: partial[0], ambiguous: null };
+  if(partial.length > 1) return { team: null, ambiguous: partial };
+  return { team: null, ambiguous: null };
 }
 
 function runSearch(){
@@ -723,30 +793,48 @@ function runSearch(){
     renderIntro();
     return;
   }
-  const code = raw.toUpperCase();
-  const teamMatches = MATCHES.filter(m => m.t1 === code || m.t2 === code)
-                              .sort((a,b) => a.num - b.num);
 
-  if(teamMatches.length === 0){
-    // suggest close matches
-    const suggestions = allTeams.filter(t => t.toUpperCase().startsWith(code.split('_')[0])).slice(0,6);
+  const { team, ambiguous } = resolveTeam(raw);
+
+  if(ambiguous && ambiguous.length){
     resultsEl.innerHTML = `
       <div class="empty-state">
-        No matches found for <strong>${escapeHtml(code)}</strong>.<br>
-        Double-check the code (e.g. <strong>BMD_1</strong>, <strong>HIWD_3</strong>, <strong>AXD_7</strong>).
-        ${suggestions.length ? `<br><br>Did you mean: ${suggestions.map(s=>`<strong>${s}</strong>`).join(', ')}?` : ''}
+        Several pairs match <strong>${escapeHtml(raw)}</strong> — pick one:<br><br>
+        ${ambiguous.slice(0,8).map(t => `<strong>${escapeHtml(t.label)}</strong>`).join('<br>')}
       </div>`;
     return;
   }
 
-  const label = divisionLabel(code);
+  if(!team){
+    // suggest close matches by player name
+    const q = raw.toLowerCase();
+    const firstWord = q.split(' ')[0];
+    const suggestions = allTeams.filter(t =>
+      t.p1.toLowerCase().startsWith(firstWord) || t.p2.toLowerCase().startsWith(firstWord)
+    ).slice(0,6);
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        No matches found for <strong>${escapeHtml(raw)}</strong>.<br>
+        Double-check the spelling, or start typing a name to see suggestions.
+        ${suggestions.length ? `<br><br>Did you mean: ${suggestions.map(s=>`<strong>${escapeHtml(s.label)}</strong>`).join(', ')}?` : ''}
+      </div>`;
+    return;
+  }
+
+  selectedTeam = team;
+  const codes = team.codes;
+  const teamMatches = MATCHES.filter(m => codes.includes(m.t1) || codes.includes(m.t2))
+                              .sort((a,b) => a.num - b.num);
+
+  // Use whichever code is relevant per match to build the ticket
+  const label = divisionLabel(codes[0]);
   resultsEl.innerHTML = `
     <div class="results-head">
-      <h2>${escapeHtml(code)}</h2>
+      <h2>${escapeHtml(team.label)}</h2>
       ${label ? `<span class="division-tag">${label}</span>` : ''}
     </div>
     <div class="results-meta">${teamMatches.length} match${teamMatches.length>1?'es':''} found, in schedule order</div>
-    ${teamMatches.map(m => ticketHTML(m, code)).join('')}
+    ${teamMatches.map(m => ticketHTML(m, codes.includes(m.t1) ? m.t1 : m.t2)).join('')}
   `;
 }
 
