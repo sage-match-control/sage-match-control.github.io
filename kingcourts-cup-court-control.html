@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Royal Cup S1 — Court Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --court:#C9A227;
+    --court-dark:#0A1424;
+    --court-line:#F1E7C8;
+    --ink:#141B2C;
+    --paper:#FBF7EC;
+    --amber:#F0CB5C;
+    --cork:#8E1F3B;
+    --muted:#6B7690;
+    --card-shadow: 0 18px 40px -20px rgba(5,12,26,.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(900px 480px at 50% -12%, rgba(201,162,39,.16), transparent 62%),
+      radial-gradient(700px 420px at 100% 0%, rgba(201,162,39,.08), transparent 55%),
+      linear-gradient(180deg, var(--court-dark) 0%, #0D1B33 45%, var(--court-dark) 100%);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px 90px;}
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding:52px 20px 34px;
+    text-align:center;
+    color:var(--court-line);
+  }
+  .regal-rule{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    max-width:280px;
+    margin:0 auto 8px;
+  }
+  .regal-rule::before, .regal-rule::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(201,162,39,.7));
+  }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(201,162,39,.7), transparent); }
+  .regal-rule .diamond{
+    width:7px; height:7px;
+    background:var(--amber);
+    transform:rotate(45deg);
+    flex-shrink:0;
+  }
+  h1.title{
+    font-family:'Cinzel',serif;
+    font-weight:700;
+    font-size:clamp(34px,7.5vw,58px);
+    line-height:1.05;
+    letter-spacing:.02em;
+    margin:14px 0 10px;
+    text-transform:uppercase;
+    color:var(--court-line);
+    text-shadow:0 2px 24px rgba(201,162,39,.18);
+  }
+  h1.title span{
+    color:var(--amber);
+    background:linear-gradient(180deg, #F7DE8C, #C9A227);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .subtitle{
+    font-size:15px;
+    color:rgba(241,231,200,.75);
+    max-width:480px;
+    margin:0 auto 6px;
+    line-height:1.55;
+  }
+  .sync-status{
+    margin:14px auto 0;
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.03em;
+    color:rgba(241,231,200,.6);
+  }
+  .sync-status.ok{color:var(--amber);}
+  .sync-status.error{color:#ff9a7a;}
+  .sync-status .retry-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    background:none;
+    border:1px solid rgba(255,154,122,.5);
+    color:#ff9a7a;
+    padding:2px 8px;
+    border-radius:100px;
+    cursor:pointer;
+    margin-left:6px;
+  }
+  .sync-status .retry-btn:hover{background:rgba(255,154,122,.15);}
+
+  /* ---------- BOARD HEADER ---------- */
+  .board-meta{
+    max-width:700px;
+    margin:20px auto 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:18px;
+    flex-wrap:wrap;
+  }
+  .board-meta .stat{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:rgba(241,231,200,.7);
+  }
+  .board-meta .stat b{color:var(--amber); font-size:15px;}
+  .live-dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    background:#5FD97A;
+    margin-right:6px;
+    box-shadow:0 0 0 0 rgba(95,217,122,.6);
+    animation:pulse 1.8s infinite;
+  }
+  @keyframes pulse{
+    0%{ box-shadow:0 0 0 0 rgba(95,217,122,.55); }
+    70%{ box-shadow:0 0 0 8px rgba(95,217,122,0); }
+    100%{ box-shadow:0 0 0 0 rgba(95,217,122,0); }
+  }
+
+  /* ---------- CONTROL TABLE ---------- */
+  #courts{margin-top:34px;}
+  .control-table-wrap{
+    background:var(--paper);
+    border-radius:10px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    box-shadow:var(--card-shadow);
+    border:2px solid var(--court);
+  }
+  table.control-table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'Inter',sans-serif;
+    table-layout:fixed;
+  }
+  table.control-table th, table.control-table td{
+    border:1px solid rgba(20,27,44,.18);
+    padding:9px 8px;
+    text-align:center;
+    word-break:break-word;
+    overflow-wrap:anywhere;
+  }
+  table.control-table thead th{
+    background:var(--court-dark);
+    color:var(--court-line);
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    font-size:12.5px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  th.th-court{width:14%;}
+  th.th-match{width:14%;}
+
+  .cell-court{
+    background:var(--court-dark);
+    font-family:'Cinzel',serif;
+    font-weight:800;
+    font-size:26px;
+    color:var(--amber);
+  }
+  .cell-match{
+    background:var(--court);
+    font-family:'Cinzel',serif;
+    font-weight:800;
+    font-size:26px;
+    color:var(--ink);
+  }
+  .cell-teamcode{
+    background:rgba(201,162,39,.16);
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    font-size:12.5px;
+    letter-spacing:.03em;
+    color:#8A6A12;
+    text-transform:uppercase;
+  }
+  .cell-player{
+    background:var(--paper);
+    font-weight:700;
+    font-size:14px;
+    color:var(--cork);
+  }
+  .cell-player.tbd{
+    color:var(--muted);
+    font-weight:500;
+    font-style:italic;
+    font-size:12.5px;
+  }
+  .cell-empty{
+    background:var(--paper);
+    color:var(--muted);
+    font-style:italic;
+    font-size:13px;
+    font-weight:500;
+  }
+
+  .empty-state{
+    background:rgba(255,255,255,.06);
+    border:1px dashed rgba(241,231,200,.32);
+    border-radius:14px;
+    padding:26px;
+    color:rgba(241,231,200,.85);
+    text-align:center;
+    font-size:14px;
+    line-height:1.6;
+    margin-top:30px;
+  }
+
+  footer{
+    text-align:center;
+    color:rgba(241,231,200,.5);
+    font-size:12px;
+    line-height:1.9;
+    margin-top:60px;
+    padding-bottom:20px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  @media (max-width:480px){
+    .cell-court, .cell-match{font-size:18px;}
+    table.control-table th, table.control-table td{padding:6px 4px; font-size:11px;}
+    table.control-table thead th{font-size:10px;}
+    .cell-teamcode{font-size:10px;}
+    .cell-player{font-size:11.5px;}
+    .cell-player.tbd{font-size:10px;}
+  }
+  @media (max-width:360px){
+    .cell-court, .cell-match{font-size:15px;}
+    th.th-court, th.th-match{width:16%;}
+  }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+<link rel="manifest" href="favicons/site.webmanifest">
+</head>
+<body>
+
+<header class="hero">
+  <div class="regal-rule"><span class="diamond"></span></div>
+  <h1 class="title">Court <span>Control</span></h1>
+  <p class="subtitle">Live view of the match currently running on every court.</p>
+  <div id="syncStatus" class="sync-status loading">Loading live schedule from Google Sheets…</div>
+  <div class="board-meta" id="boardMeta"></div>
+</header>
+
+<div class="wrap">
+  <div id="courts"></div>
+</div>
+
+<footer>Royal Cup S1 &middot; Court Control</footer>
+
+<script>
+const SHEET_ID = '12pvF12m9F_M0Q6TyWLZ4snNY3xqX82TuM79z5Bv1aDI';
+const CSV_GID = '2113024772';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
+
+// One entry per court — whatever matchNumber is in the sheet for that
+// court right now is the match currently being played there.
+let COURT_MATCHES = new Map();
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+function rowsToCourtMatches(rows){
+  if(rows.length < 2) return new Map();
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iCourt = idx('court'), iNum = idx('matchNumber'),
+        iT1 = idx('teamCode1'), iP1a = idx('team1Player1'), iP1b = idx('team1Player2'),
+        iT2 = idx('teamCode2'), iP2a = idx('team2Player1'), iP2b = idx('team2Player2');
+
+  const byCourt = new Map();
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const court = parseInt(row[iCourt], 10);
+    if(!court) continue; // a row needs at least a court number to place it on the board
+    const numRaw = parseInt(row[iNum], 10);
+    const num = Number.isNaN(numRaw) ? null : numRaw;
+    const t1 = (row[iT1]||'').trim();
+    const t2 = (row[iT2]||'').trim();
+    let t1p1 = (row[iP1a]||'').trim();
+    let t1p2 = (row[iP1b]||'').trim();
+    let t2p1 = (row[iP2a]||'').trim();
+    let t2p2 = (row[iP2b]||'').trim();
+    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
+    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
+    // Whether a court currently has a match is based solely on matchNumber —
+    // team code cells can contain leftover formula errors (e.g. #REF!) even
+    // when no match is actually assigned.
+    const hasMatch = !!num;
+    // Last row for a given court wins — that's the current match on court.
+    byCourt.set(court, { court, num, t1, t1p1, t1p2, t2, t2p1, t2p2, hasMatch });
+  }
+  return byCourt;
+}
+
+function courtRowsHTML(m){
+  if(!m.hasMatch){
+    return `
+      <tr>
+        <td class="cell-court">${m.court}</td>
+        <td class="cell-match">&mdash;</td>
+        <td colspan="2" class="cell-empty">No match currently assigned</td>
+      </tr>`;
+  }
+  const t1TBD = m.t1p1 === 'TBD';
+  const t2TBD = m.t2p1 === 'TBD';
+  return `
+      <tr>
+        <td rowspan="3" class="cell-court">${m.court}</td>
+        <td rowspan="3" class="cell-match">${m.num !== null ? m.num : '&mdash;'}</td>
+        <td class="cell-teamcode">${m.t1 ? escapeHtml(m.t1) : '&nbsp;'}</td>
+        <td class="cell-teamcode">${m.t2 ? escapeHtml(m.t2) : '&nbsp;'}</td>
+      </tr>
+      <tr>
+        <td class="cell-player ${t1TBD ? 'tbd':''}">${t1TBD ? 'To be determined' : escapeHtml(m.t1p1)}</td>
+        <td class="cell-player ${t2TBD ? 'tbd':''}">${t2TBD ? 'To be determined' : escapeHtml(m.t2p1)}</td>
+      </tr>
+      <tr>
+        <td class="cell-player">${t1TBD ? '' : escapeHtml(m.t1p2)}</td>
+        <td class="cell-player">${t2TBD ? '' : escapeHtml(m.t2p2)}</td>
+      </tr>`;
+}
+
+function render(){
+  const courtsEl = document.getElementById('courts');
+  const metaEl = document.getElementById('boardMeta');
+
+  if(COURT_MATCHES.size === 0){
+    courtsEl.innerHTML = `<div class="empty-state">No courts found in the sheet yet.</div>`;
+    metaEl.innerHTML = '';
+    return;
+  }
+
+  const courtNums = Array.from(COURT_MATCHES.keys()).sort((a,b) => a-b);
+  const activeCount = courtNums.filter(c => COURT_MATCHES.get(c).hasMatch).length;
+  metaEl.innerHTML = `<span class="stat"><b>${activeCount}</b> of <b>${courtNums.length}</b> courts in play</span>`;
+
+  courtsEl.innerHTML = `
+    <div class="control-table-wrap">
+      <table class="control-table">
+        <thead>
+          <tr>
+            <th class="th-court">Court</th>
+            <th class="th-match">Match</th>
+            <th colspan="2">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${courtNums.map(c => courtRowsHTML(COURT_MATCHES.get(c))).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+async function loadLiveData(){
+  const statusEl = document.getElementById('syncStatus');
+  statusEl.textContent = 'Loading live schedule from Google Sheets\u2026';
+  statusEl.className = 'sync-status loading';
+  try {
+    const res = await fetch(CSV_URL, { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const courtMatches = rowsToCourtMatches(rows);
+    if(courtMatches.size === 0) throw new Error('No rows parsed');
+    COURT_MATCHES = courtMatches;
+    render();
+    const now = new Date();
+    statusEl.textContent = 'Live \u00b7 synced ' + now.toLocaleTimeString();
+    statusEl.className = 'sync-status ok';
+    return true;
+  } catch(err){
+    statusEl.innerHTML = "Couldn't load live data (" + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
+    statusEl.className = 'sync-status error';
+    const retryBtn = document.getElementById('retryBtn');
+    if(retryBtn) retryBtn.addEventListener('click', loadLiveData);
+    return false;
+  }
+}
+
+loadLiveData();
+setInterval(loadLiveData, 15000);
+</script>
+</body>
+</html>
