@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Time Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --court:#135C49; --court-deep:#0B4334; --line:#F4F1E6;
+  --bg:#EDF0EC; --card:#FFFFFF; --ink:#15231D; --muted:#5C6B63;
+  --shuttle:#FFCE4F; --warn:#B7791F; --danger:#BE4B38; --ok:#157A4A;
+  --rule:#D8DDD6; --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.45}
+button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+:focus-visible{outline:3px solid var(--shuttle);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header.hero{background:var(--court);color:var(--line);position:relative;overflow:hidden;padding:24px 18px 18px}
+header.hero::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;background:
+  linear-gradient(var(--line),var(--line)) left 12px top 0/2px 100% no-repeat,
+  linear-gradient(var(--line),var(--line)) left 22px top 0/2px 100% no-repeat,
+  linear-gradient(var(--line),var(--line)) right 12px top 0/2px 100% no-repeat,
+  linear-gradient(var(--line),var(--line)) right 22px top 0/2px 100% no-repeat}
+header.hero::after{content:"";position:absolute;left:0;right:0;bottom:8px;border-bottom:2px dashed rgba(244,241,230,.5)}
+.hero-inner{max-width:1100px;margin:0 auto;position:relative}
+.hero .kicker{font-family:'Barlow Condensed';font-weight:600;letter-spacing:.22em;font-size:12px;text-transform:uppercase;color:var(--shuttle)}
+.hero h1{font-family:'Barlow Condensed';font-weight:700;text-transform:uppercase;font-size:clamp(28px,6vw,44px);line-height:1;letter-spacing:.01em}
+.hero .sub{font-size:13.5px;opacity:.85;margin-top:6px;max-width:560px}
+
+main{max-width:1100px;margin:0 auto;padding:18px 14px 80px;display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
+@media(min-width:880px){main{grid-template-columns:1.15fr .85fr}}
+
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
+.panel>h2{background:var(--court-deep);color:var(--line);font-family:'Barlow Condensed';font-weight:600;
+  font-size:15px;letter-spacing:.16em;text-transform:uppercase;padding:9px 14px}
+.panel .body{padding:14px}
+
+label.f{display:block;margin-bottom:11px}
+label.f span.lab{display:block;font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+input[type=text],input[type=date],input[type=time],input[type=number],select{
+  width:100%;border:1.5px solid var(--rule);border-radius:7px;padding:8px 10px;font:inherit;background:#FCFDFB;color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:var(--court);outline:none}
+textarea{width:100%;border:1.5px solid var(--rule);border-radius:7px;padding:8px 10px;font:inherit;background:#FCFDFB;color:var(--ink);resize:vertical;min-height:38px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px}
+@media(max-width:480px){.grid3{grid-template-columns:1fr 1fr}}
+.hint{font-size:12px;color:var(--muted);margin-top:-7px;margin-bottom:11px}
+
+/* category cards */
+.cat{border:1.5px solid var(--rule);border-radius:var(--radius);padding:12px;margin-bottom:12px;position:relative;background:#FBFCFA}
+.cat .cathead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.cat .cathead .cname{flex:1}
+.cat .del{color:var(--danger);font-family:'Barlow Condensed';font-weight:600;font-size:12px;
+  letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:6px}
+.cat .del:hover{background:#FBEAE6}
+.playoffs{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.po{border:1.5px solid var(--rule);border-radius:999px;padding:4px 13px;font-family:'Barlow Condensed';
+  font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:#fff;cursor:default}
+.po small{font-weight:500;letter-spacing:0;text-transform:none}
+.po[aria-pressed="true"]{background:var(--court);border-color:var(--court);color:var(--line)}
+/* passive structure tags — flat, square, not clickable */
+.tagchip{display:inline-block;background:#E4EEE9;color:var(--court-deep);border-radius:5px;padding:4px 10px;
+  font-family:'Barlow Condensed';font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+.tagchip small{font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)}
+/* interactive fill choice — pill with radio dot */
+.fillbtn{cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.fillbtn::before{content:"";width:10px;height:10px;border-radius:50%;border:2px solid var(--rule);background:#fff;flex:0 0 auto}
+.fillbtn[aria-pressed="true"]::before{border-color:var(--line);background:var(--shuttle)}
+.fillbtn:hover{border-color:var(--court);color:var(--court)}
+.fillbtn[aria-pressed="true"]:hover{color:var(--line)}
+.catline{font-size:12.5px;color:var(--muted);margin-top:9px;border-top:1px dashed var(--rule);padding-top:8px}
+.catline b{color:var(--court-deep)}
+.addcat{width:100%;border:2px dashed var(--rule);border-radius:var(--radius);padding:11px;color:var(--court);
+  font-family:'Barlow Condensed';font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:14px}
+.addcat:hover{background:#F2F7F4;border-color:var(--court)}
+.chartbtn{margin-top:9px;border:1.5px solid var(--court);border-radius:7px;padding:5px 12px;color:var(--court);
+  font-family:'Barlow Condensed';font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:12.5px}
+.chartbtn:hover{background:#F2F7F4}
+.chart{display:flex;gap:14px;overflow-x:auto;padding:12px 2px 6px;align-items:stretch}
+.roundcol{display:flex;flex-direction:column;min-width:158px;flex:0 0 auto}
+.roundlab{font-family:'Barlow Condensed';font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--court-deep);text-align:center;margin-bottom:7px}
+.round{display:flex;flex-direction:column;justify-content:space-around;gap:10px;flex:1}
+.mbox{border:1.5px solid var(--rule);border-radius:8px;background:#fff;overflow:hidden}
+.mbox.gold{border-color:var(--shuttle)}
+.mbox.bronzebox{border-color:#D9B98F}
+.slot{padding:6px 10px;font-size:12.5px;line-height:1.3}
+.slot+.slot{border-top:1.5px dashed var(--rule)}
+.slot.bye{color:var(--muted);font-style:italic}
+.slot .sd{font-family:'Barlow Condensed';font-weight:700;color:var(--court);margin-right:5px}
+.legend{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* results */
+.results{position:sticky;top:14px}
+.bigclock{background:var(--court);color:var(--line);border-radius:var(--radius);padding:16px 14px;text-align:center;position:relative;overflow:hidden}
+.bigclock::after{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px dashed rgba(244,241,230,.28)}
+.bigclock .lab{font-family:'Barlow Condensed';font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--shuttle)}
+.bigclock .t{font-family:'Barlow Condensed';font-weight:700;font-size:clamp(40px,9vw,56px);line-height:1.05;position:relative;z-index:1}
+.bigclock .d{font-size:13px;opacity:.85;position:relative;z-index:1}
+.statgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.stat{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:9px 8px;text-align:center}
+.stat .v{font-family:'Barlow Condensed';font-weight:700;font-size:24px;color:var(--court-deep)}
+.stat .k{font-family:'Barlow Condensed';font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.alert{border-radius:8px;padding:9px 12px;font-size:13.5px;border:1.5px solid}
+.alert.warn{background:#FFF6DC;border-color:#EAD27E;color:#6B4E0C}
+.alert.bad{background:#FBEAE6;border-color:#E4B3A8;color:#7C2D1E}
+.alert.good{background:#EAF5EE;border-color:#BCDCC8;color:#155E38}
+
+table.tl{width:100%;border-collapse:collapse;font-size:13.5px}
+table.tl th{font-family:'Barlow Condensed';font-weight:600;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-align:right;padding:7px 8px;border-bottom:1.5px solid var(--rule)}
+table.tl th:first-child,table.tl td:first-child{text-align:left}
+table.tl td{padding:8px;border-bottom:1px solid #EEF1ED;text-align:right;vertical-align:top}
+table.tl tr:last-child td{border-bottom:none}
+table.tl .cc{font-family:'Barlow Condensed';font-weight:700;color:var(--court);font-size:14px}
+table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
+.tfoot{font-size:12px;color:var(--muted);padding:10px 14px;border-top:1.5px solid var(--rule)}
+.toolrow{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;text-align:center;border:1.5px solid var(--court);border-radius:8px;padding:9px;color:var(--court);
+  font-family:'Barlow Condensed';font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:13.5px}
+.btn:hover{background:#F2F7F4}
+.btn.primary{background:var(--court);color:var(--line)}
+.btn.primary:hover{background:var(--court-deep)}
+.iomsg{margin-top:8px;font-size:13px;border-radius:8px;padding:8px 12px;border:1.5px solid}
+.iomsg.good{background:#EAF5EE;border-color:#BCDCC8;color:#155E38}
+.iomsg.bad{background:#FBEAE6;border-color:#E4B3A8;color:#7C2D1E}
+
+@media print{
+  header.hero,.toolrow,.addcat,.del,form .panel{display:none}
+  body{background:#fff}
+  main{grid-template-columns:1fr}
+  .results{position:static}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="kicker">Phase 1 · Planning tool</div>
+    <h1>Tournament Time Calculator</h1>
+    <div class="sub">Set up your categories and court plan, and see instantly how many matches you're running and what time the last shuttle drops.</div>
+  </div>
+</header>
+
+<main>
+  <form id="form" onsubmit="return false">
+    <div class="panel">
+      <h2>Tournament details</h2>
+      <div class="body">
+        <label class="f"><span class="lab">Title of tournament</span>
+          <input type="text" id="f-title" placeholder="e.g. Angeles Smash Open 2026" value=""></label>
+        <div class="grid2">
+          <label class="f"><span class="lab">Date</span><input type="date" id="f-date"></label>
+          <label class="f"><span class="lab">Start time of matches</span><input type="time" id="f-start" value="09:00"></label>
+        </div>
+        <div class="grid3">
+          <label class="f"><span class="lab">Courts</span><input type="number" id="f-courts" min="1" max="24" value="4"></label>
+          <label class="f"><span class="lab">Match duration (min)</span><input type="number" id="f-dur" min="5" max="120" value="25"></label>
+          <label class="f"><span class="lab">Buffer between (min)</span><input type="number" id="f-buf" min="0" max="60" value="0"></label>
+        </div>
+        <div class="hint">Match duration of 25 min matches your current format. Buffer adds changeover/rest time to every slot.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>Categories</h2>
+      <div class="body">
+        <div id="cats"></div>
+        <button type="button" class="addcat" id="add">+ Add category</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="results">
+    <div class="bigclock">
+      <div class="lab">Projected finish</div>
+      <div class="t num" id="r-end">—</div>
+      <div class="d" id="r-head">Add a category to begin</div>
+    </div>
+    <div class="statgrid">
+      <div class="stat"><div class="v num" id="r-matches">0</div><div class="k">Matches</div></div>
+      <div class="stat"><div class="v num" id="r-slots">0</div><div class="k">Time slots</div></div>
+      <div class="stat"><div class="v num" id="r-hours">0h</div><div class="k">Play time</div></div>
+    </div>
+    <div class="alerts" id="r-alerts"></div>
+    <div class="panel">
+      <h2>Per-category breakdown</h2>
+      <table class="tl">
+        <thead><tr><th>Category</th><th>Teams</th><th>Brackets</th><th>RR</th><th>PO</th><th>Total</th><th>RR time</th><th>PO time</th><th>Total time</th></tr></thead>
+        <tbody id="r-rows"></tbody>
+      </table>
+      <div class="tfoot" id="r-windows"></div>
+    </div>
+    <div class="toolrow">
+      <button type="button" class="btn" id="reset">Reset</button>
+      <button type="button" class="btn" id="importbtn">Import CSV</button>
+      <button type="button" class="btn" id="exportbtn">Export CSV</button>
+      <button type="button" class="btn primary" id="xlsxbtn">Download .xlsx</button>
+    </div>
+    <input type="file" id="importfile" accept=".csv,text/csv" hidden>
+    <div id="iomsg" class="iomsg" hidden></div>
+  </div>
+</main>
+
+<script>
+/* ---------------- calculation core ---------------- */
+function groupSizes(teams, brackets){
+  // brackets = how many round-robin groups to make. Teams split as evenly
+  // as possible; leftovers enlarge the first groups.
+  // e.g. 26 teams, 6 brackets -> 5-5-4-4-4-4
+  if(teams<2) return [];
+  let g=Math.min(30,Math.max(1,Math.round(brackets)||4));
+  g=Math.min(g,Math.floor(teams/2));      // every bracket needs at least 2
+  g=Math.max(1,g);
+  const base=Math.floor(teams/g), extra=teams%g;
+  return Array.from({length:g},(_,i)=>i<extra?base+1:base); // descending
+}
+const rrMatches = sizes => sizes.reduce((s,n)=>s+n*(n-1)/2,0);
+
+const roundLabel=size=>({4:'Semifinals',8:'Quarterfinals'})[size]||('Round of '+size);
+/* Top 2 per group advance. Single elimination sized to the next power of 2,
+   with byes for the top seeds. Single group = twice-to-beat final + auto bronze. */
+function playoffPlan(groups, adv, fill){
+  adv=Math.min(4,Math.max(1,adv||2));
+  if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,bronzeText:null};
+  if(groups===1){
+    return {rounds:[{label:'Final · twice-to-beat',matches:2,byes:0}],
+      total:2, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:true, bronzeText:'RR #3 automatic'};
+  }
+  const direct=groups*adv;
+  if(direct===2) return {rounds:[{label:'Final',matches:1,byes:0}],
+    total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, bronzeText:null};
+  let B=4; while(B<direct) B*=2;
+  const wc = fill==='wc' ? B-direct : 0;
+  const q = direct + wc;
+  const rounds=[];
+  for(let size=B; size>=4; size/=2){
+    const matches = size===B ? q - B/2 : size/2;
+    const byes = size===B ? B - q : 0;
+    rounds.push({label:roundLabel(size),matches,byes});
+  }
+  let bronzeText=null;
+  if(q>=4) rounds.push({label:'Bronze match',matches:1,byes:0});
+  else bronzeText='losing semifinalist automatic';
+  rounds.push({label:'Final',matches:1,byes:0});
+  const total=rounds.reduce((s,r)=>s+r.matches,0);
+  return {rounds,total,min:total,qualifiers:q,direct,wc,byes:B-q,single:false,bronzeText};
+}
+
+function calcCategory(c){
+  if(c.teams===2){
+    const plan={rounds:[{label:'Final · best of 3',matches:3,byes:0}],total:3,min:2,
+      qualifiers:2,direct:2,wc:0,byes:0,single:false,bestOf3:true,bronzeText:null};
+    return {sizes:[2],groups:1,rr:0,plan,adv:1,po:3,total:3,totalMin:2,qualifiers:2,notes:[]};
+  }
+  const sizes = groupSizes(c.teams, c.group);
+  const groups = sizes.length;
+  const rr = rrMatches(sizes);
+  const adv = Math.min(4,Math.max(1,c.adv||2));
+  const plan = playoffPlan(groups, adv, c.fill||'bye');
+  const notes=[];
+  const wanted=Math.min(30,Math.max(1,Math.round(c.group)||4));
+  if(groups>0 && groups<wanted) notes.push(`Only ${groups} bracket${groups>1?'s':''} possible with ${c.teams} pairs (each bracket needs at least 2) — using ${groups}.`);
+  if(groups>1 && Math.max(...sizes)>8) notes.push(`Brackets of ${Math.max(...sizes)} mean ${Math.max(...sizes)-1} round-robin matches per pair — consider more brackets.`);
+  if(groups>1 && adv>=Math.min(...sizes)) notes.push(`Advancing ${adv} from a group of ${Math.min(...sizes)} means some teams qualify regardless of results.`);
+  return { sizes, groups, rr, plan, adv, po:plan.total, total: rr+plan.total,
+    totalMin: rr+plan.min, qualifiers:plan.qualifiers, notes };
+}
+
+/* Matches that depend on each other can't share a time slot:
+   best-of-3 games, twice-to-beat games, and each playoff round
+   must wait for the previous one. This gives a per-category floor.
+   Returns {rr, po} slot counts. */
+function seqParts(p,courts){
+  if(!p.sizes||!p.sizes.length||courts<1)return {rr:0,po:0};
+  if(p.plan.bestOf3)return {rr:0,po:3};
+  const rrS=Math.ceil(p.rr/courts);
+  if(p.plan.single)return {rr:rrS,po:2};
+  let po=0,bronze=0;
+  for(const rd of p.plan.rounds){
+    if(rd.label==='Bronze match'){bronze=rd.matches;continue;}
+    if(rd.label==='Final'){po+=Math.ceil((rd.matches+bronze)/courts);continue;}
+    po+=Math.ceil(rd.matches/courts);
+  }
+  return {rr:rrS,po};
+}
+function seqSlots(p,courts){const s=seqParts(p,courts);return s.rr+s.po;}
+
+function calcAll(cfg){
+  const per = cfg.cats.map(calcCategory);
+  const matches = per.reduce((s,p)=>s+p.total,0);
+  const slotLen = cfg.dur + cfg.buf;
+  const maxSeq = per.reduce((m,p)=>Math.max(m,seqSlots(p,cfg.courts)),0);
+  const slots = cfg.courts>0 ? Math.max(Math.ceil(matches/cfg.courts), maxSeq) : 0;
+  const playMin = slots>0 ? slots*slotLen - cfg.buf : 0;   // no buffer after last slot
+  // sequential per-category time windows
+  let cursor = cfg.startMin; const windows=[];
+  per.forEach(p=>{
+    const cslots = cfg.courts>0?Math.ceil(p.total/cfg.courts):0;
+    const dur = cslots>0 ? cslots*slotLen : 0;
+    windows.push({start:cursor, end:cursor+ (dur? dur-cfg.buf:0)});
+    cursor += dur;
+  });
+  return { per, matches, slots, playMin, endMin: matches? cfg.startMin+playMin : null, windows };
+}
+
+function fmtTime(min){
+  const dayOver = Math.floor(min/1440); min=((min%1440)+1440)%1440;
+  let h=Math.floor(min/60), m=min%60;
+  const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return `${h}:${String(m).padStart(2,'0')} ${ap}${dayOver?` (+${dayOver}d)`:''}`;
+}
+function fmtDur(min){const h=Math.floor(min/60),m=min%60;return (h?`${h}h `:'')+(m?`${m}m`:h?'':'0m');}
+
+/* ---------------- playoff chart ---------------- */
+function seedOrder(B){let o=[1,2];while(o.length<B){const n=o.length*2;o=o.flatMap(x=>[x,n+1-x]);}return o;}
+const roundAbbr=size=>({4:'SF',8:'QF'})[size]||('R'+size);
+function buildChart(p){
+  const slot=(t,cls)=>`<div class="slot ${cls||''}">${t}</div>`;
+  const box=(a,b,cls)=>`<div class="mbox ${cls||''}">${a}${b}</div>`;
+  const col=(lab,boxes)=>`<div class="roundcol"><div class="roundlab">${lab}</div><div class="round">${boxes.join('')}</div></div>`;
+  const plan=p.plan;
+  if(!p.sizes.length)return '';
+  if(plan.bestOf3){
+    return '<div class="chart">'
+      +col('Final · best of 3',[box(slot('<span class="sd">Pair 1</span>'),slot('<span class="sd">Pair 2</span>'),'gold')])
+      +'</div><div class="legend">First to two wins takes gold, the other silver. Match 3 is played only if the series is tied 1–1.</div>';
+  }
+  if(plan.single){
+    return '<div class="chart">'
+      +col('Final · twice-to-beat',[box(slot('<span class="sd">RR #1</span> needs one win'),slot('<span class="sd">RR #2</span> must win twice'),'gold')])
+      +col('Bronze',[box(slot('<span class="sd">RR #3</span> bronze — automatic, no match','bye'),'','bronzebox')])
+      +'</div><div class="legend">If RR #2 takes game 1, a winner-take-all game 2 follows.</div>';
+  }
+  const q=plan.qualifiers;
+  const poolDesc=n=>{
+    if(n>plan.direct)return 'wildcard';
+    const rank=Math.ceil(n/p.groups);
+    return rank===1?'group winner':rank===2?'runner-up':`group #${rank}`;
+  };
+  // Positions are drawn by lot, so slots are labelled D1, D2… (draw order),
+  // not seeded by rank. Each slot just holds "a qualifier".
+  const drawTxt=n=>n<=q?`<span class="sd">D${n}</span>drawn qualifier`:null;
+  if(q===2){
+    return '<div class="chart">'+col('Final',[box(slot(drawTxt(1)),slot(drawTxt(2)),'gold')])
+      +'</div><div class="legend">'+legendTxt(p)+'</div>';
+  }
+  const B=q+plan.byes;
+  // sequential draw positions 1..B; byes are simply the empty positions
+  const order=Array.from({length:B},(_,i)=>i+1);
+  const cols=[];let prev=null;
+  for(let size=B;size>=2;size/=2){
+    const boxes=[];const meta=[];
+    const count=size/2;
+    for(let j=0;j<count;j++){
+      let aTxt,bTxt,carry=null,aBye=false,bBye=false;
+      const id=(size===2?'F':roundAbbr(size))+(count>1?(j+1):'');
+      if(size===B){
+        const s1=order[2*j],s2=order[2*j+1];
+        aTxt=s1<=q?drawTxt(s1):'Bye';aBye=s1>q;
+        bTxt=s2<=q?drawTxt(s2):'Bye';bBye=s2>q;
+        if(aBye)carry=bTxt;if(bBye)carry=aTxt;
+      }else{
+        const f1=prev[2*j],f2=prev[2*j+1];
+        aTxt=f1.carry||`Winner ${f1.id}`;
+        bTxt=f2.carry||`Winner ${f2.id}`;
+      }
+      meta.push({id,carry});
+      if(size===B&&(aBye||bBye)){
+        boxes.push(box(slot(aBye?bTxt:aTxt),slot('Bye — advances','bye')));
+      }else{
+        boxes.push(box(slot(aTxt),slot(bTxt),size===2?'gold':''));
+      }
+    }
+    cols.push(col(size===2?'Final':roundLabel(size),boxes));
+    prev=meta;
+  }
+  // bronze column
+  if(q>=4){
+    cols.push(col('Bronze match',[box(slot('Loser SF1'),slot('Loser SF2'),'bronzebox')]));
+  }else if(plan.bronzeText){
+    cols.push(col('Bronze',[box(slot('Losing semifinalist — automatic','bye'),'','bronzebox')]));
+  }
+  return '<div class="chart">'+cols.join('')+'</div><div class="legend">'+legendTxt(p)+'</div>';
+}
+function legendTxt(p){
+  const d=p.plan.direct;
+  let t=`The ${p.qualifiers} qualifiers are the top ${p.adv} from each bracket`;
+  if(p.plan.wc)t+=` plus ${p.plan.wc} wildcard${p.plan.wc>1?'s':''} (best non-qualifier${p.plan.wc>1?'s':''} across brackets by wins, then score quotient)`;
+  t+='. Playoff positions (D1, D2…) are drawn by lot — the bracket pairings are decided by the draw, not by seeding';
+  t+=p.plan.byes?`, and ${p.plan.byes} drawn position${p.plan.byes>1?'s':''} receive a first-round bye.`:'.';
+  return t;
+}
+
+/* ---------------- state & presets ---------------- */
+const PRESETS=[
+  ['NWD',"Novice Women's Doubles"],['NMD',"Novice Men's Doubles"],['NXD','Novice Mixed Doubles'],
+  ['IWD',"Intermediate Women's Doubles"],['IMD',"Intermediate Men's Doubles"],['IXD','Intermediate Mixed Doubles'],
+  ['AWD',"Advanced Women's Doubles"],['AMD',"Advanced Men's Doubles"],['AXD','Advanced Mixed Doubles'],
+  ['OPEN',"Open Men's Doubles"],['CUSTOM','Custom…']];
+
+let cats=[];
+let nextId=1;
+function defaultCat(){
+  const used=cats.map(c=>c.code);
+  const free=PRESETS.find(p=>p[0]!=='CUSTOM'&&!used.includes(p[0]))||PRESETS[0];
+  return {id:nextId++, code:free[0], name:free[1], teams:16, group:4, adv:2, fill:'bye'};
+}
+
+/* ---------------- persistence (works in claude.ai artifacts; safely skipped elsewhere) ---------------- */
+async function save(){
+  try{ if(window.storage) await window.storage.set('ttc-config', JSON.stringify(readForm())); }catch(e){}
+}
+async function load(){
+  try{
+    if(!window.storage) return null;
+    const r=await window.storage.get('ttc-config');
+    return r?JSON.parse(r.value):null;
+  }catch(e){ return null; }
+}
+
+/* ---------------- form <-> state ---------------- */
+const $=id=>document.getElementById(id);
+function readForm(){
+  const [h,m]=($('f-start').value||'09:00').split(':').map(Number);
+  return {
+    title:$('f-title').value.trim(), date:$('f-date').value,
+    start:$('f-start').value||'09:00', startMin:h*60+m,
+    courts:Math.max(1,+$('f-courts').value||1),
+    dur:Math.max(5,+$('f-dur').value||25), buf:Math.max(0,+$('f-buf').value||0),
+    cats: cats.map(c=>({...c}))
+  };
+}
+
+function catCard(c){
+  const div=document.createElement('div');div.className='cat';div.dataset.id=c.id;
+  div.innerHTML=`
+    <div class="cathead">
+      <div class="cname">
+        <select data-k="preset" aria-label="Category">
+          ${PRESETS.map(p=>`<option value="${p[0]}" ${p[0]===c.code?'selected':''}>${p[0]==='CUSTOM'?'Custom…':p[0]+' — '+p[1]}</option>`).join('')}
+        </select>
+      </div>
+      <button type="button" class="del">Remove</button>
+    </div>
+    <div class="customwrap" style="display:${c.code==='CUSTOM'?'block':'none'}">
+      <div class="grid2">
+        <label class="f"><span class="lab">Event code</span>
+        <input type="text" data-k="ccode" maxlength="6" value="${c.code==='CUSTOM'?(c.ccode||''):''}" placeholder="e.g. JRS" style="text-transform:uppercase"></label>
+        <label class="f"><span class="lab">Event name</span>
+        <input type="text" data-k="name" value="${c.code==='CUSTOM'?(c.name||'').replace(/"/g,'&quot;'):''}" placeholder="e.g. Juniors Singles"></label>
+      </div>
+    </div>
+    <div class="grid3">
+      <label class="f"><span class="lab">Teams / pairs</span><input type="number" data-k="teams" min="2" max="100" value="${c.teams}"></label>
+      <label class="f"><span class="lab">Number of brackets</span>
+        <input type="number" data-k="group" min="1" max="30" value="${c.group}"></label>
+      <label class="f"><span class="lab">Advance per group</span>
+        <input type="number" data-k="adv" min="1" max="4" value="${c.adv||2}"></label>
+    </div>
+    <span class="lab advlab" style="font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Playoffs · top ${c.adv||2} per group advance</span>
+    <div class="plan"></div>
+    <div class="catline"></div>
+    <button type="button" class="chartbtn">Show playoff chart</button>
+    <div class="chartwrap"></div>
+    <label class="f" style="margin-top:10px;margin-bottom:0"><span class="lab">Note <small style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--muted)">(optional — appears in the .xlsx)</small></span>
+    <textarea data-k="note" rows="2" placeholder="e.g. seeded players, court preference, sponsor, special rules…">${(c.note||'').replace(/</g,'&lt;')}</textarea></label>`;
+  return div;
+}
+
+function renderCats(){
+  const wrap=$('cats');wrap.innerHTML='';
+  cats.forEach(c=>wrap.appendChild(catCard(c)));
+}
+
+function recalc(){
+  const cfg=readForm();
+  const r=calcAll(cfg);
+  // per-card lines
+  document.querySelectorAll('.cat').forEach((el,i)=>{
+    const p=r.per[i];
+    const planEl=el.querySelector('.plan'), lineEl=el.querySelector('.catline');
+    el.querySelector('.chartbtn').style.display=p.sizes.length?'':'none';
+    if(!p.sizes.length){ planEl.innerHTML=''; el.querySelector('.chartwrap').innerHTML=''; lineEl.innerHTML='Needs at least 2 teams.'; return; }
+    const deficit=p.plan.byes+p.plan.wc;
+    const fillUI=(!p.plan.single&&deficit>0)?
+      `<div class="playoffs" style="margin-bottom:6px">
+        <button type="button" class="po fillbtn" data-fill="bye" aria-pressed="${(cats[i].fill||'bye')==='bye'}">Byes for top seeds</button>
+        <button type="button" class="po fillbtn" data-fill="wc" aria-pressed="${cats[i].fill==='wc'}">+${deficit} wildcard${deficit>1?'s':''}</button>
+      </div>`:'';
+    planEl.innerHTML=fillUI+'<div class="playoffs">'+p.plan.rounds.map(rd=>
+      `<span class="tagchip">${rd.label}: ${rd.matches}${rd.byes?` <small>(+${rd.byes} bye${rd.byes>1?'s':''})</small>`:''}</span>`).join('')
+      +(p.plan.bronzeText?`<span class="tagchip">Bronze: ${p.plan.bronzeText}</span>`:'')+'</div>';
+    el.querySelector('.advlab').textContent=p.plan.bestOf3?'Format · head-to-head best of 3':p.plan.single?'Playoffs · single group format':`Playoffs · top ${p.adv} per group advance`;
+    const grpTxt=groupShorthand(p);
+    const btn=el.querySelector('.chartbtn'),wrap=el.querySelector('.chartwrap'),c=cats[i];
+    btn.textContent=c.showChart?'Hide playoff chart':'Show playoff chart';
+    wrap.innerHTML=c.showChart?buildChart(p):'';
+    lineEl.innerHTML = p.plan.bestOf3
+      ? `<b>${p.totalMin}–${p.total} matches</b> — head-to-head series, no round robin. First to 2 wins takes gold; match 3 is played only if the series splits 1–1.`
+      : p.plan.single
+      ? `<b>${p.totalMin}–${p.total} matches</b> — ${grpTxt} → ${p.rr} round-robin + final.`
+        +` RR #1 needs one win, #2 must beat them twice; #3 takes bronze with no match.`
+      : `<b>${p.total} matches</b> — ${grpTxt} → ${p.rr} round-robin + ${p.po} playoff · ${p.plan.direct} direct qualifier${p.plan.direct>1?'s':''} (top ${p.adv} per group)`
+        +(p.plan.wc?` + ${p.plan.wc} wildcard${p.plan.wc>1?'s':''} — best of the rest by wins, then quotient`:'')
+        +(p.plan.byes?` · top ${p.plan.byes} seed${p.plan.byes>1?'s':''} get a bye`:'');
+  });
+  // headline
+  $('r-matches').textContent=r.matches;
+  $('r-slots').textContent=r.slots;
+  $('r-hours').textContent=r.matches?fmtDur(r.playMin):'0m';
+  $('r-end').textContent=r.endMin!=null?fmtTime(r.endMin):'—';
+  const dateStr=cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'short',month:'long',day:'numeric',year:'numeric'}):'';
+  $('r-head').textContent=[cfg.title||'Untitled tournament',dateStr,`from ${fmtTime(cfg.startMin)} on ${cfg.courts} court${cfg.courts>1?'s':''}`]
+    .filter(Boolean).join(' · ');
+  document.title=(cfg.title?cfg.title+' · ':'')+'Time Calculator';
+  // alerts
+  const alerts=[];
+  if(r.matches){
+    const endClock=r.endMin%1440, late=r.endMin>=cfg.startMin+ (22*60-cfg.startMin) && endClock>=22*60;
+    if(r.endMin-cfg.startMin>15*60||r.endMin>=24*60) alerts.push(['bad',`This plan runs past midnight. Add courts, trim categories, or shorten matches.`]);
+    else if(endClock>=22*60) alerts.push(['warn',`Finishing after 10 PM — tight for a one-day event. One more court would finish at ${fmtTime(cfg.startMin+Math.ceil(r.matches/(cfg.courts+1))*(cfg.dur+cfg.buf)-cfg.buf)}.`]);
+    else alerts.push(['good',`Comfortable one-day plan. Last match steps off court around ${fmtTime(r.endMin)}.`]);
+  }
+  r.per.forEach((p,i)=>p.notes.forEach(n=>alerts.push(['warn',`${catName(cats[i])}: ${n}`])));
+  $('r-alerts').innerHTML=alerts.map(([cls,t])=>`<div class="alert ${cls}">${t}</div>`).join('');
+  // table + windows
+  const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bz','Final':'F','Final · twice-to-beat':'F ×2','Final · best of 3':'Bo3'};
+  const slotLen=cfg.dur+cfg.buf;
+  const catTime=p=>{
+    if(!p.total)return {rr:0,po:0};
+    const sp=seqParts(p,cfg.courts);
+    // distribute total slots: floor each by capacity but never below the sequential floor
+    const rrSlots=Math.max(Math.ceil(p.rr/cfg.courts),sp.rr);
+    const poSlots=Math.max(Math.ceil(p.plan.total/cfg.courts),sp.po);
+    return {rr: rrSlots?rrSlots*slotLen-cfg.buf:0, po: poSlots?poSlots*slotLen-cfg.buf:0};
+  };
+  $('r-rows').innerHTML=r.per.map((p,i)=>{
+    const struct=p.sizes.length?p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
+      +(p.plan.wc?` · ${p.plan.wc}WC`:'')+(p.plan.bronzeText?' · Bz auto':''):'—';
+    const ct=catTime(p);
+    const catTotalMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
+    return `<tr>
+    <td><span class="cc">${catCode(cats[i])}</span><span class="win">${catName(cats[i])}</span><span class="win">${struct}</span></td>
+    <td class="num">${cats[i].teams}</td><td class="num" style="font-variant-numeric:tabular-nums;white-space:nowrap">${bracketShorthand(p)}</td><td class="num">${p.rr}</td>
+    <td class="num">${p.po}</td><td class="num"><b>${p.total}</b></td>
+    <td class="num">${ct.rr?fmtDur(ct.rr):'—'}</td>
+    <td class="num">${ct.po?fmtDur(ct.po):'—'}</td>
+    <td class="num"><b>${catTotalMin?fmtDur(catTotalMin):'—'}</b></td></tr>`;}).join('')
+    ||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px">No categories yet</td></tr>';
+  const hasTTB=r.per.some(p=>p.plan&&(p.plan.single||p.plan.bestOf3));
+  $('r-windows').innerHTML=(r.matches?`RR/PO time = court time for that phase with all ${cfg.courts} court${cfg.courts>1?'s':''} on it (${cfg.dur}-min matches${cfg.buf?` + ${cfg.buf}-min buffer`:''}), respecting that playoff rounds and series games run one after another.`:'')
+    +(hasTTB?' <b>Note:</b> twice-to-beat finals and best-of-3 series are counted at full length so the plan covers the worst case; the day ends earlier if they\u2019re decided sooner.':'');
+  $('r-windows').style.display=(r.matches||hasTTB)?'':'none';
+  save();
+}
+function groupShorthand(p){
+  const g=p.groups;
+  if(g<=8) return `${g} group${g>1?'s':''} (${p.sizes.join('-')})`;
+  const counts={};p.sizes.forEach(n=>counts[n]=(counts[n]||0)+1);
+  return `${g} groups (`+Object.keys(counts).sort((a,b)=>a-b).map(n=>`${counts[n]}\u00d7${n}`).join(' + ')+')';
+}
+function bracketShorthand(p){
+  if(!p.sizes||!p.sizes.length)return '\u2014';
+  if(p.sizes.length<=10) return p.sizes.join('-');
+  const counts={};p.sizes.forEach(n=>counts[n]=(counts[n]||0)+1);
+  return Object.keys(counts).sort((a,b)=>b-a).map(n=>`${counts[n]}\u00d7${n}`).join(' + ');
+}
+const catCode=c=>c.code==='CUSTOM'?(c.ccode||(c.name||'Custom').replace(/[^A-Za-z0-9_]/g,'').slice(0,6).toUpperCase()||'CUS'):c.code;
+const catName=c=>c.code==='CUSTOM'?(c.name||'Custom category'):PRESETS.find(p=>p[0]===c.code)[1];
+
+/* ---------------- export / import CSV ---------------- */
+function csvCell(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function parseCSVRows(text){
+  const rows=[];let row=[],cell='',inQ=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(inQ){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++;}else inQ=false;}else cell+=c;}
+    else if(c==='"')inQ=true;
+    else if(c===','){row.push(cell);cell='';}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}
+    else if(c==='\r'){}
+    else cell+=c;}
+  row.push(cell);if(row.length>1||row[0]!=='')rows.push(row);
+  return rows;
+}
+let msgTimer;
+function ioMsg(text,cls){
+  const el=$('iomsg');el.textContent=text;el.className='iomsg '+cls;el.hidden=false;
+  clearTimeout(msgTimer);msgTimer=setTimeout(()=>{el.hidden=true;},5000);
+}
+function exportCSV(){
+  const cfg=readForm();const r=calcAll(cfg);
+  const lines=[];
+  lines.push('# Tournament Time Calculator export — use Import CSV to restore this setup');
+  if(r.matches)lines.push(csvCell('# '+r.matches+' matches · projected finish '+fmtTime(r.endMin)));
+  lines.push('type,key,value,teams,brackets,advance,fill,note');
+  [['title',cfg.title],['date',cfg.date],['start',cfg.start],
+   ['courts',cfg.courts],['duration_min',cfg.dur],['buffer_min',cfg.buf]]
+    .forEach(([k,v])=>lines.push(['setting',k,csvCell(v),'','','',''].join(',')));
+  cats.forEach(c=>lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
+    c.teams,c.group,c.adv||2,c.fill||'bye',csvCell(c.note||'')].join(',')));
+  const name=(cfg.title?cfg.title.replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase():'tournament')
+    +(cfg.date?'-'+cfg.date:'')+'-plan.csv';
+  try{
+    const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    ioMsg('Exported '+name,'good');
+  }catch(err){ioMsg('Export failed in this viewer — open the file in a regular browser to download.','bad');}
+}
+
+function fileBase(cfg){
+  return (cfg.title?cfg.title.replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase():'tournament')
+    +(cfg.date?'-'+cfg.date:'');
+}
+function exportXLSX(){
+  if(typeof XLSX==='undefined'){ioMsg('Spreadsheet library still loading — try again in a moment, or use Export CSV.','bad');return;}
+  const cfg=readForm();const r=calcAll(cfg);
+  if(!r.matches){ioMsg('Add at least one category before downloading.','bad');return;}
+  const slotLen=cfg.dur+cfg.buf;
+  const catTime=p=>{
+    const sp=seqParts(p,cfg.courts);
+    const rrSlots=Math.max(Math.ceil(p.rr/cfg.courts),sp.rr);
+    const poSlots=Math.max(Math.ceil(p.plan.total/cfg.courts),sp.po);
+    return {rr:rrSlots?rrSlots*slotLen-cfg.buf:0, po:poSlots?poSlots*slotLen-cfg.buf:0};
+  };
+  const dateStr=cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
+  // Build an array-of-arrays so we control layout, headers, and the notes block.
+  const aoa=[];
+  aoa.push([cfg.title||'Untitled tournament']);
+  aoa.push([[dateStr,`Start ${fmtTime(cfg.startMin)}`,`${cfg.courts} court${cfg.courts>1?'s':''}`,`${cfg.dur}-min matches`,cfg.buf?`${cfg.buf}-min buffer`:''].filter(Boolean).join('   ·   ')]);
+  aoa.push([`Projected finish ${fmtTime(r.endMin)}   ·   ${r.matches} matches   ·   ${fmtDur(r.playMin)} total play`]);
+  aoa.push([]);
+  const head=['Code','Category','Pairs','Brackets','Bracket sizes','Format','RR matches','PO matches','Total','RR time','PO time','Total time','Note'];
+  aoa.push(head);
+  r.per.forEach((p,i)=>{
+    const c=cats[i];const ct=catTime(p);
+    const totMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
+    const fmt=p.sizes.length?(groupShorthand(p)+' → '+p.plan.rounds.map(rd=>{
+      const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bronze','Final':'Final','Final · twice-to-beat':'Final (twice-to-beat)','Final · best of 3':'Best of 3'};
+      return (SHORT[rd.label]||rd.label)+' '+rd.matches+(rd.byes?` (+${rd.byes} bye)`:'');
+    }).join(', ')+(p.plan.wc?` +${p.plan.wc} wildcard`:'')):'—';
+    aoa.push([catCode(c),catName(c),c.teams,p.groups,bracketShorthand(p),fmt,p.rr,p.po,p.total,
+      ct.rr?fmtDur(ct.rr):'—', ct.po?fmtDur(ct.po):'—', totMin?fmtDur(totMin):'—', c.note||'']);
+  });
+  // totals row
+  aoa.push(['','TOTAL', cats.reduce((s,c)=>s+(c.teams||0),0),'','','',
+    r.per.reduce((s,p)=>s+p.rr,0), r.per.reduce((s,p)=>s+p.po,0), r.matches, '', '', fmtDur(r.playMin),'']);
+
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:8},{wch:26},{wch:8},{wch:9},{wch:18},{wch:46},{wch:11},{wch:11},{wch:7},{wch:9},{wch:9},{wch:10},{wch:40}];
+  ws['!merges']=[
+    {s:{r:0,c:0},e:{r:0,c:12}},
+    {s:{r:1,c:0},e:{r:1,c:12}},
+    {s:{r:2,c:0},e:{r:2,c:12}},
+  ];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Breakdown');
+  try{
+    XLSX.writeFile(wb, fileBase(cfg)+'-breakdown.xlsx');
+    ioMsg('Downloaded '+fileBase(cfg)+'-breakdown.xlsx','good');
+  }catch(err){ioMsg('Download failed in this viewer — open the file in a regular browser.','bad');}
+}
+function importCSVText(text){
+  const rows=parseCSVRows(text);
+  const st={};const newCats=[];let found=false;
+  for(const row of rows){
+    const t=(row[0]||'').trim().toLowerCase();
+    if(t==='setting'){st[(row[1]||'').trim()]=(row[2]||'').trim();found=true;}
+    else if(t==='category'){
+      const rawCode=(row[1]||'').trim().toUpperCase();
+      const known=PRESETS.some(pp=>pp[0]===rawCode&&rawCode!=='CUSTOM');
+      newCats.push({id:nextId++,
+        code:known?rawCode:'CUSTOM',
+        ccode:known?undefined:(rawCode==='CUSTOM'?'':rawCode.replace(/[^A-Z0-9_]/g,'').slice(0,6)),
+        name:known?PRESETS.find(pp=>pp[0]===rawCode)[1]:((row[2]||'').trim()||rawCode||'Custom category'),
+        teams:Math.min(100,Math.max(2,parseInt(row[3],10)||16)),
+        group:Math.min(30,Math.max(1,parseInt(row[4],10)||4)),
+        adv:Math.min(4,Math.max(1,parseInt(row[5],10)||2)),
+        fill:(row[6]||'').trim()==='wc'?'wc':'bye',
+        note:(row[7]||'').trim()});
+      found=true;
+    }
+  }
+  if(!found){ioMsg('That file doesn\u2019t look like a calculator export — no settings or categories found.','bad');return;}
+  if('title'in st)$('f-title').value=st.title;
+  if('date'in st)$('f-date').value=st.date;
+  if('start'in st&&/^\d{1,2}:\d{2}$/.test(st.start))$('f-start').value=st.start;
+  if('courts'in st)$('f-courts').value=Math.min(24,Math.max(1,parseInt(st.courts,10)||4));
+  if('duration_min'in st)$('f-dur').value=Math.min(120,Math.max(5,parseInt(st.duration_min,10)||25));
+  if('buffer_min'in st)$('f-buf').value=Math.min(60,Math.max(0,parseInt(st.buffer_min,10)||0));
+  if(newCats.length)cats=newCats;
+  renderCats();recalc();
+  ioMsg('Imported: '+(newCats.length||cats.length)+' categor'+((newCats.length||cats.length)===1?'y':'ies')+(st.title?' · '+st.title:''),'good');
+}
+
+/* ---------------- events ---------------- */
+$('add').addEventListener('click',()=>{cats.push(defaultCat());renderCats();recalc();});
+$('exportbtn').addEventListener('click',exportCSV);
+$('xlsxbtn').addEventListener('click',exportXLSX);
+$('importbtn').addEventListener('click',()=>$('importfile').click());
+$('importfile').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>importCSVText(String(rd.result));
+  rd.onerror=()=>ioMsg('Could not read that file.','bad');
+  rd.readAsText(f);
+  e.target.value='';
+});
+$('reset').addEventListener('click',()=>{
+  cats=[];nextId=1;$('f-title').value='';$('f-date').value='';$('f-start').value='09:00';
+  $('f-courts').value=4;$('f-dur').value=25;$('f-buf').value=0;
+  cats=[defaultCat()];renderCats();recalc();
+});
+$('cats').addEventListener('click',e=>{
+  const card=e.target.closest('.cat');if(!card)return;
+  const c=cats.find(x=>x.id==card.dataset.id);
+  if(e.target.classList.contains('del')){cats=cats.filter(x=>x!==c);renderCats();recalc();return;}
+  if(e.target.classList.contains('chartbtn')){c.showChart=!c.showChart;recalc();return;}
+  const fb=e.target.closest('.fillbtn');
+  if(fb){c.fill=fb.dataset.fill;recalc();}
+});
+$('cats').addEventListener('input',e=>{
+  const card=e.target.closest('.cat');if(!card)return;
+  const c=cats.find(x=>x.id==card.dataset.id);
+  const k=e.target.dataset.k;
+  if(k==='preset'){
+    c.code=e.target.value;
+    if(c.code!=='CUSTOM')c.name=PRESETS.find(p=>p[0]===c.code)[1];
+    card.querySelector('.customwrap').style.display=c.code==='CUSTOM'?'block':'none';
+  }
+  else if(k==='name')c.name=e.target.value;
+  else if(k==='ccode'){c.ccode=e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g,'').slice(0,6);if(e.target.value!==c.ccode)e.target.value=c.ccode;}
+  else if(k==='note'){c.note=e.target.value;save();return;}
+  else if(k==='teams')c.teams=Math.min(100,Math.max(2,+e.target.value||2));
+  else if(k==='group')c.group=Math.min(30,Math.max(1,+e.target.value||4));
+  else if(k==='adv')c.adv=Math.min(4,Math.max(1,+e.target.value||2));
+  recalc();
+});
+['f-title','f-date','f-start','f-courts','f-dur','f-buf'].forEach(id=>$(id).addEventListener('input',recalc));
+
+/* ---------------- boot ---------------- */
+(async()=>{
+  const saved=await load();
+  if(saved&&saved.cats&&saved.cats.length){
+    $('f-title').value=saved.title||'';$('f-date').value=saved.date||'';
+    $('f-start').value=saved.start||'09:00';$('f-courts').value=saved.courts||4;
+    $('f-dur').value=saved.dur||25;$('f-buf').value=saved.buf||0;
+    cats=saved.cats.map(c=>({...c,id:nextId++}));
+  }else{
+    cats=[defaultCat()];
+  }
+  renderCats();recalc();
+})();
+</script>
+</body>
+</html>
