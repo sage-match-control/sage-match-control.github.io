@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clash of the Clubs — Match Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --court:#14B8A6;
+    --court-dark:#0A0620;
+    --court-line:#E8E2F5;
+    --ink:#141B2C;
+    --paper:#FBF7EC;
+    --amber:#F6DE58;
+    --cork:#FF7A29;
+    --muted:#6B7690;
+    --navy-mid:#2A1154;
+    --card-shadow: 0 18px 40px -20px rgba(8,3,24,.6);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(900px 480px at 50% -12%, rgba(47,224,200,.14), transparent 62%),
+      radial-gradient(700px 460px at 100% 4%, rgba(143,58,220,.24), transparent 55%),
+      radial-gradient(650px 520px at -6% 96%, rgba(47,224,200,.12), transparent 60%),
+      linear-gradient(180deg, var(--court-dark) 0%, var(--navy-mid) 45%, var(--court-dark) 100%);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px 90px;}
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding:52px 20px 40px;
+    text-align:center;
+    color:var(--court-line);
+    position:relative;
+  }
+  .crown-mark{
+    width:34px; height:34px;
+    margin:0 auto 14px;
+    color:var(--amber);
+    filter:drop-shadow(0 2px 6px rgba(240,203,92,.35));
+  }
+  .regal-rule{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    max-width:280px;
+    margin:0 auto 30px;
+  }
+  .regal-rule::before, .regal-rule::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(47,224,200,.7));
+  }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(47,224,200,.7), transparent); }
+  .regal-rule .diamond{
+    width:7px; height:7px;
+    background:var(--amber);
+    transform:rotate(45deg);
+    flex-shrink:0;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--amber);
+    margin-bottom:16px;
+  }
+  h1.title{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(34px,8.2vw,62px);
+    line-height:1.04;
+    letter-spacing:.005em;
+    margin:0 0 10px;
+    text-transform:uppercase;
+    background:linear-gradient(92deg, #2FE0C8 0%, #8FE94B 48%, #F6DE58 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 22px rgba(47,224,200,.28));
+  }
+  h1.title .accent{
+    -webkit-text-fill-color:initial;
+    background:none;
+    color:var(--cork);
+  }
+  .subtitle{
+    font-size:15px;
+    color:rgba(232,226,245,.75);
+    max-width:480px;
+    margin:0 auto 34px;
+    line-height:1.55;
+  }
+
+  /* ---------- SEARCH ---------- */
+  .search-panel{
+    background:var(--paper);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:var(--card-shadow);
+    position:relative;
+    max-width:560px;
+    margin:0 auto;
+  }
+  .search-panel::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:18px;
+    border:1px solid rgba(47,224,200,.35);
+    margin:8px;
+    pointer-events:none;
+  }
+  .search-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    color:var(--muted);
+    display:block;
+    margin-bottom:10px;
+    text-align:left;
+  }
+  .search-row{display:flex; gap:10px;}
+  input#teamInput{
+    flex:1;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:.03em;
+    padding:14px 16px;
+    border-radius:10px;
+    border:2px solid rgba(20,27,44,.18);
+    background:#fff;
+    color:var(--ink);
+    text-transform:uppercase;
+    outline:none;
+    min-width:0;
+  }
+  input#teamInput:focus{border-color:var(--court);}
+  input#teamInput::placeholder{color:#9AA3B5; font-weight:500; text-transform:none;}
+  button#searchBtn{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    padding:0 22px;
+    border-radius:10px;
+    border:none;
+    background:var(--cork);
+    color:#fff;
+    cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button#searchBtn:hover{background:#D9600F;}
+  button#searchBtn:active{transform:scale(.97);}
+
+  .autocomplete{
+    position:relative;
+  }
+  .ac-list{
+    position:absolute;
+    left:0; right:0; top:calc(100% + 6px);
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 14px 30px -12px rgba(0,0,0,.35);
+    max-height:220px;
+    overflow-y:auto;
+    z-index:20;
+    display:none;
+    text-align:left;
+    border:1px solid rgba(20,27,44,.08);
+    color:var(--ink);
+  }
+  .ac-list.show{display:block;}
+  .ac-item{
+    padding:10px 14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    border-bottom:1px solid rgba(20,27,44,.06);
+  }
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item:hover, .ac-item.active{background:var(--court); color:#fff;}
+  .ac-item small{font-family:'Inter',sans-serif; color:var(--muted); opacity:1; font-weight:500;}
+  .ac-item:hover small, .ac-item.active small{color:rgba(255,255,255,.85);}
+
+  .sync-status{
+    max-width:560px;
+    margin:14px auto 0;
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.03em;
+    color:rgba(232,226,245,.6);
+  }
+  .sync-status.ok{color:var(--amber);}
+  .sync-status.error{color:#ff9a7a;}
+  .sync-status .retry-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    background:none;
+    border:1px solid rgba(255,154,122,.5);
+    color:#ff9a7a;
+    padding:2px 8px;
+    border-radius:100px;
+    cursor:pointer;
+    margin-left:6px;
+  }
+  .sync-status .retry-btn:hover{background:rgba(255,154,122,.15);}
+
+  .quick-divisions{
+    max-width:560px;
+    margin:16px auto 0;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+  }
+  .chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--court-line);
+    border:1px solid rgba(232,226,245,.32);
+    padding:6px 12px;
+    border-radius:100px;
+    background:rgba(255,255,255,.06);
+    cursor:default;
+  }
+
+  /* ---------- RESULTS ---------- */
+  #results{margin-top:44px;}
+
+  .results-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    color:var(--court-line);
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .results-head h2{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:24px;
+    text-transform:uppercase;
+    margin:0;
+    letter-spacing:.03em;
+  }
+  .results-head .division-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--amber);
+  }
+  .results-meta{
+    font-size:13px;
+    color:rgba(232,226,245,.7);
+    margin:-8px 0 22px;
+  }
+
+  .empty-state{
+    background:rgba(255,255,255,.06);
+    border:1px dashed rgba(232,226,245,.32);
+    border-radius:14px;
+    padding:26px;
+    color:rgba(232,226,245,.85);
+    text-align:center;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .empty-state strong{color:var(--amber); font-family:'IBM Plex Mono',monospace;}
+
+  .stats-row{
+    display:flex;
+    gap:14px;
+    justify-content:center;
+    margin:34px auto 0;
+    max-width:560px;
+    flex-wrap:wrap;
+  }
+  .stat{
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(232,226,245,.15);
+    border-radius:12px;
+    padding:14px 18px;
+    text-align:center;
+    color:var(--court-line);
+    min-width:110px;
+    flex:1;
+  }
+  .stat b{
+    display:block;
+    font-family:'Archivo Black',sans-serif;
+    font-size:22px;
+    color:var(--amber);
+    font-weight:400;
+  }
+  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(232,226,245,.65);}
+
+  /* ---------- TICKET CARD ---------- */
+  .ticket{
+    background:var(--paper);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:16px;
+    overflow:hidden;
+    position:relative;
+    border-left:6px solid var(--court);
+  }
+  .ticket-body{
+    padding:18px 20px 20px;
+  }
+
+  .time-row{
+    text-align:center;
+    margin-bottom:12px;
+  }
+  .center-pill{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    font-weight:700;
+    color:var(--court);
+    background:rgba(20,27,44,.06);
+    border-radius:100px;
+    padding:6px 16px;
+  }
+
+  .names-row{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  .team-block{flex:1; min-width:0; text-align:left;}
+  .team-block.right{text-align:right;}
+  .team-block .team-name{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:14px;
+    letter-spacing:.02em;
+    color:var(--ink);
+  }
+  .team-block .players{
+    font-size:16px;
+    font-weight:600;
+    color:var(--ink);
+    margin-top:4px;
+    line-height:1.45;
+  }
+  .team-block .players .p{display:block;}
+  .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
+  .you-badge{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    background:var(--cork);
+    color:#fff;
+    padding:1px 6px;
+    border-radius:4px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+
+  .score-row{
+    text-align:center;
+    margin-bottom:14px;
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:32px;
+    color:var(--ink);
+    letter-spacing:.02em;
+  }
+  .score-row .score-colon{color:var(--muted); margin:0 10px; font-size:26px;}
+  .score-row .score-num.win{color:var(--cork);}
+  .score-row .vs-text{
+    font-size:16px;
+    color:var(--muted);
+    letter-spacing:.1em;
+  }
+
+  .meta-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .meta-chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    background:rgba(20,27,44,.06);
+    padding:4px 10px;
+    border-radius:100px;
+  }
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:4px 10px;
+    border-radius:100px;
+  }
+  .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
+  .tag.round{background:var(--cork); color:#fff;}
+  .tag.pool{background:rgba(47,224,200,.14); color:#0F766E;}
+
+  footer{
+    text-align:center;
+    color:rgba(232,226,245,.5);
+    font-size:12px;
+    line-height:1.9;
+    margin-top:60px;
+    padding-bottom:20px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  @media (max-width:520px){
+    .search-row{flex-direction:column;}
+    button#searchBtn{padding:13px;}
+  }
+
+  @media (max-width:480px){
+    .ticket-body{padding:16px 16px 18px;}
+    .center-pill{font-size:13px; padding:5px 14px;}
+    .names-row{gap:8px; margin-bottom:14px;}
+    .team-block .players{font-size:14px;}
+    .score-row{font-size:30px;}
+    .meta-row{justify-content:center;}
+  }
+
+  :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+<link rel="manifest" href="favicons/site.webmanifest">
+</head>
+<body>
+
+<header class="hero">
+  <svg class="crown-mark" viewBox="0 0 48 44" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <g stroke="currentColor" stroke-width="3" stroke-linecap="round">
+      <path d="M6 8 L30 34" fill="none"/>
+      <path d="M42 8 L18 34" fill="none"/>
+    </g>
+    <ellipse cx="9" cy="6" rx="7" ry="9" transform="rotate(-38 9 6)" fill="currentColor"/>
+    <ellipse cx="39" cy="6" rx="7" ry="9" transform="rotate(38 39 6)" fill="currentColor"/>
+    <circle cx="24" cy="34" r="6.5" fill="currentColor"/>
+    <circle cx="21.5" cy="31.5" r="0.9" fill="var(--court-dark)"/>
+    <circle cx="26.5" cy="31.5" r="0.9" fill="var(--court-dark)"/>
+    <circle cx="24" cy="35" r="0.9" fill="var(--court-dark)"/>
+    <circle cx="21.5" cy="37" r="0.9" fill="var(--court-dark)"/>
+    <circle cx="26.5" cy="37" r="0.9" fill="var(--court-dark)"/>
+  </svg>
+  <div class="eyebrow">Pampanga Paddle Aces × Club 2600 &nbsp;·&nbsp; Sat, Jul 25, 2026 &nbsp;·&nbsp; Pickle Place, The Infinity A.C.</div>
+  <h1 class="title">Clash of the Clubs</h1>
+  <p class="subtitle">Lowlands meets the Highlands in the ultimate battle for club supremacy. Find your pair's full match schedule — every round, every opponent, in order.</p>
+
+  <div class="search-panel">
+    <label class="search-label" for="teamInput">Enter your pair's names</label>
+    <div class="search-row autocomplete">
+      <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
+  </div>
+
+  <div class="quick-divisions" id="divisionChips"></div>
+  <div class="regal-rule"><span class="diamond"></span></div>
+  <div id="syncStatus" class="sync-status loading">Loading live schedule from Google Sheets…</div>
+</header>
+
+<div class="wrap">
+  <div id="results"></div>
+</div>
+
+<footer>Clash of the Clubs &middot; Pampanga Paddle Aces vs Club 2600 &middot; Jul 25, 2026<br>Powered by S.A.G.E. Match Control Experts</footer>
+
+<script>
+const SHEET_ID = '1ccuq8mdB8SEbTfJMzqvn-AnhCQqVb-DqxcVgUBu-iT0';
+const CSV_GID = '2136121736';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
+
+let MATCHES = [];
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+function rowsToMatches(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
+        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
+        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
+        iS1 = idx('team1Score'), iS2 = idx('team2Score');
+
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const num = parseInt(row[iNum], 10);
+    if(!num) continue;
+    const t1 = (row[iT1]||'').trim();
+    const t2 = (row[iT2]||'').trim();
+    let t1p1 = (row[iP1a]||'').trim();
+    let t1p2 = (row[iP1b]||'').trim();
+    let t2p1 = (row[iP2a]||'').trim();
+    let t2p2 = (row[iP2b]||'').trim();
+    // Placeholder bracket slots repeat the team code as the player name
+    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
+    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
+    // Scores are optional — only present once a match has been played
+    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
+    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
+    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
+    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
+    const played = t1Score !== null && t2Score !== null;
+    out.push({
+      num,
+      time: (row[iSched]||'').trim(),
+      t1, t1p1, t1p2, t2, t2p1, t2p2,
+      t1Score, t2Score, played
+    });
+  }
+  out.sort((a,b) => a.num - b.num);
+  return out;
+}
+
+async function loadLiveData(){
+  const statusEl = document.getElementById('syncStatus');
+  statusEl.textContent = 'Loading live schedule from Google Sheets\u2026';
+  statusEl.className = 'sync-status loading';
+  try {
+    const res = await fetch(CSV_URL, { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const matches = rowsToMatches(rows);
+    if(matches.length === 0) throw new Error('No rows parsed');
+    MATCHES = matches;
+    rebuildTeamIndex();
+    const now = new Date();
+    statusEl.textContent = 'Live \u00b7 synced ' + now.toLocaleTimeString();
+    statusEl.className = 'sync-status ok';
+    return true;
+  } catch(err){
+    statusEl.innerHTML = "Couldn't load live data (" + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
+    statusEl.className = 'sync-status error';
+    const retryBtn = document.getElementById('retryBtn');
+    if(retryBtn) retryBtn.addEventListener('click', loadLiveData);
+    return false;
+  }
+}
+
+const CLUBS = {
+  PPA: { name: 'PPA', full: 'Pampanga Paddle Aces' },
+  TBA: { name: 'TBA', full: 'Club 2600' }
+};
+const DIVISIONS = {
+  I:  { name: 'Division I',  full: 'Intermediate' },
+  HI: { name: 'Division HI', full: 'High Intermediate' }
+};
+const EVENTS = { MD: "Men's Doubles", WD: "Women's Doubles", XD: "Mixed Doubles" };
+
+function parseCode(code){
+  const m = code.match(/^(PPA|TBA)_(I|HI)(MD|WD|XD)_(.+)$/);
+  if(!m) return { club:null, division:null, event:null, rest: code };
+  return { club: m[1], division: m[2], event: m[3], rest: m[4] };
+}
+
+function roundLabel(rest){
+  if(/^\d+$/.test(rest)) return null; // plain pool team number -> no special tag
+  if(rest.includes('R16')) return 'Round of 16';
+  if(rest.includes('QF')) return 'Quarterfinal';
+  if(rest.includes('SF')) return 'Semifinal';
+  if(/^F\d*$|_F\d*$|_F$/.test(rest) || rest === 'F1' || rest === 'F2' || rest.match(/(^|_)F\d*$/)) return 'Final';
+  if(/(^|_)B\d*$/.test(rest)) return 'Bronze Match';
+  return null;
+}
+
+function divisionLabel(code){
+  const p = parseCode(code);
+  if(!p.division) return null;
+  const club = CLUBS[p.club];
+  const div = DIVISIONS[p.division];
+  const ev = EVENTS[p.event] || '';
+  const clubPart = club ? `${club.full} · ` : '';
+  return `${clubPart}${div.name} (${div.full}) · ${ev}`;
+}
+
+// Build quick division chips
+const chipDefs = ['IMD', 'IWD', 'IXD', 'HIMD', 'HIXD'];
+const chipsEl = document.getElementById('divisionChips');
+chipDefs.forEach(c => {
+  const el = document.createElement('span');
+  el.className = 'chip';
+  el.textContent = c;
+  chipsEl.appendChild(el);
+});
+
+// Build unique pair (team) list for autocomplete (rebuilt whenever MATCHES refreshes)
+// Grouped by player names *within the same division/event* so a pair that
+// advances under a new bracket code (e.g. pool code -> playoff code) still
+// shows up as a single entry, while same-named pairs in different
+// divisions/events never get merged together.
+let allTeams = [];
+function pairKey(code, p1, p2){
+  const { club, division, event } = parseCode(code);
+  const names = [p1.trim().toLowerCase(), p2.trim().toLowerCase()].sort().join('|');
+  return `${club||''}|${division||''}|${event||''}|${names}`;
+}
+function rebuildTeamIndex(){
+  const byPair = new Map();
+  const addSide = (code, p1, p2) => {
+    if(p1 === 'TBD') return;
+    const key = pairKey(code, p1, p2);
+    if(!byPair.has(key)){
+      byPair.set(key, { p1, p2, label: `${p1} / ${p2}`, codes: new Set() });
+    }
+    byPair.get(key).codes.add(code);
+  };
+  MATCHES.forEach(m => {
+    addSide(m.t1, m.t1p1, m.t1p2);
+    addSide(m.t2, m.t2p1, m.t2p2);
+  });
+  allTeams = Array.from(byPair.values())
+    .map(t => ({...t, codes: Array.from(t.codes)}))
+    .sort((a,b) => a.label.localeCompare(b.label));
+  // Re-run current search/intro against the freshly loaded data
+  if(input.value.trim()) runSearch(); else renderIntro();
+}
+
+const input = document.getElementById('teamInput');
+const acList = document.getElementById('acList');
+const resultsEl = document.getElementById('results');
+let acIndex = -1;
+let selectedTeam = null; // holds the chosen entry from allTeams (p1, p2, label, codes)
+
+function renderAutocomplete(query){
+  const q = query.trim().toLowerCase();
+  if(!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  const matches = allTeams.filter(t =>
+    t.p1.toLowerCase().includes(q) || t.p2.toLowerCase().includes(q) || t.label.toLowerCase().includes(q)
+  ).slice(0, 8);
+  if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  acList.innerHTML = matches.map((t,i) => {
+    const label = divisionLabel(t.codes[0]);
+    return `<div class="ac-item" data-idx="${allTeams.indexOf(t)}" data-i="${i}"><span>${escapeHtml(t.label)}</span>${label ? `<small>${label}</small>` : ''}</div>`;
+  }).join('');
+  acList.classList.add('show');
+  acIndex = -1;
+}
+
+function selectAcItem(el){
+  const team = allTeams[parseInt(el.dataset.idx, 10)];
+  if(!team) return;
+  input.value = team.label;
+  selectedTeam = team;
+}
+
+input.addEventListener('input', () => { selectedTeam = null; renderAutocomplete(input.value); });
+input.addEventListener('focus', () => renderAutocomplete(input.value));
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.autocomplete')) acList.classList.remove('show');
+});
+acList.addEventListener('click', (e) => {
+  const item = e.target.closest('.ac-item');
+  if(!item) return;
+  selectAcItem(item);
+  acList.classList.remove('show');
+  runSearch();
+});
+input.addEventListener('keydown', (e) => {
+  const items = Array.from(acList.querySelectorAll('.ac-item'));
+  if(e.key === 'ArrowDown' && items.length){
+    e.preventDefault();
+    acIndex = Math.min(acIndex+1, items.length-1);
+    items.forEach(it=>it.classList.remove('active'));
+    items[acIndex].classList.add('active');
+    selectAcItem(items[acIndex]);
+  } else if(e.key === 'ArrowUp' && items.length){
+    e.preventDefault();
+    acIndex = Math.max(acIndex-1, 0);
+    items.forEach(it=>it.classList.remove('active'));
+    items[acIndex].classList.add('active');
+    selectAcItem(items[acIndex]);
+  } else if(e.key === 'Enter'){
+    acList.classList.remove('show');
+    runSearch();
+  } else if(e.key === 'Escape'){
+    acList.classList.remove('show');
+  }
+});
+document.getElementById('searchBtn').addEventListener('click', runSearch);
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function ticketHTML(m, teamCode){
+  const isT1 = m.t1 === teamCode;
+  const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
+  const opp = isT1 ? {code:m.t2, p1:m.t2p1, p2:m.t2p2} : {code:m.t1, p1:m.t1p1, p2:m.t1p2};
+  const youTBD = you.p1 === 'TBD';
+  const oppTBD = opp.p1 === 'TBD';
+  const oppRound = roundLabel(parseCode(opp.code).rest);
+  const tag = oppRound
+    ? `<span class="tag round">${oppRound}</span>`
+    : `<span class="tag pool">Round Robin</span>`;
+
+  const youScore = isT1 ? m.t1Score : m.t2Score;
+  const oppScore = isT1 ? m.t2Score : m.t1Score;
+  const youWon = m.played && youScore > oppScore;
+  const oppWon = m.played && oppScore > youScore;
+
+  const scoreHTML = m.played
+    ? `<span class="score-num ${youWon?'win':''}">${escapeHtml(String(youScore))}</span><span class="score-colon">:</span><span class="score-num ${oppWon?'win':''}">${escapeHtml(String(oppScore))}</span>`
+    : `<span class="vs-text">VS</span>`;
+
+  return `
+  <div class="ticket">
+    <div class="ticket-body">
+      <div class="time-row">
+        <span class="center-pill">${escapeHtml(m.time)}</span>
+      </div>
+      <div class="names-row">
+        <div class="team-block ${youTBD ? 'tbd':''}">
+          <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
+          <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
+        </div>
+        <div class="team-block right ${oppTBD ? 'tbd':''}">
+          <div class="team-name">${escapeHtml(opp.code)}</div>
+          <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
+        </div>
+      </div>
+      <div class="score-row">${scoreHTML}</div>
+      <div class="meta-row">
+        <span class="meta-chip">Match #${m.num}</span>
+        ${tag}
+      </div>
+    </div>
+  </div>`;
+}
+
+function resolveTeam(raw){
+  if(selectedTeam) return { team: selectedTeam, ambiguous: null };
+  const q = raw.trim().toLowerCase();
+  if(!q) return { team: null, ambiguous: null };
+  // exact match on full pair label or either player's name
+  let exact = allTeams.filter(t => t.label.toLowerCase() === q || t.p1.toLowerCase() === q || t.p2.toLowerCase() === q);
+  if(exact.length === 1) return { team: exact[0], ambiguous: null };
+  if(exact.length > 1) return { team: null, ambiguous: exact };
+  // partial match on either player's name or the combined label
+  let partial = allTeams.filter(t => t.p1.toLowerCase().includes(q) || t.p2.toLowerCase().includes(q) || t.label.toLowerCase().includes(q));
+  if(partial.length === 1) return { team: partial[0], ambiguous: null };
+  if(partial.length > 1) return { team: null, ambiguous: partial };
+  return { team: null, ambiguous: null };
+}
+
+function runSearch(){
+  const raw = input.value.trim();
+  if(!raw){
+    renderIntro();
+    return;
+  }
+
+  const { team, ambiguous } = resolveTeam(raw);
+
+  if(ambiguous && ambiguous.length){
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        Several pairs match <strong>${escapeHtml(raw)}</strong> — pick one:<br><br>
+        ${ambiguous.slice(0,8).map(t => `<strong>${escapeHtml(t.label)}</strong>`).join('<br>')}
+      </div>`;
+    return;
+  }
+
+  if(!team){
+    // suggest close matches by player name
+    const q = raw.toLowerCase();
+    const firstWord = q.split(' ')[0];
+    const suggestions = allTeams.filter(t =>
+      t.p1.toLowerCase().startsWith(firstWord) || t.p2.toLowerCase().startsWith(firstWord)
+    ).slice(0,6);
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        No matches found for <strong>${escapeHtml(raw)}</strong>.<br>
+        Double-check the spelling, or start typing a name to see suggestions.
+        ${suggestions.length ? `<br><br>Did you mean: ${suggestions.map(s=>`<strong>${escapeHtml(s.label)}</strong>`).join(', ')}?` : ''}
+      </div>`;
+    return;
+  }
+
+  selectedTeam = team;
+  const codes = team.codes;
+  const teamMatches = MATCHES.filter(m => codes.includes(m.t1) || codes.includes(m.t2))
+                              .sort((a,b) => a.num - b.num);
+
+  // Use whichever code is relevant per match to build the ticket
+  const label = divisionLabel(codes[0]);
+  resultsEl.innerHTML = `
+    <div class="results-head">
+      <h2>${escapeHtml(team.label)}</h2>
+      ${label ? `<span class="division-tag">${label}</span>` : ''}
+    </div>
+    <div class="results-meta">${teamMatches.length} match${teamMatches.length>1?'es':''} found, in schedule order</div>
+    ${teamMatches.map(m => ticketHTML(m, codes.includes(m.t1) ? m.t1 : m.t2)).join('')}
+  `;
+}
+
+function renderIntro(){
+  const teams = new Set();
+  const divisions = new Set();
+  MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { teams.add(c); const p = parseCode(c); if(p.division && p.event) divisions.add(p.division+p.event); }); });
+  resultsEl.innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
+      <div class="stat"><b>${teams.size || '—'}</b><span>Teams</span></div>
+      <div class="stat"><b>${divisions.size || '—'}</b><span>Divisions</span></div>
+    </div>`;
+}
+
+renderIntro();
+loadLiveData();
+</script>
+</body>
+</html>
