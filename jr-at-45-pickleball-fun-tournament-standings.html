@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JR at 45 — Pickleball Fun Tournament Bracket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Playfair+Display:wght@600;700;800&family=Work+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --forest:#1F4E3D;
+    --forest-deep:#0F2820;
+    --parchment:#F1E9D2;
+    --parchment-deep:#E3D8B8;
+    --ink:#1B3A2E;
+    --line:#D9CDA6;
+    --line-soft:#EAE1C4;
+    --gold:#AD8A44;
+    --gold-bright:#D6BB6B;
+    --muted:#6E7A70;
+    --coral:#C1512F;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
+  body{
+    background:
+      radial-gradient(1100px 600px at 8% -10%, #2A6653 0%, transparent 58%),
+      radial-gradient(900px 520px at 108% 8%, #163C30 0%, transparent 55%),
+      var(--forest);
+    color:var(--parchment);
+    font-family:'Work Sans', sans-serif;
+  }
+  body::before{
+    content:'';
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:repeating-linear-gradient(90deg, rgba(241,233,210,0.035) 0 1px, transparent 1px 120px);
+    opacity:.55;
+  }
+
+  .page{
+    position:relative; z-index:1;
+    display:flex; flex-direction:column;
+    height:100vh; max-height:1080px; max-width:1920px;
+    margin:0 auto; padding:10px clamp(14px,1.8vw,34px) 8px;
+    gap:8px;
+  }
+
+  /* ---------- shared "poster card" treatment ---------- */
+  .poster-card{
+    background:var(--parchment);
+    color:var(--ink);
+    border-radius:8px;
+    position:relative;
+    box-shadow:
+      0 0 0 1.5px var(--forest-deep),
+      0 0 0 7px var(--parchment),
+      0 0 0 8.5px var(--gold),
+      0 10px 26px rgba(6,20,15,0.45);
+  }
+  .poster-card::before, .poster-card::after,
+  .poster-card .corner-tl, .poster-card .corner-tr, .poster-card .corner-bl, .poster-card .corner-br{
+    content:'❧'; position:absolute; font-size:15px; color:var(--gold); opacity:.75;
+    font-family:'Playfair Display', serif;
+  }
+  .poster-card .corner-tl{top:12px; left:14px;}
+  .poster-card .corner-tr{top:12px; right:14px; transform:scaleX(-1);}
+  .poster-card .corner-bl{bottom:10px; left:14px; transform:scaleY(-1);}
+  .poster-card .corner-br{bottom:10px; right:14px; transform:scale(-1,-1);}
+
+  /* ---------- hero / poster header ---------- */
+  .hero{
+    flex:none;
+    padding:16px clamp(20px,3vw,40px);
+    display:flex; align-items:center; justify-content:flex-start; gap:20px;
+    flex-wrap:nowrap;
+  }
+  .hero-left{min-width:0; display:flex; align-items:center; gap:16px; flex-wrap:wrap; width:100%;}
+  .hero-titles{flex:none; display:flex; align-items:center; gap:10px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--forest); opacity:.75; display:flex; align-items:center; gap:8px;
+    flex:none; white-space:nowrap;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block;}
+  h1{
+    font-family:'Pinyon Script', cursive;
+    font-weight:400;
+    font-size:clamp(26px, 2.2vw, 34px);
+    margin:0; line-height:1;
+    color:var(--forest);
+    white-space:nowrap;
+  }
+  h1 .accent{color:var(--gold);}
+  .hero-tagline{
+    font-family:'Pinyon Script', cursive;
+    font-size:clamp(14px,1.1vw,17px);
+    color:var(--forest); opacity:.8; white-space:nowrap;
+  }
+  .subtitle{
+    font-size:12.5px; color:var(--ink); opacity:.75; line-height:1.4;
+    flex:1 1 320px; min-width:220px; border-left:1px solid var(--line); padding-left:16px;
+  }
+  .meta-row{display:flex; flex-wrap:nowrap; gap:8px; flex:none; flex-direction: column; align-items: end;}
+  .pill{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    border:1px solid var(--forest); border-radius:999px;
+    padding:4px 11px; color:var(--forest);
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .pill.live{width: fit-content;}
+  .pill .pulse{width:6px;height:6px;border-radius:50%;background:var(--muted);}
+  .pill.live .pulse{background:#2F7A45; box-shadow:0 0 0 3px rgba(47,122,69,.22);}
+  .pill.preview .pulse{background:var(--gold);}
+
+  /* ---------- content row: bracket ---------- */
+  .content-row{flex:1; display:flex; gap:14px; min-height:0;}
+
+  /* ---------- main column: nav + bracket ---------- */
+  .main-col{flex:1; min-width:0; display:flex; flex-direction:column; min-height:0;}
+
+  main{flex:1; min-height:0;}
+
+  .bracket-scroll{
+    height:100%; overflow:hidden; padding:2px 2px 4px;
+    display:flex; align-items:stretch;
+  }
+  .bracket-wrap{position:relative; width:100%; height:100%; display:flex;}
+  #connectors{position:absolute; top:0; left:0; pointer-events:none; overflow:visible;}
+  .connector{fill:none; stroke:rgba(241,233,210,0.28); stroke-width:1.5;}
+  .connector.champion-connector{stroke:var(--gold-bright); stroke-width:2;}
+
+  #bracket{display:flex; gap:clamp(8px,1vw,18px); position:relative; width:100%; flex:1;}
+
+  .round{display:flex; flex-direction:column; flex:1 1 0; min-width:0;}
+  .matches{display:flex; flex-direction:column; justify-content:space-around; flex:1;}
+  .round-header{
+    font-family:'Playfair Display', serif; font-weight:700; font-size:12px; letter-spacing:.01em;
+    text-transform:uppercase; color:var(--gold-bright);
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding-bottom:6px; margin-bottom:5px; border-bottom:1px dashed rgba(241,233,210,0.22);
+  }
+  .round-header small{font-family:'IBM Plex Mono',monospace; font-size:9px; color:rgba(241,233,210,0.5); text-transform:none; letter-spacing:0;}
+
+  .match-slot{padding:2px 0;}
+  .match{
+    background:var(--parchment); border:1px solid var(--line); border-radius:8px;
+    padding:5px 9px 6px; width:100%; box-shadow:0 2px 0 rgba(9,25,19,0.2);
+    opacity:0; animation:rise .5s ease forwards;
+  }
+  @media (prefers-reduced-motion:reduce){.match{animation:none; opacity:1;}}
+  @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .match-time{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted);
+    display:flex; justify-content:space-between; letter-spacing:.02em;
+    padding-bottom:3px; margin-bottom:3px; border-bottom:1px solid var(--line-soft);
+    text-transform:uppercase;
+  }
+  .team{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:2px 0;}
+  .team + .team{border-top:1px dashed var(--line-soft);}
+  .team-info{display:flex; flex-direction:column; min-width:0;}
+  .team-info .code{font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--muted); letter-spacing:.04em;}
+  .team-info .players{font-weight:700; font-size:12.5px; color:var(--forest); line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .team-info .players.tbd{font-weight:600; font-style:italic; color:var(--muted);}
+  .team-info .source{font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); opacity:.8; margin-top:1px;}
+  .score{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12.5px; color:var(--forest);
+    min-width:20px; height:20px; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    background:var(--line-soft); flex:none;
+  }
+  .team.winner .score{background:var(--gold); color:var(--forest-deep); font-weight:700;}
+  .team.winner .players{color:var(--forest-deep);}
+  .team.loser .players{color:var(--muted); text-decoration:line-through; text-decoration-color:rgba(110,122,112,0.4);}
+
+  .round.right .round-header{flex-direction:row-reverse; text-align:right;}
+  .round.right .match-time{flex-direction:row-reverse;}
+  .round.right .team{flex-direction:row-reverse;}
+  .round.right .team-info{align-items:flex-end;}
+  .round.right .team-info .players,
+  .round.right .team-info .source{text-align:right; width:100%;}
+
+  .center-col{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; flex:1.15 1 0; min-width:0;}
+  .center-col .round-header{justify-content:center; border-bottom:none; padding-bottom:0;}
+  .center-vline{width:2px; height:20px; background:var(--gold-bright); opacity:.6; margin:4px 0;}
+  #champion-card{
+    width:100%; max-width:186px; border-radius:12px; padding:16px 14px; text-align:center;
+    background:linear-gradient(160deg, var(--gold-bright) 0%, var(--gold) 100%);
+    color:var(--forest-deep); box-shadow:0 6px 0 rgba(9,25,19,0.25);
+  }
+  #champion-card .cup{font-size:22px; margin-bottom:5px; display:block;}
+  #champion-card .label{font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; opacity:.75;}
+  #champion-card .name{font-family:'Playfair Display',serif; font-weight:800; font-size:16px; line-height:1.15; margin-top:5px;}
+
+  footer{
+    flex:none;
+    padding:4px clamp(14px,1.8vw,34px) 0;
+    font-size:11.5px; color:rgba(241,233,210,0.6); display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;
+  }
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-family:'IBM Plex Mono',monospace; font-size:10.5px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:10px;height:10px;border-radius:3px; display:inline-block;}
+  .swatch.win{background:var(--gold-bright);}
+  .swatch.tbd{background:var(--line-soft); border:1px solid var(--line);}
+
+  ::-webkit-scrollbar{height:9px; width:9px;}
+  ::-webkit-scrollbar-track{background:rgba(241,233,210,0.06);}
+  ::-webkit-scrollbar-thumb{background:rgba(241,233,210,0.25); border-radius:6px;}
+
+  /* ================= MOBILE ================= */
+  /* Below this width, the desktop's "everything fits, no scrolling" layout gives way
+     to a normal scrolling page: the bracket keeps its readable fixed-size cards and
+     scrolls both ways inside its own frame, and the page scrolls vertically as needed. */
+  @media (max-width: 900px){
+    html,body{height:auto; overflow:auto;}
+    body::before{position:absolute;}
+
+    .page{
+      height:auto; max-height:none; min-height:100vh;
+      padding:12px 12px 20px; gap:12px;
+    }
+
+    .hero{flex-wrap:wrap; padding:16px 18px;}
+    .hero-left{flex-wrap:wrap; row-gap:8px;}
+    .hero-titles{flex-wrap:wrap;}
+    h1{font-size:30px;}
+    .hero-tagline{font-size:15px;}
+    .eyebrow{white-space:normal; font-size:10px; min-width:0; max-width:100%;}
+    .eyebrow-text{min-width:0; white-space:normal; overflow-wrap:break-word;}
+    .subtitle{
+      border-left:none; padding-left:0; margin-top:2px;
+      flex:1 1 100%; max-width:none;
+    }
+    .meta-row{flex-wrap:wrap; width:100%;}
+
+    .content-row{flex-direction:column; min-height:0;}
+    .main-col{min-height:0;}
+    main{flex:none;}
+
+    /* Let the bracket scroll on its own, in both directions, at a legible size */
+    .bracket-scroll{
+      height:auto; max-height:70vh; overflow:auto;
+      display:block; padding:10px 4px 14px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .bracket-wrap{width:max-content; height:auto; display:block;}
+    #bracket{width:max-content; flex:none; gap:22px;}
+    .round{flex:none; min-width:200px;}
+    .center-col{flex:none; min-width:190px;}
+    .match{width:186px; padding:9px 12px 10px;}
+    .round-header{font-size:13px; padding-bottom:8px; margin-bottom:6px;}
+    .team-info .players{font-size:13.5px;}
+    .score{font-size:13.5px; min-width:24px; height:24px;}
+    #champion-card{max-width:180px; padding:18px 14px;}
+
+    footer{
+      flex-direction:column; align-items:flex-start; gap:6px;
+      padding:10px 16px 18px;
+    }
+  }
+
+  @media (max-width: 480px){
+    .hero{padding:14px 14px;}
+    h1{font-size:25px;}
+    .hero-tagline{font-size:13px;}
+    .subtitle{font-size:12px;}
+    .match{width:172px;}
+    .bracket-scroll{max-height:65vh;}
+  }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+<link rel="manifest" href="favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="page">
+
+  <section class="hero poster-card">
+    <span class="corner-tl"></span><span class="corner-tr"></span><span class="corner-bl"></span><span class="corner-br"></span>
+    <div class="hero-left">
+      <div class="hero-titles">
+        <h1>JR <span class="accent">@</span>45 Pickleball</h1>
+        <div class="hero-tagline">Fun Tournament — Live Bracket</div>
+      </div>
+      <div class="eyebrow"><span class="dot"></span><span class="eyebrow-text">SUN, JUL 19 2026 &nbsp;·&nbsp; DOUBLES &nbsp;·&nbsp; 32 TEAMS &nbsp;·&nbsp; OPEN DIVISION</span></div>
+      <div class="subtitle"><b>Match Format — Single Elimination:</b> losing teams are eliminated, while winners advance to the next round until there will be a winning champion.</div>
+      <div class="meta-row">
+        <span class="pill" id="status-pill"><span class="pulse"></span><span id="status-text">Loading bracket…</span></span>
+        <span class="pill"><span id="updated-text">—</span></span>
+      </div>
+    </div>
+  </section>
+
+  <div class="content-row">
+
+    <div class="main-col">
+      <main>
+        <div class="bracket-scroll">
+          <div class="bracket-wrap">
+            <svg id="connectors"></svg>
+            <div id="bracket"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="legend">
+      <span><span class="swatch win"></span> winner / advances</span>
+      <span><span class="swatch tbd"></span> to be determined</span>
+    </div>
+    <span>Powered by S.A.G.E. Match Control Experts</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const SHEET_ID = "1wla8buJgl5D-wLttVPZijtZMvCLZxDm7WwRPNUvFObA";
+  const GID = "2136121736";
+  const CSV_URLS = [
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`
+  ];
+
+  // ---- Fallback snapshot (captured from the sheet) ----
+  const FALLBACK_ROWS = [
+    [1,"6:00 PM","R32_1","","","","v","R32_2","","",""],
+    [2,"6:00 PM","R32_3","","","","v","R32_4","","",""],
+    [3,"6:00 PM","R32_5","","","","v","R32_6","","",""],
+    [4,"6:00 PM","R32_7","","","","v","R32_8","","",""],
+    [5,"6:25 PM","R32_9","","","","v","R32_10","","",""],
+    [6,"6:25 PM","R32_11","","","","v","R32_12","","",""],
+    [7,"6:25 PM","R32_13","","","","v","R32_14","","",""],
+    [8,"6:25 PM","R32_15","","","","v","R32_16","","",""],
+    [9,"6:50 PM","R32_17","","","","v","R32_18","","",""],
+    [10,"6:50 PM","R32_19","","","","v","R32_20","","",""],
+    [11,"6:50 PM","R32_21","","","","v","R32_22","","",""],
+    [12,"6:50 PM","R32_23","","","","v","R32_24","","",""],
+    [13,"7:15 PM","R32_25","","","","v","R32_26","","",""],
+    [14,"7:15 PM","R32_27","","","","v","R32_28","","",""],
+    [15,"7:15 PM","R32_29","","","","v","R32_30","","",""],
+    [16,"7:15 PM","R32_31","","","","v","R32_32","","",""],
+    [17,"7:40 PM","R16_1","R16_1","","","v","R16_2","R16_2","",""],
+    [18,"7:40 PM","R16_3","R16_3","","","v","R16_4","R16_4","",""],
+    [19,"7:40 PM","R16_5","R16_5","","","v","R16_6","R16_6","",""],
+    [20,"7:40 PM","R16_7","R16_7","","","v","R16_8","R16_8","",""],
+    [21,"8:05 PM","R16_9","R16_9","","","v","R16_10","R16_10","",""],
+    [22,"8:05 PM","R16_11","R16_11","","","v","R16_12","R16_12","",""],
+    [23,"8:05 PM","R16_13","R16_13","","","v","R16_14","R16_14","",""],
+    [24,"8:05 PM","R16_15","R16_15","","","v","R16_16","R16_16","",""],
+    [25,"8:30 PM","QF_1","QF_1","","","v","QF_2","QF_2","",""],
+    [26,"8:30 PM","QF_3","QF_3","","","v","QF_4","QF_4","",""],
+    [27,"8:30 PM","QF_5","QF_5","","","v","QF_6","QF_6","",""],
+    [28,"8:30 PM","QF_7","QF_7","","","v","QF_8","QF_8","",""],
+    [29,"8:55 PM","SF_1","SF_1","","","v","SF_2","SF_2","",""],
+    [30,"8:55 PM","SF_3","SF_3","","","v","SF_4","SF_4","",""],
+    [31,"9:20 PM","F_1","F_1","","","v","F_2","F_2","",""]
+  ];
+
+  const ROUND_SEQUENCE = ['R32','R16','QF','SF','F'];
+  const ROUND_LABELS = {R32:'Round of 32', R16:'Round of 16', QF:'Quarterfinals', SF:'Semifinals', F:'Final'};
+  const PREV_ROUND = {R16:'R32', QF:'R16', SF:'QF', F:'SF'};
+
+  function rowsToMatches(rows){
+    return rows
+      .filter(r => r[0] !== "" && r[0] !== undefined && !isNaN(parseInt(r[0],10)))
+      .map(r => ({
+        num: parseInt(r[0],10),
+        time: (r[1]||'').trim(),
+        code1: (r[2]||'').trim(),
+        p1: [(r[3]||'').trim(), (r[4]||'').trim()],
+        score1: r[5] !== undefined && String(r[5]).trim() !== '' ? Number(r[5]) : null,
+        code2: (r[7]||'').trim(),
+        p2: [(r[8]||'').trim(), (r[9]||'').trim()],
+        score2: r[10] !== undefined && String(r[10]).trim() !== '' ? Number(r[10]) : null,
+      }))
+      .filter(m => m.code1 && m.code2);
+  }
+
+  function parseCSV(text){
+    const rows = [];
+    const lines = text.replace(/\r/g,'').split('\n');
+    for(const line of lines){
+      if(line.trim()==='') continue;
+      const cells=[]; let cur=''; let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const ch=line[i];
+        if(ch==='"'){ if(inQ && line[i+1]==='"'){cur+='"'; i++;} else {inQ=!inQ;} }
+        else if(ch===',' && !inQ){ cells.push(cur); cur=''; }
+        else cur+=ch;
+      }
+      cells.push(cur);
+      rows.push(cells);
+    }
+    return rows;
+  }
+
+  function csvRowsToMatchRows(csvRows){
+    if(!csvRows.length) return [];
+    const header = csvRows[0].map(h => h.trim().toLowerCase());
+    const idx = name => header.indexOf(name.toLowerCase());
+    const iNum = idx('matchNumber'), iTime = idx('Schedule'), iC1 = idx('teamCode1'),
+          iP1a = idx('team1Player1'), iP1b = idx('team1Player2'), iS1 = idx('team1Score'),
+          iC2 = idx('teamCode2'), iP2a = idx('team2Player1'), iP2b = idx('team2Player2'), iS2 = idx('team2Score');
+    if([iNum,iC1,iC2].some(v => v === -1)) return [];
+    return csvRows.slice(1).map(r => [
+      r[iNum], r[iTime], r[iC1], r[iP1a], r[iP1b], r[iS1], 'v', r[iC2], r[iP2a], r[iP2b], r[iS2]
+    ]);
+  }
+
+  function prevSourceCodes(code){
+    const us = code.lastIndexOf('_');
+    if(us === -1) return null;
+    const prefix = code.slice(0,us);
+    const n = parseInt(code.slice(us+1),10);
+    const prevPrefix = PREV_ROUND[prefix];
+    if(!prevPrefix || isNaN(n)) return null;
+    return [`${prevPrefix}_${2*n-1}`, `${prevPrefix}_${2*n}`];
+  }
+
+  function isPlaceholder(team){
+    return !team.p[0] || team.p[0] === team.code;
+  }
+
+  let matchNumByCode = {};
+  function buildMatchNumLookup(matches){
+    matchNumByCode = {};
+    matches.forEach(m => {
+      matchNumByCode[m.code1] = m.num;
+      matchNumByCode[m.code2] = m.num;
+    });
+  }
+
+  function buildByRound(matches){
+    const byRound = {};
+    matches.forEach(m => {
+      const r = m.code1.split('_')[0];
+      (byRound[r] = byRound[r] || []).push(m);
+    });
+    Object.values(byRound).forEach(arr => arr.sort((a,b) => a.num - b.num));
+    return byRound;
+  }
+
+  // Split each round (except the Final) into a left half and a right half,
+  // so the draw can be drawn as two mirrored trees converging on the Final/Champion.
+  function splitSides(byRound){
+    const left = {}, right = {};
+    ['R32','R16','QF','SF'].forEach(r => {
+      const arr = byRound[r] || [];
+      const half = Math.ceil(arr.length / 2);
+      left[r] = arr.slice(0, half);
+      right[r] = arr.slice(half);
+    });
+    return { left, right };
+  }
+
+  function teamHTML(code, players, score, opponentScore, isPlaceholderTeam){
+    const winner = score !== null && opponentScore !== null && score > opponentScore;
+    const loser = score !== null && opponentScore !== null && score < opponentScore;
+    let cls = 'team';
+    if(winner) cls += ' winner';
+    if(loser) cls += ' loser';
+    let nameLine, sourceLine = '';
+    if(isPlaceholderTeam){
+      nameLine = `<span class="players tbd">TBD</span>`;
+      const src = prevSourceCodes(code);
+      if(src){
+        const num = matchNumByCode[src[0]] || matchNumByCode[src[1]];
+        if(num) sourceLine = `<span class="source">winner of match ${num}</span>`;
+      }
+    } else {
+      const full = players.filter(Boolean).join(' &amp; ');
+      nameLine = `<span class="players" title="${full.replace(/"/g,'&quot;')}">${full}</span>`;
+    }
+    const scoreDisplay = score === null ? '–' : score;
+    return `<div class="${cls}" data-code="${code}">
+      <div class="team-info"><span class="code">${code}</span>${nameLine}${sourceLine}</div>
+      <div class="score">${scoreDisplay}</div>
+    </div>`;
+  }
+
+  function matchCardHTML(m){
+    const t1ph = isPlaceholder({p:m.p1, code:m.code1});
+    const t2ph = isPlaceholder({p:m.p2, code:m.code2});
+    return `<div class="match" data-match="${m.code1}|${m.code2}">
+      <div class="match-time"><span>Match ${m.num}</span><span>${m.time}</span></div>
+      ${teamHTML(m.code1, m.p1, m.score1, m.score2, t1ph)}
+      ${teamHTML(m.code2, m.p2, m.score2, m.score1, t2ph)}
+    </div>`;
+  }
+
+  function buildRoundColumn(r, roundMatches, side){
+    const col = document.createElement('div');
+    col.className = 'round' + (side === 'R' ? ' right' : '');
+    col.id = 'round-' + r + '-' + side;
+    const header = document.createElement('div');
+    header.className = 'round-header';
+    header.innerHTML = `<span>${ROUND_LABELS[r]}</span><small>${roundMatches.length} match${roundMatches.length>1?'es':''}</small>`;
+    col.appendChild(header);
+    const matchesWrap = document.createElement('div');
+    matchesWrap.className = 'matches';
+    roundMatches.forEach(m => {
+      const slot = document.createElement('div');
+      slot.className = 'match-slot';
+      slot.innerHTML = matchCardHTML(m);
+      matchesWrap.appendChild(slot);
+    });
+    col.appendChild(matchesWrap);
+    return col;
+  }
+
+  function teamDataMap(matches){
+    const map = {};
+    matches.forEach(m => {
+      map[m.code1] = { code:m.code1, players:m.p1, score:m.score1, opp:m.score2, ph:isPlaceholder({p:m.p1, code:m.code1}) };
+      map[m.code2] = { code:m.code2, players:m.p2, score:m.score2, opp:m.score1, ph:isPlaceholder({p:m.p2, code:m.code2}) };
+    });
+    return map;
+  }
+
+  function applyTeamUpdate(el, data){
+    const winner = data.score !== null && data.opp !== null && data.score > data.opp;
+    const loser = data.score !== null && data.opp !== null && data.score < data.opp;
+    el.classList.toggle('winner', winner);
+    el.classList.toggle('loser', loser);
+    let nameLine, sourceLine = '';
+    if(data.ph){
+      nameLine = `<span class="players tbd">TBD</span>`;
+      const src = prevSourceCodes(data.code);
+      if(src){
+        const num = matchNumByCode[src[0]] || matchNumByCode[src[1]];
+        if(num) sourceLine = `<span class="source">winner of match ${num}</span>`;
+      }
+    } else {
+      const full = data.players.filter(Boolean).join(' &amp; ');
+      nameLine = `<span class="players" title="${full.replace(/"/g,'&quot;')}">${full}</span>`;
+    }
+    const infoEl = el.querySelector('.team-info');
+    const newInfoHTML = `<span class="code">${data.code}</span>${nameLine}${sourceLine}`;
+    if(infoEl.innerHTML !== newInfoHTML) infoEl.innerHTML = newInfoHTML;
+    const scoreEl = el.querySelector('.score');
+    const scoreDisplay = data.score === null ? '–' : String(data.score);
+    if(scoreEl.textContent !== scoreDisplay) scoreEl.textContent = scoreDisplay;
+  }
+
+  // Updates scores/names/classes on the existing DOM in place — no rebuild,
+  // so nothing re-triggers the entrance animation or flashes on each poll.
+  function updateBracket(matches){
+    buildMatchNumLookup(matches);
+    const data = teamDataMap(matches);
+    document.querySelectorAll('#bracket .team[data-code]').forEach(el => {
+      const d = data[el.getAttribute('data-code')];
+      if(d) applyTeamUpdate(el, d);
+    });
+    const fm = matches.find(m => m.code1.split('_')[0] === 'F');
+    if(fm){
+      let champName = 'TBD', hasChamp = false;
+      if(fm.score1 !== null && fm.score2 !== null && fm.score1 !== fm.score2){
+        hasChamp = true;
+        champName = fm.score1 > fm.score2 ? fm.p1.filter(Boolean).join(' & ') : fm.p2.filter(Boolean).join(' & ');
+      }
+      const nameEl = document.querySelector('#champion-card .name');
+      if(nameEl && nameEl.textContent !== (hasChamp ? champName : 'TBD')) nameEl.textContent = hasChamp ? champName : 'TBD';
+    }
+    const byRound = buildByRound(matches);
+    const { left, right } = splitSides(byRound);
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+  }
+
+  let bracketBuilt = false;
+  function render(matches){
+    if(bracketBuilt){ updateBracket(matches); return; }
+    buildBracket(matches);
+    bracketBuilt = true;
+  }
+
+  function buildBracket(matches){
+    buildMatchNumLookup(matches);
+    const byRound = buildByRound(matches);
+    const { left, right } = splitSides(byRound);
+    const bracket = document.getElementById('bracket');
+    bracket.innerHTML = '';
+
+    const LEFT_ORDER = ['R32','R16','QF','SF'];
+    const RIGHT_ORDER = ['SF','QF','R16','R32']; // innermost (nearest center) to outermost
+
+    // left half: outer -> inner (R32 far left, SF nearest center)
+    LEFT_ORDER.forEach(r => {
+      if(!left[r] || !left[r].length) return;
+      bracket.appendChild(buildRoundColumn(r, left[r], 'L'));
+    });
+
+    // center: Final + Champion
+    const centerCol = document.createElement('div');
+    centerCol.className = 'center-col';
+    centerCol.id = 'center-col';
+    const finalMatches = byRound['F'] || [];
+    if(finalMatches.length){
+      const header = document.createElement('div');
+      header.className = 'round-header';
+      header.innerHTML = `<span>Final</span>`;
+      centerCol.appendChild(header);
+      const slot = document.createElement('div');
+      slot.className = 'match-slot';
+      slot.innerHTML = matchCardHTML(finalMatches[0]);
+      centerCol.appendChild(slot);
+    }
+    let champName = 'TBD', hasChamp = false;
+    if(finalMatches.length){
+      const fm = finalMatches[0];
+      if(fm.score1 !== null && fm.score2 !== null && fm.score1 !== fm.score2){
+        hasChamp = true;
+        champName = fm.score1 > fm.score2 ? fm.p1.filter(Boolean).join(' & ') : fm.p2.filter(Boolean).join(' & ');
+      }
+    }
+    const vline = document.createElement('div');
+    vline.className = 'center-vline';
+    centerCol.appendChild(vline);
+    const champWrap = document.createElement('div');
+    champWrap.innerHTML = `<div id="champion-card">
+        <span class="cup">🏆</span>
+        <div class="label">Champion</div>
+        <div class="name">${hasChamp ? champName : 'TBD'}</div>
+      </div>`;
+    centerCol.appendChild(champWrap.firstElementChild);
+    bracket.appendChild(centerCol);
+
+    // right half: inner -> outer (SF nearest center, R32 far right)
+    RIGHT_ORDER.forEach(r => {
+      if(!right[r] || !right[r].length) return;
+      bracket.appendChild(buildRoundColumn(r, right[r], 'R'));
+    });
+
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+  }
+
+  function drawConnectors(left, right, finalMatch){
+    const wrap = document.querySelector('.bracket-wrap');
+    const svg = document.getElementById('connectors');
+    const cRect = wrap.getBoundingClientRect();
+    svg.setAttribute('width', wrap.scrollWidth);
+    svg.setAttribute('height', wrap.scrollHeight);
+    svg.innerHTML = '';
+
+    const rectOf = el => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left - cRect.left, right: r.right - cRect.left, cy: (r.top + r.bottom)/2 - cRect.top };
+    };
+    const cardFor = m => document.querySelector(`[data-match="${CSS.escape(m.code1)}|${CSS.escape(m.code2)}"]`);
+    const line = (x1,y1,x2,y2,extraClass) => {
+      const midx = (x1+x2)/2;
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('d', `M ${x1} ${y1} H ${midx} V ${y2} H ${x2}`);
+      p.setAttribute('class', 'connector' + (extraClass ? ' ' + extraClass : ''));
+      svg.appendChild(p);
+    };
+
+    // side: 'L' draws source(right edge) -> dest(left edge); 'R' mirrors it (left edge -> right edge)
+    function connectRound(sideMatches, sideKey){
+      for(let i=1;i<ROUND_SEQUENCE.length-1;i++){ // R16, QF, SF (skip R32 as dest, skip F here)
+        const r = ROUND_SEQUENCE[i], prevR = ROUND_SEQUENCE[i-1];
+        if(!sideMatches[r] || !sideMatches[prevR]) continue;
+        sideMatches[r].forEach(m => {
+          const destCard = cardFor(m);
+          if(!destCard) return;
+          const teamEls = destCard.querySelectorAll('.team');
+          [m.code1, m.code2].forEach((code, i2) => {
+            const sources = prevSourceCodes(code);
+            if(!sources) return;
+            const srcMatch = sideMatches[prevR].find(pm => sources.includes(pm.code1) || sources.includes(pm.code2));
+            if(!srcMatch) return;
+            const srcCard = cardFor(srcMatch);
+            if(!srcCard) return;
+            const s = rectOf(srcCard);
+            const d = rectOf(teamEls[i2]);
+            if(sideKey === 'L') line(s.right, s.cy, d.left, d.cy);
+            else line(s.left, s.cy, d.right, d.cy);
+          });
+        });
+      }
+    }
+    connectRound(left, 'L');
+    connectRound(right, 'R');
+
+    // SF(left) -> Final team1 row ; SF(right) -> Final team2 row
+    if(finalMatch){
+      const destCard = cardFor(finalMatch);
+      if(destCard){
+        const teamEls = destCard.querySelectorAll('.team');
+        const leftSF = (left['SF'] || [])[0];
+        const rightSF = (right['SF'] || [])[0];
+        if(leftSF){
+          const srcCard = cardFor(leftSF);
+          if(srcCard){
+            const s = rectOf(srcCard), d = rectOf(teamEls[0]);
+            line(s.right, s.cy, d.left, d.cy);
+          }
+        }
+        if(rightSF){
+          const srcCard = cardFor(rightSF);
+          if(srcCard){
+            const s = rectOf(srcCard), d = rectOf(teamEls[1]);
+            line(s.left, s.cy, d.right, d.cy);
+          }
+        }
+      }
+    }
+  }
+
+  let currentMatches = rowsToMatches(FALLBACK_ROWS);
+
+  function setStatus(kind, text){
+    const pill = document.getElementById('status-pill');
+    pill.className = 'pill ' + kind;
+    document.getElementById('status-text').textContent = text;
+  }
+  function setUpdated(){
+    document.getElementById('updated-text').textContent = 'Checked ' + new Date().toLocaleTimeString();
+  }
+
+  function tryLiveFetch(){
+    const attempt = (i) => {
+      if(i >= CSV_URLS.length){
+        setStatus('preview', 'Preview data (live sheet unreachable)');
+        setUpdated();
+        return;
+      }
+      fetch(CSV_URLS[i], {cache:'no-store'})
+        .then(res => { if(!res.ok) throw new Error('bad status'); return res.text(); })
+        .then(text => {
+          const csvRows = parseCSV(text);
+          const matchRows = csvRowsToMatchRows(csvRows);
+          const matches = rowsToMatches(matchRows);
+          if(!matches.length) throw new Error('no matches parsed');
+          currentMatches = matches;
+          render(currentMatches);
+          setStatus('live', 'Live');
+          setUpdated();
+        })
+        .catch(() => attempt(i+1));
+    };
+    attempt(0);
+  }
+
+  // initial render with fallback, then attempt live upgrade
+  render(currentMatches);
+  setStatus('preview', 'Loading live data…');
+  tryLiveFetch();
+
+  // keep it fresh during the event
+  setInterval(tryLiveFetch, 15000);
+  function redrawConnectors(){
+    const byRound = buildByRound(currentMatches);
+    const { left, right } = splitSides(byRound);
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+  }
+  window.addEventListener('resize', redrawConnectors);
+  window.addEventListener('load', redrawConnectors);
+})();
+</script>
+</body>
+</html>
