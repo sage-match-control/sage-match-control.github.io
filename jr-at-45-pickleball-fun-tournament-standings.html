@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JR at 45 Pickleball Fun Tournament - Live Standings</title>
+<title>JR at 45 — Pickleball Fun Tournament Bracket</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Playfair+Display:wght@600;700;800&family=Work+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -75,15 +75,16 @@
     display:flex; align-items:center; justify-content:flex-start; gap:20px;
     flex-wrap:nowrap;
   }
-  .hero-left{min-width:0; display:flex; align-items:center; gap:16px; flex-wrap:wrap; flex:1 1 auto;}
-  .hero-titles{flex:none; display:flex; align-items:center; gap:10px;}
+  .hero-left{min-width:0; display:flex; align-items:center; gap:20px; flex-wrap:wrap; flex:1 1 auto; row-gap:14px;}
+  .hero-titles{flex:none; display:flex; align-items:center; gap:12px;}
+  .hero-title-block{display:flex; flex-direction:column; gap:7px; flex:none;}
   .eyebrow{
     font-family:'IBM Plex Mono', monospace;
-    font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
-    color:var(--forest); opacity:.75; display:flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--forest); opacity:.75; display:flex; align-items:center; gap:9px;
     flex:none; white-space:nowrap;
   }
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;}
   .hero-qr{
     flex:none; display:flex; align-items:center; justify-content:center;
     padding-left:18px; margin-left:2px; border-left:1px solid var(--line);
@@ -95,7 +96,7 @@
   h1{
     font-family:'Pinyon Script', cursive;
     font-weight:400;
-    font-size:clamp(26px, 2.2vw, 34px);
+    font-size:clamp(30px, 2.8vw, 42px);
     margin:0; line-height:1;
     color:var(--forest);
     white-space:nowrap;
@@ -103,18 +104,18 @@
   h1 .accent{color:var(--gold);}
   .hero-tagline{
     font-family:'Pinyon Script', cursive;
-    font-size:clamp(14px,1.1vw,17px);
+    font-size:clamp(16px,1.4vw,21px);
     color:var(--forest); opacity:.8; white-space:nowrap;
   }
   .subtitle{
-    font-size:12.5px; color:var(--ink); opacity:.75; line-height:1.4;
-    flex:1 1 320px; min-width:220px; border-left:1px solid var(--line); padding-left:16px;
+    font-size:14px; color:var(--ink); opacity:.75; line-height:1.55;
+    flex:1 1 320px; min-width:220px; border-left:1px solid var(--line); padding-left:18px;
   }
-  .meta-row{display:flex; flex-wrap:nowrap; gap:8px; flex:none; flex-direction: column; align-items: end;}
+  .meta-row{display:flex; flex-wrap:nowrap; gap:10px; flex:none; flex-direction: column; align-items: end; margin-left:auto;}
   .pill{
-    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
     border:1px solid var(--forest); border-radius:999px;
-    padding:4px 11px; color:var(--forest);
+    padding:6px 14px; color:var(--forest);
     display:flex; align-items:center; gap:6px; white-space:nowrap;
   }
   .pill.live{width: fit-content;}
@@ -157,8 +158,17 @@
     padding:5px 9px 6px; width:100%; box-shadow:0 2px 0 rgba(9,25,19,0.2);
     opacity:0; animation:rise .5s ease forwards;
   }
-  @media (prefers-reduced-motion:reduce){.match{animation:none; opacity:1;}}
+  .match-live{
+    border-color:var(--gold-bright); border-width:1.5px;
+    animation: rise .5s ease forwards, cardGlow 1.6s ease-in-out .5s infinite;
+  }
+  @keyframes cardGlow{
+    0%,100%{box-shadow:0 2px 0 rgba(9,25,19,0.2), 0 0 0 3px rgba(214,187,107,.45);}
+    50%{box-shadow:0 2px 0 rgba(9,25,19,0.2), 0 0 0 9px rgba(214,187,107,.75);}
+  }
+  @media (prefers-reduced-motion:reduce){.match{animation:none; opacity:1;} .live-dot{animation:none;} .match-live{animation:none; box-shadow:0 2px 0 rgba(9,25,19,0.2), 0 0 0 3px rgba(214,187,107,.45);}}
   @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  @keyframes livePulse{0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.45; transform:scale(.8);}}
 
   .match-time{
     font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted);
@@ -166,6 +176,14 @@
     padding-bottom:3px; margin-bottom:3px; border-bottom:1px solid var(--line-soft);
     text-transform:uppercase;
   }
+  .live-badge{
+    display:flex; align-items:center; gap:4px; color:#2F7A45; font-weight:700; letter-spacing:.03em;
+  }
+  .live-dot{
+    width:6px; height:6px; border-radius:50%; background:#2F7A45; flex:none;
+    box-shadow:0 0 0 3px rgba(47,122,69,.22); animation:livePulse 1.4s ease-in-out infinite;
+  }
+  .round.right .live-badge{flex-direction:row-reverse;}
   .team{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:2px 0;}
   .team + .team{border-top:1px dashed var(--line-soft);}
   .team-info{display:flex; flex-direction:column; min-width:0;}
@@ -239,9 +257,10 @@
     .eyebrow-text{min-width:0; white-space:normal; overflow-wrap:break-word;}
     .subtitle{
       border-left:none; padding-left:0; margin-top:2px;
-      flex:1 1 100%; max-width:none;
+      flex:1 1 100%; max-width:none; font-size:12.5px;
     }
     .meta-row{flex-wrap:wrap; width:100%;}
+    .pill{font-size:10.5px; padding:4px 11px;}
 
     .content-row{flex-direction:column; min-height:0;}
     .main-col{min-height:0;}
@@ -278,10 +297,6 @@
     .bracket-scroll{max-height:65vh;}
   }
 </style>
-<link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
-<link rel="manifest" href="favicons/site.webmanifest">
 </head>
 <body>
 
@@ -290,11 +305,13 @@
   <section class="hero poster-card">
     <span class="corner-tl"></span><span class="corner-tr"></span><span class="corner-bl"></span><span class="corner-br"></span>
     <div class="hero-left">
-      <div class="hero-titles">
-        <h1>JR <span class="accent">@</span>45 Pickleball</h1>
-        <div class="hero-tagline">Fun Tournament — Live Standings</div>
+      <div class="hero-title-block">
+        <div class="hero-titles">
+          <h1>JR <span class="accent">@</span>45 Pickleball</h1>
+          <div class="hero-tagline">Fun Tournament — Live Standings</div>
+        </div>
+        <div class="eyebrow"><span class="dot"></span><span class="eyebrow-text">SUN, JUL 19 2026 &nbsp;·&nbsp; DOUBLES &nbsp;·&nbsp; 32 TEAMS &nbsp;·&nbsp; OPEN DIVISION</span></div>
       </div>
-      <div class="eyebrow"><span class="dot"></span><span class="eyebrow-text">SUN, JUL 19 2026 &nbsp;·&nbsp; DOUBLES &nbsp;·&nbsp; 32 TEAMS &nbsp;·&nbsp; OPEN DIVISION</span></div>
       <div class="subtitle"><b>Match Format — Single Elimination:</b> losing teams are eliminated, while winners advance to the next round until there will be a winning champion.</div>
       <div class="meta-row">
         <span class="pill" id="status-pill"><span class="pulse"></span><span id="status-text">Loading bracket…</span></span>
@@ -391,6 +408,7 @@
         code2: (r[7]||'').trim(),
         p2: [(r[8]||'').trim(), (r[9]||'').trim()],
         score2: r[10] !== undefined && String(r[10]).trim() !== '' ? Number(r[10]) : null,
+        court: String(r[11]||'').trim(),
       }))
       .filter(m => m.code1 && m.code2);
   }
@@ -419,10 +437,12 @@
     const idx = name => header.indexOf(name.toLowerCase());
     const iNum = idx('matchNumber'), iTime = idx('Schedule'), iC1 = idx('teamCode1'),
           iP1a = idx('team1Player1'), iP1b = idx('team1Player2'), iS1 = idx('team1Score'),
-          iC2 = idx('teamCode2'), iP2a = idx('team2Player1'), iP2b = idx('team2Player2'), iS2 = idx('team2Score');
+          iC2 = idx('teamCode2'), iP2a = idx('team2Player1'), iP2b = idx('team2Player2'), iS2 = idx('team2Score'),
+          iCourt = idx('court');
     if([iNum,iC1,iC2].some(v => v === -1)) return [];
     return csvRows.slice(1).map(r => [
-      r[iNum], r[iTime], r[iC1], r[iP1a], r[iP1b], r[iS1], 'v', r[iC2], r[iP2a], r[iP2b], r[iS2]
+      r[iNum], r[iTime], r[iC1], r[iP1a], r[iP1b], r[iS1], 'v', r[iC2], r[iP2a], r[iP2b], r[iS2],
+      iCourt !== -1 ? r[iCourt] : ''
     ]);
   }
 
@@ -497,11 +517,19 @@
     </div>`;
   }
 
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   function matchCardHTML(m){
     const t1ph = isPlaceholder({p:m.p1, code:m.code1});
     const t2ph = isPlaceholder({p:m.p2, code:m.code2});
-    return `<div class="match" data-match="${m.code1}|${m.code2}">
-      <div class="match-time"><span>Match ${m.num}</span><span>${m.time}</span></div>
+    const live = !!(m.court && String(m.court).trim() !== '');
+    const timeCell = live
+      ? `<span class="live-badge"><span class="live-dot"></span>LIVE · COURT ${escapeHtml(m.court)}</span>`
+      : `<span>${escapeHtml(m.time)}</span>`;
+    return `<div class="match${live ? ' match-live' : ''}" data-match="${m.code1}|${m.code2}">
+      <div class="match-time"><span>Match ${m.num}</span>${timeCell}</div>
       ${teamHTML(m.code1, m.p1, m.score1, m.score2, t1ph)}
       ${teamHTML(m.code2, m.p2, m.score2, m.score1, t2ph)}
     </div>`;
@@ -569,6 +597,20 @@
     document.querySelectorAll('#bracket .team[data-code]').forEach(el => {
       const d = data[el.getAttribute('data-code')];
       if(d) applyTeamUpdate(el, d);
+    });
+    matches.forEach(m => {
+      const card = document.querySelector(`[data-match="${CSS.escape(m.code1)}|${CSS.escape(m.code2)}"]`);
+      if(!card) return;
+      const live = !!(m.court && String(m.court).trim() !== '');
+      card.classList.toggle('match-live', live);
+      const timeEl = card.querySelector('.match-time');
+      const timeCellEl = timeEl && timeEl.children[1];
+      if(timeCellEl){
+        const newHTML = live
+          ? `<span class="live-badge"><span class="live-dot"></span>LIVE · COURT ${escapeHtml(m.court)}</span>`
+          : `<span>${escapeHtml(m.time)}</span>`;
+        if(timeCellEl.outerHTML !== newHTML) timeEl.innerHTML = `<span>Match ${m.num}</span>${newHTML}`;
+      }
     });
     const fm = matches.find(m => m.code1.split('_')[0] === 'F');
     if(fm){
