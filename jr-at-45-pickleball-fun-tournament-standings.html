@@ -71,26 +71,26 @@
   /* ---------- hero / poster header ---------- */
   .hero{
     flex:none;
-    padding:16px clamp(20px,3vw,40px);
-    display:flex; align-items:center; justify-content:flex-start; gap:20px;
+    padding:12px clamp(18px,2.6vw,34px);
+    display:flex; align-items:center; justify-content:flex-start; gap:18px;
     flex-wrap:nowrap;
   }
-  .hero-left{min-width:0; display:flex; align-items:center; gap:20px; flex-wrap:wrap; flex:1 1 auto; row-gap:14px;}
-  .hero-titles{flex:none; display:flex; align-items:center; gap:12px;}
-  .hero-title-block{display:flex; flex-direction:column; gap:7px; flex:none;}
+  .hero-left{min-width:0; display:flex; align-items:center; gap:18px; flex-wrap:wrap; flex:1 1 auto; row-gap:12px;}
+  .hero-titles{flex:none; display:flex; align-items:center; gap:11px;}
+  .hero-title-block{display:flex; flex-direction:column; gap:6px; flex:none;}
   .eyebrow{
     font-family:'IBM Plex Mono', monospace;
-    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
-    color:var(--forest); opacity:.75; display:flex; align-items:center; gap:9px;
+    font-size:12.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--forest); opacity:.75; display:flex; align-items:center; gap:8px;
     flex:none; white-space:nowrap;
   }
-  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);display:inline-block;}
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block;}
   .hero-qr{
     flex:none; display:flex; align-items:center; justify-content:center;
-    padding-left:18px; margin-left:2px; border-left:1px solid var(--line);
+    padding-left:16px; margin-left:2px; border-left:1px solid var(--line);
   }
   .hero-qr img{
-    width:clamp(120px,13vw,168px); height:clamp(120px,13vw,168px); display:block; border-radius:8px;
+    width:clamp(100px,11vw,144px); height:clamp(100px,11vw,144px); display:block; border-radius:8px;
     border:1px solid var(--line); background:#fff; padding:4px;
   }
   h1{
@@ -104,18 +104,18 @@
   h1 .accent{color:var(--gold);}
   .hero-tagline{
     font-family:'Pinyon Script', cursive;
-    font-size:clamp(16px,1.4vw,21px);
+    font-size:clamp(17px,1.5vw,22px);
     color:var(--forest); opacity:.8; white-space:nowrap;
   }
   .subtitle{
-    font-size:14px; color:var(--ink); opacity:.75; line-height:1.55;
-    flex:1 1 320px; min-width:220px; border-left:1px solid var(--line); padding-left:18px;
+    font-size:14.5px; color:var(--ink); opacity:.75; line-height:1.5;
+    flex:1 1 320px; min-width:220px; border-left:1px solid var(--line); padding-left:16px;
   }
-  .meta-row{display:flex; flex-wrap:nowrap; gap:10px; flex:none; flex-direction: column; align-items: end; margin-left:auto;}
+  .meta-row{display:flex; flex-wrap:nowrap; gap:9px; flex:none; flex-direction: column; align-items: end; margin-left:auto;}
   .pill{
     font-family:'IBM Plex Mono', monospace; font-size:11.5px;
     border:1px solid var(--forest); border-radius:999px;
-    padding:6px 14px; color:var(--forest);
+    padding:5px 12px; color:var(--forest);
     display:flex; align-items:center; gap:6px; white-space:nowrap;
   }
   .pill.live{width: fit-content;}
@@ -297,6 +297,10 @@
     .bracket-scroll{max-height:65vh;}
   }
 </style>
+<link rel="apple-touch-icon" sizes="180x180" href="favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicons/favicon-16x16.png">
+<link rel="manifest" href="favicons/site.webmanifest">
 </head>
 <body>
 
