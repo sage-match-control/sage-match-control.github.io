@@ -139,6 +139,7 @@
   #connectors{position:absolute; top:0; left:0; pointer-events:none; overflow:visible;}
   .connector{fill:none; stroke:rgba(241,233,210,0.28); stroke-width:1.5;}
   .connector.champion-connector{stroke:var(--gold-bright); stroke-width:2;}
+  .connector.bronze-connector{stroke:rgba(204,154,108,0.5); stroke-dasharray:3 3;}
 
   #bracket{display:flex; gap:20px; position:relative; width:max-content; flex:none;}
 
@@ -220,6 +221,19 @@
   #champion-card .label{font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; opacity:.75;}
   #champion-card .name{font-family:'Playfair Display',serif; font-weight:800; font-size:16px; line-height:1.15; margin-top:5px;}
 
+  .bronze-header{
+    font-family:'Playfair Display', serif; font-weight:700; font-size:11px; letter-spacing:.03em;
+    text-transform:uppercase; color:rgba(241,233,210,0.55); text-align:center; margin:2px 0 4px;
+  }
+  #bronze-card{
+    width:100%; max-width:186px; border-radius:10px; padding:9px 12px 10px; text-align:center;
+    background:linear-gradient(160deg, #CC9A6C 0%, #A9714A 100%);
+    color:var(--forest-deep); box-shadow:0 4px 0 rgba(9,25,19,0.22);
+  }
+  #bronze-card .cup{font-size:15px; margin-bottom:2px; display:block;}
+  #bronze-card .label{font-family:'IBM Plex Mono',monospace; font-size:8px; letter-spacing:.12em; text-transform:uppercase; opacity:.75;}
+  #bronze-card .name{font-family:'Playfair Display',serif; font-weight:800; font-size:12.5px; line-height:1.15; margin-top:3px;}
+
   footer{
     flex:none;
     padding:4px clamp(14px,1.8vw,34px) 0;
@@ -288,6 +302,7 @@
     .team-info .players{font-size:13.5px;}
     .score{font-size:13.5px; min-width:24px; height:24px;}
     #champion-card{max-width:180px; padding:18px 14px;}
+    #bronze-card{max-width:170px; padding:8px 12px 9px;}
 
     footer{
       flex-direction:column; align-items:flex-start; gap:6px;
@@ -401,12 +416,13 @@
     [29,"8:30 PM","QF_7","QF_7","","","v","QF_8","QF_8","",""],
     [30,"8:55 PM","SF_1","SF_1","","","v","SF_2","SF_2","",""],
     [31,"8:55 PM","SF_3","SF_3","","","v","SF_4","SF_4","",""],
-    [32,"9:20 PM","F_1","F_1","","","v","F_2","F_2","",""]
+    [32,"9:20 PM","F_1","F_1","","","v","F_2","F_2","",""],
+    [33,"9:20 PM","B_1","B_1","","","v","B_2","B_2","",""]
   ];
 
   const ROUND_SEQUENCE = ['R64','R32','R16','QF','SF','F'];
-  const ROUND_LABELS = {R64:'Round of 64', R32:'Round of 32', R16:'Round of 16', QF:'Quarterfinals', SF:'Semifinals', F:'Final'};
-  const PREV_ROUND = {R32:'R64', R16:'R32', QF:'R16', SF:'QF', F:'SF'};
+  const ROUND_LABELS = {R64:'Round of 64', R32:'Round of 32', R16:'Round of 16', QF:'Quarterfinals', SF:'Semifinals', F:'Final', B:'Battle for Bronze'};
+  const PREV_ROUND = {R32:'R64', R16:'R32', QF:'R16', SF:'QF', F:'SF', B:'SF'};
 
   function rowsToMatches(rows){
     return rows
@@ -516,7 +532,8 @@
       const src = prevSourceCodes(code);
       if(src){
         const num = matchNumByCode[src[0]] || matchNumByCode[src[1]];
-        if(num) sourceLine = `<span class="source">winner of match ${num}</span>`;
+        const verb = code.startsWith('B_') ? 'loser' : 'winner';
+        if(num) sourceLine = `<span class="source">${verb} of match ${num}</span>`;
       }
     } else {
       const full = players.filter(Boolean).join(' &amp; ');
@@ -587,7 +604,8 @@
       const src = prevSourceCodes(data.code);
       if(src){
         const num = matchNumByCode[src[0]] || matchNumByCode[src[1]];
-        if(num) sourceLine = `<span class="source">winner of match ${num}</span>`;
+        const verb = data.code.startsWith('B_') ? 'loser' : 'winner';
+        if(num) sourceLine = `<span class="source">${verb} of match ${num}</span>`;
       }
     } else {
       const full = data.players.filter(Boolean).join(' &amp; ');
@@ -634,9 +652,19 @@
       const nameEl = document.querySelector('#champion-card .name');
       if(nameEl && nameEl.textContent !== (hasChamp ? champName : 'TBD')) nameEl.textContent = hasChamp ? champName : 'TBD';
     }
+    const bm = matches.find(m => m.code1.split('_')[0] === 'B');
+    if(bm){
+      let bronzeName = 'TBD', hasBronze = false;
+      if(bm.score1 !== null && bm.score2 !== null && bm.score1 !== bm.score2){
+        hasBronze = true;
+        bronzeName = bm.score1 > bm.score2 ? bm.p1.filter(Boolean).join(' & ') : bm.p2.filter(Boolean).join(' & ');
+      }
+      const bNameEl = document.querySelector('#bronze-card .name');
+      if(bNameEl && bNameEl.textContent !== (hasBronze ? bronzeName : 'TBD')) bNameEl.textContent = hasBronze ? bronzeName : 'TBD';
+    }
     const byRound = buildByRound(matches);
     const { left, right } = splitSides(byRound);
-    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null, byRound['B'] ? byRound['B'][0] : null);
   }
 
   let bracketBuilt = false;
@@ -695,6 +723,37 @@
         <div class="name">${hasChamp ? champName : 'TBD'}</div>
       </div>`;
     centerCol.appendChild(champWrap.firstElementChild);
+
+    // Battle for Bronze (3rd place) — plays alongside the Final, fed by the two SF losers
+    const bronzeMatches = byRound['B'] || [];
+    if(bronzeMatches.length){
+      const bHeader = document.createElement('div');
+      bHeader.className = 'bronze-header';
+      bHeader.textContent = 'Battle for Bronze';
+      centerCol.appendChild(bHeader);
+      const bSlot = document.createElement('div');
+      bSlot.className = 'match-slot';
+      bSlot.innerHTML = matchCardHTML(bronzeMatches[0]);
+      centerCol.appendChild(bSlot);
+
+      let bronzeName = 'TBD', hasBronze = false;
+      const bm = bronzeMatches[0];
+      if(bm.score1 !== null && bm.score2 !== null && bm.score1 !== bm.score2){
+        hasBronze = true;
+        bronzeName = bm.score1 > bm.score2 ? bm.p1.filter(Boolean).join(' & ') : bm.p2.filter(Boolean).join(' & ');
+      }
+      const bVline = document.createElement('div');
+      bVline.className = 'center-vline';
+      centerCol.appendChild(bVline);
+      const bronzeWrap = document.createElement('div');
+      bronzeWrap.innerHTML = `<div id="bronze-card">
+          <span class="cup">🥉</span>
+          <div class="label">3rd Place</div>
+          <div class="name">${hasBronze ? bronzeName : 'TBD'}</div>
+        </div>`;
+      centerCol.appendChild(bronzeWrap.firstElementChild);
+    }
+
     bracket.appendChild(centerCol);
 
     // right half: inner -> outer (SF nearest center, R32 far right)
@@ -703,7 +762,7 @@
       bracket.appendChild(buildRoundColumn(r, right[r], 'R'));
     });
 
-    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null, byRound['B'] ? byRound['B'][0] : null);
     scrollPastR64();
   }
 
@@ -721,7 +780,7 @@
     });
   }
 
-  function drawConnectors(left, right, finalMatch){
+  function drawConnectors(left, right, finalMatch, bronzeMatch){
     const wrap = document.querySelector('.bracket-wrap');
     const svg = document.getElementById('connectors');
     const cRect = wrap.getBoundingClientRect();
@@ -792,6 +851,30 @@
         }
       }
     }
+
+    // SF(left) -> Bronze team1 row ; SF(right) -> Bronze team2 row (the two SF losers)
+    if(bronzeMatch){
+      const destCard = cardFor(bronzeMatch);
+      if(destCard){
+        const teamEls = destCard.querySelectorAll('.team');
+        const leftSF = (left['SF'] || [])[0];
+        const rightSF = (right['SF'] || [])[0];
+        if(leftSF){
+          const srcCard = cardFor(leftSF);
+          if(srcCard){
+            const s = rectOf(srcCard), d = rectOf(teamEls[0]);
+            line(s.right, s.cy, d.left, d.cy, 'bronze-connector');
+          }
+        }
+        if(rightSF){
+          const srcCard = cardFor(rightSF);
+          if(srcCard){
+            const s = rectOf(srcCard), d = rectOf(teamEls[1]);
+            line(s.left, s.cy, d.right, d.cy, 'bronze-connector');
+          }
+        }
+      }
+    }
   }
 
   let currentMatches = rowsToMatches(FALLBACK_ROWS);
@@ -839,7 +922,7 @@
   function redrawConnectors(){
     const byRound = buildByRound(currentMatches);
     const { left, right } = splitSides(byRound);
-    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+    drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null, byRound['B'] ? byRound['B'][0] : null);
   }
   window.addEventListener('resize', redrawConnectors);
   window.addEventListener('load', redrawConnectors);
