@@ -132,30 +132,31 @@
   main{flex:1; min-height:0;}
 
   .bracket-scroll{
-    height:100%; overflow:hidden; padding:2px 2px 4px;
+    height:100%; overflow-x:auto; overflow-y:hidden; padding:2px 2px 4px;
     display:flex; align-items:stretch;
   }
-  .bracket-wrap{position:relative; width:100%; height:100%; display:flex;}
+  .bracket-wrap{position:relative; width:max-content; height:100%; display:flex;}
   #connectors{position:absolute; top:0; left:0; pointer-events:none; overflow:visible;}
   .connector{fill:none; stroke:rgba(241,233,210,0.28); stroke-width:1.5;}
   .connector.champion-connector{stroke:var(--gold-bright); stroke-width:2;}
 
-  #bracket{display:flex; gap:clamp(8px,1vw,18px); position:relative; width:100%; flex:1;}
+  #bracket{display:flex; gap:20px; position:relative; width:max-content; flex:none;}
 
-  .round{display:flex; flex-direction:column; flex:1 1 0; min-width:0;}
+  .round{display:flex; flex-direction:column; flex:0 0 183px; width:183px;}
+  .round.round-r64{flex:0 0 183px; width:183px;}
   .matches{display:flex; flex-direction:column; justify-content:space-around; flex:1;}
   .round-header{
-    font-family:'Playfair Display', serif; font-weight:700; font-size:12px; letter-spacing:.01em;
+    font-family:'Playfair Display', serif; font-weight:700; font-size:12.5px; letter-spacing:.01em;
     text-transform:uppercase; color:var(--gold-bright);
     display:flex; justify-content:space-between; align-items:baseline;
     padding-bottom:6px; margin-bottom:5px; border-bottom:1px dashed rgba(241,233,210,0.22);
   }
   .round-header small{font-family:'IBM Plex Mono',monospace; font-size:9px; color:rgba(241,233,210,0.5); text-transform:none; letter-spacing:0;}
 
-  .match-slot{padding:2px 0;}
+  .match-slot{padding:1px 0;}
   .match{
     background:var(--parchment); border:1px solid var(--line); border-radius:8px;
-    padding:5px 9px 6px; width:100%; box-shadow:0 2px 0 rgba(9,25,19,0.2);
+    padding:5px 10px 6px; width:100%; box-shadow:0 2px 0 rgba(9,25,19,0.2);
     opacity:0; animation:rise .5s ease forwards;
   }
   .match-live{
@@ -173,7 +174,7 @@
   .match-time{
     font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted);
     display:flex; justify-content:space-between; letter-spacing:.02em;
-    padding-bottom:3px; margin-bottom:3px; border-bottom:1px solid var(--line-soft);
+    padding-bottom:2px; margin-bottom:2px; border-bottom:1px solid var(--line-soft);
     text-transform:uppercase;
   }
   .live-badge{
@@ -187,13 +188,13 @@
   .team{display:flex; align-items:center; justify-content:space-between; gap:6px; padding:2px 0;}
   .team + .team{border-top:1px dashed var(--line-soft);}
   .team-info{display:flex; flex-direction:column; min-width:0;}
-  .team-info .code{font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--muted); letter-spacing:.04em;}
-  .team-info .players{font-weight:700; font-size:12.5px; color:var(--forest); line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .team-info .code{font-family:'IBM Plex Mono',monospace; font-size:9.5px; color:var(--muted); letter-spacing:.04em;}
+  .team-info .players{font-weight:700; font-size:14px; color:var(--forest); line-height:1.22; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .team-info .players.tbd{font-weight:600; font-style:italic; color:var(--muted);}
-  .team-info .source{font-family:'IBM Plex Mono',monospace; font-size:8px; color:var(--muted); opacity:.8; margin-top:1px;}
+  .team-info .source{font-family:'IBM Plex Mono',monospace; font-size:9px; color:var(--muted); opacity:.8; margin-top:1px;}
   .score{
-    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12.5px; color:var(--forest);
-    min-width:20px; height:20px; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:13.5px; color:var(--forest);
+    min-width:22px; height:22px; border-radius:5px; display:flex; align-items:center; justify-content:center;
     background:var(--line-soft); flex:none;
   }
   .team.winner .score{background:var(--gold); color:var(--forest-deep); font-weight:700;}
@@ -207,7 +208,7 @@
   .round.right .team-info .players,
   .round.right .team-info .source{text-align:right; width:100%;}
 
-  .center-col{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; flex:1.15 1 0; min-width:0;}
+  .center-col{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; flex:0 0 206px; width:206px;}
   .center-col .round-header{justify-content:center; border-bottom:none; padding-bottom:0;}
   .center-vline{width:2px; height:20px; background:var(--gold-bright); opacity:.6; margin:4px 0;}
   #champion-card{
@@ -250,16 +251,21 @@
     .hero{flex-wrap:wrap; padding:16px 18px;}
     .hero-qr{display:none;}
     .hero-left{flex-wrap:wrap; row-gap:8px;}
-    .hero-titles{flex-wrap:wrap;}
-    h1{font-size:30px;}
-    .hero-tagline{font-size:15px;}
-    .eyebrow{white-space:normal; font-size:10px; min-width:0; max-width:100%;}
-    .eyebrow-text{min-width:0; white-space:normal; overflow-wrap:break-word;}
+    .hero-titles{flex-wrap:nowrap; gap:8px;}
+    .hero-title-block{width:100%; flex:1 1 100%;}
+    h1{font-size:26px;}
+    .hero-tagline{font-size:12.5px;}
+    .eyebrow{
+      white-space:nowrap; font-size:8.5px; letter-spacing:.04em; min-width:0; max-width:100%; width:100%;
+      overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    }
+    .eyebrow::-webkit-scrollbar{display:none;}
+    .eyebrow-text{min-width:0; white-space:nowrap;}
     .subtitle{
       border-left:none; padding-left:0; margin-top:2px;
       flex:1 1 100%; max-width:none; font-size:12.5px;
     }
-    .meta-row{flex-wrap:wrap; width:100%;}
+    .meta-row{flex-wrap:wrap; width:100%; flex-direction:row; align-items:center; justify-content:flex-end;}
     .pill{font-size:10.5px; padding:4px 11px;}
 
     .content-row{flex-direction:column; min-height:0;}
@@ -275,6 +281,7 @@
     .bracket-wrap{width:max-content; height:auto; display:block;}
     #bracket{width:max-content; flex:none; gap:22px;}
     .round{flex:none; min-width:200px;}
+    .round.round-r64{flex:none; min-width:200px;}
     .center-col{flex:none; min-width:190px;}
     .match{width:186px; padding:9px 12px 10px;}
     .round-header{font-size:13px; padding-bottom:8px; margin-bottom:6px;}
@@ -363,42 +370,43 @@
 
   // ---- Fallback snapshot (captured from the sheet) ----
   const FALLBACK_ROWS = [
-    [1,"6:00 PM","R32_1","","","","v","R32_2","","",""],
-    [2,"6:00 PM","R32_3","","","","v","R32_4","","",""],
-    [3,"6:00 PM","R32_5","","","","v","R32_6","","",""],
-    [4,"6:00 PM","R32_7","","","","v","R32_8","","",""],
-    [5,"6:25 PM","R32_9","","","","v","R32_10","","",""],
-    [6,"6:25 PM","R32_11","","","","v","R32_12","","",""],
-    [7,"6:25 PM","R32_13","","","","v","R32_14","","",""],
-    [8,"6:25 PM","R32_15","","","","v","R32_16","","",""],
-    [9,"6:50 PM","R32_17","","","","v","R32_18","","",""],
-    [10,"6:50 PM","R32_19","","","","v","R32_20","","",""],
-    [11,"6:50 PM","R32_21","","","","v","R32_22","","",""],
-    [12,"6:50 PM","R32_23","","","","v","R32_24","","",""],
-    [13,"7:15 PM","R32_25","","","","v","R32_26","","",""],
-    [14,"7:15 PM","R32_27","","","","v","R32_28","","",""],
-    [15,"7:15 PM","R32_29","","","","v","R32_30","","",""],
-    [16,"7:15 PM","R32_31","","","","v","R32_32","","",""],
-    [17,"7:40 PM","R16_1","R16_1","","","v","R16_2","R16_2","",""],
-    [18,"7:40 PM","R16_3","R16_3","","","v","R16_4","R16_4","",""],
-    [19,"7:40 PM","R16_5","R16_5","","","v","R16_6","R16_6","",""],
-    [20,"7:40 PM","R16_7","R16_7","","","v","R16_8","R16_8","",""],
-    [21,"8:05 PM","R16_9","R16_9","","","v","R16_10","R16_10","",""],
-    [22,"8:05 PM","R16_11","R16_11","","","v","R16_12","R16_12","",""],
-    [23,"8:05 PM","R16_13","R16_13","","","v","R16_14","R16_14","",""],
-    [24,"8:05 PM","R16_15","R16_15","","","v","R16_16","R16_16","",""],
-    [25,"8:30 PM","QF_1","QF_1","","","v","QF_2","QF_2","",""],
-    [26,"8:30 PM","QF_3","QF_3","","","v","QF_4","QF_4","",""],
-    [27,"8:30 PM","QF_5","QF_5","","","v","QF_6","QF_6","",""],
-    [28,"8:30 PM","QF_7","QF_7","","","v","QF_8","QF_8","",""],
-    [29,"8:55 PM","SF_1","SF_1","","","v","SF_2","SF_2","",""],
-    [30,"8:55 PM","SF_3","SF_3","","","v","SF_4","SF_4","",""],
-    [31,"9:20 PM","F_1","F_1","","","v","F_2","F_2","",""]
+    [1,"5:35 PM","R64_1","","","","v","R64_2","","",""],
+    [2,"6:00 PM","R32_1","","","","v","R32_2","","",""],
+    [3,"6:00 PM","R32_3","","","","v","R32_4","","",""],
+    [4,"6:00 PM","R32_5","","","","v","R32_6","","",""],
+    [5,"6:00 PM","R32_7","","","","v","R32_8","","",""],
+    [6,"6:25 PM","R32_9","","","","v","R32_10","","",""],
+    [7,"6:25 PM","R32_11","","","","v","R32_12","","",""],
+    [8,"6:25 PM","R32_13","","","","v","R32_14","","",""],
+    [9,"6:25 PM","R32_15","","","","v","R32_16","","",""],
+    [10,"6:50 PM","R32_17","","","","v","R32_18","","",""],
+    [11,"6:50 PM","R32_19","","","","v","R32_20","","",""],
+    [12,"6:50 PM","R32_21","","","","v","R32_22","","",""],
+    [13,"6:50 PM","R32_23","","","","v","R32_24","","",""],
+    [14,"7:15 PM","R32_25","","","","v","R32_26","","",""],
+    [15,"7:15 PM","R32_27","","","","v","R32_28","","",""],
+    [16,"7:15 PM","R32_29","","","","v","R32_30","","",""],
+    [17,"7:15 PM","R32_31","","","","v","R32_32","","",""],
+    [18,"7:40 PM","R16_1","R16_1","","","v","R16_2","R16_2","",""],
+    [19,"7:40 PM","R16_3","R16_3","","","v","R16_4","R16_4","",""],
+    [20,"7:40 PM","R16_5","R16_5","","","v","R16_6","R16_6","",""],
+    [21,"7:40 PM","R16_7","R16_7","","","v","R16_8","R16_8","",""],
+    [22,"8:05 PM","R16_9","R16_9","","","v","R16_10","R16_10","",""],
+    [23,"8:05 PM","R16_11","R16_11","","","v","R16_12","R16_12","",""],
+    [24,"8:05 PM","R16_13","R16_13","","","v","R16_14","R16_14","",""],
+    [25,"8:05 PM","R16_15","R16_15","","","v","R16_16","R16_16","",""],
+    [26,"8:30 PM","QF_1","QF_1","","","v","QF_2","QF_2","",""],
+    [27,"8:30 PM","QF_3","QF_3","","","v","QF_4","QF_4","",""],
+    [28,"8:30 PM","QF_5","QF_5","","","v","QF_6","QF_6","",""],
+    [29,"8:30 PM","QF_7","QF_7","","","v","QF_8","QF_8","",""],
+    [30,"8:55 PM","SF_1","SF_1","","","v","SF_2","SF_2","",""],
+    [31,"8:55 PM","SF_3","SF_3","","","v","SF_4","SF_4","",""],
+    [32,"9:20 PM","F_1","F_1","","","v","F_2","F_2","",""]
   ];
 
-  const ROUND_SEQUENCE = ['R32','R16','QF','SF','F'];
-  const ROUND_LABELS = {R32:'Round of 32', R16:'Round of 16', QF:'Quarterfinals', SF:'Semifinals', F:'Final'};
-  const PREV_ROUND = {R16:'R32', QF:'R16', SF:'QF', F:'SF'};
+  const ROUND_SEQUENCE = ['R64','R32','R16','QF','SF','F'];
+  const ROUND_LABELS = {R64:'Round of 64', R32:'Round of 32', R16:'Round of 16', QF:'Quarterfinals', SF:'Semifinals', F:'Final'};
+  const PREV_ROUND = {R32:'R64', R16:'R32', QF:'R16', SF:'QF', F:'SF'};
 
   function rowsToMatches(rows){
     return rows
@@ -487,7 +495,7 @@
   // so the draw can be drawn as two mirrored trees converging on the Final/Champion.
   function splitSides(byRound){
     const left = {}, right = {};
-    ['R32','R16','QF','SF'].forEach(r => {
+    ['R64','R32','R16','QF','SF'].forEach(r => {
       const arr = byRound[r] || [];
       const half = Math.ceil(arr.length / 2);
       left[r] = arr.slice(0, half);
@@ -541,7 +549,7 @@
 
   function buildRoundColumn(r, roundMatches, side){
     const col = document.createElement('div');
-    col.className = 'round' + (side === 'R' ? ' right' : '');
+    col.className = 'round' + (r === 'R64' ? ' round-r64' : '') + (side === 'R' ? ' right' : '');
     col.id = 'round-' + r + '-' + side;
     const header = document.createElement('div');
     header.className = 'round-header';
@@ -645,7 +653,7 @@
     const bracket = document.getElementById('bracket');
     bracket.innerHTML = '';
 
-    const LEFT_ORDER = ['R32','R16','QF','SF'];
+    const LEFT_ORDER = ['R64','R32','R16','QF','SF'];
     const RIGHT_ORDER = ['SF','QF','R16','R32']; // innermost (nearest center) to outermost
 
     // left half: outer -> inner (R32 far left, SF nearest center)
@@ -696,6 +704,21 @@
     });
 
     drawConnectors(left, right, byRound['F'] ? byRound['F'][0] : null);
+    scrollPastR64();
+  }
+
+  // On first paint, scroll the bracket so the (usually single-match) Round of 64
+  // play-in column sits just off the left edge — the visible draw starts at Round of 32.
+  function scrollPastR64(){
+    const scrollEl = document.querySelector('.bracket-scroll');
+    const r64El = document.getElementById('round-R64-L');
+    if(!scrollEl || !r64El) return;
+    requestAnimationFrame(() => {
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const r64Rect = r64El.getBoundingClientRect();
+      const hideAmount = (r64Rect.right - scrollRect.left) + 20; // + column gap
+      if(hideAmount > 0) scrollEl.scrollLeft = hideAmount;
+    });
   }
 
   function drawConnectors(left, right, finalMatch){
