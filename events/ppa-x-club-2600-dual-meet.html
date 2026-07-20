@@ -246,6 +246,310 @@
     cursor:default;
   }
 
+  /* ---------- VIEW TABS ---------- */
+  .view-tabs{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:24px;
+  }
+  .view-tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:9px 20px;
+    border-radius:100px;
+    border:1px solid rgba(232,226,245,.28);
+    background:rgba(255,255,255,.05);
+    color:rgba(232,226,245,.8);
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .view-tab:hover{border-color:rgba(47,224,200,.6);}
+  .view-tab.active{
+    background:var(--court);
+    border-color:var(--court);
+    color:var(--court-dark);
+  }
+
+  /* ---------- STANDINGS BOARD ---------- */
+  .club-summary{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:clamp(10px,4vw,22px);
+    margin:0 0 22px;
+  }
+  .club-summary-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    padding:12px clamp(12px,4vw,26px);
+    border-radius:16px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(232,226,245,.16);
+    flex:1 1 0;
+    min-width:0;
+    max-width:220px;
+  }
+  .club-summary-item.leader{
+    border-color:rgba(255,122,41,.6);
+    box-shadow:0 0 26px -8px rgba(255,122,41,.5);
+  }
+  .club-summary-item .cs-wins{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(26px,8vw,38px);
+    line-height:1;
+    background:linear-gradient(92deg, #2FE0C8, #8FE94B 55%, #F6DE58);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .club-summary-item .cs-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    text-transform:uppercase;
+    letter-spacing:.16em;
+    color:rgba(232,226,245,.55);
+  }
+  .club-summary-item .cs-name{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:clamp(10.5px,3vw,12.5px);
+    color:var(--court-line);
+    margin-top:4px;
+    text-align:center;
+    line-height:1.25;
+  }
+  .club-summary-vs{
+    flex:0 0 auto;
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(14px,4vw,18px);
+    color:var(--cork);
+  }
+
+  .standings-board{
+    display:flex;
+    gap:20px;
+    max-height:78vh;
+    overflow:auto;
+    padding:4px 4px 16px;
+    align-items:flex-start;
+  }
+  .standings-board::-webkit-scrollbar{width:8px; height:8px;}
+  .standings-board::-webkit-scrollbar-thumb{background:rgba(232,226,245,.22); border-radius:10px;}
+
+  .standings-club-col{
+    flex:1 1 320px;
+    min-width:290px;
+    max-width:400px;
+  }
+
+  .club-head{
+    position:sticky; top:0;
+    background:linear-gradient(180deg, rgba(20,10,45,.98), rgba(20,10,45,.92));
+    padding:12px 14px 10px;
+    border-radius:14px;
+    margin-bottom:14px;
+    text-align:center;
+    border:1px solid rgba(255,122,41,.4);
+    z-index:3;
+  }
+  .club-head .club-name{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    letter-spacing:.01em;
+    text-transform:uppercase;
+    color:var(--cork);
+  }
+  .club-head .club-full{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:rgba(232,226,245,.6);
+    margin-top:2px;
+  }
+
+  .standings-col{
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(232,226,245,.16);
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:16px;
+    break-inside:avoid;
+  }
+  .standings-col:last-child{margin-bottom:0;}
+  .standings-cards{ display:block; }
+
+  .standings-col-head{
+    text-align:center;
+    margin:-14px -14px 14px;
+    padding:12px 14px 10px;
+    border-bottom:1px solid rgba(232,226,245,.14);
+  }
+  .standings-col-head .cat-title{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    background:linear-gradient(92deg, #2FE0C8, #8FE94B 55%, #F6DE58);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .standings-col-head .cat-code{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    color:rgba(232,226,245,.55);
+    margin-top:2px;
+  }
+
+  .stage-block{margin-bottom:16px;}
+  .stage-block:last-child{margin-bottom:0;}
+  .stage-caption{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:rgba(232,226,245,.55);
+    margin:0 0 6px;
+  }
+  .stage-banner{
+    background:linear-gradient(92deg, #F6DE58, #FFB65C);
+    color:var(--court-dark);
+    border-radius:9px 9px 0 0;
+    padding:6px 10px 5px;
+    text-align:center;
+  }
+  .stage-banner .stage-title{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+  }
+  .stage-banner .stage-sub{
+    display:block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    letter-spacing:.14em;
+    opacity:.72;
+  }
+
+  .br-table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--paper);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:var(--card-shadow);
+    margin-bottom:10px;
+  }
+  .stage-banner + .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
+  .br-table:last-child{margin-bottom:0;}
+  .br-table th, .br-table td{
+    padding:6px 8px;
+    text-align:left;
+    font-size:11.5px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .br-table th{
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    border-bottom:1px solid rgba(20,27,44,.1);
+  }
+  .br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.06); }
+  .br-table tr:last-child td{border-bottom:none;}
+  .br-table tr.win{background:rgba(52,199,120,.16);}
+  .br-table tr.loss{background:rgba(255,90,110,.11);}
+  .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.35;}
+  .br-table td.pair span{display:block;}
+  .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
+  .br-table td.num{text-align:center; width:26px;}
+  .br-table td.br-badge{
+    text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
+  }
+  .badge-0{background:var(--cork);}
+  .badge-1{background:var(--court);}
+  .badge-2{background:var(--amber); color:var(--court-dark);}
+  .badge-3{background:#8B7CF6;}
+  .badge-x{background:var(--muted);}
+
+  /* Desktop: break the standings board out of the page's narrow .wrap
+     max-width so it can actually use the screen. Each category becomes
+     its own column (wide enough to fit both clubs side by side), and
+     the whole row of categories scrolls horizontally. */
+  .category-clubs-row{ display:block; }
+  .club-subsection{ margin-bottom:18px; }
+  .club-subsection:last-child{ margin-bottom:0; }
+  .club-subhead{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--cork);
+    border-bottom:1px solid rgba(255,122,41,.35);
+    padding-bottom:5px;
+    margin-bottom:8px;
+  }
+
+  @media (min-width: 980px){
+    #standingsResults{
+      width:100vw;
+      max-width:100vw;
+      position:relative;
+      left:50%;
+      margin-left:-50vw;
+      padding:0 32px;
+      box-sizing:border-box;
+    }
+    .standings-board-desktop{
+      overflow-x:auto;
+      overflow-y:visible;
+      max-height:none;
+      padding-bottom:20px;
+      align-items:stretch;
+    }
+    .standings-board-desktop .standings-col{
+      flex:0 0 520px;
+      max-width:520px;
+      display:flex;
+      flex-direction:column;
+    }
+    .category-clubs-row{
+      display:flex;
+      gap:12px;
+      flex:1 1 auto;
+      min-height:0;
+      max-height:62vh;
+      overflow-y:auto;
+    }
+    .category-clubs-row::-webkit-scrollbar{width:5px;}
+    .category-clubs-row::-webkit-scrollbar-thumb{background:rgba(232,226,245,.22); border-radius:10px;}
+    .club-subsection{
+      flex:1 1 0;
+      min-width:0;
+      margin-bottom:0;
+    }
+    .club-subhead{
+      position:sticky; top:0;
+      background:rgba(20,10,45,.96);
+      padding-top:2px;
+      z-index:1;
+    }
+  }
+
+
   /* ---------- RESULTS ---------- */
   #results{margin-top:44px;}
 
@@ -483,7 +787,12 @@
   <h1 class="title">Clash of the Clubs</h1>
   <p class="subtitle">Lowlands meets the Highlands in the ultimate battle for club supremacy. Find your pair's full match schedule — every round, every opponent, in order.</p>
 
-  <div class="search-panel">
+  <div class="view-tabs" role="tablist">
+    <button class="view-tab active" data-view="finder" type="button">Match Finder</button>
+    <button class="view-tab" data-view="standings" type="button">Standings</button>
+  </div>
+
+  <div class="search-panel" id="searchPanel">
     <label class="search-label" for="teamInput">Enter your pair's names</label>
     <div class="search-row autocomplete">
       <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
@@ -499,6 +808,7 @@
 
 <div class="wrap">
   <div id="results"></div>
+  <div id="standingsResults" style="display:none;"></div>
 </div>
 
 <footer>Clash of the Clubs &middot; Pampanga Paddle Aces vs Club 2600 &middot; Jul 25, 2026<br>Powered by S.A.G.E. Match Control Experts</footer>
@@ -507,8 +817,11 @@
 const SHEET_ID = '1ccuq8mdB8SEbTfJMzqvn-AnhCQqVb-DqxcVgUBu-iT0';
 const CSV_GID = '2136121736';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
+const STANDINGS_GID = '327842042';
+const STANDINGS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${STANDINGS_GID}`;
 
 let MATCHES = [];
+let STANDINGS = [];
 
 function parseCSV(text){
   const rows = [];
@@ -573,19 +886,57 @@ function rowsToMatches(rows){
   return out;
 }
 
+function rowsToStandings(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iCode = idx('teamCode'), iP1 = idx('player1'), iP2 = idx('player2'),
+        iW = idx('wins'), iL = idx('loss'), iQ = idx('quotient'), iB = idx('bracket');
+
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const teamCode = (row[iCode]||'').trim();
+    if(!teamCode) continue;
+    const player1 = iP1 > -1 ? (row[iP1]||'').trim() : '';
+    const player2 = iP2 > -1 ? (row[iP2]||'').trim() : '';
+    const rawW = iW > -1 ? (row[iW]||'').trim() : '';
+    const rawL = iL > -1 ? (row[iL]||'').trim() : '';
+    const rawQ = iQ > -1 ? (row[iQ]||'').trim() : '';
+    const wins = rawW !== '' && !isNaN(rawW) ? parseInt(rawW, 10) : 0;
+    const loss = rawL !== '' && !isNaN(rawL) ? parseInt(rawL, 10) : 0;
+    const quotient = rawQ !== '' && !isNaN(rawQ) ? parseFloat(rawQ) : null;
+    const bracket = iB > -1 ? (row[iB]||'').trim() : '';
+    out.push({ teamCode, player1, player2, wins, loss, quotient, bracket });
+  }
+  return out;
+}
+
 async function loadLiveData(){
   const statusEl = document.getElementById('syncStatus');
   statusEl.textContent = 'Loading live schedule from Google Sheets\u2026';
   statusEl.className = 'sync-status loading';
   try {
-    const res = await fetch(CSV_URL, { cache: 'no-store' });
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
+    const [matchRes, standingsRes] = await Promise.all([
+      fetch(CSV_URL, { cache: 'no-store' }),
+      fetch(STANDINGS_CSV_URL, { cache: 'no-store' })
+    ]);
+    if(!matchRes.ok) throw new Error('HTTP ' + matchRes.status);
+    const text = await matchRes.text();
     const rows = parseCSV(text);
     const matches = rowsToMatches(rows);
     if(matches.length === 0) throw new Error('No rows parsed');
     MATCHES = matches;
     rebuildTeamIndex();
+
+    if(standingsRes.ok){
+      const standingsText = await standingsRes.text();
+      STANDINGS = rowsToStandings(parseCSV(standingsText));
+    }
+    renderStandings();
+    runSearch(); // keep whatever's currently shown (search results or intro) up to date
+
     const now = new Date();
     statusEl.textContent = 'Live \u00b7 synced ' + now.toLocaleTimeString();
     statusEl.className = 'sync-status ok';
@@ -608,6 +959,11 @@ const DIVISIONS = {
   HI: { name: 'Division HI', full: 'High Intermediate' }
 };
 const EVENTS = { MD: "Men's Doubles", WD: "Women's Doubles", XD: "Mixed Doubles" };
+
+// Fixed display order for standings columns: Beginner, Intermediate, Hi-Intermediate,
+// Advanced, Open (by division full name), then Women's / Men's / Mixed Doubles within each.
+const DIVISION_ORDER = ['Beginner', 'Intermediate', 'High Intermediate', 'Advanced', 'Open'];
+const EVENT_ORDER = ['WD', 'MD', 'XD'];
 
 function parseCode(code){
   const m = code.match(/^(PPA|TBA)_(I|HI)(MD|WD|XD)_(.+)$/);
@@ -634,6 +990,343 @@ function divisionLabel(code){
   const clubPart = club ? `${club.full} · ` : '';
   return `${clubPart}${div.name} (${div.full}) · ${ev}`;
 }
+
+function divisionEventLabel(code){
+  const p = parseCode(code);
+  if(!p.division) return 'Other';
+  const div = DIVISIONS[p.division];
+  const ev = EVENTS[p.event] || '';
+  return `${div.name} (${div.full}) · ${ev}`;
+}
+
+function categorySortKey(sampleRow){
+  const p = parseCode(sampleRow.teamCode);
+  const div = DIVISIONS[p.division];
+  const divRank = div ? DIVISION_ORDER.indexOf(div.full) : -1;
+  const eventRank = EVENT_ORDER.indexOf(p.event);
+  return (divRank === -1 ? 999 : divRank) * 10 + (eventRank === -1 ? 9 : eventRank);
+}
+
+const STAGE_META = {
+  R16:    { label: 'Round of 16',   banner:false },
+  QF:     { label: 'Quarterfinals', banner:false },
+  SF:     { label: 'Semifinals',    banner:false },
+  BRONZE: { label: 'Bronze Battle', banner:true,  sub:'B' },
+  FINAL:  { label: 'Finals',        banner:true,  sub:'F' }
+};
+const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
+const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
+
+function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
+
+function standingsStageKey(teamCode){
+  const { rest } = parseCode(teamCode);
+  if(!rest) return 'RR';
+  const label = roundLabel(rest);
+  if(label === 'Round of 16') return 'R16';
+  if(label === 'Quarterfinal') return 'QF';
+  if(label === 'Semifinal') return 'SF';
+  if(label === 'Bronze Match') return 'BRONZE';
+  if(label === 'Final') return 'FINAL';
+  return 'RR';
+}
+
+function isEmptyStanding(s){
+  return !s.player1 || s.player1 === s.teamCode;
+}
+
+function standingRowClass(s){
+  if(s.wins === 0 && s.loss === 0) return '';
+  return s.wins > s.loss ? 'win' : 'loss';
+}
+
+function pairCell(s){
+  if(isEmptyStanding(s)){
+    return `<td class="pair tbd"><span>TBD</span></td>`;
+  }
+  const p1 = s.player1 ? escapeHtml(s.player1) : '';
+  const p2 = s.player2 ? escapeHtml(s.player2) : '';
+  return `<td class="pair"><span>${p1}</span><span>${p2}</span></td>`;
+}
+
+function renderStageTables(rows){
+  // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
+  // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2" — blank means a single group).
+  // Empty RR slots are skipped, but playoff slots are always shown (as TBD if empty)
+  // so the bracket stages are visible before pairs have been seeded in.
+  const stages = new Map(); // stageKey -> array of rows
+  const rrGroups = new Map(); // bracket label -> rows
+  rows.forEach(s => {
+    const stageKey = standingsStageKey(s.teamCode);
+    if(stageKey === 'RR'){
+      if(isEmptyStanding(s)) return;
+      const brRaw = (s.bracket || '').trim();
+      const brLabel = brRaw === '' ? '1' : brRaw;
+      if(!rrGroups.has(brLabel)) rrGroups.set(brLabel, []);
+      rrGroups.get(brLabel).push(s);
+    } else {
+      if(!stages.has(stageKey)) stages.set(stageKey, []);
+      stages.get(stageKey).push(s);
+    }
+  });
+  // Order each bracket group by wins desc, then quotient desc
+  rrGroups.forEach(group => {
+    group.sort((a, b) => {
+      if(b.wins !== a.wins) return b.wins - a.wins;
+      const qa = a.quotient ?? -Infinity, qb = b.quotient ?? -Infinity;
+      return qb - qa;
+    });
+  });
+
+  if(rrGroups.size === 0 && stages.size === 0) return '';
+
+  let html = '';
+
+  // Round Robin block (if any)
+  if(rrGroups.size > 0){
+    html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
+      <table class="br-table"><thead><tr>
+        <th>Br</th><th>Pair</th><th>W</th><th>L</th><th>Q</th>
+      </tr></thead><tbody>`;
+    let badgeIdx = 0;
+    const badgeMap = new Map();
+    Array.from(rrGroups.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true})).forEach(brNum => {
+      if(!badgeMap.has(brNum)){ badgeMap.set(brNum, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
+      const badgeClass = badgeMap.get(brNum);
+      rrGroups.get(brNum).forEach(s => {
+        html += `<tr class="${standingRowClass(s)}">
+          <td class="br-badge ${badgeClass}">${escapeHtml(brNum)}</td>
+          ${pairCell(s)}
+          <td class="num">${s.wins}</td>
+          <td class="num">${s.loss}</td>
+          <td class="num">${fmtQ(s.quotient)}</td>
+        </tr>`;
+      });
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // Playoff-style stages, in a sensible order, unknown stages appended at the end
+  const stageKeys = Array.from(stages.keys()).sort((a,b) => {
+    const ia = STAGE_ORDER.indexOf(a), ib = STAGE_ORDER.indexOf(b);
+    if(ia === -1 && ib === -1) return a.localeCompare(b);
+    if(ia === -1) return 1;
+    if(ib === -1) return -1;
+    return ia - ib;
+  });
+  stageKeys.forEach(key => {
+    const meta = STAGE_META[key] || { label: key.charAt(0) + key.slice(1).toLowerCase(), banner:false };
+    html += `<div class="stage-block">`;
+    if(meta.banner){
+      html += `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span><span class="stage-sub">${escapeHtml(meta.sub || key)}</span></div>`;
+    } else {
+      html += `<div class="stage-caption">${escapeHtml(meta.label)}</div>`;
+    }
+    html += `<table class="br-table"><thead><tr>
+      <th>Pair</th><th>W</th><th>L</th><th>Q</th>
+    </tr></thead><tbody>`;
+    stages.get(key).forEach(s => {
+      html += `<tr class="${standingRowClass(s)}">
+        ${pairCell(s)}
+        <td class="num">${s.wins}</td>
+        <td class="num">${s.loss}</td>
+        <td class="num">${fmtQ(s.quotient)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+
+  return html;
+}
+
+function renderCategoryCard(cat, rows){
+  const stageHtml = renderStageTables(rows);
+  if(!stageHtml) return '';
+  const code = parseCode(rows[0].teamCode);
+  const codeLabel = code.division && code.event ? `${code.division}${code.event}` : '';
+  return `<div class="standings-col">
+    <div class="standings-col-head">
+      <span class="cat-title">${escapeHtml(cat)}</span>
+      ${codeLabel ? `<span class="cat-code">${escapeHtml(codeLabel)}</span>` : ''}
+    </div>${stageHtml}</div>`;
+}
+
+function renderClubSubsection(clubCode, rows){
+  const stageHtml = renderStageTables(rows);
+  if(!stageHtml) return '';
+  const club = CLUBS[clubCode];
+  return `<div class="club-subsection">
+    <div class="club-subhead">${escapeHtml(club ? club.full : clubCode)}</div>
+    ${stageHtml}
+  </div>`;
+}
+
+function renderCategoryColumn(cat, rows, clubOrder){
+  const byClub = new Map();
+  rows.forEach(s => {
+    const clubCode = parseCode(s.teamCode).club || 'OTHER';
+    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
+    byClub.get(clubCode).push(s);
+  });
+  let inner = '';
+  clubOrder.filter(c => byClub.has(c)).forEach(clubCode => {
+    inner += renderClubSubsection(clubCode, byClub.get(clubCode));
+  });
+  if(!inner) return '';
+  const code = parseCode(rows[0].teamCode);
+  const codeLabel = code.division && code.event ? `${code.division}${code.event}` : '';
+  return `<div class="standings-col">
+    <div class="standings-col-head">
+      <span class="cat-title">${escapeHtml(cat)}</span>
+      ${codeLabel ? `<span class="cat-code">${escapeHtml(codeLabel)}</span>` : ''}
+    </div>
+    <div class="category-clubs-row">${inner}</div>
+  </div>`;
+}
+
+function isDesktopStandings(){
+  return window.innerWidth >= 980;
+}
+
+// Capture/restore scroll positions of any scrolled-down elements inside a
+// container. Used so re-rendering standings (which rebuilds the whole
+// innerHTML on every live-data sync) doesn't snap the view back to the top.
+function captureScrollPositions(root){
+  const positions = [];
+  const counts = {};
+  root.querySelectorAll('*').forEach(node => {
+    if(node.scrollTop > 0 || node.scrollLeft > 0){
+      const key = node.className || node.tagName;
+      counts[key] = (counts[key] || 0) + 1;
+      positions.push({ key, occurrence: counts[key], top: node.scrollTop, left: node.scrollLeft });
+    }
+  });
+  return positions;
+}
+function restoreScrollPositions(root, positions){
+  if(!positions.length) return;
+  const counts = {};
+  root.querySelectorAll('*').forEach(node => {
+    const key = node.className || node.tagName;
+    counts[key] = (counts[key] || 0) + 1;
+    const match = positions.find(p => p.key === key && p.occurrence === counts[key]);
+    if(match){
+      node.scrollTop = match.top;
+      node.scrollLeft = match.left;
+    }
+  });
+}
+
+function renderStandings(){
+  const el = document.getElementById('standingsResults');
+  if(!el) return;
+  const scrollPositions = captureScrollPositions(el);
+  if(STANDINGS.length === 0){
+    el.innerHTML = `<div class="empty-state">No standings data yet.</div>`;
+    return;
+  }
+
+  // Group by club first (for the club order + win-totals summary), then by
+  // division+event category — used directly for the mobile/tablet layout,
+  // and re-grouped by category for the desktop layout below.
+  const byClub = new Map();
+  STANDINGS.forEach(s => {
+    const clubCode = parseCode(s.teamCode).club || 'OTHER';
+    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
+    byClub.get(clubCode).push(s);
+  });
+
+  const clubOrder = Object.keys(CLUBS).filter(c => byClub.has(c))
+    .concat(Array.from(byClub.keys()).filter(c => !CLUBS[c]));
+
+  // Club win-totals summary: sum wins across Round Robin rows only
+  const clubWins = clubOrder.map(clubCode => ({
+    code: clubCode,
+    name: CLUBS[clubCode] ? CLUBS[clubCode].full : clubCode,
+    wins: byClub.get(clubCode)
+      .filter(s => standingsStageKey(s.teamCode) === 'RR')
+      .reduce((sum, s) => sum + (s.wins || 0), 0)
+  }));
+  let summaryHtml = '';
+  if(clubWins.length > 1){
+    const topWins = Math.max(...clubWins.map(c => c.wins));
+    summaryHtml = `<div class="club-summary">`;
+    clubWins.forEach((c, i) => {
+      if(i > 0) summaryHtml += `<div class="club-summary-vs">VS</div>`;
+      const isLeader = c.wins === topWins && topWins > 0;
+      summaryHtml += `<div class="club-summary-item${isLeader ? ' leader' : ''}">
+        <span class="cs-wins">${c.wins}</span>
+        <span class="cs-label">wins</span>
+        <span class="cs-name">${escapeHtml(c.name)}</span>
+      </div>`;
+    });
+    summaryHtml += `</div>`;
+  }
+
+  let html = summaryHtml;
+
+  if(isDesktopStandings()){
+    // Desktop: one column per category (division+event), horizontally
+    // scrollable, with each club's bracket stacked inside that column.
+    const categories = new Map();
+    STANDINGS.forEach(s => {
+      const cat = divisionEventLabel(s.teamCode);
+      if(!categories.has(cat)) categories.set(cat, []);
+      categories.get(cat).push(s);
+    });
+    html += `<div class="standings-board standings-board-desktop">`;
+    Array.from(categories.keys()).sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0])).forEach(cat => {
+      html += renderCategoryColumn(cat, categories.get(cat), clubOrder);
+    });
+    html += `</div>`;
+  } else {
+    // Mobile/tablet: one column per club, categories stacked inside.
+    html += `<div class="standings-board">`;
+    clubOrder.forEach(clubCode => {
+      const clubRows = byClub.get(clubCode);
+      const club = CLUBS[clubCode];
+
+      const categories = new Map();
+      clubRows.forEach(s => {
+        const cat = divisionEventLabel(s.teamCode);
+        if(!categories.has(cat)) categories.set(cat, []);
+        categories.get(cat).push(s);
+      });
+
+      html += `<div class="standings-club-col">
+        <div class="club-head">
+          <span class="club-name">${escapeHtml(club ? club.full : clubCode)}</span>
+          ${club ? `<span class="club-full">${escapeHtml(club.name)}</span>` : ''}
+        </div>
+        <div class="standings-cards">`;
+      Array.from(categories.keys()).sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0])).forEach(cat => {
+        html += renderCategoryCard(cat, categories.get(cat));
+      });
+      html += `</div>`; // .standings-cards
+      html += `</div>`; // .standings-club-col
+    });
+    html += `</div>`; // .standings-board
+  }
+
+  el.innerHTML = html;
+  restoreScrollPositions(el, scrollPositions);
+}
+
+// Re-render standings if the viewport crosses the desktop/mobile breakpoint
+// (e.g. resizing the window or rotating a tablet), so the layout stays correct.
+let lastStandingsIsDesktop = isDesktopStandings();
+let standingsResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(standingsResizeTimer);
+  standingsResizeTimer = setTimeout(() => {
+    const nowDesktop = isDesktopStandings();
+    if(nowDesktop !== lastStandingsIsDesktop){
+      lastStandingsIsDesktop = nowDesktop;
+      const el = document.getElementById('standingsResults');
+      if(el && el.style.display !== 'none') renderStandings();
+    }
+  }, 200);
+});
 
 // Build quick division chips
 const chipDefs = ['IMD', 'IWD', 'IXD', 'HIMD', 'HIXD'];
@@ -682,6 +1375,29 @@ const acList = document.getElementById('acList');
 const resultsEl = document.getElementById('results');
 let acIndex = -1;
 let selectedTeam = null; // holds the chosen entry from allTeams (p1, p2, label, codes)
+
+const viewTabs = document.querySelectorAll('.view-tab');
+const searchPanelEl = document.getElementById('searchPanel');
+const divisionChipsEl = document.getElementById('divisionChips');
+const standingsResultsEl = document.getElementById('standingsResults');
+viewTabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    viewTabs.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if(btn.dataset.view === 'standings'){
+      searchPanelEl.style.display = 'none';
+      divisionChipsEl.style.display = 'none';
+      resultsEl.style.display = 'none';
+      standingsResultsEl.style.display = '';
+      renderStandings();
+    } else {
+      searchPanelEl.style.display = '';
+      divisionChipsEl.style.display = '';
+      resultsEl.style.display = '';
+      standingsResultsEl.style.display = 'none';
+    }
+  });
+});
 
 function renderAutocomplete(query){
   const q = query.trim().toLowerCase();
@@ -869,6 +1585,7 @@ function renderIntro(){
 
 renderIntro();
 loadLiveData();
+setInterval(loadLiveData, 15000);
 </script>
 </body>
 </html>
