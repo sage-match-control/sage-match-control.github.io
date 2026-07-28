@@ -145,7 +145,7 @@
     line-height:1.5;
   }
 
-  input[type="text"]{
+  input[type="text"], input[type="number"]{
     width:100%;
     padding:13px 16px;
     font-family:'Inter',sans-serif;
@@ -157,11 +157,11 @@
     outline:none;
     transition:border-color .15s, background .15s;
   }
-  input[type="text"]:focus{
+  input[type="text"]:focus, input[type="number"]:focus{
     border-color:var(--green);
     background:var(--white);
   }
-  input[type="text"]::placeholder{color:#9AA6A0;}
+  input[type="text"]::placeholder, input[type="number"]::placeholder{color:#9AA6A0;}
 
   /* ---------- Type picker ---------- */
   .type-grid{
@@ -464,6 +464,13 @@
       <input type="file" id="csvInput" accept=".csv" required>
     </div>
 
+    <!-- Step 4: Blank scoresheets -->
+    <div class="card">
+      <div class="step-label"><span class="step-num">4</span><span class="step-title">Add blank scoresheets</span><span style="font-size:13px;color:var(--ink-soft);">(optional)</span></div>
+      <p class="step-help">Extra unfilled sheets, shuffled in with the rest — handy for walk-up matches or backups.</p>
+      <input type="number" id="blankCount" name="blanks" min="0" step="1" value="0" placeholder="0">
+    </div>
+
     <div class="generate-row">
       <button type="submit" id="generateBtn">
         <span class="ball"></span>
@@ -492,6 +499,7 @@
 
   const dropzone = document.getElementById('dropzone');
   const csvInput = document.getElementById('csvInput');
+  const blankCountInput = document.getElementById('blankCount');
   const dzText = document.getElementById('dzText');
   const form = document.getElementById('sheetForm');
   const btn = document.getElementById('generateBtn');
@@ -609,8 +617,16 @@
     const type = form.querySelector('input[name="type"]:checked').value;
     const file = csvInput.files[0];
 
+    const blanksRaw = blankCountInput.value.trim();
+    const blanks = blanksRaw === '' ? 0 : Number(blanksRaw);
+
     if (!evt || !file) {
       setStatus('Add an event name and a CSV file to continue.', 'err');
+      return;
+    }
+
+    if (!Number.isInteger(blanks) || blanks < 0) {
+      setStatus('Blank scoresheets must be a whole number, 0 or more.', 'err');
       return;
     }
 
@@ -618,6 +634,7 @@
     fd.append('evt', evt);
     fd.append('type', type);
     fd.append('csv', file);
+    fd.append('blanks', String(blanks));
 
     btn.disabled = true;
     btn.classList.add('loading');
