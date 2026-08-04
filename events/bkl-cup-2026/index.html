@@ -309,6 +309,41 @@
     color:var(--court-dark);
   }
 
+  /* ---------- DAY PICKER ---------- */
+  .day-picker{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .day-picker label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:rgba(226,236,250,.55);
+  }
+  .day-picker select{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.03em;
+    padding:8px 34px 8px 16px;
+    border-radius:100px;
+    border:1px solid rgba(226,236,250,.28);
+    background:rgba(255,255,255,.05) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23E7ECF7" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+    background-size:11px;
+    color:var(--court-line);
+    cursor:pointer;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+  }
+  .day-picker select:hover, .day-picker select:focus{border-color:rgba(198,255,0,.6); outline:none;}
+  .day-picker select option{color:var(--ink);}
+
   /* ---------- LIVE MATCHES (Court Control) ---------- */
   .live-dot{
     display:inline-block;
@@ -1056,7 +1091,12 @@
   <div class="domination-line">6 Days. 1 Goal.<br>Total Domination.</div>
   <p class="subtitle">Find your pair's full match schedule — every round, every opponent, in order.</p>
 
-  <div class="view-tabs" role="tablist">
+  <div class="day-picker">
+    <label for="dayPicker">Select tournament day</label>
+    <select id="dayPicker"></select>
+  </div>
+
+  <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
     <button class="view-tab active" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
@@ -1073,11 +1113,12 @@
     </div>
   </div>
 
-  <div id="syncStatus" class="sync-status loading">Loading live schedule…</div>
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
 </header>
 
 <div class="wrap">
-  <div id="liveResults">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
     <div class="live-board-meta" id="liveBoardMeta"></div>
     <div id="liveBoard"></div>
   </div>
@@ -1101,14 +1142,29 @@
 </footer>
 
 <script>
-// Data now lives across three facility spreadsheets (matchNumber and
-// teamCode are unique across all of them, so their rows can just be
-// concatenated together once fetched).
-const FACILITIES = [
-  { name: 'Main',        sheetId: '1CIaLq4xUiEjnE3L5JipQCwlE7Vyj3d9O2BXtdcHh4d4' },
-  { name: 'Annex',       sheetId: '1IHlckteagusQYjSYQGElnzLx6KaerEdfsIqkyP4efig' },
-  { name: 'Dreamcourts', sheetId: '1Mh1q3-Su7LKzV89PFexDoWBAkaN8ZZUKCd2lgRuvwRk' }
+// The tournament runs across 6 days, each with its own set of facility
+// spreadsheets (matchNumber and teamCode are unique within a day across all
+// of that day's facilities, so a day's rows can just be concatenated once
+// fetched). Only Day 1's sheet links are known so far — the rest are
+// placeholders (empty facilities list) until those links are provided,
+// and the day picker/loadLiveData both treat that as "not available yet".
+const DAYS = [
+  {
+    label: 'Day 1 · Aug 14',
+    facilities: [
+      { name: 'Main',        sheetId: '1CIaLq4xUiEjnE3L5JipQCwlE7Vyj3d9O2BXtdcHh4d4' },
+      { name: 'Annex',       sheetId: '1IHlckteagusQYjSYQGElnzLx6KaerEdfsIqkyP4efig' },
+      { name: 'Dreamcourts', sheetId: '1Mh1q3-Su7LKzV89PFexDoWBAkaN8ZZUKCd2lgRuvwRk' }
+    ]
+  },
+  { label: 'Day 2 · Aug 15', facilities: [] },
+  { label: 'Day 3 · Aug 16', facilities: [] },
+  { label: 'Day 4 · Aug 21', facilities: [] },
+  { label: 'Day 5 · Aug 22', facilities: [] },
+  { label: 'Day 6 · Aug 23', facilities: [] }
 ];
+let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
+
 const CSV_GID = '2136121736';
 const STANDINGS_GID = '1507029786';
 const csvUrlFor = sheetId => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
@@ -1239,21 +1295,39 @@ async function fetchFacilityData(facility){
 }
 
 async function loadLiveData(){
+  // Nothing to load until the person has actually picked a day.
+  if(currentDayIndex === null) return false;
+
+  const day = DAYS[currentDayIndex];
   const statusEl = document.getElementById('syncStatus');
+
+  if(day.facilities.length === 0){
+    MATCHES = [];
+    MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
+    STANDINGS = [];
+    rebuildTeamIndex();
+    renderStandings();
+    renderLiveMatches();
+    runSearch();
+    statusEl.textContent = `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
+    statusEl.className = 'sync-status error';
+    return false;
+  }
+
   statusEl.textContent = 'Loading live schedule\u2026';
   statusEl.className = 'sync-status loading';
   try {
-    const results = await Promise.allSettled(FACILITIES.map(fetchFacilityData));
+    const results = await Promise.allSettled(day.facilities.map(fetchFacilityData));
 
     const succeeded = [];
     const failedNames = [];
     results.forEach((r, i) => {
       if(r.status === 'fulfilled') succeeded.push(r.value);
-      else failedNames.push(FACILITIES[i].name);
+      else failedNames.push(day.facilities[i].name);
     });
 
-    // matchNumber and teamCode are unique across facilities, so combining
-    // is just a concatenation — no de-duping or key-rewriting needed.
+    // matchNumber and teamCode are unique across a day's facilities, so
+    // combining is just a concatenation — no de-duping or key-rewriting needed.
     const matches = succeeded.flatMap(f => f.matches).sort((a,b) => a.num - b.num);
     const standings = succeeded.flatMap(f => f.standings);
 
@@ -1269,15 +1343,15 @@ async function loadLiveData(){
 
     const now = new Date();
     if(failedNames.length){
-      statusEl.textContent = `Live (partial) \u00b7 synced ${now.toLocaleTimeString()} \u00b7 couldn't reach: ${failedNames.join(', ')}`;
+      statusEl.textContent = `${day.label} \u00b7 Live (partial) \u00b7 synced ${now.toLocaleTimeString()} \u00b7 couldn't reach: ${failedNames.join(', ')}`;
       statusEl.className = 'sync-status error';
     } else {
-      statusEl.textContent = 'Live \u00b7 synced ' + now.toLocaleTimeString();
+      statusEl.textContent = `${day.label} \u00b7 Live \u00b7 synced ` + now.toLocaleTimeString();
       statusEl.className = 'sync-status ok';
     }
     return true;
   } catch(err){
-    statusEl.innerHTML = "Couldn't load live data (" + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
+    statusEl.innerHTML = `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
     statusEl.className = 'sync-status error';
     const retryBtn = document.getElementById('retryBtn');
     if(retryBtn) retryBtn.addEventListener('click', loadLiveData);
@@ -1793,6 +1867,61 @@ viewTabs.forEach(btn => {
     if(view === 'live') renderLiveMatches();
   });
 });
+
+// ---------- Day picker: gates the tabs until a day is actually chosen ----------
+const dayPickerEl = document.getElementById('dayPicker');
+const viewTabsWrapEl = document.getElementById('viewTabsWrap');
+const dayPromptEl = document.getElementById('dayPrompt');
+const syncStatusEl = document.getElementById('syncStatus');
+
+if(dayPickerEl){
+  dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day\u2026</option>' +
+    DAYS.map((d, i) => `<option value="${i}">${escapeHtml(d.label)}</option>`).join('');
+
+  dayPickerEl.addEventListener('change', () => {
+    const idx = parseInt(dayPickerEl.value, 10);
+    if(isNaN(idx)) return;
+    currentDayIndex = idx;
+    const day = DAYS[idx];
+    const hasFacilities = day.facilities.length > 0;
+
+    if(hasFacilities){
+      // Reveal the tabs/status now that a day with real data is chosen, and
+      // always land on Live Matches so switching days doesn't leave a stale
+      // search result or standings selection from a different day on screen.
+      dayPromptEl.style.display = 'none';
+      viewTabsWrapEl.style.display = '';
+      syncStatusEl.style.display = '';
+      viewTabs.forEach(b => b.classList.remove('active'));
+      const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
+      if(liveTabBtn) liveTabBtn.classList.add('active');
+      liveResultsEl.style.display = '';
+      searchPanelEl.style.display = 'none';
+      resultsEl.style.display = 'none';
+      standingsResultsEl.style.display = 'none';
+    } else {
+      // No sheets loaded for this day yet — keep the tabs hidden entirely
+      // rather than exposing tabs full of empty states.
+      viewTabsWrapEl.style.display = 'none';
+      syncStatusEl.style.display = 'none';
+      liveResultsEl.style.display = 'none';
+      searchPanelEl.style.display = 'none';
+      resultsEl.style.display = 'none';
+      standingsResultsEl.style.display = 'none';
+      dayPromptEl.textContent = `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
+      dayPromptEl.style.display = '';
+    }
+
+    // Reset per-day UI state so nothing carries over from a previous day.
+    selectedTeam = null;
+    input.value = '';
+    selectedStandingsCategory = null;
+    hiddenCategories = new Set();
+    if(catInput) catInput.value = '';
+
+    loadLiveData();
+  });
+}
 
 function renderAutocomplete(query){
   const q = query.trim().toLowerCase();
