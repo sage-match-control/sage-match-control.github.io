@@ -877,7 +877,7 @@
 
   <div class="quick-divisions" id="divisionChips"></div>
   <div class="regal-rule"><span class="diamond"></span></div>
-  <div id="syncStatus" class="sync-status loading">Loading live schedule from Google Sheets…</div>
+  <div id="syncStatus" class="sync-status loading">Loading live schedule data…</div>
 </header>
 
 <div class="wrap">
@@ -989,7 +989,7 @@ function rowsToStandings(rows){
 
 async function loadLiveData(){
   const statusEl = document.getElementById('syncStatus');
-  statusEl.textContent = 'Loading live schedule from Google Sheets\u2026';
+  statusEl.textContent = 'Loading live schedule data\u2026';
   statusEl.className = 'sync-status loading';
   try {
     const [matchRes, standingsRes] = await Promise.all([
