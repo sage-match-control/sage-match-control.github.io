@@ -156,13 +156,18 @@
     text-align:left;
   }
   .search-row{display:flex; gap:10px;}
-  input#teamInput{
+  .input-wrap{
+    position:relative;
     flex:1;
+    min-width:0;
+  }
+  input#teamInput{
+    width:100%;
     font-family:'IBM Plex Mono',monospace;
     font-size:20px;
     font-weight:600;
     letter-spacing:.03em;
-    padding:14px 16px;
+    padding:14px 40px 14px 16px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
     background:#fff;
@@ -173,6 +178,27 @@
   }
   input#teamInput:focus{border-color:var(--court);}
   input#teamInput::placeholder{color:#9AA3B5; font-weight:500; text-transform:none;}
+  .clear-input-btn{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    position:absolute;
+    right:6px;
+    top:50%;
+    transform:translateY(-50%);
+    width:28px;
+    height:28px;
+    border:none;
+    border-radius:50%;
+    background:rgba(20,27,44,.08);
+    color:var(--muted);
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .clear-input-btn.show{display:flex;}
+  .clear-input-btn:hover{background:rgba(20,27,44,.16); color:var(--ink);}
   button#searchBtn{
     font-family:'Inter',sans-serif;
     font-weight:700;
@@ -1107,7 +1133,10 @@
   <div class="search-panel" id="searchPanel" style="display:none;">
     <label class="search-label" for="teamInput">Enter your pair's names</label>
     <div class="search-row autocomplete">
-      <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
       <div id="acList" class="ac-list"></div>
       <button id="searchBtn">Find matches</button>
     </div>
@@ -1915,6 +1944,7 @@ if(dayPickerEl){
     // Reset per-day UI state so nothing carries over from a previous day.
     selectedTeam = null;
     input.value = '';
+    if(typeof updateClearBtn === 'function') updateClearBtn();
     selectedStandingsCategory = null;
     hiddenCategories = new Set();
     if(catInput) catInput.value = '';
@@ -1943,9 +1973,26 @@ function selectAcItem(el){
   if(!team) return;
   input.value = team.label;
   selectedTeam = team;
+  updateClearBtn();
 }
 
-input.addEventListener('input', () => { selectedTeam = null; renderAutocomplete(input.value); });
+const clearInputBtn = document.getElementById('clearInputBtn');
+function updateClearBtn(){
+  if(clearInputBtn) clearInputBtn.classList.toggle('show', input.value.length > 0);
+}
+if(clearInputBtn){
+  clearInputBtn.addEventListener('click', () => {
+    input.value = '';
+    selectedTeam = null;
+    acList.classList.remove('show');
+    acList.innerHTML = '';
+    updateClearBtn();
+    runSearch();
+    input.focus();
+  });
+}
+
+input.addEventListener('input', () => { selectedTeam = null; renderAutocomplete(input.value); updateClearBtn(); });
 input.addEventListener('focus', () => renderAutocomplete(input.value));
 document.addEventListener('click', (e) => {
   if(!e.target.closest('.autocomplete')) acList.classList.remove('show');
