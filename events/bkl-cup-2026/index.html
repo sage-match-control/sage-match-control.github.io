@@ -289,16 +289,19 @@
   }
   .qr-panel img{
     display:block;
-    width:170px;
-    height:170px;
+    width:180px;
+    height:180px;
     border-radius:8px;
   }
   .qr-panel .qr-link-text{
     font-family:'IBM Plex Mono',monospace;
     font-size:13px;
     font-weight: bolder;
-    max-width:170px;
+    max-width:180px;
     line-height:1.4;
+    margin-top:8px;
+    overflow-wrap:break-word;
+    word-break:break-word;
   }
   .qr-panel .qr-caption{
     margin-top:8px;
@@ -307,7 +310,7 @@
     letter-spacing:.06em;
     text-transform:uppercase;
     color:var(--muted);
-    max-width:170px;
+    max-width:180px;
     line-height:1.4;
   }
   @media (min-width:900px){
@@ -1198,11 +1201,46 @@ const DAYS = [
       { name: 'Dreamcourts', sheetId: '1Mh1q3-Su7LKzV89PFexDoWBAkaN8ZZUKCd2lgRuvwRk' }
     ]
   },
-  { label: 'Day 2 · Aug 15', facilities: [] },
-  { label: 'Day 3 · Aug 16', facilities: [] },
-  { label: 'Day 4 · Aug 21', facilities: [] },
-  { label: 'Day 5 · Aug 22', facilities: [] },
-  { label: 'Day 6 · Aug 23', facilities: [] }
+  { 
+    label: 'Day 2 · Aug 15', 
+    facilities: [
+      { name: 'Main',        sheetId: '1hbjqbH3H1Z-iLVgQpztwxw_mTKQ6UsvAsOo_cx6cXuM' },
+      { name: 'Annex',       sheetId: '1n6VKx8dDbbDNcCbP4RtizwSO4MRQ-PCTsYaOK4vNuy4' },
+      { name: 'Dreamcourts', sheetId: '1_lakEi5whN4ZvssaIDfnUA8AWM5huIU8mWV55dCxIsE' }
+    ] 
+  },
+  { 
+    label: 'Day 3 · Aug 16', 
+    facilities: [
+      { name: 'Main',        sheetId: '1resKkD3e8kjxJEcQkruzKW8N93NFjuqgtmD9_hwYHQs' },
+      { name: 'Annex',       sheetId: '1KCjXMnxnA-0x7eh5e-t_IdfSIypUnNKfTHwTaZjd1mc' },
+      { name: 'Dreamcourts', sheetId: '1H5aHgogxauIgbb3xoBSuLQjVZCCdZcI_9iBXUMp_9SI' }
+    ] 
+  },
+  { 
+    label: 'Day 4 · Aug 21', 
+    facilities: [
+      { name: 'Main',        sheetId: '1WnkP8P9UoykBBMsQ56pPxOBH5FBQxaRjg_44DvdoTF8' },
+      { name: 'Annex',       sheetId: '1eYwjJk4aaW7nBXe_r-0A2KtrIq-iAsum0p9XyNt7AFE' },
+      { name: 'Dreamcourts', sheetId: '11ru3OPXzXGoex3Vbl8rIeP0ifhRh3oR_pkpT7ZTCwbo' }
+    ] 
+  },
+  { 
+    label: 'Day 5 · Aug 22', 
+    facilities: [
+      { name: 'Main',        sheetId: '' },
+      { name: 'Annex',       sheetId: '' },
+      { name: 'Dreamcourts', sheetId: '' }
+    ] 
+  },
+  { 
+    label: 'Day 6 · Aug 23', 
+    facilities: [
+      { name: 'Main',        sheetId: '' },
+      { name: 'Annex',       sheetId: '' },
+      { name: 'Dreamcourts', sheetId: '' }
+    ] 
+  }
 ];
 let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
 
@@ -1335,14 +1373,23 @@ async function fetchFacilityData(facility){
   return { facility: facility.name, matches, standings };
 }
 
+// A day counts as "loaded" only if at least one of its facilities actually
+// has a sheetId set — some placeholder days list all 3 facilities with
+// name-only entries and an empty sheetId ('') rather than an empty array,
+// so a plain array-length check isn't enough to detect that.
+function dayHasFacilities(day){
+  return day.facilities.some(f => f.sheetId && f.sheetId.trim() !== '');
+}
+
 async function loadLiveData(){
   // Nothing to load until the person has actually picked a day.
   if(currentDayIndex === null) return false;
 
   const day = DAYS[currentDayIndex];
   const statusEl = document.getElementById('syncStatus');
+  const activeFacilities = day.facilities.filter(f => f.sheetId && f.sheetId.trim() !== '');
 
-  if(day.facilities.length === 0){
+  if(activeFacilities.length === 0){
     MATCHES = [];
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = [];
@@ -1358,13 +1405,13 @@ async function loadLiveData(){
   statusEl.textContent = 'Loading live schedule\u2026';
   statusEl.className = 'sync-status loading';
   try {
-    const results = await Promise.allSettled(day.facilities.map(fetchFacilityData));
+    const results = await Promise.allSettled(activeFacilities.map(fetchFacilityData));
 
     const succeeded = [];
     const failedNames = [];
     results.forEach((r, i) => {
       if(r.status === 'fulfilled') succeeded.push(r.value);
-      else failedNames.push(day.facilities[i].name);
+      else failedNames.push(activeFacilities[i].name);
     });
 
     // matchNumber and teamCode are unique across a day's facilities, so
@@ -1395,22 +1442,82 @@ async function loadLiveData(){
     statusEl.innerHTML = `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
     statusEl.className = 'sync-status error';
     const retryBtn = document.getElementById('retryBtn');
-    if(retryBtn) retryBtn.addEventListener('click', loadLiveData);
+    if(retryBtn) retryBtn.addEventListener('click', async () => {
+      const ok = await loadLiveData();
+      if(ok && typeof revealLiveTabsAfterLoad === 'function') revealLiveTabsAfterLoad();
+    });
     return false;
   }
 }
 
+// Shared by the day picker and the retry button: once loadLiveData resolves
+// true, reveal the tabs/status and land on Live Matches so a successful
+// retry doesn't leave the person stuck on the error prompt.
+function revealLiveTabsAfterLoad(){
+  const dayPromptEl = document.getElementById('dayPrompt');
+  const viewTabsWrapEl = document.getElementById('viewTabsWrap');
+  const syncStatusEl = document.getElementById('syncStatus');
+  const liveResultsEl = document.getElementById('liveResults');
+  if(dayPromptEl) dayPromptEl.style.display = 'none';
+  if(viewTabsWrapEl) viewTabsWrapEl.style.display = '';
+  if(syncStatusEl) syncStatusEl.style.display = '';
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
+  if(liveTabBtn) liveTabBtn.classList.add('active');
+  if(liveResultsEl) liveResultsEl.style.display = '';
+}
+
 const DIVISIONS = {
+  // Beginner
   B18: { name: 'B18', full: 'Beginner 18+' },
   B35: { name: 'B35', full: 'Beginner 35+' },
-  B50: { name: 'B50', full: 'Beginner 50+' }
+  B50: { name: 'B50', full: 'Beginner 50+' },
+  // Advanced Beginner
+  AB18: { name: 'AB18', full: 'Advanced Beginner 18+' },
+  AB35: { name: 'AB35', full: 'Advanced Beginner 35+' },
+  AB50: { name: 'AB50', full: 'Advanced Beginner 50+' },
+  // Low Intermediate
+  LI18: { name: 'LI18', full: 'Low Intermediate 18+' },
+  LI40: { name: 'LI40', full: 'Low Intermediate 40+' },
+  // High Intermediate
+  HI18: { name: 'HI18', full: 'High Intermediate 18+' },
+  HI40: { name: 'HI40', full: 'High Intermediate 40+' },
+  // Advanced
+  A18: { name: 'A18', full: 'Advanced 18+' },
+  A40: { name: 'A40', full: 'Advanced 40+' },
+  // Open & Junior
+  O: { name: 'O', full: 'Open' },
+  J: { name: 'J', full: '17 Under Junior' }
 };
-const EVENTS = { MD: "Men's Doubles", WD: "Women's Doubles", XD: "Mixed Doubles" };
+
+const EVENTS = {
+  WD: "Women's Doubles",
+  MD: "Men's Doubles",
+  XD: "Mixed Doubles",
+  WS: "Women's Singles",
+  MS: "Men's Singles"
+};
 
 // Fixed display order for standings columns: Beginner 18+, 35+, 50+ (youngest
 // age group first), then Women's / Men's / Mixed Doubles within each.
-const DIVISION_ORDER = ['Beginner 18+', 'Beginner 35+', 'Beginner 50+'];
-const EVENT_ORDER = ['WD', 'MD', 'XD'];
+const DIVISION_ORDER = [
+  'Beginner 18+',
+  'Beginner 35+',
+  'Beginner 50+',
+  'Advanced Beginner 18+',
+  'Advanced Beginner 35+',
+  'Advanced Beginner 50+',
+  'Low Intermediate 18+',
+  'Low Intermediate 40+',
+  'High Intermediate 18+',
+  'High Intermediate 40+',
+  'Advanced 18+',
+  'Advanced 40+',
+  'Open',
+  '17 Under Junior'
+];
+
+const EVENT_ORDER = ['WD', 'MD', 'XD', 'WS', 'MS'];
 
 // Looks up a division's display info, falling back to a derived "Beginner N+"
 // label for any B## age group that isn't explicitly listed above (e.g. a
@@ -1423,10 +1530,17 @@ function divisionMeta(divCode){
   return { name: divCode, full: divCode };
 }
 
-function parseCode(code){
-  const m = code.match(/^(B\d+)(MD|WD|XD)_(.+)$/);
-  if(!m) return { division:null, event:null, rest: code };
-  return { division: m[1], event: m[2], rest: m[3] };
+
+function parseCode(code) {
+  // Regex dynamically extracts division prefix and event type from valid options
+  const divisionKeys = Object.keys(DIVISIONS).join('|'); // e.g. "B18|B35|...|J17"
+  const eventKeys = Object.keys(EVENTS).join('|');       // e.g. "WD|MD|XD|WS|MS"
+
+  const regex = new RegExp(`^(${divisionKeys})(${eventKeys})_(.+)$`);
+  const m = code.match(regex);
+
+  if (!m) return { division: null, event: null, rest: code };
+  return { division: m[1], event: m[2], rest: m[3] || '' };
 }
 
 // Courts 1-4 -> Main, 5-9 -> Annex, 10-15 -> Dreamcourts
@@ -1933,39 +2047,27 @@ if(dayPickerEl){
   dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day\u2026</option>' +
     DAYS.map((d, i) => `<option value="${i}">${escapeHtml(d.label)}</option>`).join('');
 
-  dayPickerEl.addEventListener('change', () => {
+  dayPickerEl.addEventListener('change', async () => {
     const idx = parseInt(dayPickerEl.value, 10);
     if(isNaN(idx)) return;
     currentDayIndex = idx;
     const day = DAYS[idx];
-    const hasFacilities = day.facilities.length > 0;
+    const hasFacilities = dayHasFacilities(day);
 
-    if(hasFacilities){
-      // Reveal the tabs/status now that a day with real data is chosen, and
-      // always land on Live Matches so switching days doesn't leave a stale
-      // search result or standings selection from a different day on screen.
-      dayPromptEl.style.display = 'none';
-      viewTabsWrapEl.style.display = '';
-      syncStatusEl.style.display = '';
-      viewTabs.forEach(b => b.classList.remove('active'));
-      const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
-      if(liveTabBtn) liveTabBtn.classList.add('active');
-      liveResultsEl.style.display = '';
-      searchPanelEl.style.display = 'none';
-      resultsEl.style.display = 'none';
-      standingsResultsEl.style.display = 'none';
-    } else {
-      // No sheets loaded for this day yet — keep the tabs hidden entirely
-      // rather than exposing tabs full of empty states.
-      viewTabsWrapEl.style.display = 'none';
-      syncStatusEl.style.display = 'none';
-      liveResultsEl.style.display = 'none';
-      searchPanelEl.style.display = 'none';
-      resultsEl.style.display = 'none';
-      standingsResultsEl.style.display = 'none';
-      dayPromptEl.textContent = `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
-      dayPromptEl.style.display = '';
-    }
+    // Switching days always drops back to the same "first screen" shown on
+    // initial page load — tabs/status hidden, just the centered prompt —
+    // so nothing from the previous day (tabs, search results, standings)
+    // stays on screen while the new day's data is loading.
+    viewTabsWrapEl.style.display = 'none';
+    syncStatusEl.style.display = 'none';
+    liveResultsEl.style.display = 'none';
+    searchPanelEl.style.display = 'none';
+    resultsEl.style.display = 'none';
+    standingsResultsEl.style.display = 'none';
+    dayPromptEl.textContent = hasFacilities
+      ? `Loading ${day.label}\u2026`
+      : `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
+    dayPromptEl.style.display = '';
 
     // Reset per-day UI state so nothing carries over from a previous day.
     selectedTeam = null;
@@ -1975,7 +2077,17 @@ if(dayPickerEl){
     hiddenCategories = new Set();
     if(catInput) catInput.value = '';
 
-    loadLiveData();
+    const loaded = hasFacilities ? await loadLiveData() : false;
+
+    if(loaded){
+      revealLiveTabsAfterLoad();
+    } else if(hasFacilities){
+      // Fetch failed — surface the error/retry (written into syncStatus by
+      // loadLiveData) instead of the generic prompt, tabs stay hidden.
+      dayPromptEl.style.display = 'none';
+      syncStatusEl.style.display = '';
+    }
+    // No facilities for this day yet: dayPromptEl already shows that message.
   });
 }
 
