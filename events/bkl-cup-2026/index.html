@@ -293,6 +293,13 @@
     height:170px;
     border-radius:8px;
   }
+  .qr-panel .qr-link-text{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    font-weight: bolder;
+    max-width:170px;
+    line-height:1.4;
+  }
   .qr-panel .qr-caption{
     margin-top:8px;
     font-family:'IBM Plex Mono',monospace;
@@ -811,6 +818,10 @@
       max-height:none;
       padding-bottom:20px;
       align-items:stretch;
+      justify-content:center;
+    }
+    .standings-board-desktop.has-overflow{
+      justify-content:flex-start;
     }
     .standings-board-desktop .standings-col{
       flex:0 0 360px;
@@ -1088,6 +1099,7 @@
 
 <div class="qr-panel" aria-hidden="false">
   <img src="bkl-cup-2026-qr.png" alt="QR code linking to this match finder site" />
+  <div class="qr-link-text">tinyurl.com/SAGExBKLCup</div>
   <div class="qr-caption">Scan to open the Match Finder &amp; Standings on your phone</div>
 </div>
 
@@ -1811,6 +1823,18 @@ function renderStandingsBody(){
   }
 
   bodyEl.innerHTML = html;
+  updateStandingsBoardAlignment();
+}
+
+// Keeps the desktop standings board centered when its category cards all fit
+// on screen without needing to scroll; once there are enough categories to
+// overflow, it switches to left-aligned so the first card isn't cut off
+// (a centered flex row can otherwise hide overflowing content off-screen).
+function updateStandingsBoardAlignment(){
+  const board = standingsBodyEl && standingsBodyEl.querySelector('.standings-board-desktop');
+  if(!board) return;
+  const hasOverflow = board.scrollWidth > board.clientWidth + 1;
+  board.classList.toggle('has-overflow', hasOverflow);
 }
 
 // Re-render standings if the viewport crosses the desktop/mobile breakpoint
@@ -1825,6 +1849,8 @@ window.addEventListener('resize', () => {
       lastStandingsIsDesktop = nowDesktop;
       const el = standingsResultsEl;
       if(el && el.style.display !== 'none') renderStandings();
+    } else {
+      updateStandingsBoardAlignment();
     }
   }, 200);
 });
