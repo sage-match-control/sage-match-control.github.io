@@ -1531,16 +1531,28 @@ function divisionMeta(divCode){
 }
 
 
+// Built once from the static DIVISIONS/EVENTS maps — compiling a RegExp on
+// every call (as this used to do) added up fast, since parseCode runs for
+// every match/standing row on every render, and renders happen on every
+// 15s live-data poll. Same reasoning for the code -> parsed-result cache
+// below: the same teamCodes get parsed repeatedly across renderStandings,
+// ticketHTML, liveTableRowsHTML, renderIntro, etc. in a single render pass.
+const CODE_REGEX = new RegExp(
+  `^(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
+);
+const parseCodeCache = new Map();
+
 function parseCode(code) {
-  // Regex dynamically extracts division prefix and event type from valid options
-  const divisionKeys = Object.keys(DIVISIONS).join('|'); // e.g. "B18|B35|...|J17"
-  const eventKeys = Object.keys(EVENTS).join('|');       // e.g. "WD|MD|XD|WS|MS"
+  let cached = parseCodeCache.get(code);
+  if(cached) return cached;
 
-  const regex = new RegExp(`^(${divisionKeys})(${eventKeys})_(.+)$`);
-  const m = code.match(regex);
+  const m = code.match(CODE_REGEX);
 
-  if (!m) return { division: null, event: null, rest: code };
-  return { division: m[1], event: m[2], rest: m[3] || '' };
+  const result = !m
+    ? { division: null, event: null, rest: code }
+    : { division: m[1], event: m[2], rest: m[3] || '' };
+  parseCodeCache.set(code, result);
+  return result;
 }
 
 // Courts 1-4 -> Main, 5-9 -> Annex, 10-15 -> Dreamcourts
@@ -1795,10 +1807,15 @@ function isDesktopStandings(){
 // Capture/restore scroll positions of any scrolled-down elements inside a
 // container. Used so re-rendering standings (which rebuilds the whole
 // innerHTML on every live-data sync) doesn't snap the view back to the top.
+// Scoped to the actual scrollable containers (the desktop board + each
+// category column) rather than every descendant node — this panel can hold
+// hundreds of nodes (rows, cells, spans) once several categories are shown,
+// and only a couple of them are ever scrollable.
+const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col';
 function captureScrollPositions(root){
   const positions = [];
   const counts = {};
-  root.querySelectorAll('*').forEach(node => {
+  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
     if(node.scrollTop > 0 || node.scrollLeft > 0){
       // Prefer a stable identity (e.g. which category a .standings-col
       // belongs to) over DOM position — the same category can render in a
@@ -1816,7 +1833,7 @@ function captureScrollPositions(root){
 function restoreScrollPositions(root, positions){
   if(!positions.length) return;
   const counts = {};
-  root.querySelectorAll('*').forEach(node => {
+  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
     const identity = node.dataset && node.dataset.catKey;
     const key = identity ? `catKey:${identity}` : (node.className || node.tagName);
     counts[key] = (counts[key] || 0) + 1;
@@ -2455,7 +2472,19 @@ function renderIntro(){
 
 renderIntro();
 loadLiveData();
-setInterval(loadLiveData, 15000);
+
+// Pause the 15s poll while the tab/app is backgrounded — no point spending
+// battery and mobile data re-fetching three spreadsheets nobody's looking
+// at — and catch up with an immediate refresh as soon as it's visible again.
+let pollTimer = setInterval(loadLiveData, 15000);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    clearInterval(pollTimer);
+  } else {
+    loadLiveData();
+    pollTimer = setInterval(loadLiveData, 15000);
+  }
+});
 </script>
 </body>
 </html>
