@@ -4,9 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BKL Pickleball Cup 2026 — Match Finder</title>
+<meta name="description" content="Find your pair's full BKL Pickleball Cup 2026 match schedule, live scores, and standings.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="BKL Pickleball Cup 2026 — Match Finder">
+<meta property="og:description" content="Find your pair's full match schedule, live scores, and standings.">
+<meta property="og:image" content="../../assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --court:#C6FF00;
@@ -1051,6 +1056,27 @@
   .tag.round{background:var(--cork); color:#fff;}
   .tag.pool{background:rgba(198,255,0,.14); color:#0F766E;}
 
+  /* Flags a searched pair's next unplayed, not-yet-live match so it stands
+     out from the rest of their schedule at a glance. */
+  .ticket.next{
+    border-left:6px solid var(--amber);
+    box-shadow:var(--card-shadow), 0 0 0 2px rgba(255,212,0,.4);
+  }
+  .next-pill{
+    display:inline-flex;
+    align-items:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:#6B4E00;
+    background:rgba(255,212,0,.28);
+    border:1px solid rgba(255,212,0,.85);
+    border-radius:100px;
+    padding:6px 13px;
+  }
+
   footer{
     text-align:center;
     color:rgba(226,236,250,.5);
@@ -1073,6 +1099,7 @@
     .center-pill{font-size:13px; padding:5px 14px;}
     .court-pill{font-size:13px; padding:5px 14px;}
     .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
+    .next-pill{font-size:11px; padding:5px 11px;}
     .names-row{gap:8px; margin-bottom:14px;}
     .team-block .players{font-size:14px;}
     .score-row{font-size:30px;}
@@ -2054,11 +2081,98 @@ viewTabs.forEach(btn => {
   });
 });
 
+// ---------- Persistence: remember the last day + search across reloads ----------
+// Wrapped in try/catch since localStorage can throw in some private-browsing
+// or embedded contexts — this is a nice-to-have, never worth breaking the
+// app over.
+const STORAGE_DAY_KEY = 'bklCup2026.dayIndex';
+const STORAGE_SEARCH_KEY = 'bklCup2026.search';
+function saveDayIndex(idx){ try{ localStorage.setItem(STORAGE_DAY_KEY, String(idx)); } catch(e){} }
+function loadSavedDayIndex(){
+  try{
+    const v = localStorage.getItem(STORAGE_DAY_KEY);
+    const idx = v === null ? NaN : parseInt(v, 10);
+    return (!isNaN(idx) && idx >= 0 && idx < DAYS.length) ? idx : null;
+  } catch(e){ return null; }
+}
+function saveSearchState(raw){ try{ localStorage.setItem(STORAGE_SEARCH_KEY, raw); } catch(e){} }
+function loadSavedSearch(){ try{ return localStorage.getItem(STORAGE_SEARCH_KEY) || ''; } catch(e){ return ''; } }
+function clearSavedSearch(){ try{ localStorage.removeItem(STORAGE_SEARCH_KEY); } catch(e){} }
+
 // ---------- Day picker: gates the tabs until a day is actually chosen ----------
 const dayPickerEl = document.getElementById('dayPicker');
 const viewTabsWrapEl = document.getElementById('viewTabsWrap');
 const dayPromptEl = document.getElementById('dayPrompt');
 const syncStatusEl = document.getElementById('syncStatus');
+
+// Shared by the change listener below and the initial-load hydration at the
+// bottom of the script, so a page reload can silently re-run the exact same
+// flow as picking the day by hand. isInitialLoad only affects whether a
+// previously-saved search is brought back afterwards.
+async function selectDay(idx, { isInitialLoad = false } = {}){
+  currentDayIndex = idx;
+  if(dayPickerEl) dayPickerEl.value = String(idx);
+  const day = DAYS[idx];
+  const hasFacilities = dayHasFacilities(day);
+
+  // Switching days always drops back to the same "first screen" shown on
+  // initial page load — tabs/status hidden, just the centered prompt —
+  // so nothing from the previous day (tabs, search results, standings)
+  // stays on screen while the new day's data is loading.
+  viewTabsWrapEl.style.display = 'none';
+  syncStatusEl.style.display = 'none';
+  liveResultsEl.style.display = 'none';
+  searchPanelEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+  standingsResultsEl.style.display = 'none';
+  dayPromptEl.textContent = hasFacilities
+    ? `Loading ${day.label}\u2026`
+    : `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
+  dayPromptEl.style.display = '';
+
+  // Reset per-day UI state so nothing carries over from a previous day.
+  selectedTeam = null;
+  input.value = '';
+  if(typeof updateClearBtn === 'function') updateClearBtn();
+  selectedStandingsCategory = null;
+  hiddenCategories = new Set();
+  if(catInput) catInput.value = '';
+
+  saveDayIndex(idx);
+  // A manually-chosen day drops any search saved for a different day, same
+  // as clearing the input above — the initial-load hydration path re-adds
+  // it right back below if there is one.
+  if(!isInitialLoad) clearSavedSearch();
+
+  const loaded = hasFacilities ? await loadLiveData() : false;
+
+  if(loaded){
+    revealLiveTabsAfterLoad();
+
+    if(isInitialLoad){
+      const savedSearch = loadSavedSearch();
+      if(savedSearch){
+        input.value = savedSearch;
+        if(typeof updateClearBtn === 'function') updateClearBtn();
+        runSearch();
+        // Land on Match Finder so the restored search is visible right
+        // away, instead of sitting hidden behind the default Live tab.
+        viewTabs.forEach(b => b.classList.remove('active'));
+        const finderTabBtn = document.querySelector('.view-tab[data-view="finder"]');
+        if(finderTabBtn) finderTabBtn.classList.add('active');
+        liveResultsEl.style.display = 'none';
+        searchPanelEl.style.display = '';
+        resultsEl.style.display = '';
+      }
+    }
+  } else if(hasFacilities){
+    // Fetch failed — surface the error/retry (written into syncStatus by
+    // loadLiveData) instead of the generic prompt, tabs stay hidden.
+    dayPromptEl.style.display = 'none';
+    syncStatusEl.style.display = '';
+  }
+  // No facilities for this day yet: dayPromptEl already shows that message.
+}
 
 if(dayPickerEl){
   dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day\u2026</option>' +
@@ -2067,44 +2181,7 @@ if(dayPickerEl){
   dayPickerEl.addEventListener('change', async () => {
     const idx = parseInt(dayPickerEl.value, 10);
     if(isNaN(idx)) return;
-    currentDayIndex = idx;
-    const day = DAYS[idx];
-    const hasFacilities = dayHasFacilities(day);
-
-    // Switching days always drops back to the same "first screen" shown on
-    // initial page load — tabs/status hidden, just the centered prompt —
-    // so nothing from the previous day (tabs, search results, standings)
-    // stays on screen while the new day's data is loading.
-    viewTabsWrapEl.style.display = 'none';
-    syncStatusEl.style.display = 'none';
-    liveResultsEl.style.display = 'none';
-    searchPanelEl.style.display = 'none';
-    resultsEl.style.display = 'none';
-    standingsResultsEl.style.display = 'none';
-    dayPromptEl.textContent = hasFacilities
-      ? `Loading ${day.label}\u2026`
-      : `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
-    dayPromptEl.style.display = '';
-
-    // Reset per-day UI state so nothing carries over from a previous day.
-    selectedTeam = null;
-    input.value = '';
-    if(typeof updateClearBtn === 'function') updateClearBtn();
-    selectedStandingsCategory = null;
-    hiddenCategories = new Set();
-    if(catInput) catInput.value = '';
-
-    const loaded = hasFacilities ? await loadLiveData() : false;
-
-    if(loaded){
-      revealLiveTabsAfterLoad();
-    } else if(hasFacilities){
-      // Fetch failed — surface the error/retry (written into syncStatus by
-      // loadLiveData) instead of the generic prompt, tabs stay hidden.
-      dayPromptEl.style.display = 'none';
-      syncStatusEl.style.display = '';
-    }
-    // No facilities for this day yet: dayPromptEl already shows that message.
+    await selectDay(idx);
   });
 }
 
@@ -2143,6 +2220,7 @@ if(clearInputBtn){
     acList.innerHTML = '';
     updateClearBtn();
     runSearch();
+    clearSavedSearch();
     input.focus();
   });
 }
@@ -2243,7 +2321,7 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function ticketHTML(m, teamCode){
+function ticketHTML(m, teamCode, isNext){
   const isT1 = m.t1 === teamCode;
   const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
   const opp = isT1 ? {code:m.t2, p1:m.t2p1, p2:m.t2p2} : {code:m.t1, p1:m.t1p1, p2:m.t1p2};
@@ -2273,13 +2351,19 @@ function ticketHTML(m, teamCode){
   const livePillHTML = isLive
     ? `<span class="live-pill"><span class="live-dot" aria-hidden="true"></span>Live</span>`
     : '';
+  // Only flag as "Next Up" if it isn't already live — a match in progress
+  // is covered by the Live pill above, so showing both would be redundant.
+  const nextPillHTML = isNext && !isLive
+    ? `<span class="next-pill">Next Up</span>`
+    : '';
 
   return `
-  <div class="ticket">
+  <div class="ticket${isNext && !isLive ? ' next' : ''}">
     <div class="ticket-body">
       <div class="time-row">
         <span class="center-pill">${escapeHtml(m.time)}</span>
         ${livePillHTML}
+        ${nextPillHTML}
         ${courtHTML}
       </div>
       <div class="names-row">
@@ -2445,6 +2529,9 @@ function runSearch(){
   const codes = team.codes;
   const teamMatches = MATCHES.filter(m => codes.includes(m.t1) || codes.includes(m.t2))
                               .sort((a,b) => a.num - b.num);
+  // "Next" = the first match in schedule order that hasn't been played and
+  // isn't currently live (a live one is already flagged by the Live pill).
+  const nextIdx = teamMatches.findIndex(m => !m.played && !m.liveCourt);
 
   // Use whichever code is relevant per match to build the ticket
   const label = divisionLabel(codes[0]);
@@ -2454,8 +2541,10 @@ function runSearch(){
       ${label ? `<span class="division-tag">${label}</span>` : ''}
     </div>
     <div class="results-meta">${teamMatches.length} match${teamMatches.length>1?'es':''} found, in schedule order</div>
-    ${teamMatches.map(m => ticketHTML(m, codes.includes(m.t1) ? m.t1 : m.t2)).join('')}
+    ${teamMatches.map((m, i) => ticketHTML(m, codes.includes(m.t1) ? m.t1 : m.t2, i === nextIdx)).join('')}
   `;
+
+  saveSearchState(raw);
 }
 
 function renderIntro(){
@@ -2471,7 +2560,17 @@ function renderIntro(){
 }
 
 renderIntro();
-loadLiveData();
+
+// If a previous visit picked a day, silently re-run that same selection on
+// load (tabs/status stay hidden behind the loading prompt until it
+// resolves) instead of leaving the person to re-pick it from scratch every
+// time they reopen the site during the tournament.
+const savedDayIdx = loadSavedDayIndex();
+if(savedDayIdx !== null){
+  selectDay(savedDayIdx, { isInitialLoad: true });
+} else {
+  loadLiveData();
+}
 
 // Pause the 15s poll while the tab/app is backgrounded — no point spending
 // battery and mobile data re-fetching three spreadsheets nobody's looking
