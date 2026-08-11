@@ -1213,12 +1213,20 @@
 </footer>
 
 <script>
-// The tournament runs across 6 days, each with its own set of facility
+// ============================================================================
+// CONFIGURATION — everything a tournament organizer would need to touch
+// lives here at the top. The rest of the file below is implementation and
+// shouldn't need editing when details change (add a day, rename a category,
+// swap a spreadsheet, etc.) — just update the values in this block.
+// ============================================================================
+
+// ---- Tournament days & data sources -------------------------------------
+// One entry per tournament day. Each day pulls from up to 3 facility
 // spreadsheets (matchNumber and teamCode are unique within a day across all
 // of that day's facilities, so a day's rows can just be concatenated once
-// fetched). Only Day 1's sheet links are known so far — the rest are
-// placeholders (empty facilities list) until those links are provided,
-// and the day picker/loadLiveData both treat that as "not available yet".
+// fetched). A day with an empty sheetId ('') is treated as "not loaded yet"
+// — the day picker will still list it, but keeps the tabs hidden and shows
+// a "check back soon" message instead of trying to fetch an empty URL.
 const DAYS = [
   {
     label: 'Day 1 · Aug 14',
@@ -1255,9 +1263,9 @@ const DAYS = [
   { 
     label: 'Day 5 · Aug 22', 
     facilities: [
-      { name: 'Main',        sheetId: '' },
-      { name: 'Annex',       sheetId: '' },
-      { name: 'Dreamcourts', sheetId: '' }
+      { name: 'Main',        sheetId: '1pMjMHafVSSb-vVfjigDPuLg-jI9IbQ_xuUV9uNFjgGE' },
+      { name: 'Annex',       sheetId: '1Q_QEAv-CY0nwCZIgypOK8yAcvee9HaXc14NDPOVqHt4' },
+      { name: 'Dreamcourts', sheetId: '11fqzDNQ826cVXyCUTU8SkSDmYcF7M-m-ZsP5QT2lEO4' }
     ] 
   },
   { 
@@ -1269,12 +1277,115 @@ const DAYS = [
     ] 
   }
 ];
-let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
 
+// ---- Google Sheet tab GIDs -----------------------------------------------
+// Every facility spreadsheet is expected to use the same two tab layouts
+// (a match-schedule tab and a standings tab) at these GIDs. If a sheet's
+// tabs ever get reordered/recreated with different GIDs, update here once
+// rather than in every DAYS entry above.
 const CSV_GID = '2136121736';
 const STANDINGS_GID = '1507029786';
 const csvUrlFor = sheetId => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
 const standingsUrlFor = sheetId => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${STANDINGS_GID}`;
+
+// ---- Network & polling timing --------------------------------------------
+// How long to wait on a single facility fetch before giving up on it (venue
+// wifi at a live event can hang rather than fail outright).
+const FETCH_TIMEOUT_MS = 12000;
+// How often to re-fetch the current day's data while a tab is open and
+// visible. Paused automatically while the tab/app is backgrounded.
+const POLL_INTERVAL_MS = 15000;
+
+// ---- Browser storage keys -------------------------------------------------
+// Used to remember the last day picked + last search across page reloads.
+// Bump these (e.g. add ".v2") if a data-shape change ever means old saved
+// values shouldn't be trusted anymore.
+const STORAGE_DAY_KEY = 'bklCup2026.dayIndex';
+const STORAGE_SEARCH_KEY = 'bklCup2026.search';
+
+// ---- Categories: divisions & events ---------------------------------------
+// `name` is the short code used in teamCodes (e.g. "B18MD_1"); `full` is the
+// human-readable label shown in the UI. Add a new division/event here and it
+// automatically flows through parsing, sorting, and display everywhere else.
+const DIVISIONS = {
+  // Beginner
+  B18: { name: 'B18', full: 'Beginner 18+' },
+  B35: { name: 'B35', full: 'Beginner 35+' },
+  B50: { name: 'B50', full: 'Beginner 50+' },
+  // Advanced Beginner
+  AB18: { name: 'AB18', full: 'Advanced Beginner 18+' },
+  AB35: { name: 'AB35', full: 'Advanced Beginner 35+' },
+  AB50: { name: 'AB50', full: 'Advanced Beginner 50+' },
+  // Low Intermediate
+  LI18: { name: 'LI18', full: 'Low Intermediate 18+' },
+  LI40: { name: 'LI40', full: 'Low Intermediate 40+' },
+  // High Intermediate
+  HI18: { name: 'HI18', full: 'High Intermediate 18+' },
+  HI40: { name: 'HI40', full: 'High Intermediate 40+' },
+  // Advanced
+  A18: { name: 'A18', full: 'Advanced 18+' },
+  A40: { name: 'A40', full: 'Advanced 40+' },
+  // Open & Junior
+  O: { name: 'O', full: 'Open' },
+  J: { name: 'J', full: '17 Under Junior' }
+};
+
+const EVENTS = {
+  WD: "Women's Doubles",
+  MD: "Men's Doubles",
+  XD: "Mixed Doubles",
+  WS: "Women's Singles",
+  MS: "Men's Singles"
+};
+
+// Fixed display order for standings columns: Beginner 18+, 35+, 50+ (youngest
+// age group first), then Women's / Men's / Mixed Doubles within each.
+const DIVISION_ORDER = [
+  'Beginner 18+',
+  'Beginner 35+',
+  'Beginner 50+',
+  'Advanced Beginner 18+',
+  'Advanced Beginner 35+',
+  'Advanced Beginner 50+',
+  'Low Intermediate 18+',
+  'Low Intermediate 40+',
+  'High Intermediate 18+',
+  'High Intermediate 40+',
+  'Advanced 18+',
+  'Advanced 40+',
+  'Open',
+  '17 Under Junior'
+];
+
+const EVENT_ORDER = ['WD', 'MD', 'XD', 'WS', 'MS'];
+
+// Auto-derived from DIVISIONS/EVENTS above — built once here rather than
+// recompiled on every call, since parseCode() runs for every match/standing
+// row on every render, and renders happen on every 15s live-data poll.
+// Don't hand-edit this regex; add/rename entries in DIVISIONS/EVENTS instead.
+const CODE_REGEX = new RegExp(
+  `^(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
+);
+
+// ---- Playoff stage display -------------------------------------------------
+// Controls the label, banner styling, and color-coding for each playoff
+// round wherever standings show a bracket (Round Robin rows aren't listed
+// here — they're always "RR" and rendered separately).
+const STAGE_META = {
+  R16:    { label: 'Round of 16',   banner:false },
+  QF:     { label: 'Quarterfinals', banner:false },
+  SF:     { label: 'Semifinals',    banner:false },
+  BRONZE: { label: 'Bronze Battle', banner:true,  sub:'B' },
+  FINAL:  { label: 'Finals',        banner:true,  sub:'F' }
+};
+const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
+const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
+
+// ============================================================================
+// END CONFIGURATION — implementation follows below
+// ============================================================================
+
+let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
 
 let MATCHES = [];
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
@@ -1385,11 +1496,28 @@ function rowsToStandings(rows){
   return out;
 }
 
+// Google Sheets can hang on a bad connection (likely at a live event on
+// venue wifi) rather than failing outright — cap every request so a stalled
+// fetch degrades into the normal retry UI instead of leaving "Loading live
+// schedule..." on screen forever. (FETCH_TIMEOUT_MS is set in the
+// CONFIGURATION block at the top of this script.)
+function fetchWithTimeout(url){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { cache: 'no-store', signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 async function fetchFacilityData(facility){
-  const [matchRes, standingsRes] = await Promise.all([
-    fetch(csvUrlFor(facility.sheetId), { cache: 'no-store' }),
-    fetch(standingsUrlFor(facility.sheetId), { cache: 'no-store' })
-  ]);
+  let matchRes, standingsRes;
+  try {
+    [matchRes, standingsRes] = await Promise.all([
+      fetchWithTimeout(csvUrlFor(facility.sheetId)),
+      fetchWithTimeout(standingsUrlFor(facility.sheetId))
+    ]);
+  } catch(err){
+    if(err.name === 'AbortError') throw new Error(`${facility.name}: timed out`);
+    throw new Error(`${facility.name}: ${err.message}`);
+  }
   if(!matchRes.ok) throw new Error(`${facility.name}: HTTP ${matchRes.status}`);
   const matches = rowsToMatches(parseCSV(await matchRes.text()));
 
@@ -1412,7 +1540,13 @@ async function loadLiveData(){
   // Nothing to load until the person has actually picked a day.
   if(currentDayIndex === null) return false;
 
-  const day = DAYS[currentDayIndex];
+  // Snapshot which day this specific call is loading for. Days can switch
+  // (or a Retry can be clicked) while a fetch is still in flight — without
+  // this guard, a slow/stale response for a day the person has since
+  // navigated away from can land after a newer one and silently overwrite
+  // the correct data with the wrong day's.
+  const dayIndexAtStart = currentDayIndex;
+  const day = DAYS[dayIndexAtStart];
   const statusEl = document.getElementById('syncStatus');
   const activeFacilities = day.facilities.filter(f => f.sheetId && f.sheetId.trim() !== '');
 
@@ -1420,10 +1554,9 @@ async function loadLiveData(){
     MATCHES = [];
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = [];
-    rebuildTeamIndex();
+    rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
     renderStandings();
     renderLiveMatches();
-    runSearch();
     statusEl.textContent = `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
     statusEl.className = 'sync-status error';
     return false;
@@ -1433,12 +1566,17 @@ async function loadLiveData(){
   statusEl.className = 'sync-status loading';
   try {
     const results = await Promise.allSettled(activeFacilities.map(fetchFacilityData));
+    if(currentDayIndex !== dayIndexAtStart) return false; // superseded by a newer day switch — discard
 
     const succeeded = [];
     const failedNames = [];
+    const failReasons = [];
     results.forEach((r, i) => {
       if(r.status === 'fulfilled') succeeded.push(r.value);
-      else failedNames.push(activeFacilities[i].name);
+      else {
+        failedNames.push(activeFacilities[i].name);
+        failReasons.push(r.reason && r.reason.message ? r.reason.message : String(r.reason));
+      }
     });
 
     // matchNumber and teamCode are unique across a day's facilities, so
@@ -1446,15 +1584,20 @@ async function loadLiveData(){
     const matches = succeeded.flatMap(f => f.matches).sort((a,b) => a.num - b.num);
     const standings = succeeded.flatMap(f => f.standings);
 
-    if(matches.length === 0) throw new Error('No rows parsed from any facility');
+    if(matches.length === 0){
+      // Every facility failed outright (timeout, HTTP error, etc.) — surface
+      // the actual reasons instead of a generic "no rows" message. If every
+      // fetch actually succeeded but the sheets were just empty, fall back
+      // to the generic message since there's no failure to report.
+      throw new Error(failReasons.length ? failReasons.join('; ') : 'No rows parsed from any facility');
+    }
 
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
-    rebuildTeamIndex();
+    rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
     renderStandings();
     renderLiveMatches();
-    runSearch(); // keep whatever's currently shown (search results or intro) up to date
 
     const now = new Date();
     if(failedNames.length){
@@ -1466,6 +1609,8 @@ async function loadLiveData(){
     }
     return true;
   } catch(err){
+    if(currentDayIndex !== dayIndexAtStart) return false; // superseded — let the newer call's UI stand
+
     statusEl.innerHTML = `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
     statusEl.className = 'sync-status error';
     const retryBtn = document.getElementById('retryBtn');
@@ -1494,61 +1639,10 @@ function revealLiveTabsAfterLoad(){
   if(liveResultsEl) liveResultsEl.style.display = '';
 }
 
-const DIVISIONS = {
-  // Beginner
-  B18: { name: 'B18', full: 'Beginner 18+' },
-  B35: { name: 'B35', full: 'Beginner 35+' },
-  B50: { name: 'B50', full: 'Beginner 50+' },
-  // Advanced Beginner
-  AB18: { name: 'AB18', full: 'Advanced Beginner 18+' },
-  AB35: { name: 'AB35', full: 'Advanced Beginner 35+' },
-  AB50: { name: 'AB50', full: 'Advanced Beginner 50+' },
-  // Low Intermediate
-  LI18: { name: 'LI18', full: 'Low Intermediate 18+' },
-  LI40: { name: 'LI40', full: 'Low Intermediate 40+' },
-  // High Intermediate
-  HI18: { name: 'HI18', full: 'High Intermediate 18+' },
-  HI40: { name: 'HI40', full: 'High Intermediate 40+' },
-  // Advanced
-  A18: { name: 'A18', full: 'Advanced 18+' },
-  A40: { name: 'A40', full: 'Advanced 40+' },
-  // Open & Junior
-  O: { name: 'O', full: 'Open' },
-  J: { name: 'J', full: '17 Under Junior' }
-};
-
-const EVENTS = {
-  WD: "Women's Doubles",
-  MD: "Men's Doubles",
-  XD: "Mixed Doubles",
-  WS: "Women's Singles",
-  MS: "Men's Singles"
-};
-
-// Fixed display order for standings columns: Beginner 18+, 35+, 50+ (youngest
-// age group first), then Women's / Men's / Mixed Doubles within each.
-const DIVISION_ORDER = [
-  'Beginner 18+',
-  'Beginner 35+',
-  'Beginner 50+',
-  'Advanced Beginner 18+',
-  'Advanced Beginner 35+',
-  'Advanced Beginner 50+',
-  'Low Intermediate 18+',
-  'Low Intermediate 40+',
-  'High Intermediate 18+',
-  'High Intermediate 40+',
-  'Advanced 18+',
-  'Advanced 40+',
-  'Open',
-  '17 Under Junior'
-];
-
-const EVENT_ORDER = ['WD', 'MD', 'XD', 'WS', 'MS'];
-
 // Looks up a division's display info, falling back to a derived "Beginner N+"
 // label for any B## age group that isn't explicitly listed above (e.g. a
-// future B60 category) instead of breaking.
+// future B60 category) instead of breaking. (DIVISIONS/EVENTS/DIVISION_ORDER/
+// EVENT_ORDER/CODE_REGEX are all set in the CONFIGURATION block up top.)
 function divisionMeta(divCode){
   if(!divCode) return null;
   if(DIVISIONS[divCode]) return DIVISIONS[divCode];
@@ -1557,16 +1651,9 @@ function divisionMeta(divCode){
   return { name: divCode, full: divCode };
 }
 
-
-// Built once from the static DIVISIONS/EVENTS maps — compiling a RegExp on
-// every call (as this used to do) added up fast, since parseCode runs for
-// every match/standing row on every render, and renders happen on every
-// 15s live-data poll. Same reasoning for the code -> parsed-result cache
-// below: the same teamCodes get parsed repeatedly across renderStandings,
-// ticketHTML, liveTableRowsHTML, renderIntro, etc. in a single render pass.
-const CODE_REGEX = new RegExp(
-  `^(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
-);
+// Parsed-result cache: the same teamCodes get parsed repeatedly across
+// renderStandings, ticketHTML, liveTableRowsHTML, renderIntro, etc. in a
+// single render pass, and renders happen on every 15s live-data poll.
 const parseCodeCache = new Map();
 
 function parseCode(code) {
@@ -1628,16 +1715,8 @@ function categorySortKey(sampleRow){
   return (divRank === -1 ? 999 : divRank) * 10 + (eventRank === -1 ? 9 : eventRank);
 }
 
-const STAGE_META = {
-  R16:    { label: 'Round of 16',   banner:false },
-  QF:     { label: 'Quarterfinals', banner:false },
-  SF:     { label: 'Semifinals',    banner:false },
-  BRONZE: { label: 'Bronze Battle', banner:true,  sub:'B' },
-  FINAL:  { label: 'Finals',        banner:true,  sub:'F' }
-};
-const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
-const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
-
+// (STAGE_META/STAGE_ORDER/BADGE_CLASSES are set in the CONFIGURATION block
+// up top.)
 function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
 
 function standingsStageKey(teamCode){
@@ -1838,19 +1917,28 @@ function isDesktopStandings(){
 // category column) rather than every descendant node — this panel can hold
 // hundreds of nodes (rows, cells, spans) once several categories are shown,
 // and only a couple of them are ever scrollable.
-const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col';
+// Covers both the Standings board (per-category vertical scroll on desktop)
+// and the Live Matches board (per-facility horizontal table scroll on
+// mobile) — both fully rebuild their HTML on every refresh, so without this
+// their scroll position would silently reset every 15 seconds.
+const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col, .live-table-wrap';
+
+// Stable identity for a scrollable node, preferred over raw className/
+// tagName matching — the same category or facility can render in a
+// different slot after a reload (categories/courts added, removed, or
+// re-sorted), and position-based matching would hand its scroll offset to
+// whatever unrelated element now occupies that slot instead.
+function scrollNodeIdentity(node){
+  const key = node.dataset && (node.dataset.catKey || node.dataset.facilityKey);
+  return key ? `id:${key}` : (node.className || node.tagName);
+}
+
 function captureScrollPositions(root){
   const positions = [];
   const counts = {};
   root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
     if(node.scrollTop > 0 || node.scrollLeft > 0){
-      // Prefer a stable identity (e.g. which category a .standings-col
-      // belongs to) over DOM position — the same category can render in a
-      // different slot after a reload (added/removed/re-sorted categories),
-      // and position-based matching would hand its scroll offset to
-      // whatever unrelated element now occupies that slot instead.
-      const identity = node.dataset && node.dataset.catKey;
-      const key = identity ? `catKey:${identity}` : (node.className || node.tagName);
+      const key = scrollNodeIdentity(node);
       counts[key] = (counts[key] || 0) + 1;
       positions.push({ key, occurrence: counts[key], top: node.scrollTop, left: node.scrollLeft });
     }
@@ -1861,8 +1949,7 @@ function restoreScrollPositions(root, positions){
   if(!positions.length) return;
   const counts = {};
   root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
-    const identity = node.dataset && node.dataset.catKey;
-    const key = identity ? `catKey:${identity}` : (node.className || node.tagName);
+    const key = scrollNodeIdentity(node);
     counts[key] = (counts[key] || 0) + 1;
     const match = positions.find(p => p.key === key && p.occurrence === counts[key]);
     if(match){
@@ -2084,9 +2171,8 @@ viewTabs.forEach(btn => {
 // ---------- Persistence: remember the last day + search across reloads ----------
 // Wrapped in try/catch since localStorage can throw in some private-browsing
 // or embedded contexts — this is a nice-to-have, never worth breaking the
-// app over.
-const STORAGE_DAY_KEY = 'bklCup2026.dayIndex';
-const STORAGE_SEARCH_KEY = 'bklCup2026.search';
+// app over. (STORAGE_DAY_KEY/STORAGE_SEARCH_KEY are set in the
+// CONFIGURATION block at the top of this script.)
 function saveDayIndex(idx){ try{ localStorage.setItem(STORAGE_DAY_KEY, String(idx)); } catch(e){} }
 function loadSavedDayIndex(){
   try{
@@ -2448,7 +2534,7 @@ function liveTableRowsHTML(court, m){
 function facilityTableHTML(facility, rows){
   return `
   <div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${rows.length} court${rows.length===1?'':'s'} in play</span></div>
-  <div class="live-table-wrap">
+  <div class="live-table-wrap" data-facility-key="${escapeHtml(facility)}">
     <table class="live-table">
       <thead><tr>
         <th>Court</th><th>Match</th><th colspan="3">Match Details</th>
@@ -2473,7 +2559,13 @@ function renderLiveMatches(){
   const totalCourts = liveCourts.size;
   metaEl.innerHTML = `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`;
   const groups = groupLiveCourtsByFacility(liveCourts);
+
+  // Full rebuild on every 15s refresh, same as Standings — capture/restore
+  // keeps a scrolled-right facility table (mobile) from snapping back to
+  // the left edge every time.
+  const scrollPositions = captureScrollPositions(boardEl);
   boardEl.innerHTML = Array.from(groups.entries()).map(([facility, rows]) => facilityTableHTML(facility, rows)).join('');
+  restoreScrollPositions(boardEl, scrollPositions);
 }
 
 function resolveTeam(raw){
@@ -2568,20 +2660,20 @@ renderIntro();
 const savedDayIdx = loadSavedDayIndex();
 if(savedDayIdx !== null){
   selectDay(savedDayIdx, { isInitialLoad: true });
-} else {
-  loadLiveData();
 }
+// Otherwise nothing to load yet — currentDayIndex stays null until the
+// person picks a day, and loadLiveData() no-ops until then anyway.
 
 // Pause the 15s poll while the tab/app is backgrounded — no point spending
 // battery and mobile data re-fetching three spreadsheets nobody's looking
 // at — and catch up with an immediate refresh as soon as it's visible again.
-let pollTimer = setInterval(loadLiveData, 15000);
+let pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
 document.addEventListener('visibilitychange', () => {
   if(document.hidden){
     clearInterval(pollTimer);
   } else {
     loadLiveData();
-    pollTimer = setInterval(loadLiveData, 15000);
+    pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
   }
 });
 </script>
