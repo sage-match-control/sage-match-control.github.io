@@ -1221,79 +1221,40 @@
 // ============================================================================
 
 // ---- Tournament days & data sources -------------------------------------
-// One entry per tournament day. Each day pulls from up to 3 facility
-// spreadsheets (matchNumber and teamCode are unique within a day across all
-// of that day's facilities, so a day's rows can just be concatenated once
-// fetched). A day with an empty sheetId ('') is treated as "not loaded yet"
-// — the day picker will still list it, but keeps the tabs hidden and shows
-// a "check back soon" message instead of trying to fetch an empty URL.
+// One entry per tournament day. Sheet IDs are no longer needed here at all —
+// this site no longer talks to Google Sheets directly. A Cloud Run service
+// (triggered by Apps Script when someone edits a facility's SCHEDULE tab)
+// fetches each day's sheets, bundles them, and publishes a JSON snapshot to
+// a GitHub repo at data/<key>.json, served here via jsDelivr. Whether a day
+// is "ready yet" is discovered by fetching it (a 404 means Cloud Run hasn't
+// published that day yet), not known statically — see loadLiveData().
 const DAYS = [
-  {
-    label: 'Day 1 · Aug 14',
-    facilities: [
-      { name: 'Main',        sheetId: '1CIaLq4xUiEjnE3L5JipQCwlE7Vyj3d9O2BXtdcHh4d4' },
-      { name: 'Annex',       sheetId: '1IHlckteagusQYjSYQGElnzLx6KaerEdfsIqkyP4efig' },
-      { name: 'Dreamcourts', sheetId: '1Mh1q3-Su7LKzV89PFexDoWBAkaN8ZZUKCd2lgRuvwRk' }
-    ]
-  },
-  { 
-    label: 'Day 2 · Aug 15', 
-    facilities: [
-      { name: 'Main',        sheetId: '1hbjqbH3H1Z-iLVgQpztwxw_mTKQ6UsvAsOo_cx6cXuM' },
-      { name: 'Annex',       sheetId: '1n6VKx8dDbbDNcCbP4RtizwSO4MRQ-PCTsYaOK4vNuy4' },
-      { name: 'Dreamcourts', sheetId: '1_lakEi5whN4ZvssaIDfnUA8AWM5huIU8mWV55dCxIsE' }
-    ] 
-  },
-  { 
-    label: 'Day 3 · Aug 16', 
-    facilities: [
-      { name: 'Main',        sheetId: '1resKkD3e8kjxJEcQkruzKW8N93NFjuqgtmD9_hwYHQs' },
-      { name: 'Annex',       sheetId: '1KCjXMnxnA-0x7eh5e-t_IdfSIypUnNKfTHwTaZjd1mc' },
-      { name: 'Dreamcourts', sheetId: '1H5aHgogxauIgbb3xoBSuLQjVZCCdZcI_9iBXUMp_9SI' }
-    ] 
-  },
-  { 
-    label: 'Day 4 · Aug 21', 
-    facilities: [
-      { name: 'Main',        sheetId: '1WnkP8P9UoykBBMsQ56pPxOBH5FBQxaRjg_44DvdoTF8' },
-      { name: 'Annex',       sheetId: '1eYwjJk4aaW7nBXe_r-0A2KtrIq-iAsum0p9XyNt7AFE' },
-      { name: 'Dreamcourts', sheetId: '11ru3OPXzXGoex3Vbl8rIeP0ifhRh3oR_pkpT7ZTCwbo' }
-    ] 
-  },
-  { 
-    label: 'Day 5 · Aug 22', 
-    facilities: [
-      { name: 'Main',        sheetId: '1pMjMHafVSSb-vVfjigDPuLg-jI9IbQ_xuUV9uNFjgGE' },
-      { name: 'Annex',       sheetId: '1Q_QEAv-CY0nwCZIgypOK8yAcvee9HaXc14NDPOVqHt4' },
-      { name: 'Dreamcourts', sheetId: '11fqzDNQ826cVXyCUTU8SkSDmYcF7M-m-ZsP5QT2lEO4' }
-    ] 
-  },
-  { 
-    label: 'Day 6 · Aug 23', 
-    facilities: [
-      { name: 'Main',        sheetId: '' },
-      { name: 'Annex',       sheetId: '' },
-      { name: 'Dreamcourts', sheetId: '' }
-    ] 
-  }
+  { key: 'day1', label: 'Day 1 · Aug 14' },
+  { key: 'day2', label: 'Day 2 · Aug 15' },
+  { key: 'day3', label: 'Day 3 · Aug 16' },
+  { key: 'day4', label: 'Day 4 · Aug 21' },
+  { key: 'day5', label: 'Day 5 · Aug 22' },
+  { key: 'day6', label: 'Day 6 · Aug 23' }
 ];
 
-// ---- Google Sheet tab GIDs -----------------------------------------------
-// Every facility spreadsheet is expected to use the same two tab layouts
-// (a match-schedule tab and a standings tab) at these GIDs. If a sheet's
-// tabs ever get reordered/recreated with different GIDs, update here once
-// rather than in every DAYS entry above.
-const CSV_GID = '2136121736';
-const STANDINGS_GID = '1507029786';
-const csvUrlFor = sheetId => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${CSV_GID}`;
-const standingsUrlFor = sheetId => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${STANDINGS_GID}`;
+// ---- Published data source (jsDelivr, backed by GitHub) -------------------
+// Must match GITHUB_OWNER/GITHUB_REPO/GITHUB_BRANCH on the Cloud Run service
+// and the repoPathFor() layout in its SyncConfig.mjs (data/<day>.json).
+const JSDELIVR_OWNER = 'your-github-username-or-org';
+const JSDELIVR_REPO = 'your-data-repo';
+const JSDELIVR_BRANCH = 'main';
+const snapshotUrlFor = dayKey =>
+  `https://cdn.jsdelivr.net/gh/${JSDELIVR_OWNER}/${JSDELIVR_REPO}@${JSDELIVR_BRANCH}/data/${dayKey}.json`;
 
 // ---- Network & polling timing --------------------------------------------
-// How long to wait on a single facility fetch before giving up on it (venue
-// wifi at a live event can hang rather than fail outright).
+// How long to wait on the snapshot fetch before giving up (venue wifi at a
+// live event can hang rather than fail outright).
 const FETCH_TIMEOUT_MS = 12000;
-// How often to re-fetch the current day's data while a tab is open and
-// visible. Paused automatically while the tab/app is backgrounded.
+// How often to re-check jsDelivr while a tab is open and visible. Paused
+// automatically while the tab/app is backgrounded. Polling faster than this
+// won't reveal fresher data any sooner than Cloud Run's own publish cadence
+// (gated by Apps Script's edit debounce), so there's little value in a much
+// shorter interval.
 const POLL_INTERVAL_MS = 15000;
 
 // ---- Browser storage keys -------------------------------------------------
@@ -1496,44 +1457,31 @@ function rowsToStandings(rows){
   return out;
 }
 
-// Google Sheets can hang on a bad connection (likely at a live event on
+// jsDelivr/GitHub can hang on a bad connection (likely at a live event on
 // venue wifi) rather than failing outright — cap every request so a stalled
 // fetch degrades into the normal retry UI instead of leaving "Loading live
 // schedule..." on screen forever. (FETCH_TIMEOUT_MS is set in the
 // CONFIGURATION block at the top of this script.)
-function fetchWithTimeout(url){
+async function fetchDaySnapshot(dayKey){
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  return fetch(url, { cache: 'no-store', signal: controller.signal }).finally(() => clearTimeout(timer));
-}
-
-async function fetchFacilityData(facility){
-  let matchRes, standingsRes;
   try {
-    [matchRes, standingsRes] = await Promise.all([
-      fetchWithTimeout(csvUrlFor(facility.sheetId)),
-      fetchWithTimeout(standingsUrlFor(facility.sheetId))
-    ]);
+    const res = await fetch(snapshotUrlFor(dayKey), { cache: 'no-store', signal: controller.signal });
+    if(!res.ok){
+      // Cloud Run hasn't published this day yet at all shows up here as a
+      // plain 404 from jsDelivr/GitHub — carry the status through so the
+      // caller can tell "not published yet" apart from a real failure.
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
   } catch(err){
-    if(err.name === 'AbortError') throw new Error(`${facility.name}: timed out`);
-    throw new Error(`${facility.name}: ${err.message}`);
+    if(err.name === 'AbortError') throw new Error('timed out');
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-  if(!matchRes.ok) throw new Error(`${facility.name}: HTTP ${matchRes.status}`);
-  const matches = rowsToMatches(parseCSV(await matchRes.text()));
-
-  let standings = [];
-  if(standingsRes.ok){
-    standings = rowsToStandings(parseCSV(await standingsRes.text()));
-  }
-  return { facility: facility.name, matches, standings };
-}
-
-// A day counts as "loaded" only if at least one of its facilities actually
-// has a sheetId set — some placeholder days list all 3 facilities with
-// name-only entries and an empty sheetId ('') rather than an empty array,
-// so a plain array-length check isn't enough to detect that.
-function dayHasFacilities(day){
-  return day.facilities.some(f => f.sheetId && f.sheetId.trim() !== '');
 }
 
 async function loadLiveData(){
@@ -1548,49 +1496,29 @@ async function loadLiveData(){
   const dayIndexAtStart = currentDayIndex;
   const day = DAYS[dayIndexAtStart];
   const statusEl = document.getElementById('syncStatus');
-  const activeFacilities = day.facilities.filter(f => f.sheetId && f.sheetId.trim() !== '');
+  const tabsShowing = viewTabsWrapEl.style.display !== 'none';
 
-  if(activeFacilities.length === 0){
-    MATCHES = [];
-    MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
-    STANDINGS = [];
-    rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
-    renderStandings();
-    renderLiveMatches();
-    statusEl.textContent = `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
-    statusEl.className = 'sync-status error';
-    return false;
+  if(tabsShowing){
+    statusEl.textContent = 'Loading live schedule\u2026';
+    statusEl.className = 'sync-status loading';
+  } else {
+    dayPromptEl.textContent = `Loading ${day.label}\u2026`;
   }
 
-  statusEl.textContent = 'Loading live schedule\u2026';
-  statusEl.className = 'sync-status loading';
   try {
-    const results = await Promise.allSettled(activeFacilities.map(fetchFacilityData));
+    const snapshot = await fetchDaySnapshot(day.key);
     if(currentDayIndex !== dayIndexAtStart) return false; // superseded by a newer day switch — discard
 
-    const succeeded = [];
-    const failedNames = [];
-    const failReasons = [];
-    results.forEach((r, i) => {
-      if(r.status === 'fulfilled') succeeded.push(r.value);
-      else {
-        failedNames.push(activeFacilities[i].name);
-        failReasons.push(r.reason && r.reason.message ? r.reason.message : String(r.reason));
-      }
-    });
+    // Server-side (Cloud Run) already fetched each facility, so this is
+    // just re-assembling what it published — no per-facility network calls
+    // happen here anymore. matchNumber/teamCode are unique across a day's
+    // facilities, so combining is just a concatenation.
+    const matches = snapshot.facilities
+      .flatMap(f => rowsToMatches(parseCSV(f.matchesCsv)))
+      .sort((a, b) => a.num - b.num);
+    const standings = snapshot.facilities.flatMap(f => rowsToStandings(parseCSV(f.standingsCsv)));
 
-    // matchNumber and teamCode are unique across a day's facilities, so
-    // combining is just a concatenation — no de-duping or key-rewriting needed.
-    const matches = succeeded.flatMap(f => f.matches).sort((a,b) => a.num - b.num);
-    const standings = succeeded.flatMap(f => f.standings);
-
-    if(matches.length === 0){
-      // Every facility failed outright (timeout, HTTP error, etc.) — surface
-      // the actual reasons instead of a generic "no rows" message. If every
-      // fetch actually succeeded but the sheets were just empty, fall back
-      // to the generic message since there's no failure to report.
-      throw new Error(failReasons.length ? failReasons.join('; ') : 'No rows parsed from any facility');
-    }
+    if(matches.length === 0) throw new Error('No rows parsed from any facility');
 
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
@@ -1599,20 +1527,38 @@ async function loadLiveData(){
     renderStandings();
     renderLiveMatches();
 
-    const now = new Date();
-    if(failedNames.length){
-      statusEl.textContent = `${day.label} \u00b7 Live (partial) \u00b7 synced ${now.toLocaleTimeString()} \u00b7 couldn't reach: ${failedNames.join(', ')}`;
+    // "Synced" reflects when Cloud Run actually published this snapshot
+    // (i.e. when the sheet was last edited and its debounce settled), not
+    // when this browser happened to re-poll jsDelivr — that's the
+    // meaningful freshness signal now, not the poll time.
+    const syncedAt = snapshot.generatedAt ? new Date(snapshot.generatedAt) : new Date();
+    const failedFacilities = snapshot.failedFacilities || [];
+    if(failedFacilities.length){
+      statusEl.textContent = `${day.label} \u00b7 Live (partial) \u00b7 last synced ${syncedAt.toLocaleTimeString()} \u00b7 couldn't reach: ${failedFacilities.join(', ')}`;
       statusEl.className = 'sync-status error';
     } else {
-      statusEl.textContent = `${day.label} \u00b7 Live \u00b7 synced ` + now.toLocaleTimeString();
+      statusEl.textContent = `${day.label} \u00b7 Live \u00b7 last synced ` + syncedAt.toLocaleTimeString();
       statusEl.className = 'sync-status ok';
     }
     return true;
   } catch(err){
     if(currentDayIndex !== dayIndexAtStart) return false; // superseded — let the newer call's UI stand
 
-    statusEl.innerHTML = `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + '). <button id="retryBtn" class="retry-btn">Retry</button>';
-    statusEl.className = 'sync-status error';
+    const notPublishedYet = err.status === 404;
+    const baseMessage = notPublishedYet
+      ? `${day.label}: schedule isn't loaded yet \u2014 check back soon.`
+      : `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + ').';
+    const message = notPublishedYet
+      ? baseMessage
+      : baseMessage + ' <button id="retryBtn" class="retry-btn">Retry</button>';
+
+    if(tabsShowing){
+      statusEl.innerHTML = message;
+      statusEl.className = 'sync-status error';
+    } else {
+      dayPromptEl.innerHTML = message;
+    }
+
     const retryBtn = document.getElementById('retryBtn');
     if(retryBtn) retryBtn.addEventListener('click', async () => {
       const ok = await loadLiveData();
@@ -2199,21 +2145,20 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   currentDayIndex = idx;
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
-  const hasFacilities = dayHasFacilities(day);
 
   // Switching days always drops back to the same "first screen" shown on
   // initial page load — tabs/status hidden, just the centered prompt —
   // so nothing from the previous day (tabs, search results, standings)
-  // stays on screen while the new day's data is loading.
+  // stays on screen while the new day's data is loading. Whether this day
+  // is actually ready is discovered by loadLiveData() itself (a 404 from
+  // jsDelivr means Cloud Run hasn't published it yet), not known upfront.
   viewTabsWrapEl.style.display = 'none';
   syncStatusEl.style.display = 'none';
   liveResultsEl.style.display = 'none';
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
-  dayPromptEl.textContent = hasFacilities
-    ? `Loading ${day.label}\u2026`
-    : `${day.label}: schedule isn't loaded yet \u2014 check back soon.`;
+  dayPromptEl.textContent = `Loading ${day.label}\u2026`;
   dayPromptEl.style.display = '';
 
   // Reset per-day UI state so nothing carries over from a previous day.
@@ -2230,7 +2175,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   // it right back below if there is one.
   if(!isInitialLoad) clearSavedSearch();
 
-  const loaded = hasFacilities ? await loadLiveData() : false;
+  const loaded = await loadLiveData();
 
   if(loaded){
     revealLiveTabsAfterLoad();
@@ -2251,13 +2196,10 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
         resultsEl.style.display = '';
       }
     }
-  } else if(hasFacilities){
-    // Fetch failed — surface the error/retry (written into syncStatus by
-    // loadLiveData) instead of the generic prompt, tabs stay hidden.
-    dayPromptEl.style.display = 'none';
-    syncStatusEl.style.display = '';
   }
-  // No facilities for this day yet: dayPromptEl already shows that message.
+  // If not loaded, loadLiveData() has already written the right message
+  // (either "not published yet", or an error + Retry button) into
+  // dayPromptEl, which is still visible — nothing else to do here.
 }
 
 if(dayPickerEl){
