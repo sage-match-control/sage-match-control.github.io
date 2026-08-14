@@ -1240,14 +1240,22 @@ const DAYS = [
   { key: 'day6', label: 'Day 5 · Aug 23' }
 ];
 
-// ---- Published data source (jsDelivr, backed by GitHub) -------------------
+// ---- Published data source (GitHub Pages) ---------------------------------
 // Must match GITHUB_OWNER/GITHUB_REPO/GITHUB_BRANCH on the Cloud Run service
 // and the repoPathFor() layout in its SyncConfig.mjs (data/<day>.json).
+// Switched over from jsDelivr: Pages needs no explicit purge call (so
+// nothing to get throttled), but it does cache every response for ~10
+// minutes with no way to force an early refresh — the cache-busting query
+// param below is what keeps polls actually fresh instead of stuck on a
+// 10-minute-old snapshot. GitHub Pages must be enabled on the repo
+// (Settings -> Pages -> Deploy from branch -> GITHUB_BRANCH), and the repo
+// should have a .nojekyll file at its root so GitHub serves data/*.json as
+// plain static files instead of running them through Jekyll processing.
 const JSDELIVR_OWNER = 'sage-match-control';
 const JSDELIVR_REPO = 'bkl-cup-2026';
-const JSDELIVR_BRANCH = 'main';
+const GHPAGES_BRANCH = 'main'; // not part of the URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
 const snapshotUrlFor = dayKey =>
-  `https://cdn.jsdelivr.net/gh/${JSDELIVR_OWNER}/${JSDELIVR_REPO}@${JSDELIVR_BRANCH}/data/${dayKey}.json`;
+  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/data/${dayKey}.json?t=${Date.now()}`;
 
 // ---- Network & polling timing --------------------------------------------
 // How long to wait on the snapshot fetch before giving up (venue wifi at a
