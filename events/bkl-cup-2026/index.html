@@ -1154,7 +1154,7 @@
     </g>
   </svg>
   <div class="tagline-script">The Battle for the Court Begins!</div>
-  <div class="eyebrow">2026 &nbsp;·&nbsp; Aug 14–16 &amp; 21–23 &nbsp;·&nbsp; Pickleball Central PH, Angeles, Pampanga</div>
+  <div class="eyebrow">2026 &nbsp;·&nbsp; Aug 15–16 &amp; 21–23 &nbsp;·&nbsp; Pickleball Central PH, Angeles, Pampanga</div>
   <h1 class="title">BKL <span class="accent">Pickleball Cup</span></h1>
   <div class="domination-line">6 Days. 1 Goal.<br>Total Domination.</div>
   <p class="subtitle">Find your pair's full match schedule — every round, every opponent, in order.</p>
@@ -1208,7 +1208,7 @@
 </div>
 
 <footer>
-  BKL Pickleball Cup 2026 &middot; Aug 14&ndash;16 &amp; 21&ndash;23, 2026 &middot; Pickleball Central PH, Angeles, Pampanga<br>
+  BKL Pickleball Cup 2026 &middot; Aug 15&ndash;16 &amp; 21&ndash;23, 2026 &middot; Pickleball Central PH, Angeles, Pampanga<br>
   Powered by S.A.G.E. Match Control Experts
 </footer>
 
@@ -1228,20 +1228,23 @@
 // a GitHub repo at data/<key>.json, served here via jsDelivr. Whether a day
 // is "ready yet" is discovered by fetching it (a 404 means Cloud Run hasn't
 // published that day yet), not known statically — see loadLiveData().
+// SCHEDULE CHANGE: Day 1 (Aug 14) was cancelled — the event now runs
+// Aug 15-16 and 21-23. Entries keep their original day2-day6 keys (so the
+// already-published data/day2.json etc. paths and each facility's Code.gs
+// DAY_KEY don't need to change) — only the user-facing label was renumbered.
 const DAYS = [
-  { key: 'day1', label: 'Day 1 · Aug 14' },
-  { key: 'day2', label: 'Day 2 · Aug 15' },
-  { key: 'day3', label: 'Day 3 · Aug 16' },
-  { key: 'day4', label: 'Day 4 · Aug 21' },
-  { key: 'day5', label: 'Day 5 · Aug 22' },
-  { key: 'day6', label: 'Day 6 · Aug 23' }
+  { key: 'day2', label: 'Day 1 · Aug 15' },
+  { key: 'day3', label: 'Day 2 · Aug 16' },
+  { key: 'day4', label: 'Day 3 · Aug 21' },
+  { key: 'day5', label: 'Day 4 · Aug 22' },
+  { key: 'day6', label: 'Day 5 · Aug 23' }
 ];
 
 // ---- Published data source (jsDelivr, backed by GitHub) -------------------
 // Must match GITHUB_OWNER/GITHUB_REPO/GITHUB_BRANCH on the Cloud Run service
 // and the repoPathFor() layout in its SyncConfig.mjs (data/<day>.json).
-const JSDELIVR_OWNER = 'your-github-username-or-org';
-const JSDELIVR_REPO = 'your-data-repo';
+const JSDELIVR_OWNER = 'sage-match-control';
+const JSDELIVR_REPO = 'bkl-cup-2026';
 const JSDELIVR_BRANCH = 'main';
 const snapshotUrlFor = dayKey =>
   `https://cdn.jsdelivr.net/gh/${JSDELIVR_OWNER}/${JSDELIVR_REPO}@${JSDELIVR_BRANCH}/data/${dayKey}.json`;
@@ -1261,7 +1264,7 @@ const POLL_INTERVAL_MS = 15000;
 // Used to remember the last day picked + last search across page reloads.
 // Bump these (e.g. add ".v2") if a data-shape change ever means old saved
 // values shouldn't be trusted anymore.
-const STORAGE_DAY_KEY = 'bklCup2026.dayIndex';
+const STORAGE_DAY_KEY = 'bklCup2026.dayIndex.v2'; // bumped: Day 1 (Aug 14) was removed, which shifted every later index down by one — an old saved index would now point to the wrong day
 const STORAGE_SEARCH_KEY = 'bklCup2026.search';
 
 // ---- Categories: divisions & events ---------------------------------------
