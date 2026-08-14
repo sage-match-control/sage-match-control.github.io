@@ -861,8 +861,57 @@ function truncateToWidth(ctx, text, maxWidth){
   return t + '\u2026';
 }
 
-function drawBracketCard(ctx, x, y, w, headHeight, rowHeight, padding, bracket, colorIdx){
-  const h = headHeight + Math.max(1, bracket.pairs.length) * rowHeight + padding * 2 - (bracket.pairs.length ? 0 : rowHeight - 30);
+// Word-wraps a name to fit maxWidth instead of truncating it with an
+// ellipsis, so long pair names stay fully readable in the exported image.
+// (If a single word alone is wider than maxWidth it's left on its own line
+// as-is — that's rarer than long full names and still fully legible, just
+// slightly overflowing the row.)
+function wrapTextLines(ctx, text, maxWidth, font){
+  ctx.font = font;
+  const words = String(text).split(' ');
+  const lines = [];
+  let current = '';
+  words.forEach(word => {
+    const test = current ? current + ' ' + word : word;
+    if(!current || ctx.measureText(test).width <= maxWidth){
+      current = test;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  });
+  if(current) lines.push(current);
+  return lines.length ? lines : [''];
+}
+
+const NAME_FONT = '600 13px Inter, sans-serif';
+const NAME_LINE_HEIGHT = 15;
+const NAME_ROW_VPAD = 17; // single-line row height == 15 + 17 == 32, same as the old fixed rowHeight
+
+function rowHeightForLines(lineCount){
+  return lineCount * NAME_LINE_HEIGHT + NAME_ROW_VPAD;
+}
+
+// Wraps every pair name in a bracket to fit colWidth and returns per-row
+// line arrays plus each row's (and the card's) real height, so heights can
+// be measured up front — before anything is drawn — and every card in a
+// grid row can be aligned to the tallest one, keeping rows symmetrical even
+// when some names wrap to two lines and others don't.
+function layoutBracketCard(ctx, bracket, colWidth, headHeight, padding){
+  const nameMaxWidth = colWidth - 14 - 24 - 14;
+  const rows = bracket.pairs.map(p => {
+    const lines = wrapTextLines(ctx, p, nameMaxWidth, NAME_FONT);
+    return { text: p, lines, height: rowHeightForLines(lines.length) };
+  });
+  const contentHeight = rows.length
+    ? rows.reduce((sum, r) => sum + r.height, 0)
+    : 30; // "No pairs assigned" placeholder height, matches the old fallback
+  const totalHeight = headHeight + contentHeight + padding * 2;
+  return { rows, totalHeight };
+}
+
+function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, colorIdx){
+  const h = layout.totalHeight;
 
   roundRect(ctx, x, y, w, h, 12);
   ctx.fillStyle = 'rgba(255,255,255,.06)';
@@ -887,13 +936,13 @@ function drawBracketCard(ctx, x, y, w, headHeight, rowHeight, padding, bracket, 
 
   ctx.textAlign = 'left';
   let ry = y + headHeight + padding;
-  if(bracket.pairs.length === 0){
+  if(layout.rows.length === 0){
     ctx.fillStyle = 'rgba(226,236,250,.55)';
     ctx.font = 'italic 500 12.5px Inter, sans-serif';
     ctx.fillText('No pairs assigned', x + 14, ry + 14);
   } else {
-    bracket.pairs.forEach((p, i) => {
-      const cy = ry + rowHeight / 2;
+    layout.rows.forEach((row, i) => {
+      const cy = ry + row.height / 2;
       ctx.fillStyle = 'rgba(226,236,250,.14)';
       ctx.beginPath();
       ctx.arc(x + 14 + 9, cy, 9, 0, Math.PI * 2);
@@ -905,11 +954,15 @@ function drawBracketCard(ctx, x, y, w, headHeight, rowHeight, padding, bracket, 
 
       ctx.textAlign = 'left';
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = '600 13px Inter, sans-serif';
-      const name = truncateToWidth(ctx, p, w - 14 - 24 - 14);
-      ctx.fillText(name, x + 14 + 24, cy + 1);
+      ctx.font = NAME_FONT;
+      const blockHeight = row.lines.length * NAME_LINE_HEIGHT;
+      let lineY = cy - blockHeight / 2 + NAME_LINE_HEIGHT / 2;
+      row.lines.forEach(line => {
+        ctx.fillText(line, x + 14 + 24, lineY + 1);
+        lineY += NAME_LINE_HEIGHT;
+      });
 
-      ry += rowHeight;
+      ry += row.height;
     });
   }
   return h;
@@ -925,7 +978,6 @@ async function exportAsImage(){
   const colWidth = 280;
   const outerPad = 40;
   const headHeight = 44;
-  const rowHeight = 32;
   const cardPadding = 14;
 
   // Match the on-screen behavior: even bracket counts get an exact divisor
@@ -938,20 +990,19 @@ async function exportAsImage(){
     if(evenCols >= 2) cols = evenCols;
   }
 
-  // Precompute each card's height up front so row heights can be measured.
+  // Precompute each card's full layout (wrapped name lines + real height) up
+  // front, using an offscreen canvas for text measurement, so nothing gets
+  // truncated and every card in a grid row can share that row's tallest
+  // height — keeping rows visually symmetrical even when names wrap.
   const measureCanvas = document.createElement('canvas');
   const mctx = measureCanvas.getContext('2d');
-  const cardHeights = currentBrackets.map(b => {
-    mctx.font = '600 13px Inter, sans-serif';
-    const rows = Math.max(1, b.pairs.length);
-    return headHeight + rows * rowHeight + cardPadding * 2 - (b.pairs.length ? 0 : rowHeight - 30);
-  });
+  const cardLayouts = currentBrackets.map(b => layoutBracketCard(mctx, b, colWidth, headHeight, cardPadding));
 
   const gridRows = [];
   for(let i = 0; i < currentBrackets.length; i += cols){
-    gridRows.push(currentBrackets.slice(i, i + cols).map((b, j) => ({ bracket: b, colorIdx: i + j, height: cardHeights[i + j] })));
+    gridRows.push(currentBrackets.slice(i, i + cols).map((b, j) => ({ bracket: b, colorIdx: i + j, layout: cardLayouts[i + j] })));
   }
-  const gridRowHeights = gridRows.map(row => Math.max(...row.map(c => c.height)));
+  const gridRowHeights = gridRows.map(row => Math.max(...row.map(c => c.layout.totalHeight)));
 
   const topH = 168;
   const bottomH = 56;
@@ -1010,7 +1061,7 @@ async function exportAsImage(){
     const totalRowWidth = row.length * colWidth + (row.length - 1) * colGap;
     let x = (width - totalRowWidth) / 2;
     row.forEach(cell => {
-      drawBracketCard(ctx, x, y, colWidth, headHeight, rowHeight, cardPadding, cell.bracket, cell.colorIdx);
+      drawBracketCard(ctx, x, y, colWidth, headHeight, cardPadding, cell.bracket, cell.layout, cell.colorIdx);
       x += colWidth + colGap;
     });
     y += rowH + colGap;
