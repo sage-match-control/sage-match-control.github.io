@@ -1260,13 +1260,12 @@ const snapshotUrlFor = dayKey =>
 // ---- Network & polling timing --------------------------------------------
 // How long to wait on the snapshot fetch before giving up (venue wifi at a
 // live event can hang rather than fail outright).
-const FETCH_TIMEOUT_MS = 12000;
-// How often to re-check jsDelivr while a tab is open and visible. Paused
-// automatically while the tab/app is backgrounded. Polling faster than this
-// won't reveal fresher data any sooner than Cloud Run's own publish cadence
-// (gated by Apps Script's edit debounce), so there's little value in a much
-// shorter interval.
-const POLL_INTERVAL_MS = 15000;
+const FETCH_TIMEOUT_MS = 8000;
+// How often to re-check GitHub Pages while a tab is open and visible.
+// Paused automatically while the tab/app is backgrounded. Apps Script's own
+// edit debounce is ~10s, so polling any faster than that wouldn't reveal
+// fresher data any sooner anyway.
+const POLL_INTERVAL_MS = 10000;
 
 // ---- Browser storage keys -------------------------------------------------
 // Used to remember the last day picked + last search across page reloads.
