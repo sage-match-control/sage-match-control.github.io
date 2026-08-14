@@ -1246,13 +1246,37 @@
 // Aug 15-16 and 21-23. Entries keep their original day2-day6 keys (so the
 // already-published data/day2.json etc. paths and each facility's Code.gs
 // DAY_KEY don't need to change) — only the user-facing label was renumbered.
+//
+// isLive controls whether that day's Live Matches/Standings tabs and match
+// card scores/pills are shown at all (see computeDayIsLive() below):
+//   'auto'  — the normal case. Goes live automatically at 7:00 AM
+//             Philippine Time on the day's `date`, and stays live forever
+//             after that (so past days keep showing their results).
+//   true    — override: force live now, even before its scheduled time.
+//   false   — override: force hidden, even after its scheduled time (a
+//             kill switch if something needs to come down mid-day).
 const DAYS = [
-  { key: 'day2', label: 'Day 1 · Aug 15' },
-  { key: 'day3', label: 'Day 2 · Aug 16' },
-  { key: 'day4', label: 'Day 3 · Aug 21' },
-  { key: 'day5', label: 'Day 4 · Aug 22' },
-  { key: 'day6', label: 'Day 5 · Aug 23' }
+  { key: 'day2', label: 'Day 1 · Aug 15', date: '2026-08-15', isLive: true },
+  { key: 'day3', label: 'Day 2 · Aug 16', date: '2026-08-16', isLive: true },
+  { key: 'day4', label: 'Day 3 · Aug 21', date: '2026-08-21', isLive: 'auto' },
+  { key: 'day5', label: 'Day 4 · Aug 22', date: '2026-08-22', isLive: 'auto' },
+  { key: 'day6', label: 'Day 5 · Aug 23', date: '2026-08-23', isLive: 'auto' }
 ];
+
+// 7:00 AM Philippine Time (UTC+8, no DST — so this offset is always
+// correct, no timezone-database logic needed). Constructing the Date with
+// an explicit "+08:00" offset means this comes out right regardless of
+// the visitor's own device timezone.
+const LIVE_GO_LIVE_HOUR_PH = 7;
+function computeDayIsLive(day){
+  if(day.isLive === true) return true;
+  if(day.isLive === false) return false;
+  // 'auto' (or anything else/unset): live once we're at/after 7 AM PH
+  // time on the day's date, and permanently live after that point.
+  if(!day.date) return false; // no date configured yet -> can't compute, stays hidden until a date or an explicit override is set
+  const threshold = new Date(`${day.date}T${String(LIVE_GO_LIVE_HOUR_PH).padStart(2,'0')}:00:00+08:00`);
+  return Date.now() >= threshold.getTime();
+}
 
 // ---- Published data source (GitHub Pages) ---------------------------------
 // Must match GITHUB_OWNER/GITHUB_REPO/GITHUB_BRANCH on the Cloud Run service
@@ -1371,6 +1395,7 @@ const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
 // ============================================================================
 
 let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
+let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) — set in selectDay(), re-checked on every poll
 
 let MATCHES = [];
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
@@ -1547,9 +1572,21 @@ async function loadLiveData(){
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
+
+    // Re-checked every poll (not just on day-select) so a page left open
+    // across the 7 AM PH go-live threshold flips over on its own, without
+    // needing a reload. Only re-sync tab visibility when it actually
+    // changed, though — calling this every 10s regardless would yank the
+    // person off whatever tab they're currently looking at.
+    const wasLive = dayIsLive;
+    dayIsLive = computeDayIsLive(day);
+    if(dayIsLive !== wasLive) revealLiveTabsAfterLoad();
+
     rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
-    renderStandings();
-    renderLiveMatches();
+    if(dayIsLive){
+      renderStandings();
+      renderLiveMatches();
+    }
 
     // "Synced" reflects when Cloud Run actually published this snapshot
     // (i.e. when the sheet was last edited and its debounce settled), not
@@ -1603,10 +1640,22 @@ function revealLiveTabsAfterLoad(){
   if(dayPromptEl) dayPromptEl.style.display = 'none';
   if(viewTabsWrapEl) viewTabsWrapEl.style.display = '';
   if(syncStatusEl) syncStatusEl.style.display = '';
-  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+
   const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
-  if(liveTabBtn) liveTabBtn.classList.add('active');
-  if(liveResultsEl) liveResultsEl.style.display = '';
+  const standingsTabBtn = document.querySelector('.view-tab[data-view="standings"]');
+  const finderTabBtn = document.querySelector('.view-tab[data-view="finder"]');
+  if(liveTabBtn) liveTabBtn.style.display = dayIsLive ? '' : 'none';
+  if(standingsTabBtn) standingsTabBtn.style.display = dayIsLive ? '' : 'none';
+
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  if(dayIsLive){
+    if(liveTabBtn) liveTabBtn.classList.add('active');
+    if(liveResultsEl) liveResultsEl.style.display = '';
+  } else {
+    if(finderTabBtn) finderTabBtn.classList.add('active');
+    if(searchPanelEl) searchPanelEl.style.display = '';
+    if(resultsEl) resultsEl.style.display = '';
+  }
 }
 
 // Looks up a division's display info, falling back to a derived "Beginner N+"
@@ -1663,16 +1712,28 @@ function matchInstanceOf(str){
   return m ? parseInt(m[1], 10) : null;
 }
 
-function roundLabel(rest){
+// Raw stage keyword only — no display text, no twice-to-beat "Match N"
+// suffix. standingsStageKey() (and anything else that needs to bucket a
+// row by stage) should use this rather than string-matching roundLabel()'s
+// output, since that carries a suffix that breaks exact-equality checks.
+function roundKeyword(rest){
   if(/^\d+$/.test(rest)) return null; // plain pool team number -> no special tag
+  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'R16';
+  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'QF';
+  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'SF';
+  if(/(^|_)F(_|\d|$)/.test(rest)) return 'F';
+  if(/(^|_)B(_|\d|$)/.test(rest)) return 'B';
+  return null;
+}
+
+const ROUND_KEYWORD_LABELS = { R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Final', B: 'Bronze Match' };
+
+function roundLabel(rest){
+  const keyword = roundKeyword(rest);
+  if(!keyword) return null;
   const instance = matchInstanceOf(rest);
   const suffix = instance ? ` \u00b7 Match ${instance}` : '';
-  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'Round of 16' + suffix;
-  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'Quarterfinal' + suffix;
-  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'Semifinal' + suffix;
-  if(/(^|_)F(_|\d|$)/.test(rest)) return 'Final' + suffix;
-  if(/(^|_)B(_|\d|$)/.test(rest)) return 'Bronze Match' + suffix;
-  return null;
+  return ROUND_KEYWORD_LABELS[keyword] + suffix;
 }
 
 function divisionLabel(code){
@@ -1703,16 +1764,12 @@ function categorySortKey(sampleRow){
 // up top.)
 function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
 
+const STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD = { R16: 'R16', QF: 'QF', SF: 'SF', B: 'BRONZE', F: 'FINAL' };
+
 function standingsStageKey(teamCode){
   const { rest } = parseCode(teamCode);
   if(!rest) return 'RR';
-  const label = roundLabel(rest);
-  if(label === 'Round of 16') return 'R16';
-  if(label === 'Quarterfinal') return 'QF';
-  if(label === 'Semifinal') return 'SF';
-  if(label === 'Bronze Match') return 'BRONZE';
-  if(label === 'Final') return 'FINAL';
-  return 'RR';
+  return STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD[roundKeyword(rest)] || 'RR';
 }
 
 function isEmptyStanding(s){
@@ -2217,6 +2274,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   currentDayIndex = idx;
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
+  dayIsLive = computeDayIsLive(day);
 
   // Switching days always drops back to the same "first screen" shown on
   // initial page load — tabs/status hidden, just the centered prompt —
@@ -2437,11 +2495,11 @@ function ticketHTML(m, teamCode, isNext){
   const youWon = m.played && youScore > oppScore;
   const oppWon = m.played && oppScore > youScore;
 
-  const scoreHTML = m.played
+  const scoreHTML = (dayIsLive && m.played)
     ? `<span class="score-num ${youWon?'win':''}">${escapeHtml(String(youScore))}</span><span class="score-colon">:</span><span class="score-num ${oppWon?'win':''}">${escapeHtml(String(oppScore))}</span>`
     : `<span class="vs-text">VS</span>`;
 
-  const isLive = !!m.liveCourt;
+  const isLive = dayIsLive && !!m.liveCourt;
   const displayCourt = isLive ? m.liveCourt : m.court;
   const displayCourtLabel = isLive ? `Court ${displayCourt}` : displayCourt;
   const facility = facilityForCourt(displayCourt);
@@ -2453,12 +2511,12 @@ function ticketHTML(m, teamCode, isNext){
     : '';
   // Only flag as "Next Up" if it isn't already live — a match in progress
   // is covered by the Live pill above, so showing both would be redundant.
-  const nextPillHTML = isNext && !isLive
+  const nextPillHTML = dayIsLive && isNext && !isLive
     ? `<span class="next-pill">Next Up</span>`
     : '';
 
   return `
-  <div class="ticket${isNext && !isLive ? ' next' : ''}">
+  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}">
     <div class="ticket-body">
       <div class="time-row">
         <span class="center-pill">${escapeHtml(m.time)}</span>
