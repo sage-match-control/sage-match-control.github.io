@@ -755,7 +755,7 @@
      cards (instead of a flat list) so it's obvious who's facing whom. */
   .matchup{
     display:flex;
-    align-items:stretch;
+    flex-direction:column;
     background:var(--paper);
     border-radius:10px;
     overflow:hidden;
@@ -764,6 +764,20 @@
   }
   .matchup:last-child{margin-bottom:0;}
   .stage-banner + .matchup{border-radius:0 0 10px 10px; margin-top:0;}
+  .matchup-label{
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--muted);
+    padding:6px 9px 0;
+  }
+  .matchup-row{
+    display:flex;
+    align-items:stretch;
+  }
   .matchup-side{
     flex:1;
     min-width:0;
@@ -1637,13 +1651,27 @@ function facilityForCourt(court){
   return '';
 }
 
+// Twice-to-beat playoff slots encode which meeting they belong to as a
+// trailing "(1)"/"(2)" on the team code — e.g. B35XD_F_1_(1) vs
+// B35XD_F_2_(1) for the first Final, with B35XD_F_1_(2)/B35XD_F_2_(2) as
+// the decider if the challenger forces a second match. Works the same on
+// either a full team code or just its "rest" portion, since the
+// parenthesized part is always at the very end either way. Returns null
+// for any code without one (i.e. every normal, non-twice-to-beat match).
+function matchInstanceOf(str){
+  const m = str.match(/\((\d+)\)\s*$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 function roundLabel(rest){
   if(/^\d+$/.test(rest)) return null; // plain pool team number -> no special tag
-  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'Round of 16';
-  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'Quarterfinal';
-  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'Semifinal';
-  if(/(^|_)F(_|\d|$)/.test(rest)) return 'Final';
-  if(/(^|_)B(_|\d|$)/.test(rest)) return 'Bronze Match';
+  const instance = matchInstanceOf(rest);
+  const suffix = instance ? ` \u00b7 Match ${instance}` : '';
+  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'Round of 16' + suffix;
+  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'Quarterfinal' + suffix;
+  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'Semifinal' + suffix;
+  if(/(^|_)F(_|\d|$)/.test(rest)) return 'Final' + suffix;
+  if(/(^|_)B(_|\d|$)/.test(rest)) return 'Bronze Match' + suffix;
   return null;
 }
 
@@ -1707,17 +1735,19 @@ function pairCell(s){
 
 function renderStageTables(rows){
   // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
-  // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2" — blank means a single group).
-  // Empty RR slots are skipped, but playoff slots are always shown (as TBD if empty)
-  // so the bracket stages are visible before pairs have been seeded in.
+  // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2"). A blank bracket
+  // means every RR row for this division is one single group — no Br column
+  // is shown at all in that case, rather than showing a fabricated "1" for
+  // everyone. Empty RR slots are skipped, but playoff slots are always shown
+  // (as TBD if empty) so the bracket stages are visible before pairs have
+  // been seeded in.
   const stages = new Map(); // stageKey -> array of rows
   const rrGroups = new Map(); // bracket label -> rows
   rows.forEach(s => {
     const stageKey = standingsStageKey(s.teamCode);
     if(stageKey === 'RR'){
       if(isEmptyStanding(s)) return;
-      const brRaw = (s.bracket || '').trim();
-      const brLabel = brRaw === '' ? '1' : brRaw;
+      const brLabel = (s.bracket || '').trim(); // '' when there's no sub-bracket for this division — no longer defaulted to '1'
       if(!rrGroups.has(brLabel)) rrGroups.set(brLabel, []);
       rrGroups.get(brLabel).push(s);
     } else {
@@ -1740,18 +1770,19 @@ function renderStageTables(rows){
 
   // Round Robin block (if any)
   if(rrGroups.size > 0){
+    const showBracketColumn = Array.from(rrGroups.keys()).some(k => k !== '');
     html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
       <table class="br-table"><thead><tr>
-        <th>Br</th><th>Pair</th><th>W</th><th>L</th><th>Q</th>
+        ${showBracketColumn ? '<th>Br</th>' : ''}<th>Pair</th><th>W</th><th>L</th><th>Q</th>
       </tr></thead><tbody>`;
     let badgeIdx = 0;
     const badgeMap = new Map();
     Array.from(rrGroups.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true})).forEach(brNum => {
-      if(!badgeMap.has(brNum)){ badgeMap.set(brNum, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
+      if(showBracketColumn && brNum !== '' && !badgeMap.has(brNum)){ badgeMap.set(brNum, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
       const badgeClass = badgeMap.get(brNum);
       rrGroups.get(brNum).forEach(s => {
         html += `<tr class="${standingRowClass(s)}">
-          <td class="br-badge ${badgeClass}">${escapeHtml(brNum)}</td>
+          ${showBracketColumn ? `<td class="br-badge ${badgeClass || ''}">${escapeHtml(brNum)}</td>` : ''}
           ${pairCell(s)}
           <td class="num">${s.wins}</td>
           <td class="num">${s.loss}</td>
@@ -1793,6 +1824,21 @@ function renderStageTables(rows){
 // the stage has one set; otherwise falls back to pairing rows in the order
 // they arrived (a spreadsheet naturally lists a match's two sides together).
 function pairUpMatchups(rows){
+  // Prefer grouping by the match-instance number encoded in the code
+  // itself (see matchInstanceOf) — it's derived straight from the code,
+  // so it doesn't depend on the sheet's bracket column being filled in
+  // correctly or rows happening to already be in pairing order.
+  const allHaveMatchInstance = rows.length > 0 && rows.every(s => matchInstanceOf(s.teamCode) !== null);
+  if(allHaveMatchInstance){
+    const groups = new Map();
+    rows.forEach(s => {
+      const key = matchInstanceOf(s.teamCode);
+      if(!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    });
+    return Array.from(groups.keys()).sort((a, b) => a - b).map(k => groups.get(k));
+  }
+
   const allBracketed = rows.length > 0 && rows.every(s => (s.bracket || '').trim() !== '');
   if(allBracketed){
     const groups = new Map();
@@ -1836,15 +1882,31 @@ function matchupScoreHTML(s){
   return `<span class="mu-score ${standingRowClass(s)}">${scoreLabel}</span>`;
 }
 
+// Derives a "Match N" label for a twice-to-beat matchup card from either
+// side's team code (they share the same instance number by construction —
+// pairUpMatchups is what grouped them together in the first place). Falls
+// back to whichever side actually has a code, since a not-yet-seeded TBD
+// slot still carries its bracket-slot code even with no players decided.
+function matchupInstanceLabel(pair){
+  const withCode = pair.find(s => s && s.teamCode);
+  if(!withCode) return '';
+  const instance = matchInstanceOf(withCode.teamCode);
+  return instance ? `Match ${instance}` : '';
+}
+
 function renderMatchup(pair){
+  const label = matchupInstanceLabel(pair);
   return `<div class="matchup">
-    ${matchupSideHtml(pair[0], 'left')}
-    <div class="matchup-center">
-      ${matchupScoreHTML(pair[0])}
-      <span class="matchup-vs">VS</span>
-      ${matchupScoreHTML(pair[1])}
+    ${label ? `<div class="matchup-label">${escapeHtml(label)}</div>` : ''}
+    <div class="matchup-row">
+      ${matchupSideHtml(pair[0], 'left')}
+      <div class="matchup-center">
+        ${matchupScoreHTML(pair[0])}
+        <span class="matchup-vs">VS</span>
+        ${matchupScoreHTML(pair[1])}
+      </div>
+      ${matchupSideHtml(pair[1], 'right')}
     </div>
-    ${matchupSideHtml(pair[1], 'right')}
   </div>`;
 }
 
