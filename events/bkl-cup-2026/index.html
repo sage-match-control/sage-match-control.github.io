@@ -1251,8 +1251,8 @@ const DAYS = [
 // (Settings -> Pages -> Deploy from branch -> GITHUB_BRANCH), and the repo
 // should have a .nojekyll file at its root so GitHub serves data/*.json as
 // plain static files instead of running them through Jekyll processing.
-const JSDELIVR_OWNER = 'sage-match-control';
-const JSDELIVR_REPO = 'bkl-cup-2026';
+const GHPAGES_OWNER = 'sage-match-control';
+const GHPAGES_REPO = 'bkl-cup-2026';
 const GHPAGES_BRANCH = 'main'; // not part of the URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
 const snapshotUrlFor = dayKey =>
   `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/data/${dayKey}.json?t=${Date.now()}`;
