@@ -279,49 +279,6 @@
   }
   .sync-status .retry-btn:hover{background:rgba(255,154,122,.15);}
 
-  /* ---------- DESKTOP QR PANEL ---------- */
-  .qr-panel{
-    display:none;
-    position:fixed;
-    top:26px;
-    right:26px;
-    z-index:60;
-    background:var(--paper);
-    border-radius:16px;
-    padding:14px 14px 12px;
-    box-shadow:var(--card-shadow);
-    text-align:center;
-  }
-  .qr-panel img{
-    display:block;
-    width:180px;
-    height:180px;
-    border-radius:8px;
-  }
-  .qr-panel .qr-link-text{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:13px;
-    font-weight: bolder;
-    max-width:180px;
-    line-height:1.4;
-    margin-top:8px;
-    overflow-wrap:break-word;
-    word-break:break-word;
-  }
-  .qr-panel .qr-caption{
-    margin-top:8px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    letter-spacing:.06em;
-    text-transform:uppercase;
-    color:var(--muted);
-    max-width:180px;
-    line-height:1.4;
-  }
-  @media (min-width:900px){
-    .qr-panel{ display:block; }
-  }
-
   /* ---------- VIEW TABS ---------- */
   .view-tabs{
     display:flex;
@@ -384,6 +341,20 @@
   }
   .day-picker select:hover, .day-picker select:focus{border-color:rgba(198,255,0,.6); outline:none;}
   .day-picker select option{color:var(--ink);}
+  .jump-today-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    font-weight:600;
+    letter-spacing:.04em;
+    padding:8px 16px;
+    border-radius:100px;
+    border:1px solid rgba(198,255,0,.4);
+    background:rgba(198,255,0,.08);
+    color:var(--court);
+    cursor:pointer;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  .jump-today-btn:hover{background:rgba(198,255,0,.18); border-color:var(--court);}
 
   /* ---------- LIVE MATCHES (Court Control) ---------- */
   .live-dot{
@@ -580,6 +551,46 @@
     margin-bottom:20px;
     text-align:center;
   }
+  .organizer-status-box{margin-bottom:14px;}
+  .org-status-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px 12px;
+    border-radius:9px;
+    background:rgba(20,27,44,.04);
+    margin-bottom:6px;
+  }
+  .org-status-row:last-child{margin-bottom:0;}
+  .org-status-dot{
+    flex:none;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--muted);
+  }
+  .org-status-ok .org-status-dot{background:#34C77C;}
+  .org-status-warn .org-status-dot{background:var(--cork);}
+  .org-status-none .org-status-dot{background:rgba(20,27,44,.2);}
+  .org-status-name{
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:700;
+    font-size:12.5px;
+    color:var(--ink);
+    flex:none;
+    width:90px;
+  }
+  .org-status-detail{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .org-status-warn .org-status-detail{color:#B3541A; font-weight:600;}
+  .organizer-status-empty{
+    font-size:12.5px;
+    color:var(--muted);
+    font-style:italic;
+    padding:6px 2px;
+  }
+  .organizer-check-conn-btn{width:100%;}
   .organizer-secret-row{display:flex; gap:8px;}
   #orgSecretInput{
     flex:1;
@@ -1247,12 +1258,6 @@
 </head>
 <body>
 
-<div class="qr-panel" aria-hidden="false">
-  <img src="bkl-cup-2026-qr.png" alt="QR code linking to this match finder site" />
-  <div class="qr-link-text">tinyurl.com/SAGExBKLCup</div>
-  <div class="qr-caption">Scan to open the Match Finder &amp; Standings on your phone</div>
-</div>
-
 <header class="hero">
   <svg class="crown-mark" viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <!-- Shield -->
@@ -1282,13 +1287,14 @@
   <div class="day-picker">
     <label for="dayPicker">Select tournament day</label>
     <select id="dayPicker"></select>
+    <button type="button" id="jumpToTodayBtn" class="jump-today-btn">Jump to today</button>
   </div>
 
   <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
     <button class="view-tab active" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
-    <button class="view-tab" data-view="organizer" type="button">Organizer</button>
+    <button class="view-tab" data-view="organizer" type="button">Mission Control</button>
   </div>
 
   <div class="regal-rule"><span class="diamond"></span></div>
@@ -1329,6 +1335,13 @@
   <div id="organizerResults" style="display:none;">
     <div class="organizer-panel">
       <div class="organizer-day-label" id="organizerDayLabel"></div>
+
+      <label class="search-label">Facility sync status</label>
+      <div id="orgStatusBox" class="organizer-status-box"></div>
+
+      <button type="button" id="orgCheckConnBtn" class="organizer-secondary-btn organizer-check-conn-btn">Check connection</button>
+
+      <div class="organizer-divider"></div>
 
       <label class="search-label" for="orgSecretInput">Shared secret</label>
       <div class="organizer-secret-row">
@@ -1545,6 +1558,11 @@ function buildMatchByCodeIndex(matches){
   return idx;
 }
 let STANDINGS = [];
+// Raw last-fetched day snapshot (facilities' syncedAt, failedFacilities,
+// etc.) — kept separately from MATCHES/STANDINGS since those are the
+// parsed-for-display versions; Mission Control's status box needs the
+// per-facility sync metadata that parsing throws away.
+let LAST_SNAPSHOT = null;
 
 function parseCSV(text){
   const rows = [];
@@ -1709,6 +1727,8 @@ async function loadLiveData(){
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
+    LAST_SNAPSHOT = snapshot;
+    if(typeof renderOrganizerStatus === 'function') renderOrganizerStatus();
 
     // Re-checked every poll (not just on day-select) so a page left open
     // across the 7 AM PH go-live threshold flips over on its own, without
@@ -2379,7 +2399,10 @@ viewTabs.forEach(btn => {
     if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
     if(view === 'standings') renderStandings();
     if(view === 'live') renderLiveMatches();
-    if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function') updateOrganizerDayLabel();
+    if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function'){
+      updateOrganizerDayLabel();
+      renderOrganizerStatus();
+    }
   });
 });
 
@@ -2481,6 +2504,27 @@ if(dayPickerEl){
     const idx = parseInt(dayPickerEl.value, 10);
     if(isNaN(idx)) return;
     await selectDay(idx);
+  });
+}
+
+// Finds the day whose date matches today (Philippine time, matching the
+// isLive 7am-PH threshold elsewhere). If there's no exact match — a rest
+// day between the two weekends, or before/after the whole event — falls
+// forward to the next upcoming day, or the last day if the event's
+// already over, rather than just doing nothing.
+function getTodayOrNextDayIndex(){
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+  const exactIdx = DAYS.findIndex(d => d.date === todayStr);
+  if(exactIdx !== -1) return exactIdx;
+  const nextIdx = DAYS.findIndex(d => d.date > todayStr);
+  if(nextIdx !== -1) return nextIdx;
+  return DAYS.length - 1;
+}
+
+const jumpToTodayBtn = document.getElementById('jumpToTodayBtn');
+if(jumpToTodayBtn){
+  jumpToTodayBtn.addEventListener('click', () => {
+    selectDay(getTodayOrNextDayIndex());
   });
 }
 
@@ -2896,6 +2940,89 @@ function updateOrganizerDayLabel(){
   if(!organizerDayLabelEl) return;
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   organizerDayLabelEl.textContent = day ? day.label : 'No day selected';
+}
+
+// Same 3 facility names Code.gs's FACILITY_NAME and SyncConfig.mjs use.
+// Hardcoded here rather than derived from the snapshot, so a facility that
+// has genuinely never synced still shows up as "Never synced" instead of
+// silently not appearing in the list at all.
+const KNOWN_FACILITIES = ['Main', 'Annex', 'Dreamcourts'];
+const STALE_WARNING_MS = 5 * 60 * 1000; // flag a facility's data as aging once it's this old
+
+function relativeTimeFromNow(isoString){
+  if(!isoString) return 'unknown';
+  const ms = Date.now() - new Date(isoString).getTime();
+  if(ms < 0 || ms < 30000) return 'just now';
+  const sec = Math.floor(ms / 1000);
+  if(sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if(min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if(hr < 24) return `${hr}h ago`;
+  return `${Math.floor(hr / 24)}d ago`;
+}
+
+const orgStatusBox = document.getElementById('orgStatusBox');
+
+// Reads LAST_SNAPSHOT (captured in loadLiveData(), refreshed every 10s poll
+// same as everything else) rather than fetching anything itself — this is
+// purely a read of data that's already on the page, so switching to this
+// tab or waiting for the next poll both update it for free.
+function renderOrganizerStatus(){
+  if(!orgStatusBox) return;
+  if(!LAST_SNAPSHOT){
+    orgStatusBox.innerHTML = `<div class="organizer-status-empty">No sync data loaded yet for this day.</div>`;
+    return;
+  }
+  const byName = new Map((LAST_SNAPSHOT.facilities || []).map(f => [f.name, f]));
+  const failedNow = new Set(LAST_SNAPSHOT.failedFacilities || []);
+
+  orgStatusBox.innerHTML = KNOWN_FACILITIES.map(name => {
+    const entry = byName.get(name);
+    if(!entry){
+      return `<div class="org-status-row org-status-none">
+        <span class="org-status-dot"></span>
+        <span class="org-status-name">${escapeHtml(name)}</span>
+        <span class="org-status-detail">Never synced</span>
+      </div>`;
+    }
+    const ageMs = Date.now() - new Date(entry.syncedAt || 0).getTime();
+    const failedLastAttempt = failedNow.has(name);
+    const isWarn = failedLastAttempt || ageMs > STALE_WARNING_MS;
+    const detail = failedLastAttempt
+      ? `Last attempt failed \u2014 showing data from ${relativeTimeFromNow(entry.syncedAt)}`
+      : `Synced ${relativeTimeFromNow(entry.syncedAt)}`;
+    return `<div class="org-status-row ${isWarn ? 'org-status-warn' : 'org-status-ok'}">
+      <span class="org-status-dot"></span>
+      <span class="org-status-name">${escapeHtml(name)}</span>
+      <span class="org-status-detail">${detail}</span>
+    </div>`;
+  }).join('');
+}
+
+const orgCheckConnBtn = document.getElementById('orgCheckConnBtn');
+if(orgCheckConnBtn){
+  orgCheckConnBtn.addEventListener('click', async () => {
+    orgCheckConnBtn.disabled = true;
+    orgCheckConnBtn.textContent = 'Checking\u2026';
+    showOrgResult('loading', 'Checking connection to Cloud Run\u2026');
+    const started = performance.now();
+    try {
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/ping`);
+      const elapsed = Math.round(performance.now() - started);
+      const version = res.headers.get('X-App-Version');
+      if(res.ok){
+        showOrgResult('ok', `Connected to Cloud Run \u2014 ${elapsed}ms${version ? ` \u00b7 v${version}` : ''}`);
+      } else {
+        showOrgResult('error', `Cloud Run responded with HTTP ${res.status} (${elapsed}ms)`);
+      }
+    } catch(err){
+      showOrgResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+    } finally {
+      orgCheckConnBtn.disabled = false;
+      orgCheckConnBtn.textContent = 'Check connection';
+    }
+  });
 }
 
 function showOrgResult(kind, text){
