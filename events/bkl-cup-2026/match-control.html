@@ -626,6 +626,23 @@
     margin:8px 0 20px;
     line-height:1.5;
   }
+  .organizer-checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:14px;
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--ink);
+    font-weight:600;
+  }
+  .organizer-checkbox-row input[type="checkbox"]{
+    width:16px;
+    height:16px;
+    accent-color:var(--cork);
+    cursor:pointer;
+    flex:none;
+  }
   .organizer-primary-btn{
     width:100%;
     font-family:'Inter',sans-serif;
@@ -1349,6 +1366,11 @@
         <button type="button" id="orgForgetSecretBtn" class="organizer-secondary-btn">Forget</button>
       </div>
       <p class="organizer-hint">Held only for this browser tab (cleared when you close it) — never saved to the page itself.</p>
+
+      <label class="organizer-checkbox-row">
+        <input type="checkbox" id="orgUseCsvMethod" />
+        <span>Use CSV export fallback instead of Sheets API</span>
+      </label>
 
       <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
 
@@ -2912,6 +2934,7 @@ renderIntro();
 
 // ---------- Organizer tab: resync + secret handling ----------
 const orgSecretInput = document.getElementById('orgSecretInput');
+const orgUseCsvMethodEl = document.getElementById('orgUseCsvMethod');
 const orgForgetSecretBtn = document.getElementById('orgForgetSecretBtn');
 const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgFacilityBtns = document.querySelectorAll('.organizer-facility-btn');
@@ -3042,7 +3065,9 @@ function setResyncButtonsDisabled(disabled){
 
 // facilityName: null for a full-day resync, or a facility name (e.g.
 // 'Main') to scope it — same /sync/:day endpoint either way, just with or
-// without ?facility= appended.
+// without ?facility= appended. Method (Sheets API vs the CSV export
+// fallback) is read from the checkbox at call time, so it applies equally
+// whichever resync button was actually clicked.
 async function performResync(facilityName, { onStart, onDone } = {}){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day){
@@ -3054,14 +3079,19 @@ async function performResync(facilityName, { onStart, onDone } = {}){
     showOrgResult('error', 'Paste the shared secret above first.');
     return;
   }
+  const useCsvMethod = !!(orgUseCsvMethodEl && orgUseCsvMethodEl.checked);
 
   const scopeLabel = facilityName ? `${day.label} / ${facilityName}` : day.label;
   setResyncButtonsDisabled(true);
   if(onStart) onStart();
-  showOrgResult('loading', `Resyncing ${scopeLabel}\u2026`);
+  showOrgResult('loading', `Resyncing ${scopeLabel}${useCsvMethod ? ' (CSV fallback)' : ''}\u2026`);
 
   try {
-    const url = `${CLOUD_RUN_BASE_URL}/sync/${day.key}` + (facilityName ? `?facility=${encodeURIComponent(facilityName)}` : '');
+    const params = new URLSearchParams();
+    if(facilityName) params.set('facility', facilityName);
+    if(useCsvMethod) params.set('method', 'csv');
+    const qs = params.toString();
+    const url = `${CLOUD_RUN_BASE_URL}/sync/${day.key}` + (qs ? `?${qs}` : '');
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'X-Sync-Secret': secret }
@@ -3075,7 +3105,8 @@ async function performResync(facilityName, { onStart, onDone } = {}){
       const synced = (body.facilitiesSynced || []).join(', ') || 'none';
       const failed = body.facilitiesFailed || [];
       const stale = body.facilitiesStale || [];
-      const lines = [`${scopeLabel} resynced.`, `Synced: ${synced}`];
+      const methodNote = body.method === 'csv' ? ' \u2014 via CSV export fallback' : '';
+      const lines = [`${scopeLabel} resynced${methodNote}.`, `Synced: ${synced}`];
       if(stale.length) lines.push(`Kept previous data for (this attempt failed): ${stale.join(', ')}`);
       if(failed.length && stale.length === 0) lines.push(`Failed: ${failed.join('; ')}`);
       showOrgResult(failed.length && stale.length === 0 ? 'error' : (failed.length ? 'loading' : 'ok'), lines.join('\n'));
