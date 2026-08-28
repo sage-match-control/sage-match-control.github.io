@@ -247,8 +247,65 @@ function groupSizes(teams, brackets){
 const rrMatches = sizes => sizes.reduce((s,n)=>s+n*(n-1)/2,0);
 
 const roundLabel=size=>({4:'Semifinals',8:'Quarterfinals'})[size]||('Round of '+size);
-/* Top 2 per group advance. Single elimination sized to the next power of 2,
-   with byes for the top seeds. Single group = twice-to-beat final + auto bronze. */
+
+/* ---- Tiered playoff seeding ----
+   Rank matters: all group WINNERS get priority over all group RUNNER-UPS,
+   which get priority over 3rd-place qualifiers, and so on. A tier's byes
+   carry it all the way to the smallest round strictly bigger than the
+   tier's own size — skipping every round before that entirely, not just
+   the first one. Whatever slots are left at that round go to the next
+   tier(s) down, who play their own preliminary round(s) to earn them.
+   Byes only ever occur in the single earliest round of any such chain
+   (standard bracket seeding); everything after that is a clean halving. */
+
+// Reduce a homogeneous pool of N entrants to exactly `target` winners via
+// ordinary single-elimination, byes-by-lot. Returns rounds earliest->latest.
+function reduceToTarget(N, target){
+  if(N<=target) return [];
+  let M=target;
+  while(M<Math.ceil(N/2)) M*=2; // smallest target*2^k >= ceil(N/2)
+  const rounds=[{matches:N-M, byes:2*M-N}]; // the only round with true byes
+  let m=M;
+  while(m>target){ rounds.push({matches:m/2, byes:0}); m/=2; } // clean halving after
+  return rounds;
+}
+// `tiers` (best tier first) must collectively produce exactly `target`
+// winners feeding into the round above. Higher tiers bye through with zero
+// matches of their own; once there's only one tier left (or a tier can't
+// fit within the remaining slots), it/they reduce down via reduceToTarget.
+function solveForTarget(tiers, target){
+  if(target<=0 || tiers.length===0) return [];
+  if(tiers.length===1) return reduceToTarget(tiers[0], target);
+  const [tier0,...rest]=tiers;
+  if(tier0>=target){
+    // Doesn't fit as a clean bye ahead of the rest — collapse the
+    // remaining tiers into one pool rather than losing entrants. In
+    // practice (uniform tier sizes) this is the mathematically forced
+    // outcome for any 3rd+ tier, not just a fallback.
+    return reduceToTarget(tiers.reduce((s,t)=>s+t,0), target);
+  }
+  return solveForTarget(rest, target-tier0);
+}
+// Full recursive solve for `tiers` (best first) down to a single champion.
+function tieredRounds(tiers){
+  tiers=tiers.filter(t=>t>0);
+  if(tiers.length===0) return [];
+  if(tiers.length===1){
+    const n=tiers[0];
+    if(n<2) return [];
+    if(n===2) return [{matches:1,byes:0}];
+    return reduceToTarget(n,2).concat([{matches:1,byes:0}]);
+  }
+  const [tier0,...rest]=tiers;
+  let R=4; while(R<=tier0) R*=2; // smallest round STRICTLY bigger than tier0
+  const remaining=R-tier0;
+  const subRounds=solveForTarget(rest, remaining);
+  const normal=[]; for(let s=R; s>=2; s/=2) normal.push({matches:s/2, byes:0});
+  return subRounds.concat(normal);
+}
+
+/* Top `adv` per group advance, ranked by tier. Single elimination with
+   tiered byes as above. Single group = twice-to-beat final + auto bronze. */
 function playoffPlan(groups, adv, fill){
   adv=Math.min(4,Math.max(1,adv||2));
   if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,bronzeText:null};
@@ -259,21 +316,30 @@ function playoffPlan(groups, adv, fill){
   const direct=groups*adv;
   if(direct===2) return {rounds:[{label:'Final',matches:1,byes:0}],
     total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, bronzeText:null};
-  let B=4; while(B<direct) B*=2;
-  const wc = fill==='wc' ? B-direct : 0;
-  const q = direct + wc;
-  const rounds=[];
-  for(let size=B; size>=4; size/=2){
-    const matches = size===B ? q - B/2 : size/2;
-    const byes = size===B ? B - q : 0;
-    rounds.push({label:roundLabel(size),matches,byes});
+
+  const raw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
+  let wc=0, byes=raw[0].byes;
+  if(fill==='wc' && byes>0){
+    wc=byes;
+    raw[0]={matches:raw[0].matches+byes, byes:0};
+    byes=0;
   }
+  const qualifiers=direct+wc;
+
+  // Label from the end: last round is always Final; walking backward the
+  // structural size doubles each step (SF=4, QF=8, R16=16, R32=32…).
+  const n=raw.length;
+  const rounds=raw.map((rd,i)=>{
+    const distFromEnd=n-1-i;
+    const label = distFromEnd===0 ? 'Final' : roundLabel(2**(distFromEnd+1));
+    return {label, matches:rd.matches, byes:rd.byes};
+  });
+
   let bronzeText=null;
-  if(q>=4) rounds.push({label:'Bronze match',matches:1,byes:0});
+  if(qualifiers>=4) rounds.splice(rounds.length-1, 0, {label:'Bronze match', matches:1, byes:0});
   else bronzeText='losing semifinalist automatic';
-  rounds.push({label:'Final',matches:1,byes:0});
   const total=rounds.reduce((s,r)=>s+r.matches,0);
-  return {rounds,total,min:total,qualifiers:q,direct,wc,byes:B-q,single:false,bronzeText};
+  return {rounds, total, min:total, qualifiers, direct, wc, byes, single:false, bronzeText};
 }
 
 function calcCategory(c){
@@ -362,50 +428,86 @@ function buildChart(p){
       +'</div><div class="legend">If RR #2 takes game 1, a winner-take-all game 2 follows.</div>';
   }
   const q=plan.qualifiers;
-  const poolDesc=n=>{
-    if(n>plan.direct)return 'wildcard';
-    const rank=Math.ceil(n/p.groups);
-    return rank===1?'group winner':rank===2?'runner-up':`group #${rank}`;
-  };
-  // Positions are drawn by lot, so slots are labelled D1, D2… (draw order),
-  // not seeded by rank. Each slot just holds "a qualifier".
-  const drawTxt=n=>n<=q?`<span class="sd">D${n}</span>drawn qualifier`:null;
   if(q===2){
+    const drawTxt=n=>`<span class="sd">D${n}</span>drawn qualifier`;
     return '<div class="chart">'+col('Final',[box(slot(drawTxt(1)),slot(drawTxt(2)),'gold')])
       +'</div><div class="legend">'+legendTxt(p)+'</div>';
   }
-  const B=q+plan.byes;
-  // sequential draw positions 1..B; byes are simply the empty positions
-  const order=Array.from({length:B},(_,i)=>i+1);
-  const cols=[];let prev=null;
-  for(let size=B;size>=2;size/=2){
-    const boxes=[];const meta=[];
-    const count=size/2;
-    for(let j=0;j<count;j++){
-      let aTxt,bTxt,carry=null,aBye=false,bBye=false;
-      const id=(size===2?'F':roundAbbr(size))+(count>1?(j+1):'');
-      if(size===B){
-        const s1=order[2*j],s2=order[2*j+1];
-        aTxt=s1<=q?drawTxt(s1):'Bye';aBye=s1>q;
-        bTxt=s2<=q?drawTxt(s2):'Bye';bBye=s2>q;
-        if(aBye)carry=bTxt;if(bBye)carry=aTxt;
-      }else{
-        const f1=prev[2*j],f2=prev[2*j+1];
-        aTxt=f1.carry||`Winner ${f1.id}`;
-        bTxt=f2.carry||`Winner ${f2.id}`;
+
+  // adv===1: single homogeneous tier, byes-by-lot, no rank priority — same
+  // flat-draw visual as before.
+  if(p.adv===1){
+    const B=q+plan.byes;
+    const order=Array.from({length:B},(_,i)=>i+1);
+    const drawTxt=n=>n<=q?`<span class="sd">D${n}</span>drawn qualifier`:null;
+    const cols=[];let prev=null;
+    for(let size=B;size>=2;size/=2){
+      const boxes=[];const meta=[];
+      const count=size/2;
+      for(let j=0;j<count;j++){
+        let aTxt,bTxt,carry=null,aBye=false,bBye=false;
+        const id=(size===2?'F':roundAbbr(size))+(count>1?(j+1):'');
+        if(size===B){
+          const s1=order[2*j],s2=order[2*j+1];
+          aTxt=s1<=q?drawTxt(s1):'Bye';aBye=s1>q;
+          bTxt=s2<=q?drawTxt(s2):'Bye';bBye=s2>q;
+          if(aBye)carry=bTxt;if(bBye)carry=aTxt;
+        }else{
+          const f1=prev[2*j],f2=prev[2*j+1];
+          aTxt=f1.carry||`Winner ${f1.id}`;
+          bTxt=f2.carry||`Winner ${f2.id}`;
+        }
+        meta.push({id,carry});
+        if(size===B&&(aBye||bBye)){
+          boxes.push(box(slot(aBye?bTxt:aTxt),slot('Bye — advances','bye')));
+        }else{
+          boxes.push(box(slot(aTxt),slot(bTxt),size===2?'gold':''));
+        }
       }
-      meta.push({id,carry});
-      if(size===B&&(aBye||bBye)){
-        boxes.push(box(slot(aBye?bTxt:aTxt),slot('Bye — advances','bye')));
+      cols.push(col(size===2?'Final':roundLabel(size),boxes));
+      prev=meta;
+    }
+    if(q>=4) cols.push(col('Bronze match',[box(slot('Loser SF1'),slot('Loser SF2'),'bronzebox')]));
+    else if(plan.bronzeText) cols.push(col('Bronze',[box(slot('Losing semifinalist — automatic','bye'),'','bronzebox')]));
+    return '<div class="chart">'+cols.join('')+'</div><div class="legend">'+legendTxt(p)+'</div>';
+  }
+
+  // adv>=2: tiered — group winners (rank 1) bye all the way to the round
+  // where the lower-ranked qualifiers (rank 2..adv, flattened together
+  // since there's never room to separate them further) finish reducing
+  // themselves down to fill whatever's left.
+  const tier0Count=p.groups;
+  const restTotal=tier0Count*(p.adv-1);
+  let R=4; while(R<=tier0Count) R*=2;
+  const nonBronze=plan.rounds.filter(r=>r.label!=='Bronze match');
+  const freshIndex=nonBronze.length-Math.round(Math.log2(R));
+  const restLabel = p.adv===2 ? 'Runner-up' : `Rank 2\u2013${p.adv}`;
+
+  let restDrawN=0, tier0DrawN=0, carries=[];
+  const cols=nonBronze.map((rd,i)=>{
+    let occupants=[];
+    if(i===0) for(let k=0;k<restTotal;k++) occupants.push(`<span class="sd">${restLabel} D${++restDrawN}</span>drawn`);
+    if(i===freshIndex) for(let k=0;k<tier0Count;k++) occupants.push(`<span class="sd">Group winner D${++tier0DrawN}</span>drawn`);
+    occupants=occupants.concat(carries);
+
+    const boxes=[];const thisMeta=[];
+    let oi=0, byesLeft=rd.byes, matchNum=0;
+    for(let m=0;m<rd.matches+rd.byes;m++){
+      if(byesLeft>0){
+        const a=occupants[oi++]; byesLeft--;
+        boxes.push(box(slot(a),slot('Bye — advances','bye')));
+        thisMeta.push(a); // byed entrant carries forward as themselves
       }else{
-        boxes.push(box(slot(aTxt),slot(bTxt),size===2?'gold':''));
+        const a=occupants[oi++], b=occupants[oi++];
+        matchNum++;
+        boxes.push(box(slot(a),slot(b),rd.label==='Final'?'gold':''));
+        thisMeta.push(`<span class="sd">Winner</span>${rd.label}${rd.matches>1?` M${matchNum}`:''}`);
       }
     }
-    cols.push(col(size===2?'Final':roundLabel(size),boxes));
-    prev=meta;
-  }
-  // bronze column
-  if(q>=4){
+    carries=thisMeta;
+    return col(rd.label,boxes);
+  });
+  if(plan.rounds.some(r=>r.label==='Bronze match')){
     cols.push(col('Bronze match',[box(slot('Loser SF1'),slot('Loser SF2'),'bronzebox')]));
   }else if(plan.bronzeText){
     cols.push(col('Bronze',[box(slot('Losing semifinalist — automatic','bye'),'','bronzebox')]));
@@ -413,11 +515,15 @@ function buildChart(p){
   return '<div class="chart">'+cols.join('')+'</div><div class="legend">'+legendTxt(p)+'</div>';
 }
 function legendTxt(p){
-  const d=p.plan.direct;
   let t=`The ${p.qualifiers} qualifiers are the top ${p.adv} from each bracket`;
   if(p.plan.wc)t+=` plus ${p.plan.wc} wildcard${p.plan.wc>1?'s':''} (best non-qualifier${p.plan.wc>1?'s':''} across brackets by wins, then score quotient)`;
-  t+='. Playoff positions (D1, D2…) are drawn by lot — the bracket pairings are decided by the draw, not by seeding';
-  t+=p.plan.byes?`, and ${p.plan.byes} drawn position${p.plan.byes>1?'s':''} receive a first-round bye.`:'.';
+  t+='. Draw positions within a rank are by lot';
+  if(p.adv>1){
+    t+='. Group winners are seeded ahead of runner-ups (and lower): they get a bye all the way through to their first match';
+    t+=p.plan.byes?`, and the lower-ranked qualifiers play ${p.plan.byes>1?'preliminary rounds':'a preliminary round'} first to earn the remaining spot${p.plan.byes>1?'s':''} in that round.`:', with no preliminary rounds needed this time — the field divides evenly.';
+  }else{
+    t+=p.plan.byes?`, and ${p.plan.byes} drawn position${p.plan.byes>1?'s':''} receive a first-round bye.`:'.';
+  }
   return t;
 }
 
