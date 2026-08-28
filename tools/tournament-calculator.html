@@ -278,10 +278,11 @@ function solveForTarget(tiers, target){
   if(tiers.length===1) return reduceToTarget(tiers[0], target);
   const [tier0,...rest]=tiers;
   if(tier0>=target){
-    // Doesn't fit as a clean bye ahead of the rest — collapse the
-    // remaining tiers into one pool rather than losing entrants. In
-    // practice (uniform tier sizes) this is the mathematically forced
-    // outcome for any 3rd+ tier, not just a fallback.
+    // tier0 alone would either overflow the slot (>target) or exactly
+    // consume it with zero matches, silently shutting every lower tier
+    // out of the playoffs entirely (>=target). Flattening the remaining
+    // tiers into one pool instead guarantees everyone gets a shot at the
+    // spot, at the cost of no longer separating rank 2 from rank 3+ here.
     return reduceToTarget(tiers.reduce((s,t)=>s+t,0), target);
   }
   return solveForTarget(rest, target-tier0);
@@ -351,13 +352,17 @@ function calcCategory(c){
   const sizes = groupSizes(c.teams, c.group);
   const groups = sizes.length;
   const rr = rrMatches(sizes);
-  const adv = Math.min(4,Math.max(1,c.adv||2));
+  const requestedAdv = Math.min(4,Math.max(1,c.adv||2));
+  const smallest = groups>0 ? Math.min(...sizes) : requestedAdv;
+  const adv = Math.min(requestedAdv, smallest); // can't advance more teams than the smallest bracket actually has
   const plan = playoffPlan(groups, adv, c.fill||'bye');
   const notes=[];
   const wanted=Math.min(30,Math.max(1,Math.round(c.group)||4));
   if(groups>0 && groups<wanted) notes.push(`Only ${groups} bracket${groups>1?'s':''} possible with ${c.teams} pairs (each bracket needs at least 2) — using ${groups}.`);
   if(groups>1 && Math.max(...sizes)>8) notes.push(`Brackets of ${Math.max(...sizes)} mean ${Math.max(...sizes)-1} round-robin matches per pair — consider more brackets.`);
-  if(groups>1 && adv>=Math.min(...sizes)) notes.push(`Advancing ${adv} from a group of ${Math.min(...sizes)} means some teams qualify regardless of results.`);
+  if(groups>1 && requestedAdv>smallest) notes.push(`Requested top ${requestedAdv}, but the smallest bracket only has ${smallest} — capped to top ${adv} so qualifiers can't outnumber actual teams.`);
+  else if(groups>1 && adv>=smallest) notes.push(`Advancing ${adv} from a group of ${smallest} means some teams qualify regardless of results.`);
+  if(groups>1 && adv>=3) notes.push(`With top ${adv} advancing, only group winners are guaranteed a full bye — runner-up and lower qualifiers are treated as one equal-priority pool for the remaining playoff spots.`);
   return { sizes, groups, rr, plan, adv, po:plan.total, total: rr+plan.total,
     totalMin: rr+plan.min, qualifiers:plan.qualifiers, notes };
 }
@@ -379,13 +384,13 @@ function seqParts(p,courts){
   }
   return {rr:rrS,po};
 }
-function seqSlots(p,courts){const s=seqParts(p,courts);return s.rr+s.po;}
 
 function calcAll(cfg){
   const per = cfg.cats.map(calcCategory);
+  per.forEach(p=>{ p.seq = seqParts(p, cfg.courts); }); // computed once per category, reused by catTime() below and by any export
   const matches = per.reduce((s,p)=>s+p.total,0);
   const slotLen = cfg.dur + cfg.buf;
-  const maxSeq = per.reduce((m,p)=>Math.max(m,seqSlots(p,cfg.courts)),0);
+  const maxSeq = per.reduce((m,p)=>Math.max(m, p.seq.rr+p.seq.po), 0);
   const slots = cfg.courts>0 ? Math.max(Math.ceil(matches/cfg.courts), maxSeq) : 0;
   const playMin = slots>0 ? slots*slotLen - cfg.buf : 0;   // no buffer after last slot
   // sequential per-category time windows
@@ -398,6 +403,17 @@ function calcAll(cfg){
   });
   return { per, matches, slots, playMin, endMin: matches? cfg.startMin+playMin : null, windows };
 }
+// Per-category RR/PO wall-clock time, given courts run in parallel but
+// dependent rounds/games run in sequence. Shared by the on-page table and
+// the .xlsx export so the two never drift apart.
+function catTime(p, cfg){
+  if(!p.total) return {rr:0,po:0};
+  const slotLen = cfg.dur+cfg.buf;
+  const sp = p.seq || seqParts(p, cfg.courts); // p.seq is set by calcAll; fall back if called standalone
+  const rrSlots = Math.max(Math.ceil(p.rr/cfg.courts), sp.rr);
+  const poSlots = Math.max(Math.ceil(p.plan.total/cfg.courts), sp.po);
+  return {rr: rrSlots?rrSlots*slotLen-cfg.buf:0, po: poSlots?poSlots*slotLen-cfg.buf:0};
+}
 
 function fmtTime(min){
   const dayOver = Math.floor(min/1440); min=((min%1440)+1440)%1440;
@@ -408,7 +424,6 @@ function fmtTime(min){
 function fmtDur(min){const h=Math.floor(min/60),m=min%60;return (h?`${h}h `:'')+(m?`${m}m`:h?'':'0m');}
 
 /* ---------------- playoff chart ---------------- */
-function seedOrder(B){let o=[1,2];while(o.length<B){const n=o.length*2;o=o.flatMap(x=>[x,n+1-x]);}return o;}
 const roundAbbr=size=>({4:'SF',8:'QF'})[size]||('R'+size);
 function buildChart(p){
   const slot=(t,cls)=>`<div class="slot ${cls||''}">${t}</div>`;
@@ -661,19 +676,10 @@ function recalc(){
   $('r-alerts').innerHTML=alerts.map(([cls,t])=>`<div class="alert ${cls}">${t}</div>`).join('');
   // table + windows
   const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bz','Final':'F','Final · twice-to-beat':'F ×2','Final · best of 3':'Bo3'};
-  const slotLen=cfg.dur+cfg.buf;
-  const catTime=p=>{
-    if(!p.total)return {rr:0,po:0};
-    const sp=seqParts(p,cfg.courts);
-    // distribute total slots: floor each by capacity but never below the sequential floor
-    const rrSlots=Math.max(Math.ceil(p.rr/cfg.courts),sp.rr);
-    const poSlots=Math.max(Math.ceil(p.plan.total/cfg.courts),sp.po);
-    return {rr: rrSlots?rrSlots*slotLen-cfg.buf:0, po: poSlots?poSlots*slotLen-cfg.buf:0};
-  };
   $('r-rows').innerHTML=r.per.map((p,i)=>{
     const struct=p.sizes.length?p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
       +(p.plan.wc?` · ${p.plan.wc}WC`:'')+(p.plan.bronzeText?' · Bz auto':''):'—';
-    const ct=catTime(p);
+    const ct=catTime(p, cfg);
     const catTotalMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
     return `<tr>
     <td><span class="cc">${catCode(cats[i])}</span><span class="win">${catName(cats[i])}</span><span class="win">${struct}</span></td>
@@ -753,13 +759,6 @@ function exportXLSX(){
   if(typeof XLSX==='undefined'){ioMsg('Spreadsheet library still loading — try again in a moment, or use Export CSV.','bad');return;}
   const cfg=readForm();const r=calcAll(cfg);
   if(!r.matches){ioMsg('Add at least one category before downloading.','bad');return;}
-  const slotLen=cfg.dur+cfg.buf;
-  const catTime=p=>{
-    const sp=seqParts(p,cfg.courts);
-    const rrSlots=Math.max(Math.ceil(p.rr/cfg.courts),sp.rr);
-    const poSlots=Math.max(Math.ceil(p.plan.total/cfg.courts),sp.po);
-    return {rr:rrSlots?rrSlots*slotLen-cfg.buf:0, po:poSlots?poSlots*slotLen-cfg.buf:0};
-  };
   const dateStr=cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
   // Build an array-of-arrays so we control layout, headers, and the notes block.
   const aoa=[];
@@ -770,7 +769,7 @@ function exportXLSX(){
   const head=['Code','Category','Pairs','Brackets','Bracket sizes','Format','RR matches','PO matches','Total','RR time','PO time','Total time','Note'];
   aoa.push(head);
   r.per.forEach((p,i)=>{
-    const c=cats[i];const ct=catTime(p);
+    const c=cats[i];const ct=catTime(p, cfg);
     const totMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
     const fmt=p.sizes.length?(groupShorthand(p)+' → '+p.plan.rounds.map(rd=>{
       const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bronze','Final':'Final','Final · twice-to-beat':'Final (twice-to-beat)','Final · best of 3':'Best of 3'};
