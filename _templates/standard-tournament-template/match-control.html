@@ -1420,7 +1420,7 @@ const DAYS = [
 ];
 
 // ---- Organizer-only: Cloud Run resync endpoint ----------------------------
-// Must match CLOUD_RUN_BASE_URL in Code.gs. The shared secret is never
+// Must match CLOUD_RUN_BASE_URL in sheets-sync.gs. The shared secret is never
 // stored in this file — it's entered once per browser tab and held in
 // sessionStorage only (see the Organizer tab's JS further down).
 const CLOUD_RUN_BASE_URL = '{{CLOUD_RUN_BASE_URL}}';
@@ -2949,10 +2949,11 @@ function updateOrganizerDayLabel(){
   organizerDayLabelEl.textContent = day ? day.label : 'No day selected';
 }
 
-// Same facility names Code.gs's FACILITY_NAME and SyncConfig.mjs use (taken
-// from FACILITIES in the CONFIGURATION block, not derived from the
-// snapshot), so a facility that has genuinely never synced still shows up
-// as "Never synced" instead of silently not appearing in the list at all.
+// Same facility names sheets-sync.gs's FACILITY_NAME and this event's entry
+// in event-data/config/events.json use (taken from FACILITIES in the
+// CONFIGURATION block, not derived from the snapshot), so a facility that
+// has genuinely never synced still shows up as "Never synced" instead of
+// silently not appearing in the list at all.
 const KNOWN_FACILITIES = FACILITIES.map(f => f.name);
 const STALE_WARNING_MS = 5 * 60 * 1000; // flag a facility's data as aging once it's this old
 
