@@ -178,6 +178,15 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
       <div class="body">
         <label class="f"><span class="lab">Title of tournament</span>
           <input type="text" id="f-title" placeholder="e.g. Angeles Smash Open 2026" value=""></label>
+        <label class="f"><span class="lab">Format</span>
+          <select id="f-format">
+            <option value="standard">Standard tournament</option>
+            <option value="dual">Dual meet (club vs. club)</option>
+          </select></label>
+        <div class="grid2" id="dualClubs" style="display:none">
+          <label class="f"><span class="lab">Club A name</span><input type="text" id="f-clubA" value="Club A" placeholder="Club A"></label>
+          <label class="f"><span class="lab">Club B name</span><input type="text" id="f-clubB" value="Club B" placeholder="Club B"></label>
+        </div>
         <div class="grid2">
           <label class="f"><span class="lab">Date</span><input type="date" id="f-date"></label>
           <label class="f"><span class="lab">Start time of matches</span><input type="time" id="f-start" value="09:00"></label>
@@ -215,7 +224,7 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
     <div class="panel">
       <h2>Per-category breakdown</h2>
       <table class="tl">
-        <thead><tr><th>Category</th><th>Teams</th><th>Brackets</th><th>RR</th><th>PO</th><th>Total</th><th>RR time</th><th>PO time</th><th>Total time</th></tr></thead>
+        <thead><tr><th>Category</th><th>Teams</th><th>Brackets</th><th id="th-rr">RR</th><th>PO</th><th>Total</th><th id="th-rrtime">RR time</th><th>PO time</th><th>Total time</th></tr></thead>
         <tbody id="r-rows"></tbody>
       </table>
       <div class="tfoot" id="r-windows"></div>
@@ -343,7 +352,86 @@ function playoffPlan(groups, adv, fill){
   return {rounds, total, min:total, qualifiers, direct, wc, byes, single:false, bronzeText};
 }
 
-function calcCategory(c){
+/* ---- Dual meet ----
+   Club A vs Club B, category by category: every A pair plays every B pair
+   within a bracket (a cross-product, not a round robin), then a small
+   fixed playoff (Final + Bronze, always one club per side). */
+
+// Split n entrants across k groups as evenly as possible (min 1 per group —
+// unlike groupSizes(), a dual-meet bracket only needs one pair per club,
+// since opponents always come from the other club, never a teammate).
+function splitEven(n, k){
+  if(n<1) return [];
+  k=Math.max(1,Math.min(30,Math.round(k)||1,n));
+  const base=Math.floor(n/k), extra=n%k;
+  return Array.from({length:k},(_,i)=>i<extra?base+1:base);
+}
+function dualGroupStage(a, b, k){
+  if(a<1 || b<1) return {aSizes:[],bSizes:[],brackets:0,matches:0};
+  const kEff = Math.max(1,Math.min(30,Math.round(k)||1,a,b));
+  const aSizes = splitEven(a,kEff), bSizes = splitEven(b,kEff);
+  const matches = aSizes.reduce((s,n,i)=>s+n*bSizes[i],0);
+  return {aSizes, bSizes, brackets:kEff, matches};
+}
+function dualPlayoffPlan(k, poFormat, a, b){
+  const rounds=[];
+  if(k<=1){
+    if(a>=2 && b>=2) rounds.push({label:'Bronze match', matches:1, byes:0});
+    rounds.push({label:'Final', matches:1, byes:0});
+  } else if(poFormat==='aggregate'){
+    if(a>=2 && b>=2) rounds.push({label:'Bronze match', matches:1, byes:0});
+    rounds.push({label:'Final', matches:1, byes:0});
+  } else {
+    // Each club plays off internally among its own bracket winners —
+    // reuses the same reduceToTarget() shape as the standard bracket's
+    // own byes-by-lot reduction. Winner -> that club's #1, loser -> #2.
+    // Both clubs' rounds run in parallel, so combine into one line item
+    // per round for scheduling purposes.
+    const perClub = reduceToTarget(k,1);
+    perClub.forEach((rd,i)=>rounds.push({label:`Club playoff${perClub.length>1?' R'+(i+1):''}`, matches:rd.matches*2, byes:rd.byes*2}));
+    rounds.push({label:'Bronze match', matches:1, byes:0});
+    rounds.push({label:'Final', matches:1, byes:0});
+  }
+  const total=rounds.reduce((s,r)=>s+r.matches,0);
+  const hasBronze=rounds.some(r=>r.label==='Bronze match');
+  return {rounds, total, min:total, qualifiers:hasBronze?4:2, direct:hasBronze?4:2, wc:0, byes:0,
+    single:false, bestOf3:false, bronzeText:null, dual:true};
+}
+function calcDualCategory(c, cfg){
+  const a=Math.min(50,Math.max(0,Math.round(c.teamsA)||0));
+  const b=Math.min(50,Math.max(0,Math.round(c.teamsB)||0));
+  if(a<1 || b<1){
+    return {sizes:[],groups:0,rr:0,
+      plan:{rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,bestOf3:false,bronzeText:null,dual:true},
+      adv:1,po:0,total:0,totalMin:0,qualifiers:0,notes:['Enter at least 1 pair for both clubs.'],dual:true,a,b,aSizes:[],bSizes:[]};
+  }
+  if(a===1 && b===1){
+    // The only possible pairing is the single group match itself — no
+    // separate Final rematch, and no Bronze since neither club has a #2.
+    const plan={rounds:[],total:0,min:0,qualifiers:2,direct:2,wc:0,byes:0,single:false,bestOf3:false,bronzeText:null,dual:true};
+    return {sizes:[2],groups:1,rr:1,plan,adv:1,po:0,total:1,totalMin:1,qualifiers:2,
+      notes:['Only 1 pair per club — the single match decides it, no separate final.'],
+      dual:true,a,b,aSizes:[1],bSizes:[1]};
+  }
+  const notes=[];
+  const wantedK=Math.min(30,Math.max(1,Math.round(c.group)||1));
+  const gs=dualGroupStage(a,b,wantedK);
+  if(gs.brackets<wantedK) notes.push(`Only ${gs.brackets} bracket${gs.brackets>1?'s':''} possible — each bracket needs at least 1 pair from both clubs.`);
+  if(a!==b) notes.push(`Club pair counts differ (${a} v ${b}) — pairs play unequal numbers of matches this category.`);
+  const uneven = new Set(gs.aSizes).size>1 || new Set(gs.bSizes).size>1;
+  const poFormat = gs.brackets>1 ? (c.poFormat==='aggregate'?'aggregate':'semis') : 'aggregate';
+  if(gs.brackets>1 && poFormat==='aggregate' && uneven) notes.push('Bracket sizes are uneven — comparing win totals across brackets for the final ranking may not be perfectly fair.');
+  if(a===1 || b===1) notes.push(`One club has only a single pair — its Final${a>=2&&b>=2?'/Bronze':''} opponent from the group stage may be a rematch.`);
+  const plan=dualPlayoffPlan(gs.brackets, poFormat, a, b);
+  if(!plan.rounds.some(r=>r.label==='Bronze match')) notes.push(`Bronze needs at least 2 pairs on each side — skipping bronze this category.`);
+  const sizes=gs.aSizes.map((n,i)=>n+gs.bSizes[i]);
+  return {sizes, groups:gs.brackets, rr:gs.matches, plan, adv:1, po:plan.total,
+    total:gs.matches+plan.total, totalMin:gs.matches+plan.min, qualifiers:plan.qualifiers,
+    notes, dual:true, a, b, aSizes:gs.aSizes, bSizes:gs.bSizes};
+}
+
+function calcCategory(c, cfg){
+  if(cfg && cfg.format==='dual') return calcDualCategory(c, cfg);
   if(c.teams===2){
     const plan={rounds:[{label:'Final · best of 3',matches:3,byes:0}],total:3,min:2,
       qualifiers:2,direct:2,wc:0,byes:0,single:false,bestOf3:true,bronzeText:null};
@@ -386,7 +474,7 @@ function seqParts(p,courts){
 }
 
 function calcAll(cfg){
-  const per = cfg.cats.map(calcCategory);
+  const per = cfg.cats.map(c=>calcCategory(c,cfg));
   per.forEach(p=>{ p.seq = seqParts(p, cfg.courts); }); // computed once per category, reused by catTime() below and by any export
   const matches = per.reduce((s,p)=>s+p.total,0);
   const slotLen = cfg.dur + cfg.buf;
@@ -425,12 +513,15 @@ function fmtDur(min){const h=Math.floor(min/60),m=min%60;return (h?`${h}h `:'')+
 
 /* ---------------- playoff chart ---------------- */
 const roundAbbr=size=>({4:'SF',8:'QF'})[size]||('R'+size);
+const chartSlot=(t,cls)=>`<div class="slot ${cls||''}">${t}</div>`;
+const chartBox=(a,b,cls)=>`<div class="mbox ${cls||''}">${a}${b}</div>`;
+const chartSolo=(t,cls)=>`<div class="mbox ${cls||''}">${chartSlot(t)}</div>`;
+const chartCol=(lab,boxes)=>`<div class="roundcol"><div class="roundlab">${lab}</div><div class="round">${boxes.join('')}</div></div>`;
 function buildChart(p){
-  const slot=(t,cls)=>`<div class="slot ${cls||''}">${t}</div>`;
-  const box=(a,b,cls)=>`<div class="mbox ${cls||''}">${a}${b}</div>`;
-  const col=(lab,boxes)=>`<div class="roundcol"><div class="roundlab">${lab}</div><div class="round">${boxes.join('')}</div></div>`;
+  const slot=chartSlot, box=chartBox, col=chartCol;
   const plan=p.plan;
   if(!p.sizes.length)return '';
+  if(plan.dual) return buildDualChart(p);
   if(plan.bestOf3){
     return '<div class="chart">'
       +col('Final · best of 3',[box(slot('<span class="sd">Pair 1</span>'),slot('<span class="sd">Pair 2</span>'),'gold')])
@@ -542,6 +633,50 @@ function legendTxt(p){
   return t;
 }
 
+/* ---------------- dual meet chart & legend ---------------- */
+function buildDualChart(p){
+  const slot=chartSlot, box=chartBox, solo=chartSolo, col=chartCol;
+  const [nameA,nameB]=clubNames();
+  const cols=[];
+  p.aSizes.forEach((n,i)=>{
+    cols.push(col(p.groups>1?`Bracket ${i+1}`:'Group stage',
+      [box(slot(`<span class="sd">${nameA}</span>${n} pair${n>1?'s':''}`),slot(`<span class="sd">${nameB}</span>${p.bSizes[i]} pair${p.bSizes[i]>1?'s':''}`))]));
+  });
+  const cpRounds=p.plan.rounds.filter(r=>r.label.startsWith('Club playoff'));
+  cpRounds.forEach(rd=>{
+    const half=rd.matches/2, halfBye=rd.byes/2;
+    cols.push(col(rd.label,[
+      solo(`<span class="sd">${nameA}</span>${half} match${half!==1?'es':''}${halfBye?` + ${halfBye} bye`:''}`),
+      solo(`<span class="sd">${nameB}</span>${half} match${half!==1?'es':''}${halfBye?` + ${halfBye} bye`:''}`)
+    ]));
+  });
+  if(p.groups>1 && cpRounds.length===0){
+    cols.push(col('Ranking',[solo(`<span class="sd">${nameA} &amp; ${nameB}</span>ranked by wins, then quotient — no club playoff`)]));
+  }
+  if(p.po>0){
+    cols.push(col('Final',[box(slot(`<span class="sd">${nameA} #1</span>`),slot(`<span class="sd">${nameB} #1</span>`),'gold')]));
+    const hasBronze=p.plan.rounds.some(r=>r.label==='Bronze match');
+    cols.push(hasBronze
+      ? col('Bronze match',[box(slot(`<span class="sd">${nameA} #2</span>`),slot(`<span class="sd">${nameB} #2</span>`),'bronzebox')])
+      : col('Bronze',[solo('Needs 2+ pairs on each side — skipped this category','bye')]));
+  }
+  return '<div class="chart">'+cols.join('')+'</div><div class="legend">'+legendDualTxt(p)+'</div>';
+}
+function legendDualTxt(p){
+  const [nameA,nameB]=clubNames();
+  if(p.po===0) return `Only one pair per club this category — their single group match decides the category outright.`;
+  let t=`Every ${nameA} pair plays every ${nameB} pair within its bracket — no pair ever faces a teammate.`;
+  if(p.groups>1){
+    t+=` Each club is ranked separately within each bracket by wins, then quotient.`;
+    const semis=p.plan.rounds.some(r=>r.label.startsWith('Club playoff'));
+    t+= semis
+      ? ` Each club's ${p.groups} bracket winners then play off internally to pick that club's #1 and #2.`
+      : ` Instead of a club playoff, each club's #1 and #2 are simply the best two records across all its brackets.`;
+  }
+  t+=` The Final${p.plan.rounds.some(r=>r.label==='Bronze match')?' and Bronze match are':' is'} always one pair from each club.`;
+  return t;
+}
+
 /* ---------------- state & presets ---------------- */
 const PRESETS=[
   ['NWD',"Novice Women's Doubles"],['NMD',"Novice Men's Doubles"],['NXD','Novice Mixed Doubles'],
@@ -554,7 +689,8 @@ let nextId=1;
 function defaultCat(){
   const used=cats.map(c=>c.code);
   const free=PRESETS.find(p=>p[0]!=='CUSTOM'&&!used.includes(p[0]))||PRESETS[0];
-  return {id:nextId++, code:free[0], name:free[1], teams:16, group:4, adv:2, fill:'bye'};
+  return {id:nextId++, code:free[0], name:free[1], teams:16, group:4, adv:2, fill:'bye',
+    teamsA:8, teamsB:8, poFormat:'semis'};
 }
 
 /* ---------------- persistence (works in claude.ai artifacts; safely skipped elsewhere) ---------------- */
@@ -571,19 +707,44 @@ async function load(){
 
 /* ---------------- form <-> state ---------------- */
 const $=id=>document.getElementById(id);
+function isDualFormat(){ const el=$('f-format'); return !!el && el.value==='dual'; }
+function toggleDualClubsVisibility(){ const w=$('dualClubs'); if(w) w.style.display=isDualFormat()?'':'none'; }
+function clubNames(){
+  const a=($('f-clubA')&&$('f-clubA').value.trim())||'Club A';
+  const b=($('f-clubB')&&$('f-clubB').value.trim())||'Club B';
+  return [a,b];
+}
 function readForm(){
   const [h,m]=($('f-start').value||'09:00').split(':').map(Number);
+  const [clubA,clubB]=clubNames();
   return {
     title:$('f-title').value.trim(), date:$('f-date').value,
     start:$('f-start').value||'09:00', startMin:h*60+m,
     courts:Math.max(1,+$('f-courts').value||1),
     dur:Math.max(5,+$('f-dur').value||25), buf:Math.max(0,+$('f-buf').value||0),
+    format: isDualFormat()?'dual':'standard', clubA, clubB,
     cats: cats.map(c=>({...c}))
   };
 }
 
-function catCard(c){
+function catCard(c, dual){
   const div=document.createElement('div');div.className='cat';div.dataset.id=c.id;
+  const fieldsHTML = dual ? `
+    <div class="grid3">
+      <label class="f"><span class="lab">Club A pairs</span><input type="number" data-k="teamsA" min="1" max="50" value="${c.teamsA||8}"></label>
+      <label class="f"><span class="lab">Club B pairs</span><input type="number" data-k="teamsB" min="1" max="50" value="${c.teamsB||8}"></label>
+      <label class="f"><span class="lab">Number of brackets</span><input type="number" data-k="group" min="1" max="30" value="${c.group||1}"></label>
+    </div>
+    <span class="lab advlab" style="font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Dual meet · every pair plays every pair from the other club</span>`
+    : `
+    <div class="grid3">
+      <label class="f"><span class="lab">Teams / pairs</span><input type="number" data-k="teams" min="2" max="100" value="${c.teams}"></label>
+      <label class="f"><span class="lab">Number of brackets</span>
+        <input type="number" data-k="group" min="1" max="30" value="${c.group}"></label>
+      <label class="f"><span class="lab">Advance per group</span>
+        <input type="number" data-k="adv" min="1" max="4" value="${c.adv||2}"></label>
+    </div>
+    <span class="lab advlab" style="font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Playoffs · top ${c.adv||2} per group advance</span>`;
   div.innerHTML=`
     <div class="cathead">
       <div class="cname">
@@ -601,14 +762,7 @@ function catCard(c){
         <input type="text" data-k="name" value="${c.code==='CUSTOM'?(c.name||'').replace(/"/g,'&quot;'):''}" placeholder="e.g. Juniors Singles"></label>
       </div>
     </div>
-    <div class="grid3">
-      <label class="f"><span class="lab">Teams / pairs</span><input type="number" data-k="teams" min="2" max="100" value="${c.teams}"></label>
-      <label class="f"><span class="lab">Number of brackets</span>
-        <input type="number" data-k="group" min="1" max="30" value="${c.group}"></label>
-      <label class="f"><span class="lab">Advance per group</span>
-        <input type="number" data-k="adv" min="1" max="4" value="${c.adv||2}"></label>
-    </div>
-    <span class="lab advlab" style="font-family:'Barlow Condensed';font-weight:600;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Playoffs · top ${c.adv||2} per group advance</span>
+    ${fieldsHTML}
     <div class="plan"></div>
     <div class="catline"></div>
     <button type="button" class="chartbtn">Show playoff chart</button>
@@ -620,17 +774,41 @@ function catCard(c){
 
 function renderCats(){
   const wrap=$('cats');wrap.innerHTML='';
-  cats.forEach(c=>wrap.appendChild(catCard(c)));
+  const dual=isDualFormat();
+  cats.forEach(c=>wrap.appendChild(catCard(c, dual)));
 }
 
 function recalc(){
   const cfg=readForm();
   const r=calcAll(cfg);
+  const dual=cfg.format==='dual';
   // per-card lines
   document.querySelectorAll('.cat').forEach((el,i)=>{
     const p=r.per[i];
     const planEl=el.querySelector('.plan'), lineEl=el.querySelector('.catline');
-    el.querySelector('.chartbtn').style.display=p.sizes.length?'':'none';
+    el.querySelector('.chartbtn').style.display=(p.sizes&&p.sizes.length)?'':'none';
+    if(p.dual){
+      if(!p.sizes.length){ planEl.innerHTML=''; el.querySelector('.chartwrap').innerHTML=''; lineEl.innerHTML=p.notes[0]||'Enter at least 1 pair for both clubs.'; return; }
+      const [nameA,nameB]=clubNames();
+      const poUI = p.groups>=2 ? `<div class="playoffs" style="margin-bottom:6px">
+          <button type="button" class="po fillbtn" data-poformat="semis" aria-pressed="${(cats[i].poFormat||'semis')==='semis'}">Club semis</button>
+          <button type="button" class="po fillbtn" data-poformat="aggregate" aria-pressed="${cats[i].poFormat==='aggregate'}">Straight to final by record</button>
+        </div>` : '';
+      planEl.innerHTML=poUI+'<div class="playoffs">'+p.plan.rounds.map(rd=>
+        `<span class="tagchip">${rd.label}: ${rd.matches}${rd.byes?` <small>(+${rd.byes} bye${rd.byes>1?'s':''})</small>`:''}</span>`).join('')+'</div>';
+      el.querySelector('.advlab').textContent='Dual meet · every pair plays every pair from the other club';
+      const btn=el.querySelector('.chartbtn'),wrap=el.querySelector('.chartwrap'),c=cats[i];
+      btn.textContent=c.showChart?'Hide playoff chart':'Show playoff chart';
+      wrap.innerHTML=c.showChart?buildChart(p):'';
+      const bracketTxt = p.groups<=1 ? `1 bracket (${p.a} v ${p.b})`
+        : `${p.groups} brackets (`+p.aSizes.map((n,j)=>`${n}v${p.bSizes[j]}`).join(', ')+')';
+      const hasBronze = p.plan.rounds.some(rd=>rd.label==='Bronze match');
+      lineEl.innerHTML = p.po===0
+        ? `<b>${p.total} match</b> — ${nameA} (1) v ${nameB} (1), single match decides it.`
+        : `<b>${p.total} matches</b> — ${bracketTxt} → ${p.rr} cross-club group + ${p.po} playoff`
+          +(p.groups>=2 ? ` · ${(cats[i].poFormat||'semis')==='semis'?'club semis':'ranked by record'}, then final${hasBronze?' and bronze':''}` : ` · final${hasBronze?' and bronze':''}`);
+      return;
+    }
     if(!p.sizes.length){ planEl.innerHTML=''; el.querySelector('.chartwrap').innerHTML=''; lineEl.innerHTML='Needs at least 2 teams.'; return; }
     const deficit=p.plan.byes+p.plan.wc;
     const fillUI=(!p.plan.single&&deficit>0)?
@@ -661,7 +839,7 @@ function recalc(){
   $('r-hours').textContent=r.matches?fmtDur(r.playMin):'0m';
   $('r-end').textContent=r.endMin!=null?fmtTime(r.endMin):'—';
   const dateStr=cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'short',month:'long',day:'numeric',year:'numeric'}):'';
-  $('r-head').textContent=[cfg.title||'Untitled tournament',dateStr,`from ${fmtTime(cfg.startMin)} on ${cfg.courts} court${cfg.courts>1?'s':''}`]
+  $('r-head').textContent=[cfg.title||'Untitled tournament',dateStr,`from ${fmtTime(cfg.startMin)} on ${cfg.courts} court${cfg.courts>1?'s':''}`,dual?`${cfg.clubA} vs ${cfg.clubB}`:'']
     .filter(Boolean).join(' · ');
   document.title=(cfg.title?cfg.title+' · ':'')+'Time Calculator';
   // alerts
@@ -675,15 +853,18 @@ function recalc(){
   r.per.forEach((p,i)=>p.notes.forEach(n=>alerts.push(['warn',`${catName(cats[i])}: ${n}`])));
   $('r-alerts').innerHTML=alerts.map(([cls,t])=>`<div class="alert ${cls}">${t}</div>`).join('');
   // table + windows
+  if($('th-rr')) $('th-rr').textContent = dual?'Group':'RR';
+  if($('th-rrtime')) $('th-rrtime').textContent = dual?'Group time':'RR time';
   const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bz','Final':'F','Final · twice-to-beat':'F ×2','Final · best of 3':'Bo3'};
   $('r-rows').innerHTML=r.per.map((p,i)=>{
-    const struct=p.sizes.length?p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
+    const struct=p.sizes.length?p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1').replace(/^Club playoff/,'CP')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
       +(p.plan.wc?` · ${p.plan.wc}WC`:'')+(p.plan.bronzeText?' · Bz auto':''):'—';
     const ct=catTime(p, cfg);
     const catTotalMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
+    const teamsCell = p.dual ? (p.sizes.length?`${p.a} v ${p.b}`:'—') : cats[i].teams;
     return `<tr>
     <td><span class="cc">${catCode(cats[i])}</span><span class="win">${catName(cats[i])}</span><span class="win">${struct}</span></td>
-    <td class="num">${cats[i].teams}</td><td class="num" style="font-variant-numeric:tabular-nums;white-space:nowrap">${bracketShorthand(p)}</td><td class="num">${p.rr}</td>
+    <td class="num">${teamsCell}</td><td class="num" style="font-variant-numeric:tabular-nums;white-space:nowrap">${bracketShorthand(p)}</td><td class="num">${p.rr}</td>
     <td class="num">${p.po}</td><td class="num"><b>${p.total}</b></td>
     <td class="num">${ct.rr?fmtDur(ct.rr):'—'}</td>
     <td class="num">${ct.po?fmtDur(ct.po):'—'}</td>
@@ -734,12 +915,13 @@ function exportCSV(){
   const lines=[];
   lines.push('# Tournament Time Calculator export — use Import CSV to restore this setup');
   if(r.matches)lines.push(csvCell('# '+r.matches+' matches · projected finish '+fmtTime(r.endMin)));
-  lines.push('type,key,value,teams,brackets,advance,fill,note');
+  lines.push('type,key,value,teams,brackets,advance,fill,note,teams_a,teams_b,po_format');
   [['title',cfg.title],['date',cfg.date],['start',cfg.start],
-   ['courts',cfg.courts],['duration_min',cfg.dur],['buffer_min',cfg.buf]]
+   ['courts',cfg.courts],['duration_min',cfg.dur],['buffer_min',cfg.buf],
+   ['format',cfg.format],['club_a',cfg.clubA],['club_b',cfg.clubB]]
     .forEach(([k,v])=>lines.push(['setting',k,csvCell(v),'','','',''].join(',')));
   cats.forEach(c=>lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
-    c.teams,c.group,c.adv||2,c.fill||'bye',csvCell(c.note||'')].join(',')));
+    c.teams,c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',c.poFormat||''].join(',')));
   const name=(cfg.title?cfg.title.replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase():'tournament')
     +(cfg.date?'-'+cfg.date:'')+'-plan.csv';
   try{
@@ -761,34 +943,35 @@ function exportXLSX(){
   if(!r.matches){ioMsg('Add at least one category before downloading.','bad');return;}
   const dateStr=cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric',year:'numeric'}):'';
   // Build an array-of-arrays so we control layout, headers, and the notes block.
-  const aoa=[];
-  aoa.push([cfg.title||'Untitled tournament']);
-  aoa.push([[dateStr,`Start ${fmtTime(cfg.startMin)}`,`${cfg.courts} court${cfg.courts>1?'s':''}`,`${cfg.dur}-min matches`,cfg.buf?`${cfg.buf}-min buffer`:''].filter(Boolean).join('   ·   ')]);
-  aoa.push([`Projected finish ${fmtTime(r.endMin)}   ·   ${r.matches} matches   ·   ${fmtDur(r.playMin)} total play`]);
+  const aoa=[];const merges=[];
+  const pushHeaderLine=text=>{ merges.push({s:{r:aoa.length,c:0},e:{r:aoa.length,c:12}}); aoa.push([text]); };
+  pushHeaderLine(cfg.title||'Untitled tournament');
+  pushHeaderLine([dateStr,`Start ${fmtTime(cfg.startMin)}`,`${cfg.courts} court${cfg.courts>1?'s':''}`,`${cfg.dur}-min matches`,cfg.buf?`${cfg.buf}-min buffer`:''].filter(Boolean).join('   ·   '));
+  if(cfg.format==='dual') pushHeaderLine(`Dual meet: ${cfg.clubA} vs ${cfg.clubB}`);
+  pushHeaderLine(`Projected finish ${fmtTime(r.endMin)}   ·   ${r.matches} matches   ·   ${fmtDur(r.playMin)} total play`);
   aoa.push([]);
   const head=['Code','Category','Pairs','Brackets','Bracket sizes','Format','RR matches','PO matches','Total','RR time','PO time','Total time','Note'];
   aoa.push(head);
+  const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bronze','Final':'Final','Final · twice-to-beat':'Final (twice-to-beat)','Final · best of 3':'Best of 3'};
   r.per.forEach((p,i)=>{
     const c=cats[i];const ct=catTime(p, cfg);
     const totMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
-    const fmt=p.sizes.length?(groupShorthand(p)+' → '+p.plan.rounds.map(rd=>{
-      const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bronze','Final':'Final','Final · twice-to-beat':'Final (twice-to-beat)','Final · best of 3':'Best of 3'};
-      return (SHORT[rd.label]||rd.label)+' '+rd.matches+(rd.byes?` (+${rd.byes} bye)`:'');
-    }).join(', ')+(p.plan.wc?` +${p.plan.wc} wildcard`:'')):'—';
-    aoa.push([catCode(c),catName(c),c.teams,p.groups,bracketShorthand(p),fmt,p.rr,p.po,p.total,
+    const fmt = !p.sizes.length ? '—'
+      : p.dual
+        ? (p.groups>1?`${p.groups} brackets (`+p.aSizes.map((n,j)=>`${n}v${p.bSizes[j]}`).join(', ')+')':`1 bracket (${p.a}v${p.b})`)
+          +' → '+p.plan.rounds.map(rd=>(SHORT[rd.label]||rd.label)+' '+rd.matches).join(', ')
+        : groupShorthand(p)+' → '+p.plan.rounds.map(rd=>(SHORT[rd.label]||rd.label)+' '+rd.matches+(rd.byes?` (+${rd.byes} bye)`:'')).join(', ')+(p.plan.wc?` +${p.plan.wc} wildcard`:'');
+    const pairsCell = p.dual ? (p.sizes.length?`${p.a} v ${p.b}`:'—') : c.teams;
+    aoa.push([catCode(c),catName(c),pairsCell,p.groups,bracketShorthand(p),fmt,p.rr,p.po,p.total,
       ct.rr?fmtDur(ct.rr):'—', ct.po?fmtDur(ct.po):'—', totMin?fmtDur(totMin):'—', c.note||'']);
   });
   // totals row
-  aoa.push(['','TOTAL', cats.reduce((s,c)=>s+(c.teams||0),0),'','','',
+  aoa.push(['','TOTAL', r.per.reduce((s,p,i)=>s+(p.dual?(p.a||0)+(p.b||0):(cats[i].teams||0)),0),'','','',
     r.per.reduce((s,p)=>s+p.rr,0), r.per.reduce((s,p)=>s+p.po,0), r.matches, '', '', fmtDur(r.playMin),'']);
 
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=[{wch:8},{wch:26},{wch:8},{wch:9},{wch:18},{wch:46},{wch:11},{wch:11},{wch:7},{wch:9},{wch:9},{wch:10},{wch:40}];
-  ws['!merges']=[
-    {s:{r:0,c:0},e:{r:0,c:12}},
-    {s:{r:1,c:0},e:{r:1,c:12}},
-    {s:{r:2,c:0},e:{r:2,c:12}},
-  ];
+  ws['!merges']=merges;
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Breakdown');
   try{
@@ -798,22 +981,36 @@ function exportXLSX(){
 }
 function importCSVText(text){
   const rows=parseCSVRows(text);
-  const st={};const newCats=[];let found=false;
+  const st={};const newCats=[];let found=false;let usedFallbackSplit=false;
   for(const row of rows){
     const t=(row[0]||'').trim().toLowerCase();
     if(t==='setting'){st[(row[1]||'').trim()]=(row[2]||'').trim();found=true;}
     else if(t==='category'){
       const rawCode=(row[1]||'').trim().toUpperCase();
       const known=PRESETS.some(pp=>pp[0]===rawCode&&rawCode!=='CUSTOM');
+      const teamsRaw=Math.min(100,Math.max(2,parseInt(row[3],10)||16));
+      let teamsA,teamsB;
+      if(row[8]!==undefined&&row[8]!==''&&row[9]!==undefined&&row[9]!==''){
+        teamsA=Math.min(50,Math.max(1,parseInt(row[8],10)||1));
+        teamsB=Math.min(50,Math.max(1,parseInt(row[9],10)||1));
+      }else{
+        // Older export (or standard-format export) has no per-club split —
+        // fall back to halving the pair count, rounding Club A up.
+        usedFallbackSplit=true;
+        teamsA=Math.max(1,Math.round(teamsRaw/2));
+        teamsB=Math.max(1,teamsRaw-teamsA);
+      }
+      const poFormat=(row[10]||'').trim()==='aggregate'?'aggregate':'semis';
       newCats.push({id:nextId++,
         code:known?rawCode:'CUSTOM',
         ccode:known?undefined:(rawCode==='CUSTOM'?'':rawCode.replace(/[^A-Z0-9_]/g,'').slice(0,6)),
         name:known?PRESETS.find(pp=>pp[0]===rawCode)[1]:((row[2]||'').trim()||rawCode||'Custom category'),
-        teams:Math.min(100,Math.max(2,parseInt(row[3],10)||16)),
+        teams:teamsRaw,
         group:Math.min(30,Math.max(1,parseInt(row[4],10)||4)),
         adv:Math.min(4,Math.max(1,parseInt(row[5],10)||2)),
         fill:(row[6]||'').trim()==='wc'?'wc':'bye',
-        note:(row[7]||'').trim()});
+        note:(row[7]||'').trim(),
+        teamsA, teamsB, poFormat});
       found=true;
     }
   }
@@ -824,9 +1021,15 @@ function importCSVText(text){
   if('courts'in st)$('f-courts').value=Math.min(24,Math.max(1,parseInt(st.courts,10)||4));
   if('duration_min'in st)$('f-dur').value=Math.min(120,Math.max(5,parseInt(st.duration_min,10)||25));
   if('buffer_min'in st)$('f-buf').value=Math.min(60,Math.max(0,parseInt(st.buffer_min,10)||0));
+  const importedDual=st.format==='dual';
+  if($('f-format'))$('f-format').value=importedDual?'dual':'standard';
+  if($('f-clubA'))$('f-clubA').value=st.club_a||'Club A';
+  if($('f-clubB'))$('f-clubB').value=st.club_b||'Club B';
+  toggleDualClubsVisibility();
   if(newCats.length)cats=newCats;
   renderCats();recalc();
-  ioMsg('Imported: '+(newCats.length||cats.length)+' categor'+((newCats.length||cats.length)===1?'y':'ies')+(st.title?' · '+st.title:''),'good');
+  const fallbackNote=(importedDual&&usedFallbackSplit)?' · older export — pairs split evenly per club, please review':'';
+  ioMsg('Imported: '+(newCats.length||cats.length)+' categor'+((newCats.length||cats.length)===1?'y':'ies')+(st.title?' · '+st.title:'')+fallbackNote,'good');
 }
 
 /* ---------------- events ---------------- */
@@ -845,6 +1048,10 @@ $('importfile').addEventListener('change',e=>{
 $('reset').addEventListener('click',()=>{
   cats=[];nextId=1;$('f-title').value='';$('f-date').value='';$('f-start').value='09:00';
   $('f-courts').value=4;$('f-dur').value=25;$('f-buf').value=0;
+  if($('f-format'))$('f-format').value='standard';
+  if($('f-clubA'))$('f-clubA').value='Club A';
+  if($('f-clubB'))$('f-clubB').value='Club B';
+  toggleDualClubsVisibility();
   cats=[defaultCat()];renderCats();recalc();
 });
 $('cats').addEventListener('click',e=>{
@@ -853,7 +1060,11 @@ $('cats').addEventListener('click',e=>{
   if(e.target.classList.contains('del')){cats=cats.filter(x=>x!==c);renderCats();recalc();return;}
   if(e.target.classList.contains('chartbtn')){c.showChart=!c.showChart;recalc();return;}
   const fb=e.target.closest('.fillbtn');
-  if(fb){c.fill=fb.dataset.fill;recalc();}
+  if(fb){
+    if(fb.dataset.fill)c.fill=fb.dataset.fill;
+    if(fb.dataset.poformat)c.poFormat=fb.dataset.poformat;
+    recalc();
+  }
 });
 $('cats').addEventListener('input',e=>{
   const card=e.target.closest('.cat');if(!card)return;
@@ -868,11 +1079,14 @@ $('cats').addEventListener('input',e=>{
   else if(k==='ccode'){c.ccode=e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g,'').slice(0,6);if(e.target.value!==c.ccode)e.target.value=c.ccode;}
   else if(k==='note'){c.note=e.target.value;save();return;}
   else if(k==='teams')c.teams=Math.min(100,Math.max(2,+e.target.value||2));
+  else if(k==='teamsA')c.teamsA=Math.min(50,Math.max(1,+e.target.value||1));
+  else if(k==='teamsB')c.teamsB=Math.min(50,Math.max(1,+e.target.value||1));
   else if(k==='group')c.group=Math.min(30,Math.max(1,+e.target.value||4));
   else if(k==='adv')c.adv=Math.min(4,Math.max(1,+e.target.value||2));
   recalc();
 });
-['f-title','f-date','f-start','f-courts','f-dur','f-buf'].forEach(id=>$(id).addEventListener('input',recalc));
+['f-title','f-date','f-start','f-courts','f-dur','f-buf','f-clubA','f-clubB'].forEach(id=>$(id).addEventListener('input',recalc));
+if($('f-format'))$('f-format').addEventListener('change',()=>{toggleDualClubsVisibility();renderCats();recalc();});
 
 /* ---------------- boot ---------------- */
 (async()=>{
@@ -881,10 +1095,14 @@ $('cats').addEventListener('input',e=>{
     $('f-title').value=saved.title||'';$('f-date').value=saved.date||'';
     $('f-start').value=saved.start||'09:00';$('f-courts').value=saved.courts||4;
     $('f-dur').value=saved.dur||25;$('f-buf').value=saved.buf||0;
+    if($('f-format'))$('f-format').value=saved.format==='dual'?'dual':'standard';
+    if($('f-clubA'))$('f-clubA').value=saved.clubA||'Club A';
+    if($('f-clubB'))$('f-clubB').value=saved.clubB||'Club B';
     cats=saved.cats.map(c=>({...c,id:nextId++}));
   }else{
     cats=[defaultCat()];
   }
+  toggleDualClubsVisibility();
   renderCats();recalc();
 })();
 </script>
