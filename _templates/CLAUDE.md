@@ -225,7 +225,8 @@ in a spreadsheet.
 ## 6. Root-absolute asset paths — do not "fix" them to relative
 
 Both templates load icons and images with root-absolute paths
-(`/events/favicons/...`, `/assets/logo.png`), not relative ones
+(`/assets/favicons/...`, `/assets/logo.png` — one shared `assets/` folder
+at the repo root, used by every page on the site), not relative ones
 (`../favicons/...`). This is deliberate, not an oversight: several of the
 earliest event pages in `events/archives/` were originally written with
 relative paths, then moved there as pure renames — which broke their
