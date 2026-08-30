@@ -154,7 +154,7 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
-<link rel="manifest" href="/assets/favicons/site.webmanifest">
+<link rel="manifest" href="/tools/tournament-calculator.webmanifest">
 </head>
 <body>
 
@@ -693,15 +693,19 @@ function defaultCat(){
     groupDual:1, teamsA:5, teamsB:5, poFormat:'semis'};
 }
 
-/* ---------------- persistence (works in claude.ai artifacts; safely skipped elsewhere) ---------------- */
+/* ---------------- persistence (window.storage in claude.ai artifacts, localStorage elsewhere) ---------------- */
 async function save(){
-  try{ if(window.storage) await window.storage.set('ttc-config', JSON.stringify(readForm())); }catch(e){}
+  try{
+    const v=JSON.stringify(readForm());
+    if(window.storage) await window.storage.set('ttc-config', v);
+    else localStorage.setItem('ttc-config', v);
+  }catch(e){}
 }
 async function load(){
   try{
-    if(!window.storage) return null;
-    const r=await window.storage.get('ttc-config');
-    return r?JSON.parse(r.value):null;
+    if(window.storage){ const r=await window.storage.get('ttc-config'); return r?JSON.parse(r.value):null; }
+    const v=localStorage.getItem('ttc-config');
+    return v?JSON.parse(v):null;
   }catch(e){ return null; }
 }
 
@@ -1110,6 +1114,16 @@ if($('f-format'))$('f-format').addEventListener('change',()=>{toggleDualClubsVis
   toggleDualClubsVisibility();
   renderCats();recalc();
 })();
+
+// PWA install/offline support — see specs/calculator-pwa-spec.md §6.4.
+// Never fatal: this page has to keep working with service workers disabled,
+// in private windows, and behind enterprise policies.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/tools/sw.js', {scope:'/tools/tournament-calculator.html'})
+      .catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
