@@ -108,11 +108,14 @@ clubs; it is not a general multi-club template.
    `config/README.md` in that repo for the full shape). **Day keys must be
    globally unique across every event already in that file** — prefix them
    with something event-specific (e.g. `<event-key>-day1`), matching
-   whatever you used in `DAYS` in step 4. (If the tab names/GIDs on this
-   event's spreadsheets differ from that file's `defaults` block, set
-   `matchesSheetName` / `standingsSheetName` / `csvGid` / `standingsGid` on
-   the day entry to override them. The PPA dual-meet event needed this;
-   most won't.)
+   whatever you used in `DAYS` in step 4. (If this event's spreadsheets use
+   different tab **names** than that file's `defaults` block, set
+   `matchesSheetName` / `standingsSheetName` on the day entry to override
+   them. Most events won't need this — and there is no GID equivalent to
+   set: both fetch paths address tabs by name only, deliberately, since a
+   tab's GID is assigned per-workbook and doesn't carry over if a
+   spreadsheet is duplicated from another event's — see
+   `event-data/config/README.md` for the incident that motivated this.)
 
    Commit it. **No `sage-tools-api` deploy is needed** — every running
    instance re-checks `config/events.json` within `SYNC_CONFIG_TTL_MS`
