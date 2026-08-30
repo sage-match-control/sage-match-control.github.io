@@ -28,8 +28,18 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   html{overflow-x:hidden;}
+  /* No overflow-x here (unlike html above) — pairing overflow-x:hidden with
+     any overflow-y (even an explicit 'visible') makes the UA compute
+     overflow-y as auto too (CSS spec: a non-visible axis can't pair with a
+     literally-visible one), which would make body a second, independent
+     scroll container nested inside html's. The real page scrolling already
+     happens on html (window.scrollY tracks documentElement.scrollTop, not
+     body's), so any position:sticky element inside body would resolve
+     against body's own never-moving scroll offset instead and just scroll
+     off as if it weren't sticky at all — leaving body's overflow fully
+     unset keeps it out of the scroll-container chain so sticky elements
+     (the club wins summary, the standings category headers) bind to html. */
   body{
-    overflow-x:hidden;
     background:
       radial-gradient(900px 480px at 50% -12%, rgba(198,255,0,.14), transparent 62%),
       radial-gradient(700px 460px at 100% 4%, rgba(200,160,48,.20), transparent 55%),
@@ -454,7 +464,7 @@
   }
   table.live-table td{
     padding:9px 10px;
-    border-bottom:1px solid rgba(20,27,44,.07);
+    border-bottom:2px solid rgba(20,27,44,.4);
     vertical-align:middle;
   }
   table.live-table tr:last-child td{border-bottom:none;}
@@ -470,42 +480,84 @@
     vertical-align:middle;
   }
   td.live-court-cell .live-dot{margin-right:6px;}
-  td.live-match-cell{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
+  /* Idle court (see liveEmptyRowHTML) — same size/shape as a live one, just
+     without the lime "in play" highlight. */
+  td.live-court-cell.idle{
+    background:rgba(226,236,250,.05);
     color:var(--muted);
-    white-space:nowrap;
-    width:1%;
-    text-align:center;
-    vertical-align:middle;
   }
-  td.live-team-cell{ min-width:120px; }
+  td.live-team-cell{ min-width:130px; }
   td.live-team-cell.right{ text-align:right; }
+  /* Logo sits beside the whole code+players block (not inline with the code
+     text), sized to nearly the full height of that block, on the outer edge
+     of the table — right-justified (not reversed — reversing the flex axis
+     would put it first-source-item-last, i.e. back toward the middle) for
+     the right-hand team so both logos point outward, away from the VS column. */
+  .live-team-cell-inner{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  td.live-team-cell.right .live-team-cell-inner{
+    justify-content:flex-end;
+  }
+  .live-team-text{ min-width:0; }
+  .live-team-logo{
+    width:52px; height:52px;
+    border-radius:50%;
+    object-fit:cover;
+    flex-shrink:0;
+    border:1px solid rgba(20,27,44,.15);
+  }
+  .live-team-logo-placeholder{
+    background:transparent;
+    border-color:transparent;
+  }
+  /* Code is a compact reference tag now; the players' names are what a
+     spectator actually scans for, so they carry the visual weight. */
   .live-team-code{
     font-family:'IBM Plex Mono',monospace;
-    font-weight:700;
-    font-size:11.5px;
-    letter-spacing:.03em;
-    color:var(--cork);
+    font-weight:600;
+    font-size:9.5px;
+    letter-spacing:.04em;
+    color:var(--muted);
     text-transform:uppercase;
   }
-  .live-team-code.tbd{color:var(--muted); font-weight:600;}
+  .live-team-code.tbd{color:var(--muted); font-weight:500; font-style:italic;}
   .live-team-players{
     font-family:'Inter',sans-serif;
-    font-size:12px;
+    font-weight:700;
+    font-size:13px;
     color:var(--ink);
-    line-height:1.35;
-    margin-top:1px;
+    line-height:1.3;
+    margin-top:2px;
   }
   .live-team-players .p{display:block;}
   td.live-vs-cell{
+    text-align:center;
+    white-space:nowrap;
+    width:1%;
+  }
+  /* Match number — was its own table column; now a small pill stacked above
+     the score/VS instead, freeing that column's width for Match Details. */
+  .live-match-pill{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:8.5px;
+    font-weight:700;
+    letter-spacing:.04em;
+    color:var(--muted);
+    background:rgba(20,27,44,.06);
+    border-radius:100px;
+    padding:2px 7px;
+    margin-bottom:3px;
+  }
+  .live-match-pill.placeholder{ visibility:hidden; }
+  .live-vs-score{
     font-family:'Anton',sans-serif;
     font-weight:400;
     font-size:13px;
     color:var(--muted);
-    text-align:center;
-    white-space:nowrap;
-    width:1%;
   }
   td.live-cat-cell{
     border-bottom:none;
@@ -522,7 +574,9 @@
     color:var(--cork);
     font-weight:700;
   }
-  tr.live-match-row td{padding-top:3px;}
+  td.live-cat-cell .live-empty-label{
+    font-style:italic;
+  }
 
   /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
@@ -779,26 +833,23 @@
   .cat-toggle-action:hover{border-color:rgba(198,255,0,.6); color:#fff;}
 
   /* ---------- STANDINGS BOARD ---------- */
+  /* Mobile/tablet: a single full-width column, one category card per row
+     (see renderStandings) — normal page scroll, no inner max-height/overflow
+     needed since there's no side-by-side club columns to cap anymore. */
   .standings-board{
     display:flex;
+    flex-direction:column;
     gap:20px;
-    max-height:92vh;
-    overflow:auto;
     padding:4px 4px 16px;
-    align-items:flex-start;
+    align-items:stretch;
   }
-  .standings-board::-webkit-scrollbar{width:8px; height:8px;}
-  .standings-board::-webkit-scrollbar-thumb{background:rgba(226,236,250,.22); border-radius:10px;}
 
   .standings-col{
     background:rgba(255,255,255,.045);
     border:1px solid rgba(226,236,250,.16);
     border-radius:16px;
-    margin-bottom:16px;
     break-inside:avoid;
   }
-  .standings-col:last-child{margin-bottom:0;}
-  .standings-cards{ display:block; }
   .standings-col-body{
     padding:0 14px 14px;
   }
@@ -825,41 +876,91 @@
     background:linear-gradient(92deg, #8FE94B, #C6FF00 55%, #F5FF8C);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   }
-  .standings-col-head .cat-code{
-    display:block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    letter-spacing:.14em;
-    color:rgba(226,236,250,.55);
-    margin-top:2px;
-  }
 
   /* ---------- CLUB SUMMARY & PER-CLUB STANDINGS (dual meet) ---------- */
+  /* Mobile/tablet: pinned to the top of the viewport while scrolling through
+     the (potentially long) list of category cards below, so the head-to-head
+     win count stays visible instead of scrolling out of view. Reset to a
+     normal in-flow element on desktop (see the 980px media query) — the
+     grid there is compact enough that this isn't needed. */
   .club-summary{
     display:flex;
     align-items:center;
     justify-content:center;
     gap:clamp(10px,4vw,22px);
     margin:0 0 22px;
+    position:sticky;
+    top:0;
+    z-index:5;
+    padding:10px 6px;
+    background:rgba(9,14,28,.94);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    border-radius:0 0 16px 16px;
   }
+  @media (min-width: 980px){
+    .club-summary{
+      position:static;
+      padding:0;
+      background:none;
+      backdrop-filter:none;
+      -webkit-backdrop-filter:none;
+    }
+  }
+  /* Horizontal box: logo+name (left) beside the wins stat (right) — wider,
+     shorter, instead of stacking all four pieces in one tall column. */
   .club-summary-item{
     display:flex;
-    flex-direction:column;
+    flex-direction:row;
     align-items:center;
-    gap:2px;
-    padding:12px clamp(12px,4vw,26px);
+    justify-content:center;
+    gap:12px;
+    padding:10px clamp(14px,4vw,28px);
     border-radius:16px;
     background:rgba(255,255,255,.045);
     border:1px solid rgba(226,236,250,.16);
     flex:1 1 0;
     min-width:0;
-    max-width:220px;
+    max-width:280px;
   }
   .club-summary-item.leader{
     border-color:rgba(255,122,41,.6);
     box-shadow:0 0 26px -8px rgba(255,122,41,.5);
   }
-  .club-summary-item .cs-wins{
+  .cs-identity{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    flex:0 0 auto;
+  }
+  .cs-identity .cs-logo{
+    width:clamp(36px,10vw,52px);
+    height:clamp(36px,10vw,52px);
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid rgba(226,236,250,.35);
+  }
+  .cs-identity .cs-name{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:clamp(9.5px,2.6vw,11px);
+    color:var(--court-line);
+    text-align:center;
+    line-height:1.2;
+    max-width:100px;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .cs-stat{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    flex:0 0 auto;
+  }
+  .cs-stat .cs-wins{
     font-family:'Anton',sans-serif;
     font-weight:400;
     font-size:clamp(26px,8vw,38px);
@@ -867,21 +968,12 @@
     background:linear-gradient(92deg, #8FE94B, #C6FF00 55%, #F5FF8C);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
   }
-  .club-summary-item .cs-label{
+  .cs-stat .cs-label{
     font-family:'IBM Plex Mono',monospace;
     font-size:9.5px;
     text-transform:uppercase;
     letter-spacing:.16em;
     color:rgba(226,236,250,.55);
-  }
-  .club-summary-item .cs-name{
-    font-family:'Inter',sans-serif;
-    font-weight:700;
-    font-size:clamp(10.5px,3vw,12.5px);
-    color:var(--court-line);
-    margin-top:4px;
-    text-align:center;
-    line-height:1.25;
   }
   .club-summary-vs{
     flex:0 0 auto;
@@ -891,49 +983,16 @@
     color:var(--cork);
   }
 
-  /* Mobile/tablet: one column per club (categories stacked inside via the
-     normal .standings-col/.standings-cards markup already above). */
-  .standings-club-col{
-    flex:1 1 320px;
-    min-width:290px;
-    max-width:400px;
-  }
-  .club-head{
-    position:sticky; top:0;
-    background:rgba(9,14,28,.94);
-    backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    padding:12px 14px 10px;
-    border-radius:14px;
-    margin-bottom:14px;
-    text-align:center;
-    border:1px solid rgba(255,122,41,.4);
-    z-index:3;
-  }
-  .club-head .club-name{
-    font-family:'Anton',sans-serif;
-    font-weight:400;
-    font-size:16px;
-    letter-spacing:.01em;
-    text-transform:uppercase;
-    color:var(--cork);
-  }
-  .club-head .club-full{
-    display:block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
-    letter-spacing:.12em;
-    text-transform:uppercase;
-    color:rgba(226,236,250,.6);
-    margin-top:2px;
-  }
-
   /* Desktop: each club's bracket stacked inside a shared category column
      (see .standings-col above); at the desktop breakpoint below, the two
      clubs sit side by side instead and scroll as a unit. */
   .category-clubs-row{ display:block; }
   .club-subsection{ margin-bottom:18px; }
   .club-subsection:last-child{ margin-bottom:0; }
+  /* Bronze/Final — see renderSharedStages — sit below the per-club columns,
+     spanning the full category-column width since they're one shared match
+     rather than each club's own bracket. */
+  .shared-stages{ margin-top:14px; }
   .club-subhead{
     font-family:'IBM Plex Mono',monospace;
     font-size:10.5px;
@@ -991,16 +1050,9 @@
     text-transform:uppercase;
     letter-spacing:.04em;
   }
-  .stage-banner .stage-sub{
-    display:block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px;
-    letter-spacing:.14em;
-    opacity:.72;
-  }
-
   .br-table{
     width:100%;
+    table-layout:fixed;
     border-collapse:collapse;
     background:var(--paper);
     border-radius:10px;
@@ -1010,27 +1062,42 @@
   }
   .stage-banner + .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
   .br-table:last-child{margin-bottom:0;}
+  /* Vertical dividers (border-right) plus the existing row dividers
+     (border-bottom) turn this into a real grid — easier to scan Pair/W/L/Q
+     as columns at a glance instead of just a list of rows. */
   .br-table th, .br-table td{
     padding:6px 8px;
     text-align:left;
     font-size:11.5px;
     font-family:'IBM Plex Mono',monospace;
+    border-right:1px solid rgba(20,27,44,.12);
   }
+  .br-table th:last-child, .br-table td:last-child{ border-right:none; }
   .br-table th{
     font-size:9px;
     text-transform:uppercase;
     letter-spacing:.06em;
     color:var(--muted);
-    border-bottom:1px solid rgba(20,27,44,.1);
+    border-bottom:1px solid rgba(20,27,44,.16);
   }
-  .br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.06); }
+  /* Pair is the only column without an explicit width, so table-layout:fixed
+     hands it all the leftover space. Q gets its own (wider) width since
+     "0.6667" doesn't fit in the same width as a plain W/L integer. */
+  .br-table th.num{width:26px; text-align:center;}
+  .br-table th.quo{width:54px; text-align:center;}
+  .br-table th.br-badge{width:22px; text-align:center;}
+  .br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.1); }
   .br-table tr:last-child td{border-bottom:none;}
   .br-table tr.win{background:rgba(52,199,120,.16);}
   .br-table tr.loss{background:rgba(255,90,110,.11);}
-  .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.35;}
+  /* Stacked (not single-line) again now that the 4-column desktop grid needs
+     fewer rows overall — tight line-height keeps the two names close
+     together so this doesn't cost back all the vertical space that saved. */
+  .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.15;}
   .br-table td.pair span{display:block;}
   .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
   .br-table td.num{text-align:center; width:26px;}
+  .br-table td.quo{text-align:center; width:54px;}
   .br-table td.br-badge{
     text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
   }
@@ -1111,8 +1178,16 @@
   }
 
   /* Desktop: break the standings board out of the page's narrow .wrap
-     max-width so it can actually use the screen. Each category becomes
-     its own column, and the whole row of categories scrolls horizontally. */
+     max-width so it can actually use the screen. Each category becomes its
+     own column in a 4-column grid: the first 3 columns hold one row per
+     division (top row Low Intermediate, then High Intermediate — sortedCats
+     is already grouped by division then event, so consecutive same-division
+     categories land on the same row automatically), and the 4th column is
+     reserved for any division with fewer categories than EVENTS configures
+     (currently just Advanced, with a single Men's Doubles category) —
+     renderStandings wraps those in .standings-col-overflow, spanning the
+     full row-height of the columns beside it and vertically centered there
+     instead of leaving a half-empty row of its own. */
   @media (min-width: 980px){
     #standingsResults{
       width:100vw;
@@ -1124,24 +1199,31 @@
       box-sizing:border-box;
     }
     .standings-board-desktop{
-      overflow-x:auto;
-      overflow-y:visible;
+      display:grid;
+      grid-template-columns:repeat(4, minmax(240px, 1fr));
+      overflow:visible;
       max-height:none;
+      max-width:2160px;
+      margin:0 auto;
       padding-bottom:20px;
       align-items:stretch;
-      justify-content:center;
-    }
-    .standings-board-desktop.has-overflow{
-      justify-content:flex-start;
     }
     .standings-board-desktop .standings-col{
       /* Wide enough to fit both clubs' brackets side by side (see
          .category-clubs-row above) — the row itself scrolls internally, so
          this column doesn't need its own max-height/overflow-y. */
-      flex:0 0 520px;
+      width:100%;
       max-width:520px;
+      margin:0 auto;
       display:flex;
       flex-direction:column;
+    }
+    .standings-col-overflow{
+      grid-column:4;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:20px;
     }
   }
 
@@ -1277,19 +1359,28 @@
 
   .names-row{
     display:flex;
-    align-items:flex-start;
+    align-items:flex-end;
     justify-content:space-between;
     gap:12px;
-    margin-bottom:12px;
+    margin-bottom:14px;
   }
   .team-block{flex:1; min-width:0; text-align:left;}
   .team-block.right{text-align:right;}
+  .score-logo{
+    display:inline-block;
+    width:88px; height:88px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid rgba(20,27,44,.12);
+    margin-bottom:6px;
+  }
   .team-block .team-name{
     font-family:'IBM Plex Mono',monospace;
-    font-weight:600;
-    font-size:14px;
-    letter-spacing:.02em;
-    color:var(--ink);
+    font-weight:700;
+    font-size:9.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--muted);
   }
   .team-block .players{
     font-size:16px;
@@ -1314,19 +1405,21 @@
     vertical-align:middle;
   }
 
-  .score-row{
+  .score-col{
+    flex-shrink:0;
     text-align:center;
-    margin-bottom:14px;
     font-family:'Anton',sans-serif;
     font-weight:400;
     font-size:32px;
     color:var(--ink);
     letter-spacing:.02em;
+    padding:0 6px;
   }
-  .score-row .score-colon{color:var(--muted); margin:0 10px; font-size:26px;}
-  .score-row .score-num.win{color:var(--cork);}
-  .score-row .vs-text{
-    font-size:16px;
+  .score-col .score-colon{color:var(--muted); margin:0 8px; font-size:26px;}
+  .score-col .score-num{color:var(--cork);}
+  .score-col .score-num.win{color:var(--ink);}
+  .score-col .vs-text{
+    font-size:14px;
     color:var(--muted);
     letter-spacing:.1em;
   }
@@ -1404,20 +1497,23 @@
     .court-pill{font-size:13px; padding:5px 14px;}
     .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
     .next-pill{font-size:11px; padding:5px 11px;}
-    .names-row{gap:8px; margin-bottom:14px;}
-    .team-block .players{font-size:14px;}
-    .score-row{font-size:30px;}
+    .names-row{gap:6px; margin-bottom:14px;}
+    .team-block .players{font-size:13px;}
+    .score-logo{width:64px; height:64px; margin-bottom:4px;}
+    .score-col{font-size:26px; padding:0 2px;}
     .meta-row{justify-content:center;}
 
     .live-table-wrap{overflow-x:visible;}
     table.live-table{min-width:0;}
     table.live-table th, table.live-table td{padding:6px 5px;}
     td.live-court-cell{font-size:13px;}
-    td.live-match-cell{font-size:9.5px;}
     td.live-team-cell{min-width:0;}
-    .live-team-code{font-size:10px;}
-    .live-team-players{font-size:10.5px;}
-    td.live-vs-cell{font-size:11px;}
+    .live-team-code{font-size:8px;}
+    .live-team-logo{width:40px; height:40px;}
+    .live-team-cell-inner{gap:6px;}
+    .live-team-players{font-size:11px;}
+    .live-match-pill{font-size:7.5px; padding:1px 5px;}
+    .live-vs-score{font-size:11px;}
     td.live-cat-cell{font-size:8.5px; padding:6px 5px 2px;}
   }
 
@@ -1627,8 +1723,8 @@ const EVENT_ORDER_RESOLVED    = EVENT_ORDER || Object.keys(EVENTS);
 // FACILITIES/DAYS above — this is filled in directly with this event's two
 // club identities rather than left as an example to replace.
 const CLUBS = {
-  'PNF': { name: 'PNF', full: 'Pickle & Friends Community' },
-  'BUP': { name: 'BUP', full: '1Bataan United Picklers' }
+  'PNF': { name: 'PNF', full: 'Pickle & Friends Community', logo: 'assets/pnf-logo.jpg' },
+  'BUP': { name: 'BUP', full: '1Bataan United Picklers', logo: 'assets/bup-logo.jpg' }
 };
 
 // Auto-derived from CLUBS/DIVISIONS/EVENTS above — built once here rather
@@ -1649,9 +1745,16 @@ const STAGE_META = {
   R16:    { label: 'Round of 16',   banner:false },
   QF:     { label: 'Quarterfinals', banner:false },
   SF:     { label: 'Semifinals',    banner:false },
-  BRONZE: { label: 'Bronze Battle', banner:true,  sub:'B' },
-  FINAL:  { label: 'Finals',        banner:true,  sub:'F' }
+  BRONZE: { label: 'Bronze Battle', banner:true },
+  FINAL:  { label: 'Finals',        banner:true }
 };
+// Bronze/Final are cross-club matches — the two clubs' bracket winners (or
+// runners-up) face each other directly — unlike Round Robin/R16/QF/SF,
+// which stay within one club's own bracket. renderCategoryColumn renders
+// these two stages once, spanning both club columns, instead of once per
+// club (which would show each club's half of the same match next to a fake
+// TBD opponent).
+const CROSS_CLUB_STAGE_KEYS = ['BRONZE', 'FINAL'];
 const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
 const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
 
@@ -2135,7 +2238,7 @@ function renderStageTables(rows){
     const showBracketColumn = Array.from(rrGroups.keys()).some(k => k !== '');
     html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
       <table class="br-table"><thead><tr>
-        ${showBracketColumn ? '<th>Br</th>' : ''}<th>Pair</th><th>W</th><th>L</th><th>Q</th>
+        ${showBracketColumn ? '<th class="br-badge">Br</th>' : ''}<th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
       </tr></thead><tbody>`;
     let badgeIdx = 0;
     const badgeMap = new Map();
@@ -2148,7 +2251,7 @@ function renderStageTables(rows){
           ${pairCell(s)}
           <td class="num">${s.wins}</td>
           <td class="num">${s.loss}</td>
-          <td class="num">${fmtQ(s.quotient)}</td>
+          <td class="quo">${fmtQ(s.quotient)}</td>
         </tr>`;
       });
     });
@@ -2156,27 +2259,35 @@ function renderStageTables(rows){
   }
 
   // Playoff-style stages, in a sensible order, unknown stages appended at the end
-  const stageKeys = Array.from(stages.keys()).sort((a,b) => {
+  sortStageKeys(Array.from(stages.keys())).forEach(key => {
+    html += renderStageBlock(key, stages.get(key));
+  });
+
+  return html;
+}
+
+// Sensible stage order (STAGE_ORDER), unknown stage keys appended at the end.
+function sortStageKeys(keys){
+  return keys.sort((a,b) => {
     const ia = STAGE_ORDER.indexOf(a), ib = STAGE_ORDER.indexOf(b);
     if(ia === -1 && ib === -1) return a.localeCompare(b);
     if(ia === -1) return 1;
     if(ib === -1) return -1;
     return ia - ib;
   });
-  stageKeys.forEach(key => {
-    const meta = STAGE_META[key] || { label: key.charAt(0) + key.slice(1).toLowerCase(), banner:false };
-    html += `<div class="stage-block">`;
-    if(meta.banner){
-      html += `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span><span class="stage-sub">${escapeHtml(meta.sub || key)}</span></div>`;
-    } else {
-      html += `<div class="stage-caption">${escapeHtml(meta.label)}</div>`;
-    }
-    pairUpMatchups(stages.get(key)).forEach(pair => {
-      html += renderMatchup(pair);
-    });
-    html += `</div>`;
-  });
+}
 
+// Renders one playoff stage's block (banner or caption header, then its
+// head-to-head matchup cards) — shared by renderStageTables (per-club
+// R16/QF/SF) and renderSharedStages (cross-club Bronze/Final).
+function renderStageBlock(key, rows){
+  const meta = STAGE_META[key] || { label: key.charAt(0) + key.slice(1).toLowerCase(), banner:false };
+  let html = `<div class="stage-block">`;
+  html += meta.banner
+    ? `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span></div>`
+    : `<div class="stage-caption">${escapeHtml(meta.label)}</div>`;
+  pairUpMatchups(rows).forEach(pair => { html += renderMatchup(pair); });
+  html += `</div>`;
   return html;
 }
 
@@ -2272,21 +2383,7 @@ function renderMatchup(pair){
   </div>`;
 }
 
-function renderCategoryCard(cat, rows){
-  const stageHtml = renderStageTables(rows);
-  if(!stageHtml) return '';
-  const code = parseCode(rows[0].teamCode);
-  const codeLabel = code.division && code.event ? `${code.division}${code.event}` : '';
-  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}">
-    <div class="standings-col-head">
-      <span class="cat-title">${escapeHtml(cat)}</span>
-      ${codeLabel ? `<span class="cat-code">${escapeHtml(codeLabel)}</span>` : ''}
-    </div>
-    <div class="standings-col-body">${stageHtml}</div>
-  </div>`;
-}
-
-// One club's bracket within a shared category column (desktop) — just the
+// One club's bracket within a shared category column — just the
 // stage tables under a small club heading, since the outer card/head is
 // already provided by renderCategoryColumn() below.
 function renderClubSubsection(clubCode, rows){
@@ -2299,13 +2396,46 @@ function renderClubSubsection(clubCode, rows){
   </div>`;
 }
 
-// Desktop: one column per division+event category, with each club's
-// bracket stacked (or side-by-side, at the desktop breakpoint) inside it —
-// this replaces the standard template's single flat category card, since a
-// dual meet's standings are only meaningful split out by club.
-function renderCategoryColumn(cat, rows, clubOrder){
-  const byClub = new Map();
+// Bronze/Final rows (see CROSS_CLUB_STAGE_KEYS) combined across both clubs
+// and rendered as one shared block, spanning the full category column
+// instead of sitting inside either club's own subsection. Combining them
+// before pairUpMatchups is what makes each matchup pair up one club's row
+// against the other's — the same mechanism that pairs same-club rows within
+// a per-club R16/QF/SF stage, just fed cross-club rows instead this time.
+function renderSharedStages(rows){
+  const stages = new Map();
   rows.forEach(s => {
+    const stageKey = standingsStageKey(s.teamCode);
+    if(!stages.has(stageKey)) stages.set(stageKey, []);
+    stages.get(stageKey).push(s);
+  });
+  if(stages.size === 0) return '';
+  let html = `<div class="shared-stages">`;
+  sortStageKeys(Array.from(stages.keys())).forEach(key => {
+    html += renderStageBlock(key, stages.get(key));
+  });
+  html += `</div>`;
+  return html;
+}
+
+// One column per division+event category, with each club's Round Robin/
+// R16/QF/SF bracket stacked (or side-by-side, at the desktop breakpoint —
+// see .category-clubs-row) inside it — this replaces the standard
+// template's single flat category card, since a dual meet's standings are
+// only meaningful split out by club up through the semifinals. Bronze/Final
+// are cross-club, so they're pulled out and rendered once via
+// renderSharedStages instead, spanning both clubs right below. Used for
+// both the desktop grid (renderStandings passes an explicit grid-position
+// styleAttr) and the mobile/tablet single-column list (styleAttr '').
+function renderCategoryColumn(cat, rows, clubOrder, styleAttr){
+  const perClubRows = [];
+  const sharedRows = [];
+  rows.forEach(s => {
+    (CROSS_CLUB_STAGE_KEYS.includes(standingsStageKey(s.teamCode)) ? sharedRows : perClubRows).push(s);
+  });
+
+  const byClub = new Map();
+  perClubRows.forEach(s => {
     const clubCode = parseCode(s.teamCode).club || 'OTHER';
     if(!byClub.has(clubCode)) byClub.set(clubCode, []);
     byClub.get(clubCode).push(s);
@@ -2314,15 +2444,16 @@ function renderCategoryColumn(cat, rows, clubOrder){
   clubOrder.filter(c => byClub.has(c)).forEach(clubCode => {
     inner += renderClubSubsection(clubCode, byClub.get(clubCode));
   });
-  if(!inner) return '';
-  const code = parseCode(rows[0].teamCode);
-  const codeLabel = code.division && code.event ? `${code.division}${code.event}` : '';
-  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}">
+  const sharedHtml = renderSharedStages(sharedRows);
+  if(!inner && !sharedHtml) return '';
+  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}"${styleAttr ? ` style="${styleAttr}"` : ''}>
     <div class="standings-col-head">
       <span class="cat-title">${escapeHtml(cat)}</span>
-      ${codeLabel ? `<span class="cat-code">${escapeHtml(codeLabel)}</span>` : ''}
     </div>
-    <div class="standings-col-body"><div class="category-clubs-row" data-cat-key="${escapeHtml(cat)}">${inner}</div></div>
+    <div class="standings-col-body">
+      ${inner ? `<div class="category-clubs-row" data-cat-key="${escapeHtml(cat)}">${inner}</div>` : ''}
+      ${sharedHtml}
+    </div>
   </div>`;
 }
 
@@ -2342,7 +2473,7 @@ function isDesktopStandings(){
 // and the Live Matches board (per-facility horizontal table scroll on
 // mobile) — both fully rebuild their HTML on every refresh, so without this
 // their scroll position would silently reset every 15 seconds.
-const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col, .category-clubs-row, .live-table-wrap';
+const SCROLLABLE_SELECTOR = '.standings-col, .category-clubs-row, .live-table-wrap';
 
 // Stable identity for a scrollable node, preferred over raw className/
 // tagName matching — the same category or facility can render in a
@@ -2389,6 +2520,7 @@ function renderClubSummary(byClub, clubOrder){
   const clubWins = clubOrder.map(clubCode => ({
     code: clubCode,
     name: CLUBS[clubCode] ? CLUBS[clubCode].full : clubCode,
+    logo: CLUBS[clubCode] ? CLUBS[clubCode].logo : null,
     wins: byClub.get(clubCode)
       .filter(s => standingsStageKey(s.teamCode) === 'RR')
       .reduce((sum, s) => sum + (s.wins || 0), 0)
@@ -2399,38 +2531,23 @@ function renderClubSummary(byClub, clubOrder){
   clubWins.forEach((c, i) => {
     if(i > 0) html += `<div class="club-summary-vs">VS</div>`;
     const isLeader = c.wins === topWins && topWins > 0;
-    html += `<div class="club-summary-item${isLeader ? ' leader' : ''}">
-      <span class="cs-wins">${c.wins}</span>
-      <span class="cs-label">wins</span>
-      <span class="cs-name">${escapeHtml(c.name)}</span>
-    </div>`;
+    const identityHTML = `<div class="cs-identity">
+        ${c.logo ? `<img class="cs-logo" src="${escapeHtml(c.logo)}" alt="${escapeHtml(c.name)} logo">` : ''}
+        <span class="cs-name">${escapeHtml(c.name)}</span>
+      </div>`;
+    const statHTML = `<div class="cs-stat">
+        <span class="cs-wins">${c.wins}</span>
+        <span class="cs-label">wins</span>
+      </div>`;
+    // Mirror the last item's internal order (stat then identity) so every
+    // logo lands on the bar's outer edge and every wins stat lands on the
+    // inner side, next to VS — symmetric left/right instead of both items
+    // reading logo-then-wins regardless of which side they're on.
+    const isLast = i === clubWins.length - 1;
+    html += `<div class="club-summary-item${isLeader ? ' leader' : ''}">${isLast ? statHTML + identityHTML : identityHTML + statHTML}</div>`;
   });
   html += `</div>`;
   return html;
-}
-
-// Mobile/tablet: one column per club, with every category's standings
-// stacked inside it (reusing the same renderCategoryCard() a non-dual-meet
-// event would show).
-function renderClubColumn(clubCode, rows){
-  const club = CLUBS[clubCode];
-  const categories = new Map();
-  rows.forEach(s => {
-    const cat = divisionEventLabel(s.teamCode);
-    if(!categories.has(cat)) categories.set(cat, []);
-    categories.get(cat).push(s);
-  });
-  const sortedCats = Array.from(categories.keys())
-    .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
-  let cardsHtml = '';
-  sortedCats.forEach(cat => { cardsHtml += renderCategoryCard(cat, categories.get(cat)); });
-  return `<div class="standings-club-col" data-club-key="${escapeHtml(clubCode)}">
-    <div class="club-head">
-      <span class="club-name">${escapeHtml(club ? club.full : clubCode)}</span>
-      ${club ? `<span class="club-full">${escapeHtml(club.name)}</span>` : ''}
-    </div>
-    <div class="standings-cards">${cardsHtml}</div>
-  </div>`;
 }
 
 function renderStandings(){
@@ -2443,9 +2560,8 @@ function renderStandings(){
     return;
   }
 
-  // Group by club first (for the club order + win-totals summary) — every
-  // downstream layout (desktop category columns, mobile club columns)
-  // starts from this same grouping.
+  // Group by club first — needed for the club order + win-totals summary,
+  // and for renderCategoryColumn's own per-club split of each category.
   const byClub = new Map();
   STANDINGS.forEach(s => {
     const clubCode = parseCode(s.teamCode).club || 'OTHER';
@@ -2457,41 +2573,59 @@ function renderStandings(){
 
   let html = renderClubSummary(byClub, clubOrder);
 
+  const categories = new Map();
+  STANDINGS.forEach(s => {
+    const cat = divisionEventLabel(s.teamCode);
+    if(!categories.has(cat)) categories.set(cat, []);
+    categories.get(cat).push(s);
+  });
+  const sortedCats = Array.from(categories.keys())
+    .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
+
   if(isDesktopStandings()){
     // Desktop: one column per division+event category, each club's bracket
-    // stacked inside, horizontally scrollable.
-    const categories = new Map();
-    STANDINGS.forEach(s => {
-      const cat = divisionEventLabel(s.teamCode);
-      if(!categories.has(cat)) categories.set(cat, []);
-      categories.get(cat).push(s);
+    // stacked inside, laid out 3-per-row (see the .standings-board-desktop
+    // media query above for why this naturally groups by division) — except
+    // a division with fewer categories than EVENTS configures (e.g. Advanced
+    // having only Men's Doubles) doesn't get a half-empty row of its own;
+    // instead it's set aside into a 4th column, spanning (and vertically
+    // centered within) the full height of the rows beside it.
+    const runs = [];
+    sortedCats.forEach(cat => {
+      const division = parseCode(categories.get(cat)[0].teamCode).division;
+      const lastRun = runs[runs.length - 1];
+      if(lastRun && lastRun.division === division) lastRun.cats.push(cat);
+      else runs.push({ division, cats: [cat] });
     });
-    const sortedCats = Array.from(categories.keys())
-      .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
+    const fullEventCount = Object.keys(EVENTS).length;
+    const mainRuns = runs.filter(r => r.cats.length >= fullEventCount);
+    const overflowCats = runs.filter(r => r.cats.length < fullEventCount).flatMap(r => r.cats);
+
     html += `<div class="standings-board standings-board-desktop">`;
-    sortedCats.forEach(cat => { html += renderCategoryColumn(cat, categories.get(cat), clubOrder); });
+    mainRuns.forEach((run, rowIdx) => {
+      run.cats.forEach((cat, colIdx) => {
+        html += renderCategoryColumn(cat, categories.get(cat), clubOrder, `grid-column:${colIdx + 1};grid-row:${rowIdx + 1};`);
+      });
+    });
+    if(overflowCats.length > 0){
+      let overflowHtml = '';
+      overflowCats.forEach(cat => { overflowHtml += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
+      html += `<div class="standings-col-overflow" style="grid-row:1 / ${mainRuns.length + 1};">${overflowHtml}</div>`;
+    }
     html += `</div>`;
   } else {
-    // Mobile/tablet: one column per club, categories stacked inside.
+    // Mobile/tablet: the same per-category card as desktop (see
+    // renderCategoryColumn) — each club's bracket stacked, with Bronze/Final
+    // spanning both clubs right underneath, close to that category's own
+    // Round Robin standings — just laid out as a single full-width column,
+    // one category per row, instead of a multi-column grid.
     html += `<div class="standings-board">`;
-    clubOrder.forEach(clubCode => { html += renderClubColumn(clubCode, byClub.get(clubCode)); });
+    sortedCats.forEach(cat => { html += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
     html += `</div>`;
   }
 
   bodyEl.innerHTML = html;
   restoreScrollPositions(bodyEl, scrollPositions);
-  updateStandingsBoardAlignment();
-}
-
-// Keeps the desktop standings board centered when its category cards all fit
-// on screen without needing to scroll; once there are enough categories to
-// overflow, it switches to left-aligned so the first card isn't cut off
-// (a centered flex row can otherwise hide overflowing content off-screen).
-function updateStandingsBoardAlignment(){
-  const board = standingsBodyEl && standingsBodyEl.querySelector('.standings-board-desktop');
-  if(!board) return;
-  const hasOverflow = board.scrollWidth > board.clientWidth + 1;
-  board.classList.toggle('has-overflow', hasOverflow);
 }
 
 // Re-render standings if the viewport crosses the desktop/mobile breakpoint
@@ -2506,8 +2640,6 @@ window.addEventListener('resize', () => {
       lastStandingsIsDesktop = nowDesktop;
       const el = standingsResultsEl;
       if(el && el.style.display !== 'none') renderStandings();
-    } else {
-      updateStandingsBoardAlignment();
     }
   }, 200);
 });
@@ -2792,6 +2924,11 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function teamLogoHTML(teamCode){
+  const club = CLUBS[parseCode(teamCode).club];
+  return club && club.logo ? `<img class="score-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
+}
+
 function ticketHTML(m, teamCode, isNext){
   const isT1 = m.t1 === teamCode;
   const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
@@ -2815,7 +2952,9 @@ function ticketHTML(m, teamCode, isNext){
   const isLive = dayIsLive && !!m.liveCourt;
   const displayCourt = isLive ? m.liveCourt : m.court;
   const displayCourtLabel = isLive ? `Court ${displayCourt}` : displayCourt;
-  const facility = facilityForCourt(displayCourt);
+  // A single-facility event has nothing to disambiguate, so naming it on
+  // every card would just be noise (see facilityTableHTML's identical check).
+  const facility = FACILITIES.length > 1 ? facilityForCourt(displayCourt) : null;
   const courtHTML = displayCourt
     ? `<span class="court-pill">${escapeHtml(displayCourtLabel)}${facility ? ` &middot; ${escapeHtml(facility)}` : ''}</span>`
     : '';
@@ -2839,15 +2978,17 @@ function ticketHTML(m, teamCode, isNext){
       </div>
       <div class="names-row">
         <div class="team-block ${youTBD ? 'tbd':''}">
+          ${teamLogoHTML(you.code)}
           <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
+        <div class="score-col">${scoreHTML}</div>
         <div class="team-block right ${oppTBD ? 'tbd':''}">
+          ${teamLogoHTML(opp.code)}
           <div class="team-name">${escapeHtml(opp.code)}</div>
           <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
         </div>
       </div>
-      <div class="score-row">${scoreHTML}</div>
       <div class="meta-row">
         <span class="meta-chip">Match #${m.num}</span>
         ${tag}
@@ -2859,8 +3000,18 @@ function ticketHTML(m, teamCode, isNext){
 // ---------- Live Matches (Court Control) ----------
 // One card per court — whatever match currently has a value in the
 // 'court' column is the match being played there right now.
+// Every configured court (from FACILITIES), mapped to its current live
+// match or null — always the same set of keys regardless of how many
+// matches actually happen to be live right now. Deliberately NOT just the
+// live ones: a table whose row count changes on every refresh (as matches
+// start/finish on different courts) jumps around the page and scrolls the
+// user's view out from under them, which is what liveTableRowsHTML's empty
+// branch and this full-court enumeration exist to prevent.
 function buildLiveCourts(){
   const byCourt = new Map();
+  FACILITIES.forEach(f => {
+    for(let n = f.courts[0]; n <= f.courts[1]; n++) byCourt.set(String(n), null);
+  });
   MATCHES.forEach(m => {
     if(!m.liveCourt) return;
     // MATCHES is already sorted by matchNumber ascending, so the last
@@ -2875,10 +3026,10 @@ function courtSortKey(court){
   return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
-// Buckets live courts by facility (in ascending court-number order, so each
-// FACILITIES entry falls out naturally since their court ranges don't
-// overlap) with anything unmapped collected into a trailing 'Other Courts'
-// group instead of getting silently dropped.
+// Buckets every court (live or idle) by facility (in ascending court-number
+// order, so each FACILITIES entry falls out naturally since their court
+// ranges don't overlap) with anything unmapped collected into a trailing
+// 'Other Courts' group instead of getting silently dropped.
 function groupLiveCourtsByFacility(liveCourts){
   const sortedCourts = Array.from(liveCourts.keys()).sort((a,b) => courtSortKey(a) - courtSortKey(b));
   const groups = new Map();
@@ -2890,8 +3041,47 @@ function groupLiveCourtsByFacility(liveCourts){
   return groups;
 }
 
+// Club logo for the compact table cell — .score-logo (used in the ticket
+// cards) is a different, larger-still size tuned for that card, not this row.
+function liveTeamLogoHTML(teamCode){
+  const club = CLUBS[parseCode(teamCode).club];
+  return club && club.logo ? `<img class="live-team-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
+}
+
+// Placeholder row for a court with nothing live on it right now. Mirrors
+// liveTableRowsHTML's real-match row exactly — same cells, same rowspans,
+// same number of team-code/player-name lines, same invisible logo-sized
+// placeholder (just blank/transparent) — so the row's height doesn't change
+// the instant a match actually starts on this court.
+function liveEmptyRowHTML(court){
+  const blankTeamCell = `<div class="live-team-cell-inner">
+    <span class="live-team-logo live-team-logo-placeholder" aria-hidden="true"></span>
+    <div class="live-team-text">
+      <div class="live-team-code">&nbsp;</div>
+      <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>
+    </div>
+  </div>`;
+  return `<tr>
+    <td class="live-court-cell idle" rowspan="2">${escapeHtml(court)}</td>
+    <td class="live-cat-cell" colspan="3"><span class="live-empty-label">No match playing</span></td>
+  </tr>
+  <tr class="live-match-row">
+    <td class="live-team-cell">${blankTeamCell}</td>
+    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div></td>
+    <td class="live-team-cell right">${blankTeamCell}</td>
+  </tr>`;
+}
+
 function liveTableRowsHTML(court, m){
-  const cat = divisionLabel(m.t1) || divisionLabel(m.t2) || '';
+  if(!m) return liveEmptyRowHTML(court);
+  // divisionEventLabel (not divisionLabel) — this cell already shows both
+  // teams' clubs via their logos, so prefixing it with just one team's club
+  // name (divisionLabel's normal behavior, meant for single-team contexts
+  // like the search autocomplete) would be redundant and arbitrarily favor
+  // whichever team happens to parse first.
+  const t1Cat = divisionEventLabel(m.t1);
+  const t2Cat = divisionEventLabel(m.t2);
+  const cat = t1Cat !== 'Other' ? t1Cat : (t2Cat !== 'Other' ? t2Cat : '');
   const t1TBD = m.t1p1 === 'TBD';
   const t2TBD = m.t2p1 === 'TBD';
   const oppRound = roundLabel(parseCode(m.t2).rest) || roundLabel(parseCode(m.t1).rest);
@@ -2900,32 +3090,41 @@ function liveTableRowsHTML(court, m){
     ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
     : 'VS';
 
-  const teamCellHTML = (code, tbd, p1, p2) => `
-    <div class="live-team-code${tbd ? ' tbd':''}">${escapeHtml(code)}</div>
-    <div class="live-team-players">${tbd ? 'To be determined' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>`;
+  // logoRight: whether the logo renders after the text instead of before —
+  // mirrors the two sides so both logos sit toward the table's outer edges.
+  // The logo sits beside the code+players block (not inside the code line),
+  // sized to span roughly that block's full height.
+  const teamCellHTML = (code, tbd, p1, p2, logoRight) => {
+    const logo = liveTeamLogoHTML(code);
+    const text = `<div class="live-team-text">
+      <div class="live-team-code${tbd ? ' tbd':''}">${escapeHtml(code)}</div>
+      <div class="live-team-players">${tbd ? 'To be determined' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>
+    </div>`;
+    return `<div class="live-team-cell-inner">${logoRight ? text + logo : logo + text}</div>`;
+  };
 
   return `<tr>
     <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
-    <td class="live-match-cell" rowspan="2">#${m.num}</td>
     <td class="live-cat-cell" colspan="3">${cat ? escapeHtml(cat) + ' &middot; ' : ''}<span class="live-round">${escapeHtml(roundText)}</span></td>
   </tr>
   <tr class="live-match-row">
-    <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2)}</td>
-    <td class="live-vs-cell">${scoreHTML}</td>
-    <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2)}</td>
+    <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2, false)}</td>
+    <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div></td>
+    <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2, true)}</td>
   </tr>`;
 }
 
 function facilityTableHTML(facility, rows){
   // A single-facility event has nothing to distinguish, so the venue name
   // above the table would just be redundant.
-  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${rows.length} court${rows.length===1?'':'s'} in play</span></div>`;
+  const liveCount = rows.filter(([, m]) => m).length;
+  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${liveCount} court${liveCount===1?'':'s'} in play</span></div>`;
   return `
   ${titleHTML}
   <div class="live-table-wrap" data-facility-key="${escapeHtml(facility)}">
     <table class="live-table">
       <thead><tr>
-        <th>Court</th><th>Match</th><th colspan="3">Match Details</th>
+        <th>Court</th><th colspan="3">Match Details</th>
       </tr></thead>
       <tbody>${rows.map(([c, m]) => liveTableRowsHTML(c, m)).join('')}</tbody>
     </table>
@@ -2938,14 +3137,12 @@ function renderLiveMatches(){
   if(!boardEl) return;
 
   const liveCourts = buildLiveCourts();
-  if(liveCourts.size === 0){
-    metaEl.innerHTML = '';
-    boardEl.innerHTML = `<div class="empty-state">No matches are currently on court.</div>`;
-    return;
-  }
-
-  const totalCourts = liveCourts.size;
-  metaEl.innerHTML = `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`;
+  // The board always shows every configured court (see buildLiveCourts), so
+  // this count is just the ones actually in play right now, not the total.
+  const totalCourts = Array.from(liveCourts.values()).filter(Boolean).length;
+  metaEl.innerHTML = totalCourts > 0
+    ? `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`
+    : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
   const groups = groupLiveCourtsByFacility(liveCourts);
 
   // Full rebuild on every 15s refresh, same as Standings — capture/restore
