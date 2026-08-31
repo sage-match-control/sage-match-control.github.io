@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Guide — S.A.G.E.</title>
+<meta name="description" content="A plain-language tour of everything the S.A.G.E. platform gives players and spectators.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --on-green:#0B1826;
+
+    --bg:#F6F7F2;
+    --bg-alt:#ECEEE6;
+    --card:#FFFFFF;
+    --ink:#14263C;
+    --muted:#5B6B74;
+    --line:#D9DED2;
+    --shadow: 0 18px 40px -24px rgba(11,24,38,.28);
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0B1826;
+      --bg-alt:#101F30;
+      --card:#16283D;
+      --ink:#EAEFE6;
+      --muted:#9FB1AC;
+      --line:rgba(237,239,233,.14);
+      --green:#8FCB3F;
+      --green-dark:#6FA82A;
+      --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B1826;
+    --bg-alt:#101F30;
+    --card:#16283D;
+    --ink:#EAEFE6;
+    --muted:#9FB1AC;
+    --line:rgba(237,239,233,.14);
+    --green:#8FCB3F;
+    --green-dark:#6FA82A;
+    --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html{overflow-x:hidden;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation:none !important; transition:none !important; } }
+  ::selection{ background:var(--green); color:var(--on-green); }
+  :focus-visible{ outline:3px solid var(--green); outline-offset:2px; }
+
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 20px; }
+
+  /* ---------- HERO: courtside scoreboard bezel ---------- */
+  .hero-wrap{ padding:36px 20px 0; }
+  header.hero{
+    max-width:1080px;
+    margin:0 auto;
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:#F1F3EC;
+    position:relative;
+    overflow:hidden;
+    padding:44px clamp(20px,5vw,56px) 34px;
+    border-radius:22px 22px 8px 8px;
+  }
+  header.hero::before{
+    content:"";
+    position:absolute; inset:12px;
+    border:1px solid rgba(241,243,236,.10);
+    border-radius:16px;
+    pointer-events:none;
+  }
+  header.hero::after{
+    content:"";
+    position:absolute; left:32px; right:32px; bottom:10px;
+    border-bottom:2px dashed rgba(124,185,44,.4);
+  }
+  .kicker{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    font-size:12.5px;
+    color:var(--green);
+    margin-bottom:16px;
+    position:relative;
+  }
+  .hero h1{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    text-transform:uppercase;
+    font-size:clamp(30px,6.4vw,54px);
+    line-height:1.04;
+    letter-spacing:.005em;
+    margin:0 0 16px;
+    max-width:14ch;
+    text-wrap:balance;
+    position:relative;
+  }
+  .hero .sub{
+    font-size:clamp(14.5px,2.2vw,17px);
+    color:rgba(241,243,236,.82);
+    max-width:52ch;
+    position:relative;
+  }
+  .scoreboard-stand{
+    width:130px; height:22px; margin:0 auto;
+    background:linear-gradient(var(--navy), var(--navy-deep));
+    clip-path:polygon(32% 0, 68% 0, 100% 100%, 0% 100%);
+  }
+  .scoreboard-foot{
+    width:220px; height:8px; margin:0 auto 40px;
+    background:var(--navy-deep);
+    border-radius:5px;
+    box-shadow:var(--shadow);
+  }
+
+  /* ---------- SECTIONS ---------- */
+  main{ padding:8px 0 100px; }
+  section.track{ padding:52px 0; }
+  section.track + section.track{ border-top:1px solid var(--line); }
+
+  .track-head{ margin-bottom:8px; }
+  .track h2{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    text-transform:uppercase;
+    font-size:clamp(22px,3.6vw,30px);
+    letter-spacing:.005em;
+    margin:0;
+    text-wrap:balance;
+  }
+  .track-sub{
+    color:var(--muted);
+    max-width:62ch;
+    margin:10px 0 30px;
+    font-size:15px;
+  }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:16px;
+  }
+
+  .feature{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 22px 24px;
+    box-shadow:var(--shadow);
+    position:relative;
+  }
+  .feature::before{
+    content:"";
+    position:absolute; left:22px; top:0;
+    width:28px; height:3px;
+    background:var(--green);
+    border-radius:0 0 3px 3px;
+  }
+  .feature h3{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    font-size:16.5px;
+    margin:14px 0 4px;
+    color:var(--ink);
+  }
+  .feature .hook{
+    font-size:14px;
+    color:var(--green-dark);
+    font-weight:600;
+    margin:0 0 10px;
+  }
+  .feature p.desc{
+    margin:0;
+    color:var(--muted);
+    font-size:14.5px;
+    line-height:1.55;
+  }
+  .feature .tag{
+    display:inline-block;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    background:var(--bg-alt);
+    border-radius:100px;
+    padding:3px 10px;
+    margin-top:12px;
+  }
+
+  footer.site-foot{
+    text-align:center;
+    padding:34px 20px 10px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="hero-wrap">
+  <header class="hero">
+    <div class="kicker">S.A.G.E. &middot; Match Control Experts</div>
+    <h1>Everything Your Tournament Needs, In One Place</h1>
+    <p class="sub">From the moment brackets are set to the second the last point is scored, S.A.G.E. keeps players and spectators looking at the same live picture &mdash; on the court, at the venue, and from the phone in your pocket.</p>
+  </header>
+  <div class="scoreboard-stand"></div>
+  <div class="scoreboard-foot"></div>
+</div>
+
+<main class="wrap">
+
+  <section class="track" id="players">
+    <div class="track-head">
+      <h2>For Players &amp; Spectators</h2>
+    </div>
+    <p class="track-sub">No app to install, no login to remember &mdash; open the event page on a phone and everything below is already running.</p>
+
+    <div class="card-grid">
+      <article class="feature">
+        <h3>Match Finder</h3>
+        <p class="hook">Type in your names, get your whole day.</p>
+        <p class="desc">Enter your pair's names once and see your entire schedule &mdash; every round, every opponent, in order &mdash; without scrolling past anyone else's matches.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Live Scores</h3>
+        <p class="hook">Never wonder what's happening on Court 6.</p>
+        <p class="desc">Scores and court assignments update on their own while play is underway. No refreshing, no asking a volunteer.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Live Standings</h3>
+        <p class="hook">Know where you stand, as it happens.</p>
+        <p class="desc">Win-loss records and rankings update in real time, sorted by division and event, so the board is never a stale printout.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Club Showdown</h3>
+        <p class="hook">Bragging rights, tallied live.</p>
+        <p class="desc">For head-to-head club events, a running win count between the two sides sits front and center &mdash; updated after every match.</p>
+        <span class="tag">Dual-meet events</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="track" id="venue">
+    <div class="track-head">
+      <h2>On Site At The Venue</h2>
+    </div>
+    <p class="track-sub">Built for the screens and printouts that actually live at courtside.</p>
+
+    <div class="card-grid">
+      <article class="feature">
+        <h3>Schedule Board</h3>
+        <p class="hook">One screen, every court.</p>
+        <p class="desc">A wall display for the venue &mdash; courts as columns, time slots as rows &mdash; so nobody has to ask where their match is or when it starts.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Bracket Generator</h3>
+        <p class="hook">Clean brackets, ready to post.</p>
+        <p class="desc">Build and export playoff bracket graphics for printing or posting, without wrestling a spreadsheet into a diagram.</p>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">S.A.G.E. &middot; Match Control Experts</footer>
+</body>
+</html>
