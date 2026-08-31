@@ -11,30 +11,69 @@
 <meta property="og:image" content="/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect — the green is a *fill*
+     colour, not a text colour:
+       - --green on white is ~2.3:1 and fails AA at any size. Use it as a
+         background (with --navy text on top, ~5.4:1) or on a navy panel.
+       - --green-dark on white is ~4.0:1 — still under the 4.5:1 body
+         floor, so keep it for large/display text only.
+       - Small text on paper is --ink (~13.8:1) or --ink-soft (~5.9:1).
+     ================================================================ */
   :root{
-    --court:#C6FF00;
-    --court-dark:#060B16;
-    --court-line:#E7ECF7;
-    --ink:#0B1B3C;
-    --paper:#FFFFFF;
-    --amber:#FFD400;
-    --cork:#FF7A29;
-    --muted:#6B7690;
-    --navy-mid:#122548;
-    --card-shadow: 0 18px 40px -20px rgba(8,3,24,.6);
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   html{overflow-x:hidden;}
+  /* No overflow-x here (unlike html above) — pairing overflow-x:hidden with
+     any overflow-y (even an explicit 'visible') makes the UA compute
+     overflow-y as auto too (CSS spec: a non-visible axis can't pair with a
+     literally-visible one), which would make body a second, independent
+     scroll container nested inside html's. The real page scrolling already
+     happens on html (window.scrollY tracks documentElement.scrollTop, not
+     body's), so any position:sticky element inside body would resolve
+     against body's own never-moving scroll offset instead and just scroll
+     off as if it weren't sticky at all — leaving body's overflow fully
+     unset keeps it out of the scroll-container chain so sticky elements
+     (the standings category headers) bind to html. */
   body{
-    overflow-x:hidden;
-    background:
-      radial-gradient(900px 480px at 50% -12%, rgba(198,255,0,.14), transparent 62%),
-      radial-gradient(700px 460px at 100% 4%, rgba(45,110,220,.24), transparent 55%),
-      radial-gradient(650px 520px at -6% 96%, rgba(198,255,0,.12), transparent 60%),
-      linear-gradient(180deg, var(--court-dark) 0%, var(--navy-mid) 45%, var(--court-dark) 100%);
+    background:var(--paper);
     color:var(--ink);
     font-family:'Inter',system-ui,sans-serif;
     min-height:100vh;
@@ -46,14 +85,18 @@
   header.hero{
     padding:52px 20px 40px;
     text-align:center;
-    color:var(--court-line);
+    color:var(--white);
     position:relative;
+    background:var(--navy);
+    border-radius:0 0 var(--radius) var(--radius);
+    box-shadow:0 24px 60px -28px rgba(11,24,38,.45);
+    margin-bottom:28px;
   }
   .crown-mark{
     width:40px; height:auto;
     margin:0 auto 14px;
     color:var(--court);
-    filter:drop-shadow(0 2px 6px rgba(198,255,0,.4));
+    filter:drop-shadow(0 2px 6px rgba(124,185,44,.4));
   }
   .regal-rule{
     display:flex;
@@ -67,9 +110,9 @@
     content:"";
     flex:1;
     height:1px;
-    background:linear-gradient(90deg, transparent, rgba(198,255,0,.7));
+    background:linear-gradient(90deg, transparent, rgba(124,185,44,.7));
   }
-  .regal-rule::after{ background:linear-gradient(90deg, rgba(198,255,0,.7), transparent); }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(124,185,44,.7), transparent); }
   .regal-rule .diamond{
     width:7px; height:7px;
     background:var(--amber);
@@ -77,12 +120,12 @@
     flex-shrink:0;
   }
   .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     letter-spacing:.28em;
     text-transform:uppercase;
     font-size:12px;
-    color:var(--amber);
+    color:var(--green);
     margin-bottom:16px;
   }
   .tagline-script{
@@ -90,50 +133,78 @@
     font-style:italic;
     font-weight:700;
     font-size:clamp(14px,3.4vw,18px);
-    color:#fff;
+    color:var(--white);
     letter-spacing:.01em;
     margin:0 0 14px;
     opacity:.92;
   }
   .domination-line{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:clamp(20px,5.4vw,32px);
     text-transform:uppercase;
     letter-spacing:.01em;
-    color:var(--court);
-    text-shadow:0 2px 18px rgba(198,255,0,.35);
+    color:var(--green);
     margin:2px 0 12px;
   }
   h1.title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(34px,8.2vw,62px);
     line-height:1.04;
     letter-spacing:.005em;
     margin:0 0 10px;
     text-transform:uppercase;
-    background:linear-gradient(92deg, #8FE94B 0%, #C6FF00 55%, #F5FF8C 100%);
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 2px 22px rgba(198,255,0,.28));
+    color:var(--white);
   }
-  h1.title .accent{
-    -webkit-text-fill-color:initial;
-    background:none;
-    color:#fff;
-  }
+  h1.title .accent{ color:var(--green); }
   .subtitle{
     font-size:15px;
-    color:rgba(226,236,250,.75);
+    color:rgba(255,255,255,.75);
     max-width:480px;
     margin:0 auto 34px;
     line-height:1.55;
   }
 
+  /* ---------- HERO-SCOPED CONTROL OVERRIDES ----------
+     The day picker, view tabs and sync line are shared controls whose base
+     rules (further down) are written for the paper ground of .wrap. Inside
+     the navy bezel they'd be navy-on-navy, so they're re-stated here as
+     light-on-navy instead of being forked into two separate components.
+     Scoped to .hero so the base rules keep working anywhere else. */
+  .hero .view-tab{
+    border-color:rgba(255,255,255,.28);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.82);
+  }
+  .hero .view-tab:hover{ border-color:var(--green); color:var(--white); }
+  .hero .view-tab.active{
+    background:var(--green);
+    border-color:var(--green);
+    color:var(--navy);
+  }
+  .hero .day-picker label{ color:rgba(255,255,255,.6); }
+  /* The chevron is baked into the select's background-image, so it has to be
+     re-stated per ground — the navy one in the base rule would vanish here. */
+  .hero .day-picker select{
+    border-color:rgba(255,255,255,.28);
+    background-color:rgba(255,255,255,.06);
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    color:var(--white);
+  }
+  .hero .day-picker select:hover,
+  .hero .day-picker select:focus{ border-color:var(--green); }
+  .hero .sync-status{ color:rgba(255,255,255,.62); }
+  .hero .sync-status.ok{ color:var(--green); }
+  .hero .sync-status.error{ color:#FFB4A2; }
+  .hero .sync-status .retry-btn{
+    border-color:rgba(255,180,162,.55);
+    color:#FFB4A2;
+  }
+  .hero .sync-status .retry-btn:hover{ background:rgba(255,180,162,.15); }
+
   /* ---------- SEARCH ---------- */
   .search-panel{
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:22px;
     box-shadow:var(--card-shadow);
@@ -146,12 +217,12 @@
     position:absolute;
     inset:0;
     border-radius:18px;
-    border:1px solid rgba(198,255,0,.35);
+    border:1px solid rgba(124,185,44,.35);
     margin:8px;
     pointer-events:none;
   }
   .search-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     text-transform:uppercase;
     letter-spacing:.14em;
@@ -168,21 +239,21 @@
   }
   input#teamInput{
     width:100%;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:20px;
     font-weight:600;
     letter-spacing:.03em;
     padding:14px 40px 14px 16px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     text-transform:uppercase;
     outline:none;
     min-width:0;
   }
-  input#teamInput:focus{border-color:var(--court);}
-  input#teamInput::placeholder{color:#9AA3B5; font-weight:500; text-transform:none;}
+  input#teamInput:focus{border-color:var(--green-dark);}
+  input#teamInput::placeholder{color:var(--ink-soft); font-weight:500; text-transform:none;}
   .clear-input-btn{
     display:none;
     align-items:center;
@@ -216,7 +287,7 @@
     cursor:pointer;
     transition:transform .12s ease, background .12s ease;
   }
-  button#searchBtn:hover{background:#D9600F;}
+  button#searchBtn:hover{background:var(--navy-deep);}
   button#searchBtn:active{transform:scale(.97);}
 
   .autocomplete{
@@ -225,7 +296,7 @@
   .ac-list{
     position:absolute;
     left:0; right:0; top:calc(100% + 6px);
-    background:#fff;
+    background:var(--white);
     border-radius:10px;
     box-shadow:0 14px 30px -12px rgba(0,0,0,.35);
     max-height:220px;
@@ -239,7 +310,7 @@
   .ac-list.show{display:block;}
   .ac-item{
     padding:10px 14px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:14px;
     font-weight:600;
     color:var(--ink);
@@ -251,33 +322,33 @@
     border-bottom:1px solid rgba(20,27,44,.06);
   }
   .ac-item:last-child{border-bottom:none;}
-  .ac-item:hover, .ac-item.active{background:var(--court); color:#fff;}
+  .ac-item:hover, .ac-item.active{background:var(--court); color:var(--navy);}
   .ac-item small{font-family:'Inter',sans-serif; color:var(--muted); opacity:1; font-weight:500;}
-  .ac-item:hover small, .ac-item.active small{color:rgba(255,255,255,.85);}
+  .ac-item:hover small, .ac-item.active small{color:rgba(20,38,60,.75);}
 
   .sync-status{
     max-width:560px;
     margin:14px auto 0;
     text-align:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11.5px;
     letter-spacing:.03em;
-    color:rgba(226,236,250,.6);
+    color:var(--ink-soft);
   }
   .sync-status.ok{color:var(--amber);}
-  .sync-status.error{color:#ff9a7a;}
+  .sync-status.error{color:#B3261E;}
   .sync-status .retry-btn{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     background:none;
-    border:1px solid rgba(255,154,122,.5);
-    color:#ff9a7a;
+    border:1px solid rgba(179,38,30,.45);
+    color:#B3261E;
     padding:2px 8px;
     border-radius:100px;
     cursor:pointer;
     margin-left:6px;
   }
-  .sync-status .retry-btn:hover{background:rgba(255,154,122,.15);}
+  .sync-status .retry-btn:hover{background:rgba(179,38,30,.10);}
 
   /* ---------- DESKTOP QR PANEL ---------- */
   .qr-panel{
@@ -286,7 +357,7 @@
     top:26px;
     right:26px;
     z-index:60;
-    background:var(--paper);
+    background:var(--white);
     border-radius:16px;
     padding:14px 14px 12px;
     box-shadow:var(--card-shadow);
@@ -299,18 +370,19 @@
     border-radius:8px;
   }
   .qr-panel .qr-link-text{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:13px;
     font-weight: bolder;
     max-width:180px;
     line-height:1.4;
     margin-top:8px;
-    overflow-wrap:break-word;
-    word-break:break-word;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
   .qr-panel .qr-caption{
     margin-top:8px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     letter-spacing:.06em;
     text-transform:uppercase;
@@ -330,20 +402,20 @@
     margin-bottom:24px;
   }
   .view-tab{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:.06em;
     text-transform:uppercase;
     padding:9px 20px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
-    background:rgba(255,255,255,.05);
-    color:rgba(226,236,250,.8);
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--ink);
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .view-tab:hover{border-color:rgba(198,255,0,.6);}
+  .view-tab:hover{border-color:rgba(124,185,44,.6);}
   .view-tab.active{
     background:var(--court);
     border-color:var(--court);
@@ -359,22 +431,22 @@
     margin-bottom:20px;
   }
   .day-picker label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     font-weight:600;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
   }
   .day-picker select{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:.03em;
     padding:8px 34px 8px 16px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
-    background:rgba(255,255,255,.05) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23E7ECF7" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+    border:1px solid var(--line);
+    background:var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%2314263C" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
     background-size:11px;
     color:var(--court-line);
     cursor:pointer;
@@ -382,7 +454,7 @@
     -webkit-appearance:none;
     -moz-appearance:none;
   }
-  .day-picker select:hover, .day-picker select:focus{border-color:rgba(198,255,0,.6); outline:none;}
+  .day-picker select:hover, .day-picker select:focus{border-color:rgba(124,185,44,.6); outline:none;}
   .day-picker select option{color:var(--ink);}
 
   /* ---------- LIVE MATCHES (Court Control) ---------- */
@@ -390,16 +462,16 @@
     display:inline-block;
     width:9px; height:9px;
     border-radius:50%;
-    background:#5FD97A;
+    background:var(--green-dark);
     margin-right:8px;
     vertical-align:middle;
-    box-shadow:0 0 0 0 rgba(95,217,122,.6);
+    box-shadow:0 0 0 0 rgba(92,143,31,.5);
     animation:live-pulse 1.8s infinite;
   }
   @keyframes live-pulse{
-    0%{ box-shadow:0 0 0 0 rgba(95,217,122,.55); }
-    70%{ box-shadow:0 0 0 8px rgba(95,217,122,0); }
-    100%{ box-shadow:0 0 0 0 rgba(95,217,122,0); }
+    0%{ box-shadow:0 0 0 0 rgba(92,143,31,.45); }
+    70%{ box-shadow:0 0 0 8px rgba(92,143,31,0); }
+    100%{ box-shadow:0 0 0 0 rgba(92,143,31,0); }
   }
   .live-board-meta{
     display:flex;
@@ -419,7 +491,7 @@
     align-items:baseline;
     gap:8px;
     margin:26px 0 10px;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:15px;
     letter-spacing:.03em;
@@ -428,14 +500,14 @@
   }
   .facility-title:first-child{margin-top:0;}
   .facility-title .facility-count{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     letter-spacing:.04em;
     text-transform:none;
-    color:rgba(232,226,245,.55);
+    color:var(--ink-soft);
   }
   .live-table-wrap{
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow-x:auto;
     box-shadow:var(--card-shadow);
@@ -448,9 +520,9 @@
     border-collapse:collapse;
   }
   table.live-table thead th{
-    background:var(--court-dark);
-    color:var(--court-line);
-    font-family:'IBM Plex Mono',monospace;
+    background:var(--navy);
+    color:var(--white);
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:9.5px;
     text-transform:uppercase;
@@ -466,59 +538,82 @@
   }
   table.live-table tr:last-child td{border-bottom:none;}
   td.live-court-cell{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:17px;
     color:var(--court-dark);
-    background:rgba(198,255,0,.16);
+    background:rgba(124,185,44,.16);
     white-space:nowrap;
     width:1%;
     text-align:center;
     vertical-align:middle;
   }
   td.live-court-cell .live-dot{margin-right:6px;}
-  td.live-match-cell{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
+  /* Idle court (see liveEmptyRowHTML) — same size and shape as a live one,
+     just without the "in play" highlight. */
+  td.live-court-cell.idle{
+    background:var(--paper-dim);
     color:var(--muted);
-    white-space:nowrap;
-    width:1%;
-    text-align:center;
-    vertical-align:middle;
   }
-  td.live-team-cell{ min-width:120px; }
+  td.live-team-cell{ min-width:130px; }
   td.live-team-cell.right{ text-align:right; }
+  /* The code is a compact reference tag; the players' names are what a
+     spectator actually scans for, so they carry the visual weight. */
   .live-team-code{
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:700;
-    font-size:11.5px;
-    letter-spacing:.03em;
-    color:var(--cork);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:9.5px;
+    letter-spacing:.04em;
+    color:var(--muted);
     text-transform:uppercase;
   }
-  .live-team-code.tbd{color:var(--muted); font-weight:600;}
+  .live-team-code.tbd{color:var(--muted); font-weight:500; font-style:italic;}
   .live-team-players{
     font-family:'Inter',sans-serif;
-    font-size:12px;
+    font-weight:700;
+    font-size:13px;
     color:var(--ink);
-    line-height:1.35;
-    margin-top:1px;
+    line-height:1.3;
+    margin-top:2px;
   }
   .live-team-players .p{display:block;}
   td.live-vs-cell{
-    font-family:'Anton',sans-serif;
-    font-weight:400;
-    font-size:13px;
-    color:var(--muted);
     text-align:center;
     white-space:nowrap;
     width:1%;
   }
-  td.live-cat-cell{
+  /* Match number — was its own table column; now a small pill stacked above
+     the score/VS instead, freeing that column's width for Match Details. */
+  .live-match-pill{
+    display:inline-block;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:8.5px;
+    font-weight:700;
+    letter-spacing:.04em;
+    color:var(--muted);
+    background:rgba(20,27,44,.06);
+    border-radius:100px;
+    padding:2px 7px;
+    margin-bottom:3px;
+  }
+  .live-match-pill.placeholder{ visibility:hidden; }
+  .live-vs-score{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:13px;
+    color:var(--muted);
+  }
+  /* Qualified with table.live-table so it actually wins: the generic
+     `table.live-table td` rule above is (0,1,2) and outranks a bare
+     `td.live-cat-cell` (0,1,1), which silently swallowed this padding.
+     Kept tight — it is a label strip, and every pixel here is multiplied
+     by the court count down the board. */
+  table.live-table td.live-cat-cell{
     border-bottom:none;
-    padding:8px 10px 3px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
+    padding:3px 10px 1px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:9px;
+    line-height:1.35;
     letter-spacing:.03em;
     text-transform:uppercase;
     color:var(--muted);
@@ -529,12 +624,14 @@
     color:var(--cork);
     font-weight:700;
   }
-  tr.live-match-row td{padding-top:3px;}
+  td.live-cat-cell .live-empty-label{
+    font-style:italic;
+  }
 
   /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
     display:none; /* shown below the 980px desktop-standings breakpoint */
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:18px 20px;
     box-shadow:var(--card-shadow);
@@ -543,21 +640,21 @@
   }
   input.cat-filter-input{
     flex:1;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:600;
     letter-spacing:.01em;
     padding:12px 14px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     outline:none;
     min-width:0;
     width:100%;
   }
   input.cat-filter-input:focus{border-color:var(--court);}
-  input.cat-filter-input::placeholder{color:#9AA3B5; font-weight:500;}
+  input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
   @media (max-width:979px){
     .category-filter{ display:block; }
   }
@@ -578,26 +675,26 @@
     }
   }
   .cat-toggle-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
     margin-right:2px;
   }
   .cat-toggle-chip{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:600;
     padding:6px 14px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.32);
-    background:rgba(255,255,255,.06);
+    border:1px solid var(--line);
+    background:var(--white);
     color:var(--court-line);
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
   }
-  .cat-toggle-chip:hover{border-color:rgba(198,255,0,.6);}
+  .cat-toggle-chip:hover{border-color:rgba(124,185,44,.6);}
   .cat-toggle-chip.active{
     background:var(--court);
     border-color:var(--court);
@@ -608,19 +705,19 @@
     text-decoration:line-through;
   }
   .cat-toggle-action{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.08em;
     padding:6px 12px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
+    border:1px solid var(--line);
     background:transparent;
-    color:rgba(226,236,250,.75);
+    color:var(--ink-soft);
     cursor:pointer;
     margin-left:4px;
   }
-  .cat-toggle-action:hover{border-color:rgba(198,255,0,.6); color:#fff;}
+  .cat-toggle-action:hover{border-color:var(--green-dark); color:var(--navy);}
 
   /* ---------- STANDINGS BOARD ---------- */
   .standings-board{
@@ -632,11 +729,11 @@
     align-items:flex-start;
   }
   .standings-board::-webkit-scrollbar{width:8px; height:8px;}
-  .standings-board::-webkit-scrollbar-thumb{background:rgba(226,236,250,.22); border-radius:10px;}
+  .standings-board::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
 
   .standings-col{
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(226,236,250,.16);
+    background:var(--white);
+    border:1px solid var(--line);
     border-radius:16px;
     margin-bottom:16px;
     break-inside:avoid;
@@ -654,66 +751,50 @@
     text-align:center;
     margin:0 0 14px;
     padding:12px 14px 10px;
-    border-bottom:1px solid rgba(226,236,250,.14);
-    background:rgba(9,14,28,.94);
+    border-bottom:1px solid var(--line);
+    background:rgba(246,247,242,.94);
     backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
     border-radius:16px 16px 0 0;
   }
   .standings-col-head .cat-title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:14px;
     text-transform:uppercase;
     letter-spacing:.01em;
-    background:linear-gradient(92deg, #8FE94B, #C6FF00 55%, #F5FF8C);
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-  }
-  .standings-col-head .cat-code{
-    display:block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    letter-spacing:.14em;
-    color:rgba(226,236,250,.55);
-    margin-top:2px;
+    color:var(--navy);
   }
 
   .stage-block{margin-bottom:16px;}
   .stage-block:last-child{margin-bottom:0;}
   .stage-caption{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
     margin:0 0 6px;
   }
   .stage-banner{
-    background:linear-gradient(92deg, #F6DE58, #FFB65C);
-    color:var(--court-dark);
+    background:var(--navy);
+    color:var(--white);
     border-radius:9px 9px 0 0;
     padding:6px 10px 5px;
     text-align:center;
   }
   .stage-banner .stage-title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:11.5px;
     text-transform:uppercase;
     letter-spacing:.04em;
   }
-  .stage-banner .stage-sub{
-    display:block;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px;
-    letter-spacing:.14em;
-    opacity:.72;
-  }
-
   .br-table{
     width:100%;
+    table-layout:fixed;
     border-collapse:collapse;
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow:hidden;
     box-shadow:var(--card-shadow);
@@ -721,12 +802,23 @@
   }
   .stage-banner + .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
   .br-table:last-child{margin-bottom:0;}
+  /* Vertical dividers (border-right) plus the existing row dividers
+     (border-bottom) turn this into a real grid — easier to scan Pair/W/L/Q
+     as columns at a glance instead of just a list of rows. */
   .br-table th, .br-table td{
     padding:6px 8px;
     text-align:left;
     font-size:11.5px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
+    border-right:1px solid rgba(20,27,44,.12);
   }
+  .br-table th:last-child, .br-table td:last-child{ border-right:none; }
+  /* Pair is the only column without an explicit width, so table-layout:fixed
+     hands it all the leftover space. Q gets its own (wider) width since
+     "0.6667" doesn't fit in the same width as a plain W/L integer. */
+  .br-table th.num{width:26px; text-align:center;}
+  .br-table th.quo{width:54px; text-align:center;}
+  .br-table th.br-badge{width:22px; text-align:center;}
   .br-table th{
     font-size:9px;
     text-transform:uppercase;
@@ -742,13 +834,21 @@
   .br-table td.pair span{display:block;}
   .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
   .br-table td.num{text-align:center; width:26px;}
+  .br-table td.quo{text-align:center; width:54px;}
   .br-table td.br-badge{
     text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
   }
-  .badge-0{background:var(--cork);}
-  .badge-1{background:var(--court);}
-  .badge-2{background:var(--amber); color:var(--court-dark);}
-  .badge-3{background:#8B7CF6;}
+  /* Badge text follows its own fill, not one blanket colour: white reads on
+     the navy and purple badges, navy on the green one (white on --green is
+     ~2.6:1). */
+  /* Four bracket fills that each clear 4.5:1 against their own label.
+     --green-dark under white (4.3:1) and the stock purple (3.3:1) both miss,
+     so those two are darkened rather than left to fail quietly. Same set as
+     .badge-* in bracket-generator.html — keep them in step. */
+  .badge-0{background:var(--navy);}
+  .badge-1{background:var(--green); color:var(--navy);}
+  .badge-2{background:#4C7A19;}
+  .badge-3{background:#6C5CE0;}
   .badge-x{background:var(--muted);}
 
   /* Playoff matchups: each stage's teams grouped into explicit head-to-head
@@ -756,7 +856,7 @@
   .matchup{
     display:flex;
     flex-direction:column;
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow:hidden;
     box-shadow:var(--card-shadow);
@@ -766,7 +866,7 @@
   .stage-banner + .matchup{border-radius:0 0 10px 10px; margin-top:0;}
   .matchup-label{
     text-align:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9.5px;
     font-weight:600;
     text-transform:uppercase;
@@ -807,14 +907,14 @@
     align-self:stretch;
   }
   .matchup-center .mu-score{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:16px;
-    color:rgba(241,231,200,.6);
+    color:rgba(255,255,255,.6);
   }
   .matchup-center .mu-score.win{ color:var(--court); }
   .matchup-vs{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:9px;
     letter-spacing:.1em;
@@ -852,7 +952,7 @@
       overflow-y:auto;
     }
     .standings-board-desktop .standings-col::-webkit-scrollbar{width:5px;}
-    .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:rgba(226,236,250,.22); border-radius:10px;}
+    .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
   }
 
 
@@ -869,7 +969,7 @@
     gap:8px;
   }
   .results-head h2{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:24px;
     text-transform:uppercase;
@@ -877,27 +977,27 @@
     letter-spacing:.03em;
   }
   .results-head .division-tag{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:13px;
-    color:var(--amber);
+    color:var(--ink-soft);
   }
   .results-meta{
     font-size:13px;
-    color:rgba(226,236,250,.7);
+    color:var(--ink-soft);
     margin:-8px 0 22px;
   }
 
   .empty-state{
-    background:rgba(255,255,255,.06);
-    border:1px dashed rgba(226,236,250,.32);
+    background:var(--white);
+    border:1px dashed var(--line);
     border-radius:14px;
     padding:26px;
-    color:rgba(226,236,250,.85);
+    color:var(--ink);
     text-align:center;
     font-size:14px;
     line-height:1.6;
   }
-  .empty-state strong{color:var(--amber); font-family:'IBM Plex Mono',monospace;}
+  .empty-state strong{color:var(--navy); font-family:'Barlow Condensed',sans-serif;}
 
   .stats-row{
     display:flex;
@@ -908,8 +1008,8 @@
     flex-wrap:wrap;
   }
   .stat{
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(226,236,250,.15);
+    background:var(--white);
+    border:1px solid var(--line);
     border-radius:12px;
     padding:14px 18px;
     text-align:center;
@@ -919,16 +1019,16 @@
   }
   .stat b{
     display:block;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:22px;
     color:var(--amber);
     font-weight:400;
   }
-  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(226,236,250,.65);}
+  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft);}
 
   /* ---------- TICKET CARD ---------- */
   .ticket{
-    background:var(--paper);
+    background:var(--white);
     border-radius:16px;
     box-shadow:var(--card-shadow);
     margin-bottom:16px;
@@ -951,7 +1051,7 @@
   }
   .center-pill{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:700;
     color:var(--court);
@@ -961,25 +1061,25 @@
   }
   .court-pill{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:700;
     color:var(--cork);
-    background:rgba(255,122,41,.12);
+    background:var(--paper-dim);
     border-radius:100px;
     padding:6px 16px;
   }
   .live-pill{
     display:inline-flex;
     align-items:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:700;
     letter-spacing:.08em;
     text-transform:uppercase;
-    color:#0F5C2E;
-    background:rgba(95,217,122,.2);
-    border:1px solid rgba(95,217,122,.6);
+    color:var(--white);
+    background:var(--green-dark);
+    border:1px solid var(--green-dark);
     border-radius:100px;
     padding:6px 13px 6px 10px;
   }
@@ -987,7 +1087,7 @@
 
   .names-row{
     display:flex;
-    align-items:flex-start;
+    align-items:flex-end;
     justify-content:space-between;
     gap:12px;
     margin-bottom:12px;
@@ -995,7 +1095,7 @@
   .team-block{flex:1; min-width:0; text-align:left;}
   .team-block.right{text-align:right;}
   .team-block .team-name{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:14px;
     letter-spacing:.02em;
@@ -1012,7 +1112,7 @@
   .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
   .you-badge{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9.5px;
     letter-spacing:.08em;
     text-transform:uppercase;
@@ -1024,19 +1124,21 @@
     vertical-align:middle;
   }
 
-  .score-row{
+  .score-col{
+    flex-shrink:0;
     text-align:center;
-    margin-bottom:14px;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:32px;
     color:var(--ink);
     letter-spacing:.02em;
+    padding:0 6px;
   }
-  .score-row .score-colon{color:var(--muted); margin:0 10px; font-size:26px;}
-  .score-row .score-num.win{color:var(--cork);}
-  .score-row .vs-text{
-    font-size:16px;
+  .score-col .score-colon{color:var(--muted); margin:0 8px; font-size:26px;}
+  .score-col .score-num{color:var(--cork);}
+  .score-col .score-num.win{color:var(--ink);}
+  .score-col .vs-text{
+    font-size:14px;
     color:var(--muted);
     letter-spacing:.1em;
   }
@@ -1049,7 +1151,7 @@
     gap:8px;
   }
   .meta-chip{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.06em;
@@ -1059,7 +1161,7 @@
     border-radius:100px;
   }
   .tag{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.06em;
@@ -1068,37 +1170,37 @@
   }
   .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
   .tag.round{background:var(--cork); color:#fff;}
-  .tag.pool{background:rgba(198,255,0,.14); color:#0F766E;}
+  .tag.pool{background:rgba(124,185,44,.18); color:var(--navy);}
 
   /* Flags a searched pair's next unplayed, not-yet-live match so it stands
      out from the rest of their schedule at a glance. */
   .ticket.next{
     border-left:6px solid var(--amber);
-    box-shadow:var(--card-shadow), 0 0 0 2px rgba(255,212,0,.4);
+    box-shadow:var(--card-shadow), 0 0 0 2px var(--green);
   }
   .next-pill{
     display:inline-flex;
     align-items:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:700;
     letter-spacing:.08em;
     text-transform:uppercase;
-    color:#6B4E00;
-    background:rgba(255,212,0,.28);
-    border:1px solid rgba(255,212,0,.85);
+    color:var(--navy);
+    background:var(--green);
+    border:1px solid var(--green);
     border-radius:100px;
     padding:6px 13px;
   }
 
   footer{
     text-align:center;
-    color:rgba(226,236,250,.5);
+    color:var(--ink-soft);
     font-size:12px;
     line-height:1.9;
     margin-top:60px;
     padding-bottom:20px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
   }
   footer a{ color:var(--court); text-decoration:none; }
   footer a:hover{ text-decoration:underline; }
@@ -1323,8 +1425,8 @@ const STAGE_META = {
   R16:    { label: 'Round of 16',   banner:false },
   QF:     { label: 'Quarterfinals', banner:false },
   SF:     { label: 'Semifinals',    banner:false },
-  BRONZE: { label: 'Bronze Battle', banner:true,  sub:'B' },
-  FINAL:  { label: 'Finals',        banner:true,  sub:'F' }
+  BRONZE: { label: 'Bronze Battle', banner:true },
+  FINAL:  { label: 'Finals',        banner:true }
 };
 const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
 const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
@@ -1799,7 +1901,7 @@ function renderStageTables(rows){
     const showBracketColumn = Array.from(rrGroups.keys()).some(k => k !== '');
     html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
       <table class="br-table"><thead><tr>
-        ${showBracketColumn ? '<th>Br</th>' : ''}<th>Pair</th><th>W</th><th>L</th><th>Q</th>
+        ${showBracketColumn ? '<th class="br-badge">Br</th>' : ''}<th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
       </tr></thead><tbody>`;
     let badgeIdx = 0;
     const badgeMap = new Map();
@@ -1812,7 +1914,7 @@ function renderStageTables(rows){
           ${pairCell(s)}
           <td class="num">${s.wins}</td>
           <td class="num">${s.loss}</td>
-          <td class="num">${fmtQ(s.quotient)}</td>
+          <td class="quo">${fmtQ(s.quotient)}</td>
         </tr>`;
       });
     });
@@ -1831,7 +1933,7 @@ function renderStageTables(rows){
     const meta = STAGE_META[key] || { label: key.charAt(0) + key.slice(1).toLowerCase(), banner:false };
     html += `<div class="stage-block">`;
     if(meta.banner){
-      html += `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span><span class="stage-sub">${escapeHtml(meta.sub || key)}</span></div>`;
+      html += `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span></div>`;
     } else {
       html += `<div class="stage-caption">${escapeHtml(meta.label)}</div>`;
     }
@@ -1939,12 +2041,9 @@ function renderMatchup(pair){
 function renderCategoryCard(cat, rows){
   const stageHtml = renderStageTables(rows);
   if(!stageHtml) return '';
-  const code = parseCode(rows[0].teamCode);
-  const codeLabel = code.division && code.event ? `${code.division}${code.event}` : '';
   return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}">
     <div class="standings-col-head">
       <span class="cat-title">${escapeHtml(cat)}</span>
-      ${codeLabel ? `<span class="cat-code">${escapeHtml(codeLabel)}</span>` : ''}
     </div>
     <div class="standings-col-body">${stageHtml}</div>
   </div>`;
@@ -2478,7 +2577,9 @@ function ticketHTML(m, teamCode, isNext){
   const isLive = dayIsLive && !!m.liveCourt;
   const displayCourt = isLive ? m.liveCourt : m.court;
   const displayCourtLabel = isLive ? `Court ${displayCourt}` : displayCourt;
-  const facility = facilityForCourt(displayCourt);
+  // A single-facility event has nothing to disambiguate, so naming it on
+  // every card would just be noise (see facilityTableHTML's identical check).
+  const facility = FACILITIES.length > 1 ? facilityForCourt(displayCourt) : null;
   const courtHTML = displayCourt
     ? `<span class="court-pill">${escapeHtml(displayCourtLabel)}${facility ? ` &middot; ${escapeHtml(facility)}` : ''}</span>`
     : '';
@@ -2505,12 +2606,12 @@ function ticketHTML(m, teamCode, isNext){
           <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
+        <div class="score-col">${scoreHTML}</div>
         <div class="team-block right ${oppTBD ? 'tbd':''}">
           <div class="team-name">${escapeHtml(opp.code)}</div>
           <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
         </div>
       </div>
-      <div class="score-row">${scoreHTML}</div>
       <div class="meta-row">
         <span class="meta-chip">Match #${m.num}</span>
         ${tag}
@@ -2522,8 +2623,18 @@ function ticketHTML(m, teamCode, isNext){
 // ---------- Live Matches (Court Control) ----------
 // One card per court — whatever match currently has a value in the
 // 'court' column is the match being played there right now.
+// Every configured court (from FACILITIES), mapped to its current live
+// match or null — always the same set of keys regardless of how many
+// matches actually happen to be live right now. Deliberately NOT just the
+// live ones: a table whose row count changes on every refresh (as matches
+// start/finish on different courts) jumps around the page and scrolls the
+// user's view out from under them, which is what liveTableRowsHTML's empty
+// branch and this full-court enumeration exist to prevent.
 function buildLiveCourts(){
   const byCourt = new Map();
+  FACILITIES.forEach(f => {
+    for(let n = f.courts[0]; n <= f.courts[1]; n++) byCourt.set(String(n), null);
+  });
   MATCHES.forEach(m => {
     if(!m.liveCourt) return;
     // MATCHES is already sorted by matchNumber ascending, so the last
@@ -2538,7 +2649,8 @@ function courtSortKey(court){
   return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
-// Buckets live courts by facility (in ascending court-number order, so each
+// Buckets every court (live or idle) by facility (in ascending court-number
+// order, so each
 // FACILITIES entry falls out naturally since their court ranges don't
 // overlap) with anything unmapped collected into a trailing 'Other Courts'
 // group instead of getting silently dropped.
@@ -2553,7 +2665,26 @@ function groupLiveCourtsByFacility(liveCourts){
   return groups;
 }
 
+// Placeholder row for a court with nothing live on it right now. Mirrors
+// liveTableRowsHTML's real-match row exactly — same cells, same rowspans,
+// same number of code/name lines — so the row's height doesn't change the
+// instant a match actually starts on this court.
+function liveEmptyRowHTML(court){
+  const blankTeamCell = `<div class="live-team-code">&nbsp;</div>
+    <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>`;
+  return `<tr>
+    <td class="live-court-cell idle" rowspan="2">${escapeHtml(court)}</td>
+    <td class="live-cat-cell" colspan="3"><span class="live-empty-label">No match playing</span></td>
+  </tr>
+  <tr class="live-match-row">
+    <td class="live-team-cell">${blankTeamCell}</td>
+    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div></td>
+    <td class="live-team-cell right">${blankTeamCell}</td>
+  </tr>`;
+}
+
 function liveTableRowsHTML(court, m){
+  if(!m) return liveEmptyRowHTML(court);
   const cat = divisionLabel(m.t1) || divisionLabel(m.t2) || '';
   const t1TBD = m.t1p1 === 'TBD';
   const t2TBD = m.t2p1 === 'TBD';
@@ -2569,12 +2700,11 @@ function liveTableRowsHTML(court, m){
 
   return `<tr>
     <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
-    <td class="live-match-cell" rowspan="2">#${m.num}</td>
     <td class="live-cat-cell" colspan="3">${cat ? escapeHtml(cat) + ' &middot; ' : ''}<span class="live-round">${escapeHtml(roundText)}</span></td>
   </tr>
   <tr class="live-match-row">
     <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2)}</td>
-    <td class="live-vs-cell">${scoreHTML}</td>
+    <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div></td>
     <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2)}</td>
   </tr>`;
 }
@@ -2582,13 +2712,14 @@ function liveTableRowsHTML(court, m){
 function facilityTableHTML(facility, rows){
   // A single-facility event has nothing to distinguish, so the venue name
   // above the table would just be redundant.
-  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${rows.length} court${rows.length===1?'':'s'} in play</span></div>`;
+  const liveCount = rows.filter(([, m]) => m).length;
+  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${liveCount} court${liveCount===1?'':'s'} in play</span></div>`;
   return `
   ${titleHTML}
   <div class="live-table-wrap" data-facility-key="${escapeHtml(facility)}">
     <table class="live-table">
       <thead><tr>
-        <th>Court</th><th>Match</th><th colspan="3">Match Details</th>
+        <th>Court</th><th colspan="3">Match Details</th>
       </tr></thead>
       <tbody>${rows.map(([c, m]) => liveTableRowsHTML(c, m)).join('')}</tbody>
     </table>
@@ -2601,14 +2732,12 @@ function renderLiveMatches(){
   if(!boardEl) return;
 
   const liveCourts = buildLiveCourts();
-  if(liveCourts.size === 0){
-    metaEl.innerHTML = '';
-    boardEl.innerHTML = `<div class="empty-state">No matches are currently on court.</div>`;
-    return;
-  }
-
-  const totalCourts = liveCourts.size;
-  metaEl.innerHTML = `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`;
+  // The board always shows every configured court (see buildLiveCourts), so
+  // this count is just the ones actually in play right now, not the total.
+  const totalCourts = Array.from(liveCourts.values()).filter(Boolean).length;
+  metaEl.innerHTML = totalCourts > 0
+    ? `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`
+    : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
   const groups = groupLiveCourtsByFacility(liveCourts);
 
   // Full rebuild on every 15s refresh, same as Standings — capture/restore

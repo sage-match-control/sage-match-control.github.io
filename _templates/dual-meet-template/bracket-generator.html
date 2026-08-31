@@ -1,7 +1,8 @@
 <!--
-  This file is byte-identical to ../dual-meet-template/bracket-generator.html
-  by design, so instantiating either template is a single `cp -r` of one
-  folder. If you change this file, mirror the same change to the other copy.
+  This file is byte-identical to the copy in the sibling template folder
+  (dual-meet-template <-> standard-tournament-template) by design, so
+  instantiating either template is a single `cp -r` of one folder. If you
+  change this file, mirror the same change to the other copy.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -11,30 +12,59 @@
 <title>{{EVENT_TITLE}} — Bracket Draw</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect — the green is a *fill*
+     colour, not a text colour:
+       - --green on white is ~2.3:1 and fails AA at any size. Use it as a
+         background (with --navy text on top, ~5.4:1) or on a navy panel.
+       - --green-dark on white is ~4.0:1 — still under the 4.5:1 body
+         floor, so keep it for large/display text only.
+       - Small text on paper is --ink (~13.8:1) or --ink-soft (~5.9:1).
+     ================================================================ */
   :root{
-    --court:#C6FF00;
-    --court-dark:#060B16;
-    --court-line:#E7ECF7;
-    --ink:#0B1B3C;
-    --paper:#FFFFFF;
-    --amber:#FFD400;
-    --cork:#FF7A29;
-    --muted:#6B7690;
-    --navy-mid:#122548;
-    --card-shadow: 0 18px 40px -20px rgba(8,3,24,.6);
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   html{overflow-x:hidden;}
   body{
     overflow-x:hidden;
-    background:
-      radial-gradient(900px 480px at 50% -12%, rgba(198,255,0,.14), transparent 62%),
-      radial-gradient(700px 460px at 100% 4%, rgba(45,110,220,.24), transparent 55%),
-      radial-gradient(650px 520px at -6% 96%, rgba(198,255,0,.12), transparent 60%),
-      linear-gradient(180deg, var(--court-dark) 0%, var(--navy-mid) 45%, var(--court-dark) 100%);
+    background:var(--paper);
     color:var(--ink);
     font-family:'Inter',system-ui,sans-serif;
     min-height:100vh;
@@ -46,14 +76,18 @@
   header.hero{
     padding:52px 20px 40px;
     text-align:center;
-    color:var(--court-line);
+    color:var(--white);
     position:relative;
+    background:var(--navy);
+    border-radius:0 0 var(--radius) var(--radius);
+    box-shadow:0 24px 60px -28px rgba(11,24,38,.45);
+    margin-bottom:28px;
   }
   .crown-mark{
     width:40px; height:auto;
     margin:0 auto 14px;
     color:var(--court);
-    filter:drop-shadow(0 2px 6px rgba(198,255,0,.4));
+    filter:drop-shadow(0 2px 6px rgba(124,185,44,.4));
   }
   .regal-rule{
     display:flex;
@@ -67,9 +101,9 @@
     content:"";
     flex:1;
     height:1px;
-    background:linear-gradient(90deg, transparent, rgba(198,255,0,.7));
+    background:linear-gradient(90deg, transparent, rgba(124,185,44,.7));
   }
-  .regal-rule::after{ background:linear-gradient(90deg, rgba(198,255,0,.7), transparent); }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(124,185,44,.7), transparent); }
   .regal-rule .diamond{
     width:7px; height:7px;
     background:var(--amber);
@@ -77,12 +111,12 @@
     flex-shrink:0;
   }
   .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     letter-spacing:.28em;
     text-transform:uppercase;
     font-size:12px;
-    color:var(--amber);
+    color:var(--green);
     margin-bottom:16px;
   }
   .tagline-script{
@@ -90,42 +124,33 @@
     font-style:italic;
     font-weight:700;
     font-size:clamp(14px,3.4vw,18px);
-    color:#fff;
+    color:var(--white);
     letter-spacing:.01em;
     margin:0 0 14px;
     opacity:.92;
   }
   .domination-line{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:clamp(20px,5.4vw,32px);
     text-transform:uppercase;
     letter-spacing:.01em;
-    color:var(--court);
-    text-shadow:0 2px 18px rgba(198,255,0,.35);
+    color:var(--green);
     margin:2px 0 12px;
   }
   h1.title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(34px,8.2vw,62px);
     line-height:1.04;
     letter-spacing:.005em;
     margin:0 0 10px;
     text-transform:uppercase;
-    background:linear-gradient(92deg, #8FE94B 0%, #C6FF00 55%, #F5FF8C 100%);
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 2px 22px rgba(198,255,0,.28));
+    color:var(--white);
   }
-  h1.title .accent{
-    -webkit-text-fill-color:initial;
-    background:none;
-    color:#fff;
-  }
+  h1.title .accent{ color:var(--green); }
   .subtitle{
     font-size:15px;
-    color:rgba(226,236,250,.75);
+    color:rgba(255,255,255,.75);
     max-width:480px;
     margin:0 auto 0;
     line-height:1.55;
@@ -133,7 +158,7 @@
 
   /* ---------- INPUT PANEL ---------- */
   .input-panel{
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:26px;
     box-shadow:var(--card-shadow);
@@ -146,7 +171,7 @@
     position:absolute;
     inset:0;
     border-radius:18px;
-    border:1px solid rgba(198,255,0,.35);
+    border:1px solid rgba(124,185,44,.35);
     margin:8px;
     pointer-events:none;
   }
@@ -154,7 +179,7 @@
   .field:last-of-type{ margin-bottom:0; }
   .field-label{
     display:block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     font-weight:600;
     letter-spacing:.1em;
@@ -170,14 +195,14 @@
     padding:12px 14px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     outline:none;
   }
   .field-input:focus, .field-textarea:focus{border-color:var(--court-dark);}
   .field-input::placeholder, .field-textarea::placeholder{color:#9AA3B5; font-weight:500;}
   .field-textarea{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:13.5px;
     font-weight:500;
     resize:vertical;
@@ -189,7 +214,7 @@
     justify-content:space-between;
     align-items:center;
     margin-top:6px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11.5px;
     color:var(--muted);
   }
@@ -199,7 +224,7 @@
     gap:5px;
   }
   .pairs-count-num{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:20px;
     letter-spacing:.01em;
     color:var(--ink);
@@ -248,7 +273,7 @@
   button.btn-primary{
     width:100%;
     margin-top:20px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:700;
     font-size:14px;
     letter-spacing:.05em;
@@ -269,21 +294,18 @@
   #resultsSection{ display:none; margin-top:46px; }
   .result-head{ text-align:center; margin-bottom:26px; }
   .result-title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(24px,5.6vw,38px);
     text-transform:uppercase;
     letter-spacing:.01em;
-    background:linear-gradient(92deg, #8FE94B 0%, #C6FF00 55%, #F5FF8C 100%);
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
+    color:var(--navy);
     margin:0 0 8px;
   }
   .result-meta{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
-    color:rgba(226,236,250,.6);
+    color:var(--ink-soft);
     letter-spacing:.03em;
   }
 
@@ -297,8 +319,8 @@
   .bracket-grid.cols-2{ grid-template-columns:repeat(2, minmax(240px, 1fr)); justify-content:center; }
   .bracket-grid.cols-3{ grid-template-columns:repeat(3, minmax(240px, 1fr)); justify-content:center; }
   .bracket-card{
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(226,236,250,.16);
+    background:var(--white);
+    border:1px solid var(--line);
     border-radius:14px;
     overflow:hidden;
     box-shadow:var(--card-shadow);
@@ -316,23 +338,28 @@
     letter-spacing:.01em;
   }
   .bracket-card-head .bracket-count{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     font-weight:600;
     letter-spacing:.04em;
     text-transform:uppercase;
     opacity:.75;
   }
-  .badge-0{background:var(--cork); color:#fff;}
-  .badge-1{background:var(--court); color:var(--court-dark);}
-  .badge-2{background:var(--amber); color:var(--court-dark);}
-  .badge-3{background:#8B7CF6; color:#fff;}
+  /* Four bracket fills that each clear 4.5:1 against their own label at
+     14.5px. --green-dark and the stock purple both land in the 3.3-4.3
+     range against either black or white, so those two are darkened here
+     rather than left to fail quietly. Mirrored in BADGE_FILL/BADGE_TEXT
+     below, which paint the same headers onto the PNG export. */
+  .badge-0{background:var(--navy); color:var(--white);}
+  .badge-1{background:var(--green); color:var(--navy);}
+  .badge-2{background:#4C7A19; color:var(--white);}
+  .badge-3{background:#6C5CE0; color:var(--white);}
 
   .bracket-list{
     list-style:none;
     margin:0;
     padding:8px;
-    background:var(--paper);
+    background:var(--white);
   }
   .bracket-list li{
     display:flex;
@@ -348,7 +375,7 @@
     border-radius:50%;
     background:rgba(20,27,44,.08);
     color:var(--ink);
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     font-weight:700;
     display:flex;
@@ -368,7 +395,7 @@
     font-size:12.5px;
     font-style:italic;
     color:var(--muted);
-    background:var(--paper);
+    background:var(--white);
   }
 
   .action-bar{
@@ -379,20 +406,20 @@
     margin-top:28px;
   }
   .action-btn{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:.05em;
     text-transform:uppercase;
     padding:11px 20px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
-    background:rgba(255,255,255,.05);
-    color:rgba(226,236,250,.85);
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--ink);
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .action-btn:hover{border-color:rgba(198,255,0,.6);}
+  .action-btn:hover{border-color:rgba(124,185,44,.6);}
   .action-btn.solid{
     background:var(--cork);
     border-color:var(--cork);
@@ -413,8 +440,8 @@
     animation:shuffleFlicker .18s ease-in-out infinite;
   }
   @keyframes shufflePulse{
-    0%,100%{ box-shadow:var(--card-shadow), 0 0 0 0 rgba(198,255,0,0); }
-    50%{ box-shadow:var(--card-shadow), 0 0 0 3px rgba(198,255,0,.4); }
+    0%,100%{ box-shadow:var(--card-shadow), 0 0 0 0 rgba(124,185,44,0); }
+    50%{ box-shadow:var(--card-shadow), 0 0 0 3px rgba(124,185,44,.4); }
   }
   @keyframes shuffleFlicker{
     0%,100%{ opacity:1; }
@@ -440,9 +467,9 @@
   footer{
     text-align:center;
     padding:30px 20px 50px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
-    color:rgba(226,236,250,.45);
+    color:var(--ink-soft);
     line-height:1.7;
   }
 
@@ -833,8 +860,10 @@ function downloadBlob(blob, filename){
 exportTextBtn.addEventListener('click', exportAsText);
 
 // ==================== Export as image (self-contained canvas render) ====================
-const BADGE_FILL = ['#FF7A29', '#C6FF00', '#FFD400', '#8B7CF6'];
-const BADGE_TEXT = ['#FFFFFF', '#060B16', '#060B16', '#FFFFFF'];
+// Kept in lockstep with the .badge-0..3 rules in the stylesheet above — the
+// canvas export has to paint the same bracket headers the page shows.
+const BADGE_FILL = ['#14263C', '#7CB92C', '#4C7A19', '#6C5CE0'];
+const BADGE_TEXT = ['#FFFFFF', '#14263C', '#FFFFFF', '#FFFFFF'];
 
 function roundRect(ctx, x, y, w, h, r){
   ctx.beginPath();
@@ -919,9 +948,9 @@ function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, col
   const h = layout.totalHeight;
 
   roundRect(ctx, x, y, w, h, 12);
-  ctx.fillStyle = 'rgba(255,255,255,.06)';
+  ctx.fillStyle = '#FFFFFF';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(226,236,250,.18)';
+  ctx.strokeStyle = '#D9DED2';
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -936,29 +965,29 @@ function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, col
   ctx.fillText(`Bracket ${bracket.label}`, x + 14, y + headHeight / 2 + 1);
 
   ctx.textAlign = 'right';
-  ctx.font = '600 10.5px "IBM Plex Mono", monospace';
+  ctx.font = '600 10.5px "Barlow Condensed", sans-serif';
   ctx.fillText(pluralize(bracket.pairs.length, 'pair').toUpperCase(), x + w - 14, y + headHeight / 2 + 1);
 
   ctx.textAlign = 'left';
   let ry = y + headHeight + padding;
   if(layout.rows.length === 0){
-    ctx.fillStyle = 'rgba(226,236,250,.55)';
+    ctx.fillStyle = '#5B6B74';
     ctx.font = 'italic 500 12.5px Inter, sans-serif';
     ctx.fillText('No pairs assigned', x + 14, ry + 14);
   } else {
     layout.rows.forEach((row, i) => {
       const cy = ry + row.height / 2;
-      ctx.fillStyle = 'rgba(226,236,250,.14)';
+      ctx.fillStyle = '#ECEEE6';
       ctx.beginPath();
       ctx.arc(x + 14 + 9, cy, 9, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#14263C';
       ctx.textAlign = 'center';
-      ctx.font = '700 10px "IBM Plex Mono", monospace';
+      ctx.font = '700 10px "Barlow Condensed", sans-serif';
       ctx.fillText(String(i + 1), x + 14 + 9, cy + 1);
 
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#14263C';
       ctx.font = NAME_FONT;
       const blockHeight = row.lines.length * NAME_LINE_HEIGHT;
       let lineY = cy - blockHeight / 2 + NAME_LINE_HEIGHT / 2;
@@ -1023,9 +1052,9 @@ async function exportAsImage(){
 
   // Background: matches the page's dark gradient + soft glows.
   const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-  bgGrad.addColorStop(0, '#060B16');
-  bgGrad.addColorStop(0.45, '#122548');
-  bgGrad.addColorStop(1, '#060B16');
+  bgGrad.addColorStop(0, '#F6F7F2');
+  bgGrad.addColorStop(0.45, '#FFFFFF');
+  bgGrad.addColorStop(1, '#F6F7F2');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
@@ -1036,23 +1065,23 @@ async function exportAsImage(){
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
   }
-  glow(width * 0.5, -40, 460, 'rgba(198,255,0,.12)');
-  glow(width, 30, 380, 'rgba(45,110,220,.18)');
+  glow(width * 0.5, -40, 460, 'rgba(124,185,44,.10)');
+  glow(width, 30, 380, 'rgba(20,38,60,.05)');
 
   // Header
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#FFD400';
-  ctx.font = '600 12px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5C8F1F';
+  ctx.font = '600 12px "Barlow Condensed", sans-serif';
   ctx.fillText('{{EVENT_TITLE}}'.toUpperCase() + ' \u00b7 BRACKET DRAW', width / 2, 42);
 
-  ctx.fillStyle = '#C6FF00';
-  ctx.font = '400 38px Anton, sans-serif';
+  ctx.fillStyle = '#14263C';
+  ctx.font = '400 38px "Archivo Black", sans-serif';
   const titleText = truncateToWidth(ctx, (currentCategory || 'UNTITLED CATEGORY').toUpperCase(), width - 120);
   ctx.fillText(titleText, width / 2, 88);
 
   const totalPairs = currentBrackets.reduce((s, b) => s + b.pairs.length, 0);
-  ctx.fillStyle = 'rgba(226,236,250,.75)';
+  ctx.fillStyle = '#5B6B74';
   ctx.font = '500 13.5px Inter, sans-serif';
   ctx.fillText(
     `${pluralize(currentBrackets.length, 'bracket')} \u00b7 ${pluralize(totalPairs, 'pair')} \u00b7 Drawn ${new Date().toLocaleString()}`,
@@ -1074,8 +1103,8 @@ async function exportAsImage(){
 
   // Footer
   ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(226,236,250,.5)';
-  ctx.font = '500 11px "IBM Plex Mono", monospace';
+  ctx.fillStyle = '#5B6B74';
+  ctx.font = '500 11px "Barlow Condensed", sans-serif';
   ctx.fillText('{{EVENT_TITLE}} \u00b7 Powered by S.A.G.E. Match Control Experts', width / 2, height - 24);
 
   canvas.toBlob(blob => {

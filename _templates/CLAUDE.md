@@ -47,7 +47,7 @@ after the first one instantiated with these templates).
 The event/day/facility registry itself lives at `config/events.json` in
 `event-data` (`config/README.md` right next to it documents the shape and
 validation rules) — not in `sage-tools-api` source. Editing and committing
-that file (step 6 below) is how you add an event or fix a wrong sheet ID;
+that file (step 7 below) is how you add an event or fix a wrong sheet ID;
 every running `sage-tools-api` instance picks up a change within
 `SYNC_CONFIG_TTL_MS` (about a minute by default), with **no redeploy**.
 
@@ -79,11 +79,18 @@ clubs; it is not a general multi-club template.
 
    (or `_templates/dual-meet-template`, per §1 above). `<event-key>` must
    be a good folder-name-safe slug — it will also become this event's
-   `EVENT_KEY` and its folder name in the `event-data` repo (step 8 below),
+   `EVENT_KEY` and its folder name in the `event-data` repo (step 9 below),
    so pick it once and keep it identical in all three places.
 
-2. **Add the QR code image.** Drop the event's QR PNG into
-   `events/<event-key>/`, then set `{{QR_IMAGE}}` (below) to its filename.
+2. **Add the event's images.** Drop the QR PNG into `events/<event-key>/`
+   (usually `assets/qr.png`) and set `{{QR_IMAGE}}` to its path. For
+   `dual-meet-template/`, drop both clubs' logos in alongside it and set
+   `{{CLUB_A_LOGO}}` / `{{CLUB_B_LOGO}}` to their paths — these render in the
+   hero, the club win summary, the Live Matches table and every match card,
+   so square images crop best (they are shown in a circle).
+
+   These are the one place relative paths are correct: they sit inside the
+   event's own folder, unlike the shared site assets in §6.
 
 3. **Replace every `{{TOKEN}}`.** See §3 for the full list per template.
    When done, this must come back empty:
@@ -98,11 +105,62 @@ clubs; it is not a general multi-club template.
    is filled from tokens directly, not left as an example — see §3).
    `bracket-generator.html` needs no config at all.
 
-5. **Set the `:root` theme block** in each file's `<style>` (under the
-   `THEME` banner) if this event wants its own color palette instead of
-   the shipped default.
+5. **Leave the theme alone unless the event genuinely needs its own.** Every
+   page ships the S.A.G.E. house palette — navy structure, green accent,
+   off-white paper — in a `:root` block under the `THEME` banner at the top
+   of its `<style>`. It is the same palette as `/assets/logo.png`,
+   `tools/scoresheet-generator.html` and `tools/tournament-calculator.html`,
+   so an event site, the tools and the schedule board all read as one
+   product. Type is Archivo Black (display/numbers), Barlow Condensed
+   (tracked uppercase labels) and Inter (body).
 
-6. **Add the event + its days to the shared config.** In the `event-data`
+   To re-skin, change the brand tokens in that block and nothing else —
+   every other rule resolves through them or through the role aliases
+   underneath (`--court`, `--cork`, `--amber`, `--muted`, …, kept so the
+   rules read by intent rather than by hue).
+
+   > **The green is a fill colour, not a text colour.** `--green` on white
+   > is ~2.3:1 and fails AA at any size; `--green-dark` is ~4.0:1 and still
+   > misses the 4.5:1 body floor. Use green as a background with `--navy`
+   > text on it (~5.4:1), or on a navy panel. Small text on paper is
+   > `--ink` or `--ink-soft`. The banner in each file repeats this.
+
+   Two places do **not** resolve through `:root` and must be changed by hand
+   if you re-skin: `bracket-generator.html`'s `BADGE_FILL`/`BADGE_TEXT` and
+   the colours in its canvas export (see §8), and `schedule.html`'s
+   `CAT_META` (see step 6).
+
+6. **Set up the schedule board** (`schedule.html`). This is the venue wall
+   display — courts as columns, time slots as rows, one card per match. It
+   is **unlisted from the public pages on purpose**: nothing links to it
+   except the `Open schedule` button at the foot of Mission Control in
+   `match-control.html`, so operators can launch it and spectators never
+   see it. GitHub Pages resolves extensionless HTML, so it is reachable as
+   `/events/<event-key>/schedule`.
+
+   Two things to fill in beyond the shared tokens:
+
+   - **`{{SCHEDULE_DAY_KEY}}`** — the board shows exactly one day. Set this
+     to that day's key from `DAYS` (step 4). For a multi-day event, point it
+     at whichever day is being played; there is no day picker on the board.
+   - **`CAT_META`** — one entry per `<DIVISION><EVENT>` code, giving each
+     category its chip label and the hue that tints its cells.
+
+   > **`CAT_META`'s colours are the organiser's, not ours.** Read them off
+   > the colour-coded SCHEDULE tab of the source spreadsheet so the wall
+   > display and the organiser's own printed schedule agree. They are **not
+   > exportable** — cell fills are formatting, so they appear in neither the
+   > CSV nor the gviz export, and Sheets paints the grid to a single
+   > `<canvas>`, so the DOM has nothing either. Sample them by eye (or from
+   > a screenshot). **If the organiser recolours the sheet these must be
+   > re-read by hand — nothing detects that drift.**
+
+   The board reads the same published snapshot the event pages do and polls
+   it on the same 10s interval, so it needs no separate data wiring. Court
+   count is derived from the data (the highest `CourtAssignment` seen), not
+   configured — one less value to keep in sync.
+
+7. **Add the event + its days to the shared config.** In the `event-data`
    repo, open `config/events.json` and add an entry to `events` for
    `<event-key>`, with one sub-entry per day under `days` (see
    `config/README.md` in that repo for the full shape). **Day keys must be
@@ -125,7 +183,7 @@ clubs; it is not a general multi-club template.
    — a sync attempt against a day key that isn't live yet fails with
    `UnknownSyncDayError`.
 
-7. **Install the sync script.** Once per facility spreadsheet for this
+8. **Install the sync script.** Once per facility spreadsheet for this
    event (this is the Apps Script side of things — `scripts/sheets-sync.gs`
    lives in `sage-tools-api`, not in this repo):
 
@@ -134,7 +192,7 @@ clubs; it is not a general multi-club template.
       contents of `sage-tools-api/scripts/sheets-sync.gs`.
    3. Edit its `CONFIG` block: set `DAY_KEY` to match whatever day key
       this spreadsheet is for (the same key you used in `DAYS` in step 4
-      and in `config/events.json` in step 6), set `FACILITY_NAME` to
+      and in `config/events.json` in step 7), set `FACILITY_NAME` to
       match a `name` in this event's `FACILITIES` array **exactly**
       (case-sensitive), and set `CLOUD_RUN_BASE_URL` to the same URL you
       used for `{{CLOUD_RUN_BASE_URL}}` in step 3 (no trailing slash).
@@ -159,7 +217,7 @@ clubs; it is not a general multi-club template.
    You can sanity-check an install without waiting for a real edit: run
    `testSyncNow` from the function dropdown to fire a sync immediately.
 
-8. **Create the data folder.** In the `event-data` repo, create
+9. **Create the data folder.** In the `event-data` repo, create
    `<event-key>/data/` (an empty folder — or just let the first successful
    sync create it). Nothing else in that repo needs touching per-event —
    see §0 above if it needs setting up for the first time.
@@ -177,8 +235,9 @@ these — `bracket-generator.html`):
 | `{{EVENT_HEADLINE}}` | Hero's big secondary line. Optional — blank is fine. |
 | `{{EVENT_DATE_RANGE}}` | Hero eyebrow, footer, meta description. |
 | `{{VENUE}}` | Hero eyebrow, footer. |
-| `{{QR_IMAGE}}` | Filename of the QR PNG dropped in alongside `index.html` (§2 step 2). |
+| `{{QR_IMAGE}}` | Path to the QR PNG dropped in alongside `index.html` (§2 step 2). |
 | `{{QR_URL}}` | The short link printed under the QR code. |
+| `{{SCHEDULE_DAY_KEY}}` | `schedule.html` only — which day's key the wall display shows (§2 step 6). |
 
 `match-control.html` only:
 
@@ -190,13 +249,22 @@ these — `bracket-generator.html`):
 
 | Token | Meaning |
 | --- | --- |
-| `{{CLUB_A_CODE}}` / `{{CLUB_B_CODE}}` | Short club codes used in team codes (e.g. `PPA`) and as the `CLUBS` object's keys. |
+| `{{CLUB_A_CODE}}` / `{{CLUB_B_CODE}}` | Short club codes used in team codes (e.g. `PPA`) and as the `CLUBS` object's keys. Also drive `schedule.html`'s `CLUB_ORDER`, which decides which club tag gets which fill. |
 | `{{CLUB_A_NAME}}` / `{{CLUB_B_NAME}}` | Full club names — hero eyebrow, `CLUBS` config. |
+| `{{CLUB_A_LOGO}}` / `{{CLUB_B_LOGO}}` | Paths to each club's logo image (§2 step 2). Shown in the hero, the club win summary, the Live Matches table and every match card. |
 
 Unlike `DAYS`/`FACILITIES`/`DIVISIONS`/`EVENTS`, the `CLUBS` config in
 `dual-meet-template/` is **not** an example to replace — it's built
-directly from the four club tokens above, since a dual meet always has
-exactly two clubs.
+directly from the club tokens above, since a dual meet always has exactly
+two clubs.
+
+> **Watch `&` in names.** Most tokens land in two kinds of place: raw HTML
+> (the hero eyebrow, an `alt=`, the footer) and a JavaScript string literal
+> (the `CLUBS` config). A name like `Pickle & Friends Community` needs
+> `&amp;` in the HTML occurrences but a plain `&` in the JS one — the page
+> escapes that value again on its way into the DOM, so an entity there
+> renders as the literal `&amp;`. Same applies to `{{EVENT_TITLE}}` and
+> `{{VENUE}}`. If you see `&amp;` on the rendered page, this is why.
 
 ## 4. Required spreadsheet columns
 
@@ -207,8 +275,16 @@ most common cause. Exact, case-sensitive:
   `teamCode2`, `team2Player1`, `team2Player2`, `Schedule`, `team1Score`,
   `team2Score`, `CourtAssignment`, `court`.
   `court` is the *live* court (distinct from the scheduled `CourtAssignment`)
-  and is what drives the Live Matches board. Without it, the Live tab will
-  render "No matches are currently on court." forever.
+  and is what drives the Live Matches board. Without it, every court on the
+  Live tab sits on "No match playing" forever, and the schedule board never
+  highlights anything as in progress.
+
+  `CourtAssignment` is what the schedule board lays matches out by. It holds
+  `"Court 1"`…`"Court N"`; the board parses the trailing integer, and the
+  highest one seen sets how many columns it draws. A blank, unparseable or
+  duplicated value doesn't drop the match — it falls to the first free lane,
+  and if the slot is genuinely full the time cell gets a `+n` badge listing
+  the match numbers that wouldn't fit.
 - **Standings tab**: `teamCode`, `player1`, `player2`, `wins`, `loss`,
   `quotient`, `bracket`.
 
@@ -224,6 +300,34 @@ most common cause. Exact, case-sensitive:
 `matchInstanceOf`/`pairUpMatchups` comments in `index.html` if you need the
 details) — you generally don't need to think about this when just filling
 in a spreadsheet.
+
+`schedule.html` classifies the tail of a team code into its stage pill
+(`RR` / `R16` / `QF` / `SF` / `BRONZE` / `FINAL`) using the same regexes as
+`roundKeyword()` in `index.html`, so a code is read the same way everywhere.
+Because the two templates' codes differ by one leading segment, each copy's
+`stageOf()` is anchored differently — don't copy that function between them.
+An unrecognised tail falls back to `RR`, matching `standingsStageKey()`.
+
+## 5.1 Things that must be kept in sync by hand
+
+Within one event's folder, across `index.html`, `match-control.html` and
+`schedule.html`:
+
+| Value | Where |
+| --- | --- |
+| `EVENT_KEY` | all three — and the `events/` folder name, and the `event-data` folder name |
+| `DAYS[].key` | `index.html` / `match-control.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's `DAY_KEY` in `sheets-sync.gs` |
+| `FACILITIES[].name` | `index.html` / `match-control.html`, and each spreadsheet's `FACILITY_NAME` in `sheets-sync.gs` — compared exactly, case-sensitive |
+| `LIVE_GO_LIVE_HOUR_PH` | `index.html` and `match-control.html` (the latter doesn't use it, but parity avoids confusion later) |
+| `CLUBS` | `index.html` / `match-control.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
+| theme `:root` | all pages — plus the two non-CSS palettes noted in §2 step 5 |
+
+`LIVE_GO_LIVE_HOUR_PH` is a real per-event knob, not boilerplate: it is the
+hour (Philippine time) at which a day's Live Matches and Standings tabs
+switch on. The templates ship `7`, which suits an all-day event; an
+evening-only event should push it later so those tabs aren't sitting empty
+from breakfast onwards. Setting a day's `isLive` to `true`/`false`
+overrides it either way.
 
 ## 6. Root-absolute asset paths — do not "fix" them to relative
 
@@ -264,3 +368,16 @@ mirrored to the other (each copy has a comment at the top saying so). It's
 fully self-contained: no config block, no sheet access, pairs are pasted
 in by hand. Copy it as-is; the only tokens in it are `{{EVENT_TITLE}}`
 (§3), which get replaced along with everything else in step 3.
+
+It exports a PNG by hand-drawing to a `<canvas>`, which means **its palette
+lives in JS literals, not in `:root`** — `BADGE_FILL` / `BADGE_TEXT` plus
+the background, glow, header and footer fills inside `exportAsImage`. Those
+are kept in step with the `.badge-0..3` CSS rules above them; if you re-skin
+the theme (§2 step 5), change both or the exported image will not match the
+page it came from.
+
+The four bracket fills are each paired with a text colour that clears
+4.5:1 against it. Two of them (`--green-dark` under white at 4.3:1, and the
+stock purple at 3.3:1) don't clear it at their natural values, so they ship
+darkened — don't "restore" them to the palette tokens without re-checking
+the contrast.

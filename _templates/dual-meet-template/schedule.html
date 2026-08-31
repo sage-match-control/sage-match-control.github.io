@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dual Meet — Schedule</title>
+<title>{{EVENT_TITLE}} — Schedule</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -271,8 +271,12 @@
     font-weight:700; font-size:10px; letter-spacing:.1em; color:var(--white);
     border-radius:3px; padding:2px 5px; flex:0 0 auto;
   }
-  .fo-club.pnf{ background:var(--navy); }
-  .fo-club.bup{ background:var(--ink-soft); }
+  /* Keyed by side (a/b), not by club code, so the two clubs get their fill
+     from CLUB_ORDER below rather than from a class named after one event's
+     clubs. */
+  .fo-club.club-a{ background:var(--navy); }
+  .fo-club.club-b{ background:var(--ink-soft); }
+  .fo-club.club-x{ background:var(--ink-soft); }
   .fo-name{
     font-size:12px; font-weight:700; color:var(--ink);
     line-height:1.3; max-width:100%;
@@ -484,7 +488,7 @@
   <img src="/assets/logo.png" alt="S.A.G.E. logo">
   <div class="titles">
     <p class="eyebrow">S.A.G.E. &middot; Match Control Experts</p>
-    <h1>PNF &times; BUP Dual Meet</h1>
+    <h1>{{EVENT_TITLE}}</h1>
   </div>
   <span class="meta" id="sub">Loading schedule&hellip;</span>
   <div class="courtfilter" id="courtfilter"></div>
@@ -525,10 +529,10 @@
 // deliberately not listed here — see buildScheduleData() below, which derives
 // it from the data instead of needing a fourth hand-synced value.
 // ============================================================================
-const EVENT_KEY     = 'pnf-x-bup-dual-meet';
+const EVENT_KEY     = '{{EVENT_KEY}}';
 const GHPAGES_OWNER  = 'sage-match-control';
 const GHPAGES_REPO   = 'event-data';
-const DAY_KEY        = 'pnf-x-bup-day1';
+const DAY_KEY        = '{{SCHEDULE_DAY_KEY}}';
 
 // How long to wait on the snapshot fetch before giving up (venue wifi at a
 // live event can hang rather than fail outright).
@@ -540,6 +544,25 @@ const POLL_INTERVAL_MS = 10000;
 // Category colours are the organiser's own, read off the colour-coded SCHEDULE
 // tab of the source spreadsheet. Hue = event (Women's berry, Men's blue,
 // Mixed orange), lightness = division (Low Int. -> High Int. -> Advanced).
+// EXAMPLE — replace with this event's own categories.
+//
+// One entry per <DIVISION><EVENT> code appearing in teamCode1/2, keyed
+// exactly as the code reads. `short` is the chip label, `color` the hue that
+// tints the whole cell.
+//
+// These colours are the ORGANISER'S, not ours: read them off the colour-coded
+// SCHEDULE tab of the source spreadsheet so the wall display and the printed
+// schedule agree. They are not exportable — cell fills are formatting, so
+// they appear in neither the CSV nor the gviz export, and Sheets paints the
+// grid to a single <canvas>, so the DOM has nothing either. Sample them by
+// eye (or from a screenshot) and re-check them if the organiser recolours
+// the sheet; nothing detects that drift.
+//
+// A scheme that reads well at a distance keeps hue = event and lightness =
+// division (the example below: Women's berry, Men's blue, Mixed orange;
+// lighter = lower division). Cells apply the hue as a 40% tint over white,
+// which is the measured ceiling that still clears ~6.9:1 for navy body text
+// on the darkest of these — go darker and the names stop being readable.
 const CAT_META = {
   LIWD: { short:'LI WD', color:'#C27BA0' },
   HIWD: { short:'HI WD', color:'#741B47' },
@@ -562,8 +585,18 @@ function readableOn(hex){
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // Club is read per side rather than assumed by position — semifinal rows are
-// intra-club, so a cell can be PNF-vs-PNF or BUP-vs-BUP.
-const clubOf = code => (String(code).split('_')[0] || '').toLowerCase();
+// intra-club, so a cell can legitimately show the same club on both sides.
+const clubOf = code => (String(code).split('_')[0] || '').toUpperCase();
+
+// Which fill each club's tag gets. Index into this decides the .club-a /
+// .club-b class, so the colours follow the configured club order instead of
+// being hardcoded to one event's club codes. Anything unrecognised falls
+// back to .club-x rather than rendering an unstyled tag.
+const CLUB_ORDER = ['{{CLUB_A_CODE}}', '{{CLUB_B_CODE}}'];
+const clubClass = code => {
+  const i = CLUB_ORDER.indexOf(clubOf(code));
+  return i === 0 ? 'club-a' : i === 1 ? 'club-b' : 'club-x';
+};
 
 // Stage of the ladder, from the tail of the team code. Regexes are lifted
 // verbatim from roundKeyword() in index.html so this page classifies a code
@@ -625,12 +658,12 @@ function cellHTML(m){
     </div>
     <div class="faceoff">
       <div class="fo-side">
-        <span class="fo-club ${clubOf(m.c1)}">${clubOf(m.c1).toUpperCase()}</span>
+        <span class="fo-club ${clubClass(m.c1)}">${esc(clubOf(m.c1))}</span>
         <span class="fo-names">${nameHTML(m.p1a, m.c1)}${nameHTML(m.p1b, ' ')}</span>
       </div>
       <div class="fo-center">${centre}</div>
       <div class="fo-side right">
-        <span class="fo-club ${clubOf(m.c2)}">${clubOf(m.c2).toUpperCase()}</span>
+        <span class="fo-club ${clubClass(m.c2)}">${esc(clubOf(m.c2))}</span>
         <span class="fo-names">${nameHTML(m.p2a, m.c2)}${nameHTML(m.p2b, ' ')}</span>
       </div>
     </div>
@@ -768,7 +801,7 @@ function buildPrintPages(){
       <div class="print-head">
         <div class="print-head-left">
           <span class="print-eyebrow">S.A.G.E. &middot; Match Control Experts</span>
-          <span class="print-title">PNF &times; BUP Dual Meet</span>
+          <span class="print-title">{{EVENT_TITLE}}</span>
         </div>
         <div class="print-head-right">
           <span class="print-scope">${courtLabel(s.courts)}${timeLabel(s.rows)}</span>
