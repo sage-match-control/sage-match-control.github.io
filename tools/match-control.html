@@ -3,27 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dual Meet — Match Control</title>
-<meta name="description" content="Find your pair's full Dual Meet match schedule, live scores, and standings.">
+<title>Match Control — S.A.G.E.</title>
+<meta name="description" content="Operator console for live matches, standings, and sync status across every registered S.A.G.E. event.">
+<meta name="robots" content="noindex">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Dual Meet — Match Finder">
-<meta property="og:description" content="Find your pair's full match schedule, live scores, and standings.">
+<meta property="og:title" content="Match Control — S.A.G.E.">
+<meta property="og:description" content="Operator console for live matches, standings, and sync status.">
 <meta property="og:image" content="/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect — the green is a *fill*
+     colour, not a text colour:
+       - --green on white is ~2.3:1 and fails AA at any size. Use it as a
+         background (with --navy text on top, ~5.4:1) or on a navy panel.
+       - --green-dark on white is ~4.0:1 — still under the 4.5:1 body
+         floor, so keep it for large/display text only.
+       - Small text on paper is --ink (~13.8:1) or --ink-soft (~5.9:1).
+     ================================================================ */
   :root{
-    --court:#B8E830;
-    --court-dark:#080808;
-    --court-line:#F2F2F2;
-    --ink:#0B1B3C;
-    --paper:#FFFFFF;
-    --amber:#FFE24D;
-    --cork:#FF3D9A;
-    --muted:#6B7690;
-    --navy-mid:#141414;
-    --card-shadow: 0 18px 40px -20px rgba(8,3,24,.6);
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -40,11 +74,7 @@
      unset keeps it out of the scroll-container chain so sticky elements
      (the club wins summary, the standings category headers) bind to html. */
   body{
-    background:
-      radial-gradient(900px 480px at 50% -12%, rgba(198,255,0,.14), transparent 62%),
-      radial-gradient(700px 460px at 100% 4%, rgba(200,160,48,.20), transparent 55%),
-      radial-gradient(650px 520px at -6% 96%, rgba(198,255,0,.12), transparent 60%),
-      linear-gradient(180deg, var(--court-dark) 0%, var(--navy-mid) 45%, var(--court-dark) 100%);
+    background:var(--paper);
     color:var(--ink);
     font-family:'Inter',system-ui,sans-serif;
     min-height:100vh;
@@ -56,14 +86,18 @@
   header.hero{
     padding:52px 20px 40px;
     text-align:center;
-    color:var(--court-line);
+    color:var(--white);
     position:relative;
+    background:var(--navy);
+    border-radius:0 0 var(--radius) var(--radius);
+    box-shadow:0 24px 60px -28px rgba(11,24,38,.45);
+    margin-bottom:28px;
   }
   .crown-mark{
     width:40px; height:auto;
     margin:0 auto 14px;
     color:var(--court);
-    filter:drop-shadow(0 2px 6px rgba(198,255,0,.4));
+    filter:drop-shadow(0 2px 6px rgba(124,185,44,.4));
   }
   .regal-rule{
     display:flex;
@@ -77,44 +111,22 @@
     content:"";
     flex:1;
     height:1px;
-    background:linear-gradient(90deg, transparent, rgba(198,255,0,.7));
+    background:linear-gradient(90deg, transparent, rgba(124,185,44,.7));
   }
-  .regal-rule::after{ background:linear-gradient(90deg, rgba(198,255,0,.7), transparent); }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(124,185,44,.7), transparent); }
   .regal-rule .diamond{
     width:7px; height:7px;
     background:var(--amber);
     transform:rotate(45deg);
     flex-shrink:0;
   }
-  .club-logos{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:22px;
-    margin:0 0 20px;
-  }
-  .club-logos img{
-    width:clamp(84px,20vw,140px);
-    aspect-ratio:1/1;
-    border-radius:50%;
-    object-fit:cover;
-    border:2px solid rgba(226,236,250,.35);
-    box-shadow:var(--card-shadow);
-    background:var(--paper);
-  }
-  .club-logos .club-logos-sep{
-    font-family:'Anton',sans-serif;
-    font-size:clamp(22px,5vw,34px);
-    color:var(--court);
-    opacity:.85;
-  }
   .eyebrow{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     letter-spacing:.28em;
     text-transform:uppercase;
     font-size:12px;
-    color:var(--amber);
+    color:var(--green);
     margin-bottom:16px;
   }
   .tagline-script{
@@ -122,50 +134,78 @@
     font-style:italic;
     font-weight:700;
     font-size:clamp(14px,3.4vw,18px);
-    color:#fff;
+    color:var(--white);
     letter-spacing:.01em;
     margin:0 0 14px;
     opacity:.92;
   }
   .domination-line{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:clamp(20px,5.4vw,32px);
     text-transform:uppercase;
     letter-spacing:.01em;
-    color:var(--court);
-    text-shadow:0 2px 18px rgba(198,255,0,.35);
+    color:var(--green);
     margin:2px 0 12px;
   }
   h1.title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(34px,8.2vw,62px);
     line-height:1.04;
     letter-spacing:.005em;
     margin:0 0 10px;
     text-transform:uppercase;
-    background:linear-gradient(92deg, #8FE94B 0%, #C6FF00 55%, #F5FF8C 100%);
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 2px 22px rgba(198,255,0,.28));
+    color:var(--white);
   }
-  h1.title .accent{
-    -webkit-text-fill-color:initial;
-    background:none;
-    color:#fff;
-  }
+  h1.title .accent{ color:var(--green); }
   .subtitle{
     font-size:15px;
-    color:rgba(226,236,250,.75);
+    color:rgba(255,255,255,.75);
     max-width:480px;
     margin:0 auto 34px;
     line-height:1.55;
   }
 
+  /* ---------- HERO-SCOPED CONTROL OVERRIDES ----------
+     The day picker, view tabs and sync line are shared controls whose base
+     rules (further down) are written for the paper ground of .wrap. Inside
+     the navy bezel they'd be navy-on-navy, so they're re-stated here as
+     light-on-navy instead of being forked into two separate components.
+     Scoped to .hero so the base rules keep working anywhere else. */
+  .hero .view-tab{
+    border-color:rgba(255,255,255,.28);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.82);
+  }
+  .hero .view-tab:hover{ border-color:var(--green); color:var(--white); }
+  .hero .view-tab.active{
+    background:var(--green);
+    border-color:var(--green);
+    color:var(--navy);
+  }
+  .hero .day-picker label{ color:rgba(255,255,255,.6); }
+  /* The chevron is baked into the select's background-image, so it has to be
+     re-stated per ground — the navy one in the base rule would vanish here. */
+  .hero .day-picker select{
+    border-color:rgba(255,255,255,.28);
+    background-color:rgba(255,255,255,.06);
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    color:var(--white);
+  }
+  .hero .day-picker select:hover,
+  .hero .day-picker select:focus{ border-color:var(--green); }
+  .hero .sync-status{ color:rgba(255,255,255,.62); }
+  .hero .sync-status.ok{ color:var(--green); }
+  .hero .sync-status.error{ color:#FFB4A2; }
+  .hero .sync-status .retry-btn{
+    border-color:rgba(255,180,162,.55);
+    color:#FFB4A2;
+  }
+  .hero .sync-status .retry-btn:hover{ background:rgba(255,180,162,.15); }
+
   /* ---------- SEARCH ---------- */
   .search-panel{
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:22px;
     box-shadow:var(--card-shadow);
@@ -178,12 +218,12 @@
     position:absolute;
     inset:0;
     border-radius:18px;
-    border:1px solid rgba(198,255,0,.35);
+    border:1px solid rgba(124,185,44,.35);
     margin:8px;
     pointer-events:none;
   }
   .search-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     text-transform:uppercase;
     letter-spacing:.14em;
@@ -200,21 +240,21 @@
   }
   input#teamInput{
     width:100%;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:20px;
     font-weight:600;
     letter-spacing:.03em;
     padding:14px 40px 14px 16px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     text-transform:uppercase;
     outline:none;
     min-width:0;
   }
-  input#teamInput:focus{border-color:var(--court);}
-  input#teamInput::placeholder{color:#9AA3B5; font-weight:500; text-transform:none;}
+  input#teamInput:focus{border-color:var(--green-dark);}
+  input#teamInput::placeholder{color:var(--ink-soft); font-weight:500; text-transform:none;}
   .clear-input-btn{
     display:none;
     align-items:center;
@@ -248,7 +288,7 @@
     cursor:pointer;
     transition:transform .12s ease, background .12s ease;
   }
-  button#searchBtn:hover{background:#D9600F;}
+  button#searchBtn:hover{background:var(--navy-deep);}
   button#searchBtn:active{transform:scale(.97);}
 
   .autocomplete{
@@ -257,7 +297,7 @@
   .ac-list{
     position:absolute;
     left:0; right:0; top:calc(100% + 6px);
-    background:#fff;
+    background:var(--white);
     border-radius:10px;
     box-shadow:0 14px 30px -12px rgba(0,0,0,.35);
     max-height:220px;
@@ -271,7 +311,7 @@
   .ac-list.show{display:block;}
   .ac-item{
     padding:10px 14px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:14px;
     font-weight:600;
     color:var(--ink);
@@ -283,33 +323,33 @@
     border-bottom:1px solid rgba(20,27,44,.06);
   }
   .ac-item:last-child{border-bottom:none;}
-  .ac-item:hover, .ac-item.active{background:var(--court); color:#fff;}
+  .ac-item:hover, .ac-item.active{background:var(--court); color:var(--navy);}
   .ac-item small{font-family:'Inter',sans-serif; color:var(--muted); opacity:1; font-weight:500;}
-  .ac-item:hover small, .ac-item.active small{color:rgba(255,255,255,.85);}
+  .ac-item:hover small, .ac-item.active small{color:rgba(20,38,60,.75);}
 
   .sync-status{
     max-width:560px;
     margin:14px auto 0;
     text-align:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11.5px;
     letter-spacing:.03em;
-    color:rgba(226,236,250,.6);
+    color:var(--ink-soft);
   }
   .sync-status.ok{color:var(--amber);}
-  .sync-status.error{color:#ff9a7a;}
+  .sync-status.error{color:#B3261E;}
   .sync-status .retry-btn{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     background:none;
-    border:1px solid rgba(255,154,122,.5);
-    color:#ff9a7a;
+    border:1px solid rgba(179,38,30,.45);
+    color:#B3261E;
     padding:2px 8px;
     border-radius:100px;
     cursor:pointer;
     margin-left:6px;
   }
-  .sync-status .retry-btn:hover{background:rgba(255,154,122,.15);}
+  .sync-status .retry-btn:hover{background:rgba(179,38,30,.10);}
 
   /* ---------- VIEW TABS ---------- */
   .view-tabs{
@@ -319,20 +359,20 @@
     margin-bottom:24px;
   }
   .view-tab{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:.06em;
     text-transform:uppercase;
     padding:9px 20px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
-    background:rgba(255,255,255,.05);
-    color:rgba(226,236,250,.8);
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--ink);
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .view-tab:hover{border-color:rgba(198,255,0,.6);}
+  .view-tab:hover{border-color:rgba(124,185,44,.6);}
   .view-tab.active{
     background:var(--court);
     border-color:var(--court);
@@ -348,22 +388,22 @@
     margin-bottom:20px;
   }
   .day-picker label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11px;
     font-weight:600;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
   }
   .day-picker select{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:.03em;
     padding:8px 34px 8px 16px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
-    background:rgba(255,255,255,.05) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23E7ECF7" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+    border:1px solid var(--line);
+    background:var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%2314263C" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
     background-size:11px;
     color:var(--court-line);
     cursor:pointer;
@@ -371,38 +411,38 @@
     -webkit-appearance:none;
     -moz-appearance:none;
   }
-  .day-picker select:hover, .day-picker select:focus{border-color:rgba(198,255,0,.6); outline:none;}
+  .day-picker select:hover, .day-picker select:focus{border-color:rgba(124,185,44,.6); outline:none;}
   .day-picker select option{color:var(--ink);}
   .jump-today-btn{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:11.5px;
     font-weight:600;
     letter-spacing:.04em;
     padding:8px 16px;
     border-radius:100px;
-    border:1px solid rgba(198,255,0,.4);
-    background:rgba(198,255,0,.08);
-    color:var(--court);
+    border:1px solid rgba(124,185,44,.4);
+    background:rgba(124,185,44,.14);
+    color:var(--navy);
     cursor:pointer;
     transition:background .12s ease, border-color .12s ease;
   }
-  .jump-today-btn:hover{background:rgba(198,255,0,.18); border-color:var(--court);}
+  .jump-today-btn:hover{background:rgba(124,185,44,.18); border-color:var(--court);}
 
   /* ---------- LIVE MATCHES (Court Control) ---------- */
   .live-dot{
     display:inline-block;
     width:9px; height:9px;
     border-radius:50%;
-    background:#5FD97A;
+    background:var(--green-dark);
     margin-right:8px;
     vertical-align:middle;
-    box-shadow:0 0 0 0 rgba(95,217,122,.6);
+    box-shadow:0 0 0 0 rgba(92,143,31,.5);
     animation:live-pulse 1.8s infinite;
   }
   @keyframes live-pulse{
-    0%{ box-shadow:0 0 0 0 rgba(95,217,122,.55); }
-    70%{ box-shadow:0 0 0 8px rgba(95,217,122,0); }
-    100%{ box-shadow:0 0 0 0 rgba(95,217,122,0); }
+    0%{ box-shadow:0 0 0 0 rgba(92,143,31,.45); }
+    70%{ box-shadow:0 0 0 8px rgba(92,143,31,0); }
+    100%{ box-shadow:0 0 0 0 rgba(92,143,31,0); }
   }
   .live-board-meta{
     display:flex;
@@ -422,7 +462,7 @@
     align-items:baseline;
     gap:8px;
     margin:26px 0 10px;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:15px;
     letter-spacing:.03em;
@@ -431,14 +471,14 @@
   }
   .facility-title:first-child{margin-top:0;}
   .facility-title .facility-count{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     letter-spacing:.04em;
     text-transform:none;
-    color:rgba(232,226,245,.55);
+    color:var(--ink-soft);
   }
   .live-table-wrap{
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow-x:auto;
     box-shadow:var(--card-shadow);
@@ -451,9 +491,9 @@
     border-collapse:collapse;
   }
   table.live-table thead th{
-    background:var(--court-dark);
-    color:var(--court-line);
-    font-family:'IBM Plex Mono',monospace;
+    background:var(--navy);
+    color:var(--white);
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:9.5px;
     text-transform:uppercase;
@@ -469,11 +509,11 @@
   }
   table.live-table tr:last-child td{border-bottom:none;}
   td.live-court-cell{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:17px;
     color:var(--court-dark);
-    background:rgba(198,255,0,.16);
+    background:rgba(124,185,44,.16);
     white-space:nowrap;
     width:1%;
     text-align:center;
@@ -483,16 +523,11 @@
   /* Idle court (see liveEmptyRowHTML) — same size/shape as a live one, just
      without the lime "in play" highlight. */
   td.live-court-cell.idle{
-    background:rgba(226,236,250,.05);
+    background:var(--paper-dim);
     color:var(--muted);
   }
   td.live-team-cell{ min-width:130px; }
   td.live-team-cell.right{ text-align:right; }
-  /* Logo sits beside the whole code+players block (not inline with the code
-     text), sized to nearly the full height of that block, on the outer edge
-     of the table — right-justified (not reversed — reversing the flex axis
-     would put it first-source-item-last, i.e. back toward the middle) for
-     the right-hand team so both logos point outward, away from the VS column. */
   .live-team-cell-inner{
     display:flex;
     align-items:center;
@@ -502,21 +537,10 @@
     justify-content:flex-end;
   }
   .live-team-text{ min-width:0; }
-  .live-team-logo{
-    width:52px; height:52px;
-    border-radius:50%;
-    object-fit:cover;
-    flex-shrink:0;
-    border:1px solid rgba(20,27,44,.15);
-  }
-  .live-team-logo-placeholder{
-    background:transparent;
-    border-color:transparent;
-  }
   /* Code is a compact reference tag now; the players' names are what a
      spectator actually scans for, so they carry the visual weight. */
   .live-team-code{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:9.5px;
     letter-spacing:.04em;
@@ -542,7 +566,7 @@
      the score/VS instead, freeing that column's width for Match Details. */
   .live-match-pill{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:8.5px;
     font-weight:700;
     letter-spacing:.04em;
@@ -554,7 +578,7 @@
   }
   .live-match-pill.placeholder{ visibility:hidden; }
   .live-vs-score{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:13px;
     color:var(--muted);
@@ -567,7 +591,7 @@
   table.live-table td.live-cat-cell{
     border-bottom:none;
     padding:3px 10px 1px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9px;
     line-height:1.35;
     letter-spacing:.03em;
@@ -587,7 +611,7 @@
   /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
     display:none; /* shown below the 980px desktop-standings breakpoint */
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:18px 20px;
     box-shadow:var(--card-shadow);
@@ -596,28 +620,28 @@
   }
   input.cat-filter-input{
     flex:1;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:600;
     letter-spacing:.01em;
     padding:12px 14px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     outline:none;
     min-width:0;
     width:100%;
   }
   input.cat-filter-input:focus{border-color:var(--court);}
-  input.cat-filter-input::placeholder{color:#9AA3B5; font-weight:500;}
+  input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
   @media (max-width:979px){
     .category-filter{ display:block; }
   }
 
   /* ---------- ORGANIZER PANEL ---------- */
   .organizer-panel{
-    background:var(--paper);
+    background:var(--white);
     border-radius:18px;
     padding:26px 24px;
     box-shadow:var(--card-shadow);
@@ -625,7 +649,7 @@
     margin:0 auto;
   }
   .organizer-day-label{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:20px;
     text-transform:uppercase;
@@ -633,6 +657,39 @@
     margin-bottom:20px;
     text-align:center;
   }
+  .golive-current{
+    font-size:13px;
+    line-height:1.5;
+    color:var(--ink);
+    background:rgba(20,27,44,.04);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:10px;
+  }
+  .golive-current b{font-family:'Barlow Condensed',sans-serif; font-weight:700;}
+  .golive-current.state-auto b{color:var(--green-dark);}
+  .golive-current.state-true b{color:var(--green-dark);}
+  .golive-current.state-false b{color:#B3261E;}
+  .golive-buttons{display:flex; gap:8px; margin-bottom:10px;}
+  .golive-btn{
+    flex:1;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+    padding:10px 6px;
+    border-radius:10px;
+    border:1.5px solid rgba(20,27,44,.18);
+    background:var(--white);
+    color:var(--ink);
+    cursor:pointer;
+    transition:background .12s ease, border-color .12s ease, color .12s ease, opacity .12s ease;
+  }
+  .golive-btn:hover{border-color:var(--green-dark);}
+  .golive-btn.active{background:var(--court); border-color:var(--court); color:var(--court-dark);}
+  .golive-btn-danger.active{background:#B3261E; border-color:#B3261E; color:#fff;}
+  .golive-btn:disabled{opacity:.55; cursor:not-allowed;}
   .organizer-status-box{margin-bottom:14px;}
   .org-status-row{
     display:flex;
@@ -650,11 +707,11 @@
     border-radius:50%;
     background:var(--muted);
   }
-  .org-status-ok .org-status-dot{background:#34C77C;}
+  .org-status-ok .org-status-dot{background:var(--green-dark);}
   .org-status-warn .org-status-dot{background:var(--cork);}
   .org-status-none .org-status-dot{background:rgba(20,27,44,.2);}
   .org-status-name{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:700;
     font-size:12.5px;
     color:var(--ink);
@@ -676,20 +733,20 @@
   .organizer-secret-row{display:flex; gap:8px;}
   #orgSecretInput{
     flex:1;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:14px;
     font-weight:600;
     padding:12px 14px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     outline:none;
     min-width:0;
   }
   #orgSecretInput:focus{border-color:var(--court);}
   .organizer-secondary-btn{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:600;
     text-transform:uppercase;
@@ -738,7 +795,7 @@
     cursor:pointer;
     transition:background .12s ease, opacity .12s ease;
   }
-  .organizer-primary-btn:hover{background:#D9600F;}
+  .organizer-primary-btn:hover{background:var(--navy-deep);}
   .organizer-primary-btn:disabled{opacity:.55; cursor:not-allowed;}
   .organizer-divider{
     height:1px;
@@ -755,7 +812,7 @@
     display:inline-flex;
     align-items:center;
     gap:6px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:600;
     text-transform:uppercase;
@@ -775,12 +832,12 @@
   .organizer-schedule-btn.primary{
     background:var(--ink);
     border-color:var(--ink);
-    color:var(--paper);
+    color:var(--white);
   }
   .organizer-schedule-btn.primary:hover{
-    background:var(--cork);
-    border-color:var(--cork);
-    color:#fff;
+    background:var(--navy-deep);
+    border-color:var(--navy-deep);
+    color:var(--white);
   }
   .organizer-facility-row{
     display:flex;
@@ -788,13 +845,13 @@
   }
   .organizer-facility-btn{
     flex:1;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:13px;
     padding:11px 8px;
     border-radius:10px;
     border:1.5px solid rgba(20,27,44,.18);
-    background:#fff;
+    background:var(--white);
     color:var(--ink);
     cursor:pointer;
     transition:background .12s ease, border-color .12s ease, opacity .12s ease;
@@ -805,7 +862,7 @@
     margin-top:18px;
     padding:14px 16px;
     border-radius:10px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     line-height:1.6;
     white-space:pre-wrap;
@@ -831,26 +888,26 @@
     }
   }
   .cat-toggle-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
     margin-right:2px;
   }
   .cat-toggle-chip{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:600;
     padding:6px 14px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.32);
-    background:rgba(255,255,255,.06);
+    border:1px solid var(--line);
+    background:var(--white);
     color:var(--court-line);
     cursor:pointer;
     transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
   }
-  .cat-toggle-chip:hover{border-color:rgba(198,255,0,.6);}
+  .cat-toggle-chip:hover{border-color:rgba(124,185,44,.6);}
   .cat-toggle-chip.active{
     background:var(--court);
     border-color:var(--court);
@@ -861,19 +918,19 @@
     text-decoration:line-through;
   }
   .cat-toggle-action{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.08em;
     padding:6px 12px;
     border-radius:100px;
-    border:1px solid rgba(226,236,250,.28);
+    border:1px solid var(--line);
     background:transparent;
-    color:rgba(226,236,250,.75);
+    color:var(--ink-soft);
     cursor:pointer;
     margin-left:4px;
   }
-  .cat-toggle-action:hover{border-color:rgba(198,255,0,.6); color:#fff;}
+  .cat-toggle-action:hover{border-color:var(--green-dark); color:var(--navy);}
 
   /* ---------- STANDINGS BOARD ---------- */
   /* Mobile/tablet: a single full-width column, one category card per row
@@ -888,8 +945,8 @@
   }
 
   .standings-col{
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(226,236,250,.16);
+    background:var(--white);
+    border:1px solid var(--line);
     border-radius:16px;
     break-inside:avoid;
   }
@@ -904,20 +961,19 @@
     text-align:center;
     margin:0 0 14px;
     padding:12px 14px 10px;
-    border-bottom:1px solid rgba(226,236,250,.14);
-    background:rgba(9,14,28,.94);
+    border-bottom:1px solid var(--line);
+    background:rgba(246,247,242,.94);
     backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
     border-radius:16px 16px 0 0;
   }
   .standings-col-head .cat-title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:14px;
     text-transform:uppercase;
     letter-spacing:.01em;
-    background:linear-gradient(92deg, #8FE94B, #C6FF00 55%, #F5FF8C);
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    color:var(--navy);
   }
 
   /* ---------- CLUB SUMMARY & PER-CLUB STANDINGS (dual meet) ---------- */
@@ -936,7 +992,7 @@
     top:0;
     z-index:5;
     padding:10px 6px;
-    background:rgba(9,14,28,.94);
+    background:rgba(246,247,242,.94);
     backdrop-filter:blur(6px);
     -webkit-backdrop-filter:blur(6px);
     border-radius:0 0 16px 16px;
@@ -960,15 +1016,15 @@
     gap:12px;
     padding:10px clamp(14px,4vw,28px);
     border-radius:16px;
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(226,236,250,.16);
+    background:var(--white);
+    border:1px solid var(--line);
     flex:1 1 0;
     min-width:0;
     max-width:280px;
   }
   .club-summary-item.leader{
-    border-color:rgba(255,122,41,.6);
-    box-shadow:0 0 26px -8px rgba(255,122,41,.5);
+    border-color:var(--green-dark);
+    box-shadow:0 0 26px -8px rgba(92,143,31,.45);
   }
   .cs-identity{
     display:flex;
@@ -976,13 +1032,6 @@
     align-items:center;
     gap:2px;
     flex:0 0 auto;
-  }
-  .cs-identity .cs-logo{
-    width:clamp(36px,10vw,52px);
-    height:clamp(36px,10vw,52px);
-    border-radius:50%;
-    object-fit:cover;
-    border:2px solid rgba(226,236,250,.35);
   }
   .cs-identity .cs-name{
     font-family:'Inter',sans-serif;
@@ -1004,23 +1053,22 @@
     flex:0 0 auto;
   }
   .cs-stat .cs-wins{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(26px,8vw,38px);
     line-height:1;
-    background:linear-gradient(92deg, #8FE94B, #C6FF00 55%, #F5FF8C);
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    color:var(--green-dark);
   }
   .cs-stat .cs-label{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9.5px;
     text-transform:uppercase;
     letter-spacing:.16em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
   }
   .club-summary-vs{
     flex:0 0 auto;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:clamp(14px,4vw,18px);
     color:var(--cork);
@@ -1037,13 +1085,13 @@
      rather than each club's own bracket. */
   .shared-stages{ margin-top:14px; }
   .club-subhead{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     font-weight:600;
     text-transform:uppercase;
     letter-spacing:.1em;
     color:var(--cork);
-    border-bottom:1px solid rgba(255,122,41,.35);
+    border-bottom:1px solid var(--line);
     padding-bottom:5px;
     margin-bottom:8px;
   }
@@ -1055,7 +1103,7 @@
       overflow-y:auto;
     }
     .category-clubs-row::-webkit-scrollbar{width:5px;}
-    .category-clubs-row::-webkit-scrollbar-thumb{background:rgba(226,236,250,.22); border-radius:10px;}
+    .category-clubs-row::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
     .club-subsection{
       flex:1 1 0;
       min-width:0;
@@ -1063,7 +1111,7 @@
     }
     .club-subhead{
       position:sticky; top:0;
-      background:rgba(9,14,28,.96);
+      background:rgba(246,247,242,.94);
       padding-top:2px;
       z-index:1;
     }
@@ -1072,22 +1120,22 @@
   .stage-block{margin-bottom:16px;}
   .stage-block:last-child{margin-bottom:0;}
   .stage-caption{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.1em;
-    color:rgba(226,236,250,.55);
+    color:var(--ink-soft);
     margin:0 0 6px;
   }
   .stage-banner{
-    background:linear-gradient(92deg, #F6DE58, #FFB65C);
-    color:var(--court-dark);
+    background:var(--navy);
+    color:var(--white);
     border-radius:9px 9px 0 0;
     padding:6px 10px 5px;
     text-align:center;
   }
   .stage-banner .stage-title{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:11.5px;
     text-transform:uppercase;
@@ -1097,7 +1145,7 @@
     width:100%;
     table-layout:fixed;
     border-collapse:collapse;
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow:hidden;
     box-shadow:var(--card-shadow);
@@ -1112,7 +1160,7 @@
     padding:6px 8px;
     text-align:left;
     font-size:11.5px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     border-right:1px solid rgba(20,27,44,.12);
   }
   .br-table th:last-child, .br-table td:last-child{ border-right:none; }
@@ -1144,10 +1192,17 @@
   .br-table td.br-badge{
     text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
   }
-  .badge-0{background:var(--cork);}
-  .badge-1{background:var(--court);}
-  .badge-2{background:var(--amber); color:var(--court-dark);}
-  .badge-3{background:#8B7CF6;}
+  /* Badge text follows its own fill, not one blanket colour: white reads on
+     the navy and purple badges, navy on the green one (white on --green is
+     ~2.6:1). */
+  /* Four bracket fills that each clear 4.5:1 against their own label.
+     --green-dark under white (4.3:1) and the stock purple (3.3:1) both miss,
+     so those two are darkened rather than left to fail quietly. Same set as
+     .badge-* in bracket-generator.html — keep them in step. */
+  .badge-0{background:var(--navy);}
+  .badge-1{background:var(--green); color:var(--navy);}
+  .badge-2{background:#4C7A19;}
+  .badge-3{background:#6C5CE0;}
   .badge-x{background:var(--muted);}
 
   /* Playoff matchups: each stage's teams grouped into explicit head-to-head
@@ -1155,7 +1210,7 @@
   .matchup{
     display:flex;
     flex-direction:column;
-    background:var(--paper);
+    background:var(--white);
     border-radius:10px;
     overflow:hidden;
     box-shadow:var(--card-shadow);
@@ -1165,7 +1220,7 @@
   .stage-banner + .matchup{border-radius:0 0 10px 10px; margin-top:0;}
   .matchup-label{
     text-align:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9.5px;
     font-weight:600;
     text-transform:uppercase;
@@ -1206,14 +1261,14 @@
     align-self:stretch;
   }
   .matchup-center .mu-score{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:16px;
-    color:rgba(241,231,200,.6);
+    color:rgba(255,255,255,.6);
   }
   .matchup-center .mu-score.win{ color:var(--court); }
   .matchup-vs{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:9px;
     letter-spacing:.1em;
@@ -1226,9 +1281,9 @@
      division (top row Low Intermediate, then High Intermediate — sortedCats
      is already grouped by division then event, so consecutive same-division
      categories land on the same row automatically), and the 4th column is
-     reserved for any division with fewer categories than EVENTS configures
-     (currently just Advanced, with a single Men's Doubles category) —
-     renderStandings wraps those in .standings-col-overflow, spanning the
+     reserved for any division with fewer categories than a "full" division
+     has (see renderDualMeetStandings' fullEventCount) — renderStandings
+     wraps those in .standings-col-overflow, spanning the
      full row-height of the columns beside it and vertically centered there
      instead of leaving a half-empty row of its own. */
   @media (min-width: 980px){
@@ -1284,7 +1339,7 @@
     gap:8px;
   }
   .results-head h2{
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:24px;
     text-transform:uppercase;
@@ -1292,27 +1347,37 @@
     letter-spacing:.03em;
   }
   .results-head .division-tag{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:13px;
-    color:var(--amber);
+    color:var(--ink-soft);
   }
   .results-meta{
     font-size:13px;
-    color:rgba(226,236,250,.7);
+    color:var(--ink-soft);
     margin:-8px 0 22px;
   }
 
   .empty-state{
-    background:rgba(255,255,255,.06);
-    border:1px dashed rgba(226,236,250,.32);
+    background:var(--white);
+    border:1px dashed var(--line);
     border-radius:14px;
     padding:26px;
-    color:rgba(226,236,250,.85);
+    color:var(--ink);
     text-align:center;
     font-size:14px;
     line-height:1.6;
   }
-  .empty-state strong{color:var(--amber); font-family:'IBM Plex Mono',monospace;}
+  .empty-state strong{color:var(--navy); font-family:'Barlow Condensed',sans-serif;}
+  .resolution-warning{
+    border-style:solid;
+    border-color:rgba(179,38,30,.4);
+    background:rgba(179,38,30,.06);
+    color:#7A231C;
+    text-align:left;
+    max-width:920px;
+    margin:0 auto 16px;
+  }
+  .resolution-warning strong{color:#7A231C;}
 
   .stats-row{
     display:flex;
@@ -1323,8 +1388,8 @@
     flex-wrap:wrap;
   }
   .stat{
-    background:rgba(255,255,255,.07);
-    border:1px solid rgba(226,236,250,.15);
+    background:var(--white);
+    border:1px solid var(--line);
     border-radius:12px;
     padding:14px 18px;
     text-align:center;
@@ -1334,16 +1399,16 @@
   }
   .stat b{
     display:block;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-size:22px;
     color:var(--amber);
     font-weight:400;
   }
-  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(226,236,250,.65);}
+  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft);}
 
   /* ---------- TICKET CARD ---------- */
   .ticket{
-    background:var(--paper);
+    background:var(--white);
     border-radius:16px;
     box-shadow:var(--card-shadow);
     margin-bottom:16px;
@@ -1366,7 +1431,7 @@
   }
   .center-pill{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:700;
     color:var(--court);
@@ -1376,25 +1441,25 @@
   }
   .court-pill{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:15px;
     font-weight:700;
     color:var(--cork);
-    background:rgba(255,122,41,.12);
+    background:var(--paper-dim);
     border-radius:100px;
     padding:6px 16px;
   }
   .live-pill{
     display:inline-flex;
     align-items:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:700;
     letter-spacing:.08em;
     text-transform:uppercase;
-    color:#0F5C2E;
-    background:rgba(95,217,122,.2);
-    border:1px solid rgba(95,217,122,.6);
+    color:var(--white);
+    background:var(--green-dark);
+    border:1px solid var(--green-dark);
     border-radius:100px;
     padding:6px 13px 6px 10px;
   }
@@ -1409,16 +1474,8 @@
   }
   .team-block{flex:1; min-width:0; text-align:left;}
   .team-block.right{text-align:right;}
-  .score-logo{
-    display:inline-block;
-    width:88px; height:88px;
-    border-radius:50%;
-    object-fit:cover;
-    border:2px solid rgba(20,27,44,.12);
-    margin-bottom:6px;
-  }
   .team-block .team-name{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-weight:700;
     font-size:9.5px;
     letter-spacing:.06em;
@@ -1436,7 +1493,7 @@
   .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
   .you-badge{
     display:inline-block;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:9.5px;
     letter-spacing:.08em;
     text-transform:uppercase;
@@ -1451,7 +1508,7 @@
   .score-col{
     flex-shrink:0;
     text-align:center;
-    font-family:'Anton',sans-serif;
+    font-family:'Archivo Black',sans-serif;
     font-weight:400;
     font-size:32px;
     color:var(--ink);
@@ -1475,7 +1532,7 @@
     gap:8px;
   }
   .meta-chip{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.06em;
@@ -1485,7 +1542,7 @@
     border-radius:100px;
   }
   .tag{
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:10.5px;
     text-transform:uppercase;
     letter-spacing:.06em;
@@ -1494,39 +1551,39 @@
   }
   .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
   .tag.round{background:var(--cork); color:#fff;}
-  .tag.pool{background:rgba(198,255,0,.14); color:#0F766E;}
+  .tag.pool{background:rgba(124,185,44,.18); color:var(--navy);}
 
   /* Flags a searched pair's next unplayed, not-yet-live match so it stands
      out from the rest of their schedule at a glance. */
   .ticket.next{
     border-left:6px solid var(--amber);
-    box-shadow:var(--card-shadow), 0 0 0 2px rgba(255,212,0,.4);
+    box-shadow:var(--card-shadow), 0 0 0 2px var(--green);
   }
   .next-pill{
     display:inline-flex;
     align-items:center;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
     font-weight:700;
     letter-spacing:.08em;
     text-transform:uppercase;
-    color:#6B4E00;
-    background:rgba(255,212,0,.28);
-    border:1px solid rgba(255,212,0,.85);
+    color:var(--navy);
+    background:var(--green);
+    border:1px solid var(--green);
     border-radius:100px;
     padding:6px 13px;
   }
 
   footer{
     text-align:center;
-    color:rgba(226,236,250,.5);
+    color:var(--ink-soft);
     font-size:12px;
     line-height:1.9;
     margin-top:60px;
     padding-bottom:20px;
-    font-family:'IBM Plex Mono',monospace;
+    font-family:'Barlow Condensed',sans-serif;
   }
-  footer a{ color:var(--court); text-decoration:none; }
+  footer a{ color:var(--navy); text-decoration:underline; }
   footer a:hover{ text-decoration:underline; }
 
   @media (max-width:520px){
@@ -1542,7 +1599,6 @@
     .next-pill{font-size:11px; padding:5px 11px;}
     .names-row{gap:6px; margin-bottom:14px;}
     .team-block .players{font-size:13px;}
-    .score-logo{width:64px; height:64px; margin-bottom:4px;}
     .score-col{font-size:26px; padding:0 2px;}
     .meta-row{justify-content:center;}
 
@@ -1552,7 +1608,6 @@
     td.live-court-cell{font-size:13px;}
     td.live-team-cell{min-width:0;}
     .live-team-code{font-size:8px;}
-    .live-team-logo{width:40px; height:40px;}
     .live-team-cell-inner{gap:6px;}
     .live-team-players{font-size:11px;}
     .live-match-pill{font-size:7.5px; padding:1px 5px;}
@@ -1590,18 +1645,17 @@
       <circle cx="26.5" cy="37" r="1.3" fill="var(--court-dark)"/>
     </g>
   </svg>
-  <div class="tagline-script"></div>
-  <div class="eyebrow">Pickle &amp; Friends Community &times; 1Bataan United Picklers &nbsp;·&nbsp; 12 September 2026 &nbsp;·&nbsp; Pampanga Pickleball Center</div>
-  <div class="club-logos">
-    <img src="assets/pnf-logo.jpg" alt="Pickle &amp; Friends Community logo" />
-    <span class="club-logos-sep">&times;</span>
-    <img src="assets/bup-logo.jpg" alt="1Bataan United Picklers logo" />
-  </div>
-  <h1 class="title">Dual Meet</h1>
-  <div class="domination-line"></div>
-  <p class="subtitle">Find your pair's full match schedule — every round, every opponent, in order.</p>
+  <div class="eyebrow">S.A.G.E. Operator Console</div>
+  <h1 class="title">Match Control</h1>
+  <div class="domination-line" id="eventTitleLine"></div>
+  <p class="subtitle">Pick an event and day to load its live matches, standings, and sync status.</p>
 
-  <div class="day-picker" id="dayPickerWrap">
+  <div class="day-picker" id="eventPickerWrap">
+    <label for="eventPicker">Event</label>
+    <select id="eventPicker"><option value="">Loading events&hellip;</option></select>
+  </div>
+
+  <div class="day-picker" id="dayPickerWrap" style="display:none;">
     <label for="dayPicker">Select tournament day</label>
     <select id="dayPicker"></select>
     <button type="button" id="jumpToTodayBtn" class="jump-today-btn">Jump to today</button>
@@ -1639,11 +1693,35 @@
   </div>
   <div id="results" style="display:none;"></div>
   <div id="standingsResults" style="display:none;">
+    <div class="category-toggle-bar" id="categoryToggleBar"></div>
+    <div class="category-filter" id="categoryFilterWrap">
+      <label class="search-label" for="catFilterInput">Search a category</label>
+      <div class="search-row autocomplete">
+        <input id="catFilterInput" type="text" class="cat-filter-input" placeholder="e.g. Beginner 18+ Men's Doubles" autocomplete="off" inputmode="latin" />
+        <div id="catAcList" class="ac-list"></div>
+      </div>
+    </div>
+    <div id="resolutionWarning" class="empty-state resolution-warning" style="display:none;"></div>
     <div id="standingsBody"></div>
   </div>
   <div id="organizerResults" style="display:none;">
     <div class="organizer-panel">
       <div class="organizer-day-label" id="organizerDayLabel"></div>
+
+      <!-- Go-live override (spec §4.1): a kill switch as a button, not a
+           config edit + redeploy. Affects the PUBLIC index.html only — this
+           console's own tabs always stay live, for preview (spec §3). -->
+      <label class="search-label">Public site status</label>
+      <div class="golive-current" id="goLiveCurrent"></div>
+      <div class="golive-buttons">
+        <button type="button" class="golive-btn" data-live="auto">Auto</button>
+        <button type="button" class="golive-btn" data-live="true">Force live</button>
+        <button type="button" class="golive-btn golive-btn-danger" data-live="false">Force hidden</button>
+      </div>
+      <p class="organizer-hint">Controls the public event page's Live Matches/Standings tabs — this console's own tabs above are unaffected and always show live data, for preview.</p>
+      <div id="goLiveResultBox" class="organizer-result" style="display:none;"></div>
+
+      <div class="organizer-divider"></div>
 
       <label class="search-label">Facility sync status</label>
       <div id="orgStatusBox" class="organizer-status-box"></div>
@@ -1691,111 +1769,38 @@
 </div>
 
 <footer>
-  Dual Meet &middot; 12 September 2026 &middot; Pampanga Pickleball Center<br>
-  Powered by S.A.G.E. Match Control Experts
+  S.A.G.E. Match Control<br>
+  One console, every registered event.
 </footer>
 
 <script>
 // ============================================================================
-// CONFIGURATION — everything a tournament organizer would need to touch
-// lives here at the top. The rest of the file below is implementation and
-// shouldn't need editing when details change (add a day, rename a category,
-// swap a spreadsheet, etc.) — just update the values in this block.
+// CONFIGURATION — platform-wide constants only. Everything event-specific
+// (days, facilities, categories, clubs) is resolved at runtime from
+// event-data/config/events.json — see "Event/day selection" further down.
+// This is the whole point of the console (specs/match-control-console-spec.md):
+// one file, no per-event edits, ever.
 // ============================================================================
 
-// ---- Event identity ---------------------------------------------------------
-// Does triple duty: browser-storage namespace, this event's folder in the
-// shared data repo, and its folder under events/ in this repo. Keep all
-// three identical.
-const EVENT_KEY = 'pnf-x-bup-dual-meet';
-
-// ---- Days -------------------------------------------------------------------
-// One entry per tournament day. Day keys must be globally unique across all
-// events in the shared data repo — prefix them with something event-specific
-// (e.g. 'pnf-x-bup-dual-meet-day1'). Length drives the UI: with more than one day
-// the day picker shows and gates the tabs until a day is chosen; with
-// exactly one day the picker hides and that day auto-loads.
-//
-// isLive is set per day, but this organizer page always ignores it — see
-// computeDayIsLive() below.
-const DAYS = [
-  { key: 'pnf-x-bup-day1', label: 'Sep 12', date: '2026-09-12', isLive: 'auto' }
-];
-
-// ---- Organizer-only: Cloud Run resync endpoint ----------------------------
-// Must match CLOUD_RUN_BASE_URL in sheets-sync.gs. The shared secret is never
-// stored in this file — it's entered once per browser tab and held in
-// sessionStorage only (see the Organizer tab's JS further down).
+// The console is a single file that can hardcode this (spec §6) — unlike
+// per-event pages, which take it as a {{CLOUD_RUN_BASE_URL}} template token.
 const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
 
-// Noon Philippine Time — matches index.html's CONFIGURATION block. Unused by
-// computeDayIsLive() below on this page, but kept for parity (and in case a
-// future organizer-side feature needs it).
-const LIVE_GO_LIVE_HOUR_PH = 12;
-// ORGANIZER PAGE: always live, regardless of the 7 AM PH auto-schedule or
-// any per-day isLive config. This page is only ever handed to organizers,
-// not linked from the public site, so there's no reason to hide scores or
-// the Live Matches/Standings tabs here the way the public site does.
+// ORGANIZER PAGE: always live, regardless of any day's isLive config or
+// schedule — this page is only ever used by operators, not linked from the
+// public site, so there's no reason to hide scores or the Live Matches/
+// Standings tabs here the way the public site does. A separate, display-only
+// computation of the *public* site's effective state lives in the Mission
+// Control go-live control further down (see describeGoLiveState()).
 function computeDayIsLive(_day){
   return true;
 }
 
-// ---- Venues / courts ---------------------------------------------------------
-// One entry per facility/venue. `courts` is the inclusive [min, max] range
-// of court numbers at that venue — facilityForCourt() below maps a court
-// number to its facility name via this list. Length drives the UI: with a
-// single facility, the facility title row on the Live Matches board and the
-// per-facility resync row below are both suppressed.
-const FACILITIES = [
-  { name: 'Pampanga Pickleball Center', courts: [1, 9] }
-];
-
-// ---- Categories ---------------------------------------------------------------
-// `name` is the short code used in teamCodes (e.g. "B18MD_1"); `full` is the
-// human-readable label shown in the UI. Add a new division/event here and it
-// automatically flows through parsing, sorting, and display everywhere else.
-const DIVISIONS = {
-  LI: { name: 'LI', full: 'Low Intermediate' },
-  HI: { name: 'HI', full: 'High Intermediate' },
-  A:  { name: 'A',  full: 'Advanced' }
-};
-
-const EVENTS = {
-  WD: "Women's Doubles",
-  MD: "Men's Doubles",
-  XD: "Mixed Doubles"
-};
-
-// Optional display-order overrides. Leave null to fall back to the key
-// insertion order of DIVISIONS / EVENTS above — the normal case.
-const DIVISION_ORDER = null;
-const EVENT_ORDER    = null;
-const DIVISION_ORDER_RESOLVED = DIVISION_ORDER || Object.values(DIVISIONS).map(d => d.full);
-const EVENT_ORDER_RESOLVED    = EVENT_ORDER || Object.keys(EVENTS);
-
-// ---- Clubs --------------------------------------------------------------------
-// Exactly two clubs face off in a dual meet, so — unlike DIVISIONS/EVENTS/
-// FACILITIES/DAYS above — this is filled in directly with this event's two
-// club identities rather than left as an example to replace.
-const CLUBS = {
-  'PNF': { name: 'PNF', full: 'Pickle & Friends Community', logo: 'assets/pnf-logo.jpg' },
-  'BUP': { name: 'BUP', full: '1Bataan United Picklers', logo: 'assets/bup-logo.jpg' }
-};
-
-// Auto-derived from CLUBS/DIVISIONS/EVENTS above — built once here rather
-// than recompiled on every call, since parseCode() runs for every
-// match/standing row on every render, and renders happen on every 10s
-// live-data poll. Don't hand-edit this regex; add/rename entries in
-// CLUBS/DIVISIONS/EVENTS instead. Team codes look like
-// "<CLUB>_<DIVISION><EVENT>_<REST>", e.g. "PNF_B18MD_1".
-const CODE_REGEX = new RegExp(
-  `^(${Object.keys(CLUBS).join('|')})_(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
-);
-
 // ---- Playoff stage display -------------------------------------------------
-// Controls the label, banner styling, and color-coding for each playoff
-// round wherever standings show a bracket (Round Robin rows aren't listed
-// here — they're always "RR" and rendered separately).
+// Fixed, universal stage metadata — the regexes that read it (roundKeyword,
+// standingsStageKey, etc.) don't depend on any per-event config, so this
+// never needed to move into events.json. Round Robin rows aren't listed
+// here — they're always "RR" and rendered separately.
 const STAGE_META = {
   R16:    { label: 'Round of 16',   banner:false },
   QF:     { label: 'Quarterfinals', banner:false },
@@ -1803,35 +1808,31 @@ const STAGE_META = {
   BRONZE: { label: 'Bronze Battle', banner:true },
   FINAL:  { label: 'Finals',        banner:true }
 };
-// Bronze/Final are cross-club matches — the two clubs' bracket winners (or
-// runners-up) face each other directly — unlike Round Robin/R16/QF/SF,
-// which stay within one club's own bracket. renderCategoryColumn renders
-// these two stages once, spanning both club columns, instead of once per
-// club (which would show each club's half of the same match next to a fake
-// TBD opponent).
+// Bronze/Final are cross-club matches (dual-meet type only) — the two clubs'
+// bracket winners (or runners-up) face each other directly, unlike Round
+// Robin/R16/QF/SF, which stay within one club's own bracket.
 const CROSS_CLUB_STAGE_KEYS = ['BRONZE', 'FINAL'];
 const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
 const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
 
-// ---- Data source --------------------------------------------------------------
-// Fixed for every event — one shared repo, one folder per event, keyed by
-// EVENT_KEY above. Nothing here is filled in at instantiation; if a page
-// ever needs a different repo, that is a platform change, not an event
-// setting. GitHub Pages must be enabled on the event-data repo (Settings ->
-// Pages -> Deploy from branch -> GHPAGES_BRANCH) with a .nojekyll file at
-// its root so GitHub serves the JSON as plain static files. Pages caches
-// every response for ~10 minutes with no way to force an early refresh —
-// the cache-busting query param below is what keeps polls actually fresh
-// instead of stuck on a 10-minute-old snapshot.
+// ---- Event registry (event-data/config/events.json) ------------------------
+// One shared repo, one folder per event. GitHub Pages must be enabled on
+// event-data (Settings -> Pages -> Deploy from branch -> GHPAGES_BRANCH)
+// with a .nojekyll file at its root so GitHub serves JSON as plain static
+// files. Pages caches every response for ~10 minutes with no way to force
+// an early refresh — the cache-busting query param below is what keeps
+// fetches actually fresh instead of stuck on a stale copy.
 const GHPAGES_OWNER  = 'sage-match-control';
 const GHPAGES_REPO   = 'event-data';
-const GHPAGES_BRANCH = 'main'; // not part of the URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
-const snapshotUrlFor = dayKey =>
-  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${dayKey}.json?t=${Date.now()}`;
+const GHPAGES_BRANCH = 'main'; // not part of any URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
+const configUrlFor = () =>
+  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
+const snapshotUrlFor = (eventKey, dayKey) =>
+  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${eventKey}/data/${dayKey}.json?t=${Date.now()}`;
 
 // ---- Network & polling timing --------------------------------------------
-// How long to wait on the snapshot fetch before giving up (venue wifi at a
-// live event can hang rather than fail outright).
+// How long to wait on a fetch before giving up (venue wifi at a live event
+// can hang rather than fail outright).
 const FETCH_TIMEOUT_MS = 8000;
 // How often to re-check GitHub Pages while a tab is open and visible.
 // Paused automatically while the tab/app is backgrounded. Apps Script's own
@@ -1840,21 +1841,32 @@ const FETCH_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 10000;
 
 // ---- Browser storage keys -------------------------------------------------
-// Namespaced off EVENT_KEY, so a new event can never read or clobber
-// another event's saved state in a shared browser. Used to remember the
-// last day picked + last search across page reloads.
-const STORAGE_DAY_KEY = `${EVENT_KEY}.dayIndex`;
-const STORAGE_SEARCH_KEY = `${EVENT_KEY}.search`;
-const ORG_SECRET_STORAGE_KEY = `${EVENT_KEY}.orgSecret`;
+// One secret for the whole session, not namespaced per event (spec §4) —
+// one SYNC_SHARED_SECRET covers every event, so an operator running two
+// events pastes it once, not twice.
+const STORAGE_SELECTION_KEY = 'sage.lastSelection'; // { event, day } JSON — last picked, for a bare visit (spec §5)
+const STORAGE_SEARCH_KEY = 'sage.search';
+const ORG_SECRET_STORAGE_KEY = 'sage.orgSecret';
 
 // ============================================================================
 // END CONFIGURATION — implementation follows below
 // ============================================================================
 
+// ---- Runtime state, resolved per event/day selection (see "Event/day
+// selection" further down) — replaces the old per-page EVENT_KEY/DAYS/
+// FACILITIES/DIVISIONS/EVENTS/CLUBS constants entirely.
+let EVENTS_REGISTRY = new Map(); // eventKey -> raw event entry from events.json (archived ones excluded)
+let CURRENT_EVENT_KEY = null;
+let CURRENT_TYPE = null;         // 'dual-meet' | 'standard' | null (unresolved/unknown — shown as an error, never guessed)
+let DISPLAY = {};                // { divisions?, events?, clubs? } for the selected event
+let DAYS = [];                   // this event's days, sorted by date: [{key,label,date}]
+let FACILITIES = [];             // this day's facilities: [{name}] — resolved in selectDay(), courts derived from data (see buildFacilityCourtGroups)
+
 let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
 let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) — set in selectDay(), re-checked on every poll
 
 let MATCHES = [];
+let MATCHES_BY_FACILITY = []; // [{name, matches}] — each facility's own matches kept separate (see buildFacilityCourtGroups)
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
 function buildMatchByCodeIndex(matches){
   const idx = new Map();
@@ -1977,7 +1989,7 @@ async function fetchDaySnapshot(dayKey){
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(snapshotUrlFor(dayKey), { cache: 'no-store', signal: controller.signal });
+    const res = await fetch(snapshotUrlFor(CURRENT_EVENT_KEY, dayKey), { cache: 'no-store', signal: controller.signal });
     if(!res.ok){
       // Cloud Run hasn't published this day yet at all shows up here as a
       // plain 404 from jsDelivr/GitHub — carry the status through so the
@@ -2023,15 +2035,24 @@ async function loadLiveData(){
     // Server-side (Cloud Run) already fetched each facility, so this is
     // just re-assembling what it published — no per-facility network calls
     // happen here anymore. matchNumber/teamCode are unique across a day's
-    // facilities, so combining is just a concatenation.
-    const matches = snapshot.facilities
-      .flatMap(f => rowsToMatches(parseCSV(f.matchesCsv)))
+    // facilities, so combining is just a concatenation. Each facility's own
+    // matches are also kept separate (MATCHES_BY_FACILITY) so Live Matches
+    // can group courts per facility straight from the data — see
+    // buildFacilityCourtGroups — instead of guessing from a configured
+    // court-number range.
+    const matchesByFacility = snapshot.facilities.map(f => ({
+      name: f.name,
+      matches: rowsToMatches(parseCSV(f.matchesCsv))
+    }));
+    const matches = matchesByFacility
+      .flatMap(f => f.matches.map(m => ({ ...m, facility: f.name })))
       .sort((a, b) => a.num - b.num);
     const standings = snapshot.facilities.flatMap(f => rowsToStandings(parseCSV(f.standingsCsv)));
 
     if(matches.length === 0) throw new Error('No rows parsed from any facility');
 
     MATCHES = matches;
+    MATCHES_BY_FACILITY = matchesByFacility;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
     LAST_SNAPSHOT = snapshot;
@@ -2122,43 +2143,79 @@ function revealLiveTabsAfterLoad(){
   }
 }
 
-// Looks up a division's display info, falling back to the raw code for any
-// division that isn't explicitly listed above instead of breaking.
-// (DIVISIONS/EVENTS/DIVISION_ORDER/EVENT_ORDER/CODE_REGEX are all set in the
-// CONFIGURATION block up top.)
-function divisionMeta(divCode){
-  if(!divCode) return null;
-  if(DIVISIONS[divCode]) return DIVISIONS[divCode];
-  return { name: divCode, full: divCode };
-}
-
-// Parsed-result cache: the same teamCodes get parsed repeatedly across
-// renderStandings, ticketHTML, liveTableRowsHTML, renderIntro, etc. in a
-// single render pass, and renders happen on every 15s live-data poll.
+// ---- Generic code parsing (position-based, not a regex built from known
+// club/division/event codes — spec §2.2: club/category sets are derived
+// from the data, never configured) ----
+// dual-meet: <CLUB>_<CATEGORY>_<REST>. standard: <CATEGORY>_<REST>.
+// Never fails structurally — grouping/rendering works even with zero
+// `display` config (spec §2.3); only labels ever need it.
 const parseCodeCache = new Map();
-
-function parseCode(code) {
-  let cached = parseCodeCache.get(code);
+function parseCode(code){
+  const cacheKey = `${CURRENT_TYPE}::${code}`;
+  let cached = parseCodeCache.get(cacheKey);
   if(cached) return cached;
-
-  const m = code.match(CODE_REGEX);
-
-  const result = !m
-    ? { club: null, division: null, event: null, rest: code }
-    : { club: m[1], division: m[2], event: m[3], rest: m[4] || '' };
-  parseCodeCache.set(code, result);
+  const parts = String(code).split('_');
+  let result;
+  if(CURRENT_TYPE === 'dual-meet'){
+    const [club, category, ...rest] = parts;
+    result = { club: club || null, category: category || null, rest: rest.join('_') };
+  } else {
+    const [category, ...rest] = parts;
+    result = { club: null, category: category || null, rest: rest.join('_') };
+  }
+  parseCodeCache.set(cacheKey, result);
   return result;
 }
 
-// Maps a court number to its facility name via the FACILITIES list in the
-// CONFIGURATION block above.
-function facilityForCourt(court){
-  if(!court) return '';
-  const m = court.match(/(\d+)/);
-  if(!m) return '';
-  const n = parseInt(m[1], 10);
-  const facility = FACILITIES.find(f => n >= f.courts[0] && n <= f.courts[1]);
-  return facility ? facility.name : '';
+// Splits a category token ("LIWD") into its division/event codes by
+// longest-prefix match against DISPLAY.divisions' keys (spec §2.4) — the
+// only place display config is actually required for anything. Returns
+// null if it can't be split (no display config, or no matching prefix);
+// callers fall back to showing the raw token untranslated.
+function splitCategory(category){
+  if(!category || !DISPLAY.divisions) return null;
+  const divKeys = Object.keys(DISPLAY.divisions).sort((a, b) => b.length - a.length);
+  for(const divCode of divKeys){
+    if(category.startsWith(divCode)){
+      const evCode = category.slice(divCode.length);
+      if(DISPLAY.events && Object.prototype.hasOwnProperty.call(DISPLAY.events, evCode)){
+        return { divCode, evCode };
+      }
+    }
+  }
+  return null;
+}
+
+// Tracks every category token that display config couldn't resolve, so the
+// console can show one visible warning instead of a silent "Other" bucket
+// (spec §2.4). Cleared and rebuilt at the top of every renderStandings pass.
+let UNRESOLVED_CATEGORIES = new Set();
+
+function categoryLabel(category){
+  if(!category) return 'Other';
+  const split = splitCategory(category);
+  if(!split){
+    if(DISPLAY.divisions) UNRESOLVED_CATEGORIES.add(category);
+    return category;
+  }
+  const divLabel = DISPLAY.divisions[split.divCode] || split.divCode;
+  const evLabel = (DISPLAY.events && DISPLAY.events[split.evCode]) || split.evCode;
+  return `${divLabel} ${evLabel}`.trim();
+}
+
+// A category token's "division bucket" for the desktop standings grid's
+// row-packing (see renderStandings) — the resolved division code when
+// display config splits it, else the whole token itself. Without display
+// config every category is structurally its own bucket (nothing to group
+// by), which just means a wider/less-dense grid, never a crash.
+function divisionGroupKeyOf(category){
+  const split = splitCategory(category);
+  return split ? split.divCode : category;
+}
+
+function clubLabel(clubCode){
+  if(!clubCode) return clubCode;
+  return (DISPLAY.clubs && DISPLAY.clubs[clubCode]) || clubCode;
 }
 
 // Twice-to-beat playoff slots encode which meeting they belong to as a
@@ -2199,28 +2256,44 @@ function roundLabel(rest){
 
 function divisionLabel(code){
   const p = parseCode(code);
-  if(!p.division) return null;
-  const club = CLUBS[p.club];
-  const div = divisionMeta(p.division);
-  const ev = EVENTS[p.event] || '';
-  const clubPart = club ? `${club.full} · ` : '';
-  return `${clubPart}${div.full} ${ev}`;
+  if(!p.category) return null;
+  const clubPart = p.club ? `${clubLabel(p.club)} · ` : '';
+  return `${clubPart}${categoryLabel(p.category)}`;
 }
 
 function divisionEventLabel(code){
   const p = parseCode(code);
-  if(!p.division) return 'Other';
-  const div = divisionMeta(p.division);
-  const ev = EVENTS[p.event] || '';
-  return `${div.full} ${ev}`;
+  return categoryLabel(p.category);
 }
 
+// Category display order: built once per render pass (see renderStandings)
+// from whichever category tokens are actually present, ordered by
+// DISPLAY.divisions x DISPLAY.events key order when display config exists,
+// else first-appearance order in the data (spec §2.1/§2.3 — DIVISION_ORDER/
+// EVENT_ORDER disappear entirely; JSON key order does this job instead).
+let CATEGORY_ORDER_INDEX = new Map();
+function buildCategoryOrderIndex(categoryTokens){
+  const index = new Map();
+  if(DISPLAY.divisions){
+    const divKeys = Object.keys(DISPLAY.divisions);
+    const evKeys = Object.keys(DISPLAY.events || {});
+    divKeys.forEach(divCode => {
+      evKeys.forEach(evCode => {
+        const token = divCode + evCode;
+        if(categoryTokens.includes(token) && !index.has(token)) index.set(token, index.size);
+      });
+    });
+  }
+  // Anything not already placed above (no display config at all, or a
+  // token display couldn't resolve) — appended in first-appearance order
+  // rather than dropped or bucketed together.
+  categoryTokens.forEach(token => { if(!index.has(token)) index.set(token, index.size); });
+  return index;
+}
 function categorySortKey(sampleRow){
   const p = parseCode(sampleRow.teamCode);
-  const div = divisionMeta(p.division);
-  const divRank = div ? DIVISION_ORDER_RESOLVED.indexOf(div.full) : -1;
-  const eventRank = EVENT_ORDER_RESOLVED.indexOf(p.event);
-  return (divRank === -1 ? 999 : divRank) * 10 + (eventRank === -1 ? 9 : eventRank);
+  const idx = CATEGORY_ORDER_INDEX.get(p.category);
+  return idx === undefined ? 999 : idx;
 }
 
 // (STAGE_META/STAGE_ORDER/BADGE_CLASSES are set in the CONFIGURATION block
@@ -2444,9 +2517,8 @@ function renderMatchup(pair){
 function renderClubSubsection(clubCode, rows){
   const stageHtml = renderStageTables(rows);
   if(!stageHtml) return '';
-  const club = CLUBS[clubCode];
   return `<div class="club-subsection">
-    <div class="club-subhead">${escapeHtml(club ? club.full : clubCode)}</div>
+    <div class="club-subhead">${escapeHtml(clubLabel(clubCode))}</div>
     ${stageHtml}
   </div>`;
 }
@@ -2574,8 +2646,7 @@ function restoreScrollPositions(root, positions){
 function renderClubSummary(byClub, clubOrder){
   const clubWins = clubOrder.map(clubCode => ({
     code: clubCode,
-    name: CLUBS[clubCode] ? CLUBS[clubCode].full : clubCode,
-    logo: CLUBS[clubCode] ? CLUBS[clubCode].logo : null,
+    name: clubLabel(clubCode),
     wins: byClub.get(clubCode)
       .filter(s => standingsStageKey(s.teamCode) === 'RR')
       .reduce((sum, s) => sum + (s.wins || 0), 0)
@@ -2587,17 +2658,14 @@ function renderClubSummary(byClub, clubOrder){
     if(i > 0) html += `<div class="club-summary-vs">VS</div>`;
     const isLeader = c.wins === topWins && topWins > 0;
     const identityHTML = `<div class="cs-identity">
-        ${c.logo ? `<img class="cs-logo" src="${escapeHtml(c.logo)}" alt="${escapeHtml(c.name)} logo">` : ''}
         <span class="cs-name">${escapeHtml(c.name)}</span>
       </div>`;
     const statHTML = `<div class="cs-stat">
         <span class="cs-wins">${c.wins}</span>
         <span class="cs-label">wins</span>
       </div>`;
-    // Mirror the last item's internal order (stat then identity) so every
-    // logo lands on the bar's outer edge and every wins stat lands on the
-    // inner side, next to VS — symmetric left/right instead of both items
-    // reading logo-then-wins regardless of which side they're on.
+    // Mirror the last item's internal order (stat then identity) so both
+    // items read the same way regardless of which side they're on.
     const isLast = i === clubWins.length - 1;
     html += `<div class="club-summary-item${isLeader ? ' leader' : ''}">${isLast ? statHTML + identityHTML : identityHTML + statHTML}</div>`;
   });
@@ -2605,15 +2673,53 @@ function renderClubSummary(byClub, clubOrder){
   return html;
 }
 
+// Shows/hides a banner naming any category token that display config
+// couldn't resolve to a division+event label (spec §2.4) — replaces the
+// old silent "Other" bucket. Populated by UNRESOLVED_CATEGORIES, rebuilt at
+// the top of every renderStandings() pass.
+function renderResolutionWarning(){
+  const el = document.getElementById('resolutionWarning');
+  if(!el) return;
+  if(UNRESOLVED_CATEGORIES.size === 0){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const codes = Array.from(UNRESOLVED_CATEGORIES).sort().map(escapeHtml).join(', ');
+  el.innerHTML = `<strong>Unmapped categor${UNRESOLVED_CATEGORIES.size === 1 ? 'y' : 'ies'}:</strong> ${codes} — not found in this event's display.divisions/display.events config. Showing the raw code${UNRESOLVED_CATEGORIES.size === 1 ? '' : 's'} instead of a label.`;
+  el.style.display = '';
+}
+
 function renderStandings(){
   const bodyEl = standingsBodyEl;
   if(!bodyEl) return;
+  UNRESOLVED_CATEGORIES = new Set();
+  const categoryToggleBarEl2 = document.getElementById('categoryToggleBar');
+  const categoryFilterWrapEl = document.getElementById('categoryFilterWrap');
+  if(categoryToggleBarEl2) categoryToggleBarEl2.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
+  if(categoryFilterWrapEl) categoryFilterWrapEl.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
+
   const scrollPositions = captureScrollPositions(bodyEl);
 
   if(STANDINGS.length === 0){
+    if(CURRENT_TYPE === 'standard'){ CATEGORY_OPTIONS = []; CATEGORIES_MAP = new Map(); renderCategoryToggleBar(); }
     bodyEl.innerHTML = `<div class="empty-state">No standings data yet.</div>`;
+    renderResolutionWarning();
     return;
   }
+
+  const categoryTokensPresent = Array.from(new Set(STANDINGS.map(s => parseCode(s.teamCode).category)));
+  CATEGORY_ORDER_INDEX = buildCategoryOrderIndex(categoryTokensPresent);
+
+  if(CURRENT_TYPE === 'standard'){
+    renderStandardStandings();
+  } else {
+    renderDualMeetStandings();
+  }
+
+  restoreScrollPositions(bodyEl, scrollPositions);
+  renderResolutionWarning();
+}
+
+// ---- dual-meet standings: per-club columns + cross-club Bronze/Final ----
+function renderDualMeetStandings(){
+  const bodyEl = standingsBodyEl;
 
   // Group by club first — needed for the club order + win-totals summary,
   // and for renderCategoryColumn's own per-club split of each category.
@@ -2623,8 +2729,9 @@ function renderStandings(){
     if(!byClub.has(clubCode)) byClub.set(clubCode, []);
     byClub.get(clubCode).push(s);
   });
-  const clubOrder = Object.keys(CLUBS).filter(c => byClub.has(c))
-    .concat(Array.from(byClub.keys()).filter(c => !CLUBS[c]));
+  const knownClubOrder = DISPLAY.clubs ? Object.keys(DISPLAY.clubs) : [];
+  const clubOrder = knownClubOrder.filter(c => byClub.has(c))
+    .concat(Array.from(byClub.keys()).filter(c => !knownClubOrder.includes(c)));
 
   let html = renderClubSummary(byClub, clubOrder);
 
@@ -2638,21 +2745,25 @@ function renderStandings(){
     .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
 
   if(isDesktopStandings()){
-    // Desktop: one column per division+event category, each club's bracket
-    // stacked inside, laid out 3-per-row (see the .standings-board-desktop
-    // media query above for why this naturally groups by division) — except
-    // a division with fewer categories than EVENTS configures (e.g. Advanced
-    // having only Men's Doubles) doesn't get a half-empty row of its own;
-    // instead it's set aside into a 4th column, spanning (and vertically
-    // centered within) the full height of the rows beside it.
+    // Desktop: one column per category, each club's bracket stacked inside,
+    // laid out N-per-row grouped by division (see the .standings-board-desktop
+    // media query above) — except a division with fewer categories than a
+    // "full" division has (e.g. Advanced having only Men's Doubles) doesn't
+    // get a half-empty row of its own; instead it's set aside into an
+    // overflow column, spanning (and vertically centered within) the full
+    // height of the rows beside it.
     const runs = [];
     sortedCats.forEach(cat => {
-      const division = parseCode(categories.get(cat)[0].teamCode).division;
+      const p = parseCode(categories.get(cat)[0].teamCode);
+      const division = divisionGroupKeyOf(p.category);
       const lastRun = runs[runs.length - 1];
       if(lastRun && lastRun.division === division) lastRun.cats.push(cat);
       else runs.push({ division, cats: [cat] });
     });
-    const fullEventCount = Object.keys(EVENTS).length;
+    // "Full" row width: the configured event count when display.events
+    // lists the whole tournament's events, else the widest run actually
+    // seen in the data (no display config to say what "full" means).
+    const fullEventCount = DISPLAY.events ? Object.keys(DISPLAY.events).length : Math.max(1, ...runs.map(r => r.cats.length));
     const mainRuns = runs.filter(r => r.cats.length >= fullEventCount);
     const overflowCats = runs.filter(r => r.cats.length < fullEventCount).flatMap(r => r.cats);
 
@@ -2680,7 +2791,158 @@ function renderStandings(){
   }
 
   bodyEl.innerHTML = html;
-  restoreScrollPositions(bodyEl, scrollPositions);
+}
+
+// ---- standard standings: one flat card per category ----
+let selectedStandingsCategory = null; // mobile: category label chosen from the search filter, or null
+let CATEGORY_OPTIONS = [];            // sorted list of current category labels
+let CATEGORIES_MAP = new Map();       // category label -> standings rows
+let hiddenCategories = new Set();     // desktop: category labels toggled off via the toggle bar
+
+function renderCategoryCard(cat, rows){
+  const stageHtml = renderStageTables(rows);
+  if(!stageHtml) return '';
+  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}">
+    <div class="standings-col-head">
+      <span class="cat-title">${escapeHtml(cat)}</span>
+    </div>
+    <div class="standings-col-body">${stageHtml}</div>
+  </div>`;
+}
+
+function renderCategoryToggleBar(){
+  const bar = document.getElementById('categoryToggleBar');
+  if(!bar) return;
+  if(CATEGORY_OPTIONS.length === 0){ bar.innerHTML = ''; return; }
+  const chips = CATEGORY_OPTIONS.map(cat => {
+    const isHidden = hiddenCategories.has(cat);
+    return `<button type="button" class="cat-toggle-chip${isHidden ? ' hidden-cat' : ' active'}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
+  }).join('');
+  bar.innerHTML = `<span class="cat-toggle-label">Categories</span>${chips}<button type="button" class="cat-toggle-action" data-action="all">Show all</button><button type="button" class="cat-toggle-action" data-action="none">Hide all</button>`;
+}
+
+function updateStandingsBoardAlignment(){
+  const board = standingsBodyEl && standingsBodyEl.querySelector('.standings-board-desktop');
+  if(!board) return;
+  const hasOverflow = board.scrollWidth > board.clientWidth + 1;
+  board.classList.toggle('has-overflow', hasOverflow);
+}
+
+function renderStandardStandings(){
+  const bodyEl = standingsBodyEl;
+  const categories = new Map();
+  STANDINGS.forEach(s => {
+    const cat = divisionEventLabel(s.teamCode);
+    if(!categories.has(cat)) categories.set(cat, []);
+    categories.get(cat).push(s);
+  });
+  const sortedCats = Array.from(categories.keys())
+    .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
+
+  CATEGORIES_MAP = categories;
+  CATEGORY_OPTIONS = sortedCats;
+  renderCategoryToggleBar();
+
+  if(selectedStandingsCategory && !categories.has(selectedStandingsCategory)){
+    selectedStandingsCategory = null;
+    if(catInput) catInput.value = '';
+  }
+
+  let html;
+  if(isDesktopStandings()){
+    const visibleCats = CATEGORY_OPTIONS.filter(cat => !hiddenCategories.has(cat));
+    if(visibleCats.length === 0){
+      html = `<div class="empty-state">All categories are hidden. Use the toggles above to show one.</div>`;
+    } else {
+      html = `<div class="standings-board standings-board-desktop">`;
+      visibleCats.forEach(cat => { html += renderCategoryCard(cat, CATEGORIES_MAP.get(cat)); });
+      html += `</div>`;
+    }
+  } else if(selectedStandingsCategory){
+    html = `<div class="standings-cards">${renderCategoryCard(selectedStandingsCategory, CATEGORIES_MAP.get(selectedStandingsCategory))}</div>`;
+  } else {
+    html = `<div class="empty-state">Search and select a category above to view its standings.</div>`;
+  }
+
+  bodyEl.innerHTML = html;
+  updateStandingsBoardAlignment();
+}
+
+if(document.getElementById('categoryToggleBar')){
+  document.getElementById('categoryToggleBar').addEventListener('click', (e) => {
+    const chip = e.target.closest('.cat-toggle-chip');
+    if(chip){
+      const cat = chip.dataset.cat;
+      if(hiddenCategories.has(cat)) hiddenCategories.delete(cat);
+      else hiddenCategories.add(cat);
+      renderCategoryToggleBar();
+      if(CURRENT_TYPE === 'standard') renderStandardStandings();
+      return;
+    }
+    const actionBtn = e.target.closest('.cat-toggle-action');
+    if(actionBtn){
+      if(actionBtn.dataset.action === 'all') hiddenCategories.clear();
+      else if(actionBtn.dataset.action === 'none') hiddenCategories = new Set(CATEGORY_OPTIONS);
+      renderCategoryToggleBar();
+      if(CURRENT_TYPE === 'standard') renderStandardStandings();
+    }
+  });
+}
+
+const catInput = document.getElementById('catFilterInput');
+const catAcList = document.getElementById('catAcList');
+let catAcIndex = -1;
+
+function renderCatAutocomplete(query){
+  if(!catAcList) return;
+  const q = query.trim().toLowerCase();
+  const matches = (q ? CATEGORY_OPTIONS.filter(c => c.toLowerCase().includes(q)) : CATEGORY_OPTIONS).slice(0, 20);
+  if(matches.length === 0){ catAcList.classList.remove('show'); catAcList.innerHTML=''; return; }
+  catAcList.innerHTML = matches.map((c,i) => `<div class="ac-item" data-cat="${escapeHtml(c)}" data-i="${i}"><span>${escapeHtml(c)}</span></div>`).join('');
+  catAcList.classList.add('show');
+  catAcIndex = -1;
+}
+
+function selectCategory(cat){
+  if(!CATEGORIES_MAP.has(cat)) return;
+  selectedStandingsCategory = cat;
+  if(catInput) catInput.value = cat;
+  renderStandardStandings();
+}
+
+if(catInput){
+  catInput.addEventListener('input', () => renderCatAutocomplete(catInput.value));
+  catInput.addEventListener('focus', () => renderCatAutocomplete(catInput.value));
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('#categoryFilterWrap')) catAcList.classList.remove('show');
+  });
+  catAcList.addEventListener('click', (e) => {
+    const item = e.target.closest('.ac-item');
+    if(!item) return;
+    selectCategory(item.dataset.cat);
+    catAcList.classList.remove('show');
+  });
+  catInput.addEventListener('keydown', (e) => {
+    const items = Array.from(catAcList.querySelectorAll('.ac-item'));
+    if(e.key === 'ArrowDown' && items.length){
+      e.preventDefault();
+      catAcIndex = Math.min(catAcIndex+1, items.length-1);
+      items.forEach(it=>it.classList.remove('active'));
+      items[catAcIndex].classList.add('active');
+    } else if(e.key === 'ArrowUp' && items.length){
+      e.preventDefault();
+      catAcIndex = Math.max(catAcIndex-1, 0);
+      items.forEach(it=>it.classList.remove('active'));
+      items[catAcIndex].classList.add('active');
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      const active = catAcList.querySelector('.ac-item.active') || catAcList.querySelector('.ac-item');
+      if(active) selectCategory(active.dataset.cat);
+      catAcList.classList.remove('show');
+    } else if(e.key === 'Escape'){
+      catAcList.classList.remove('show');
+    }
+  });
 }
 
 // Re-render standings if the viewport crosses the desktop/mobile breakpoint
@@ -2707,9 +2969,9 @@ window.addEventListener('resize', () => {
 // with the same names on opposite clubs.
 let allTeams = [];
 function pairKey(code, p1, p2){
-  const { club, division, event } = parseCode(code);
+  const { club, category } = parseCode(code);
   const names = [p1.trim().toLowerCase(), p2.trim().toLowerCase()].sort().join('|');
-  return `${club||''}|${division||''}|${event||''}|${names}`;
+  return `${club||''}|${category||''}|${names}`;
 }
 function rebuildTeamIndex(){
   const byPair = new Map();
@@ -2774,18 +3036,23 @@ viewTabs.forEach(btn => {
   });
 });
 
-// ---------- Persistence: remember the last day + search across reloads ----------
+// ---------- Persistence: remember the last event+day + search across reloads ----------
 // Wrapped in try/catch since localStorage can throw in some private-browsing
 // or embedded contexts — this is a nice-to-have, never worth breaking the
-// app over. (STORAGE_DAY_KEY/STORAGE_SEARCH_KEY are set in the
-// CONFIGURATION block at the top of this script.)
-function saveDayIndex(idx){ try{ localStorage.setItem(STORAGE_DAY_KEY, String(idx)); } catch(e){} }
-function loadSavedDayIndex(){
+// app over.
+function saveSelection(){
+  try{ localStorage.setItem(STORAGE_SELECTION_KEY, JSON.stringify({ event: CURRENT_EVENT_KEY, day: DAYS[currentDayIndex] ? DAYS[currentDayIndex].key : null })); } catch(e){}
+  // Round-trips through ?event=&day= (spec §5) so a bookmark or shared link
+  // lands straight on the same event/day.
   try{
-    const v = localStorage.getItem(STORAGE_DAY_KEY);
-    const idx = v === null ? NaN : parseInt(v, 10);
-    return (!isNaN(idx) && idx >= 0 && idx < DAYS.length) ? idx : null;
-  } catch(e){ return null; }
+    const url = new URL(window.location.href);
+    if(CURRENT_EVENT_KEY) url.searchParams.set('event', CURRENT_EVENT_KEY); else url.searchParams.delete('event');
+    if(DAYS[currentDayIndex]) url.searchParams.set('day', DAYS[currentDayIndex].key); else url.searchParams.delete('day');
+    window.history.replaceState(null, '', url);
+  } catch(e){}
+}
+function loadSavedSelection(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_SELECTION_KEY) || 'null'); } catch(e){ return null; }
 }
 function saveSearchState(raw){ try{ localStorage.setItem(STORAGE_SEARCH_KEY, raw); } catch(e){} }
 function loadSavedSearch(){ try{ return localStorage.getItem(STORAGE_SEARCH_KEY) || ''; } catch(e){ return ''; } }
@@ -2806,6 +3073,13 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
   dayIsLive = computeDayIsLive(day);
+
+  // Resolved fresh per day (not a fixed event-wide constant) — a day's
+  // facility list comes straight from this event's config entry.
+  const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  const rawDay = rawEvent && rawEvent.days ? rawEvent.days[day.key] : null;
+  FACILITIES = ((rawDay && rawDay.facilities) || []).map(f => ({ name: f.name }));
+  renderFacilityControls();
 
   // Switching days always drops back to the same "first screen" shown on
   // initial page load — tabs/status hidden, just the centered prompt —
@@ -2828,7 +3102,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   input.value = '';
   if(typeof updateClearBtn === 'function') updateClearBtn();
 
-  saveDayIndex(idx);
+  saveSelection();
   // A manually-chosen day drops any search saved for a different day, same
   // as clearing the input above — the initial-load hydration path re-adds
   // it right back below if there is one.
@@ -2861,23 +3135,28 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   // dayPromptEl, which is still visible — nothing else to do here.
 }
 
-if(dayPickerEl){
-  dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day\u2026</option>' +
-    DAYS.map((d, i) => `<option value="${i}">${escapeHtml(d.label)}</option>`).join('');
+const dayPickerWrapEl = document.getElementById('dayPickerWrap');
 
+// Rebuilds the day picker for whichever event is currently selected \u2014 moved
+// into a function (unlike the old per-event page) since DAYS now changes
+// every time the operator switches events, rather than being fixed at load.
+function renderDayPicker(){
+  if(dayPickerEl){
+    dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day\u2026</option>' +
+      DAYS.map((d, i) => `<option value="${i}">${escapeHtml(d.label)}</option>`).join('');
+  }
+  // A single-day event has nothing to pick between, so the picker (and
+  // "Jump to today") are just friction.
+  if(dayPickerWrapEl) dayPickerWrapEl.style.display = DAYS.length <= 1 ? 'none' : '';
+}
+
+if(dayPickerEl){
   dayPickerEl.addEventListener('change', async () => {
     const idx = parseInt(dayPickerEl.value, 10);
     if(isNaN(idx)) return;
     await selectDay(idx);
   });
 }
-
-// A single-day event has nothing to pick between, so the picker (and
-// "Jump to today") are just friction \u2014 see the DAYS.length === 1 branch of
-// the initial-load hydration below, which auto-selects the one day instead
-// of waiting for a click here.
-const dayPickerWrapEl = document.getElementById('dayPickerWrap');
-if(DAYS.length <= 1 && dayPickerWrapEl) dayPickerWrapEl.style.display = 'none';
 
 // Finds the day whose date matches today (Philippine time, matching the
 // isLive 7am-PH threshold elsewhere). If there's no exact match — a rest
@@ -2888,7 +3167,7 @@ function getTodayOrNextDayIndex(){
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
   const exactIdx = DAYS.findIndex(d => d.date === todayStr);
   if(exactIdx !== -1) return exactIdx;
-  const nextIdx = DAYS.findIndex(d => d.date > todayStr);
+  const nextIdx = DAYS.findIndex(d => d.date && d.date > todayStr);
   if(nextIdx !== -1) return nextIdx;
   return DAYS.length - 1;
 }
@@ -2979,11 +3258,6 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function teamLogoHTML(teamCode){
-  const club = CLUBS[parseCode(teamCode).club];
-  return club && club.logo ? `<img class="score-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
-}
-
 function ticketHTML(m, teamCode, isNext){
   const isT1 = m.t1 === teamCode;
   const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
@@ -3009,7 +3283,10 @@ function ticketHTML(m, teamCode, isNext){
   const displayCourtLabel = isLive ? `Court ${displayCourt}` : displayCourt;
   // A single-facility event has nothing to disambiguate, so naming it on
   // every card would just be noise (see facilityTableHTML's identical check).
-  const facility = FACILITIES.length > 1 ? facilityForCourt(displayCourt) : null;
+  // m.facility is stamped on every match when MATCHES is built (loadLiveData)
+  // from whichever facility block of the snapshot it came from — no
+  // court-range guessing needed.
+  const facility = FACILITIES.length > 1 ? m.facility : null;
   const courtHTML = displayCourt
     ? `<span class="court-pill">${escapeHtml(displayCourtLabel)}${facility ? ` &middot; ${escapeHtml(facility)}` : ''}</span>`
     : '';
@@ -3033,13 +3310,11 @@ function ticketHTML(m, teamCode, isNext){
       </div>
       <div class="names-row">
         <div class="team-block ${youTBD ? 'tbd':''}">
-          ${teamLogoHTML(you.code)}
           <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
         <div class="score-col">${scoreHTML}</div>
         <div class="team-block right ${oppTBD ? 'tbd':''}">
-          ${teamLogoHTML(opp.code)}
           <div class="team-name">${escapeHtml(opp.code)}</div>
           <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
         </div>
@@ -3055,52 +3330,41 @@ function ticketHTML(m, teamCode, isNext){
 // ---------- Live Matches (Court Control) ----------
 // One card per court — whatever match currently has a value in the
 // 'court' column is the match being played there right now.
-// Every configured court (from FACILITIES), mapped to its current live
-// match or null — always the same set of keys regardless of how many
-// matches actually happen to be live right now. Deliberately NOT just the
-// live ones: a table whose row count changes on every refresh (as matches
-// start/finish on different courts) jumps around the page and scrolls the
-// user's view out from under them, which is what liveTableRowsHTML's empty
-// branch and this full-court enumeration exist to prevent.
-function buildLiveCourts(){
-  const byCourt = new Map();
-  FACILITIES.forEach(f => {
-    for(let n = f.courts[0]; n <= f.courts[1]; n++) byCourt.set(String(n), null);
-  });
-  MATCHES.forEach(m => {
-    if(!m.liveCourt) return;
-    // MATCHES is already sorted by matchNumber ascending, so the last
-    // match written to a given court wins — that's the current one.
-    byCourt.set(m.liveCourt, m);
-  });
-  return byCourt;
-}
-
+//
+// Court sets are derived per facility from that facility's own segregated
+// snapshot data (its CourtAssignment values), not from a hand-configured
+// range (spec §2.2) — MATCHES_BY_FACILITY (built in loadLiveData) already
+// keeps each facility's matches separate, so there's no cross-facility
+// court-range guessing needed at all. Every configured court still gets an
+// entry even when idle (mapped to null) — a table whose row count changes
+// on every refresh jumps around the page, which is what liveEmptyRowHTML
+// and this full-court enumeration exist to prevent.
 function courtSortKey(court){
-  const m = court.match(/(\d+)/);
+  const m = String(court).match(/(\d+)/);
   return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
-// Buckets every court (live or idle) by facility (in ascending court-number
-// order, so each FACILITIES entry falls out naturally since their court
-// ranges don't overlap) with anything unmapped collected into a trailing
-// 'Other Courts' group instead of getting silently dropped.
-function groupLiveCourtsByFacility(liveCourts){
-  const sortedCourts = Array.from(liveCourts.keys()).sort((a,b) => courtSortKey(a) - courtSortKey(b));
-  const groups = new Map();
-  sortedCourts.forEach(court => {
-    const facility = facilityForCourt(court) || 'Other Courts';
-    if(!groups.has(facility)) groups.set(facility, []);
-    groups.get(facility).push([court, liveCourts.get(court)]);
-  });
-  return groups;
+function courtNumberFrom(courtAssignment){
+  const m = String(courtAssignment || '').match(/(\d+)/);
+  return m ? m[1] : null;
 }
 
-// Club logo for the compact table cell — .score-logo (used in the ticket
-// cards) is a different, larger-still size tuned for that card, not this row.
-function liveTeamLogoHTML(teamCode){
-  const club = CLUBS[parseCode(teamCode).club];
-  return club && club.logo ? `<img class="live-team-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
+function buildFacilityCourtGroups(){
+  const groups = new Map();
+  MATCHES_BY_FACILITY.forEach(({ name, matches }) => {
+    const byCourt = new Map();
+    matches.forEach(m => {
+      const n = courtNumberFrom(m.court);
+      if(n !== null && !byCourt.has(n)) byCourt.set(n, null);
+    });
+    // Last match (by matchNumber order) with a liveCourt wins — that's the
+    // current one. A live court outside the scheduled set (a mid-event
+    // reassignment) still shows up rather than being dropped.
+    matches.forEach(m => { if(m.liveCourt) byCourt.set(m.liveCourt, m); });
+    const sortedCourts = Array.from(byCourt.keys()).sort((a, b) => courtSortKey(a) - courtSortKey(b));
+    groups.set(name, sortedCourts.map(c => [c, byCourt.get(c)]));
+  });
+  return groups;
 }
 
 // Placeholder row for a court with nothing live on it right now. Mirrors
@@ -3110,7 +3374,6 @@ function liveTeamLogoHTML(teamCode){
 // the instant a match actually starts on this court.
 function liveEmptyRowHTML(court){
   const blankTeamCell = `<div class="live-team-cell-inner">
-    <span class="live-team-logo live-team-logo-placeholder" aria-hidden="true"></span>
     <div class="live-team-text">
       <div class="live-team-code">&nbsp;</div>
       <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>
@@ -3145,17 +3408,12 @@ function liveTableRowsHTML(court, m){
     ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
     : 'VS';
 
-  // logoRight: whether the logo renders after the text instead of before —
-  // mirrors the two sides so both logos sit toward the table's outer edges.
-  // The logo sits beside the code+players block (not inside the code line),
-  // sized to span roughly that block's full height.
-  const teamCellHTML = (code, tbd, p1, p2, logoRight) => {
-    const logo = liveTeamLogoHTML(code);
+  const teamCellHTML = (code, tbd, p1, p2) => {
     const text = `<div class="live-team-text">
       <div class="live-team-code${tbd ? ' tbd':''}">${escapeHtml(code)}</div>
       <div class="live-team-players">${tbd ? 'To be determined' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>
     </div>`;
-    return `<div class="live-team-cell-inner">${logoRight ? text + logo : logo + text}</div>`;
+    return `<div class="live-team-cell-inner">${text}</div>`;
   };
 
   return `<tr>
@@ -3163,9 +3421,9 @@ function liveTableRowsHTML(court, m){
     <td class="live-cat-cell" colspan="3">${cat ? escapeHtml(cat) + ' &middot; ' : ''}<span class="live-round">${escapeHtml(roundText)}</span></td>
   </tr>
   <tr class="live-match-row">
-    <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2, false)}</td>
+    <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2)}</td>
     <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div></td>
-    <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2, true)}</td>
+    <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2)}</td>
   </tr>`;
 }
 
@@ -3191,14 +3449,13 @@ function renderLiveMatches(){
   const metaEl = liveBoardMetaEl;
   if(!boardEl) return;
 
-  const liveCourts = buildLiveCourts();
-  // The board always shows every configured court (see buildLiveCourts), so
-  // this count is just the ones actually in play right now, not the total.
-  const totalCourts = Array.from(liveCourts.values()).filter(Boolean).length;
+  const groups = buildFacilityCourtGroups();
+  // The board always shows every configured court, so this count is just
+  // the ones actually in play right now, not the total.
+  const totalCourts = Array.from(groups.values()).flat().filter(([, m]) => m).length;
   metaEl.innerHTML = totalCourts > 0
     ? `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`
     : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
-  const groups = groupLiveCourtsByFacility(liveCourts);
 
   // Full rebuild on every 15s refresh, same as Standings — capture/restore
   // keeps a scrolled-right facility table (mobile) from snapping back to
@@ -3282,7 +3539,7 @@ function runSearch(){
 function renderIntro(){
   const teams = new Set();
   const divisions = new Set();
-  MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { teams.add(c); const p = parseCode(c); if(p.division && p.event) divisions.add(p.division+p.event); }); });
+  MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { teams.add(c); const p = parseCode(c); if(p.category) divisions.add(p.category); }); });
   resultsEl.innerHTML = `
     <div class="stats-row">
       <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
@@ -3301,29 +3558,200 @@ const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgResultBox = document.getElementById('orgResultBox');
 const organizerDayLabelEl = document.getElementById('organizerDayLabel');
 
-// Per-facility resync buttons are generated from FACILITIES (CONFIGURATION
-// block up top) rather than hardcoded, so a new event's venues just work.
-// A single-facility event has no need for this row at all — "Resync this
-// day now" above already covers its one venue.
+// Per-facility resync buttons are generated from FACILITIES, which is now
+// resolved fresh per day (see selectDay), so this whole block moved from a
+// once-at-load setup into a function re-run on every day change instead. A
+// single-facility day has no need for this row at all — "Resync this day
+// now" above already covers its one venue.
+// ---- Go-live override (spec §4.1) ---------------------------------------
+// Auto-live threshold, at the user's direction this session: 4 hours before
+// the day's earliest scheduled match time (read straight from the synced
+// Schedule column, e.g. "3:00 PM" — no date, PH time assumed throughout).
+// Deliberately NOT a per-event config value (no LIVE_GO_LIVE_HOUR_PH here) —
+// it's derived from the same data every published snapshot already carries,
+// so there's nothing to hand-configure or drift out of sync. Shared by this
+// display-only computation and by the real gating logic in index.html.
+const GO_LIVE_LEAD_HOURS = 4;
+
+function parseScheduleTimeToMinutes(raw){
+  const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m) return null;
+  let h = parseInt(m[1], 10) % 12;
+  if(/pm/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+// Earliest parseable Schedule time across every match currently loaded for
+// this day (MATCHES spans every facility already). Returns null if none
+// parse — e.g. the day's spreadsheet has no Schedule values entered yet.
+function earliestScheduleMinutes(){
+  let earliest = null;
+  MATCHES.forEach(m => {
+    const mins = parseScheduleTimeToMinutes(m.time);
+    if(mins !== null && (earliest === null || mins < earliest)) earliest = mins;
+  });
+  return earliest;
+}
+
+function formatMinutesAsClock(mins){
+  const h24 = Math.floor(mins / 60), m = mins % 60;
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const ampm = h24 < 12 ? 'AM' : 'PM';
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+// Describes what "auto" currently resolves to, for display only — the
+// console's own tabs ignore this entirely (computeDayIsLive above always
+// returns true). Mirrors the real gating logic index.html uses, so this
+// reads the same way an operator will see the public site behave.
+function describeAutoGoLive(){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day) return 'Auto';
+  const earliestMin = earliestScheduleMinutes();
+  if(earliestMin === null || !day.date){
+    return 'Auto — not live yet (no scheduled match times synced for this day)';
+  }
+  const threshold = new Date(`${day.date}T${String(Math.floor(earliestMin/60)).padStart(2,'0')}:${String(earliestMin%60).padStart(2,'0')}:00+08:00`).getTime()
+    - GO_LIVE_LEAD_HOURS * 60 * 60 * 1000;
+  const thresholdDate = new Date(threshold);
+  const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' }).format(thresholdDate);
+  const timeLabel = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' }).format(thresholdDate);
+  const isLiveNow = Date.now() >= threshold;
+  return isLiveNow
+    ? `Auto — live now (went live ${timeLabel}, ${dateLabel})`
+    : `Auto — goes live ${timeLabel}, ${dateLabel} (${GO_LIVE_LEAD_HOURS}h before first serve, ${formatMinutesAsClock(earliestMin)})`;
+}
+
+const goLiveCurrentEl = document.getElementById('goLiveCurrent');
+const goLiveButtonsEl = document.querySelector('.golive-buttons');
+const goLiveResultBoxEl = document.getElementById('goLiveResultBox');
+
+// Reads the value straight from the fetched event registry (not the
+// snapshot) — the console is what authors this value, so it always shows
+// what's actually in config/events.json, not a possibly-stale published copy.
+function currentConfiguredIsLive(){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day) return 'auto';
+  const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  const rawDay = rawEvent && rawEvent.days ? rawEvent.days[day.key] : null;
+  const v = rawDay ? rawDay.isLive : undefined;
+  return (v === true || v === false) ? v : 'auto';
+}
+
+function renderGoLiveControl(){
+  if(!goLiveCurrentEl) return;
+  const state = currentConfiguredIsLive();
+  const stateKey = state === true ? 'true' : state === false ? 'false' : 'auto';
+  goLiveCurrentEl.className = `golive-current state-${stateKey}`;
+  if(state === true) goLiveCurrentEl.innerHTML = '<b>Live now</b> (forced) — overrides the normal schedule.';
+  else if(state === false) goLiveCurrentEl.innerHTML = '<b>Hidden</b> (forced) — Live Matches/Standings are off on the public site.';
+  else goLiveCurrentEl.innerHTML = `<b>${escapeHtml(describeAutoGoLive())}</b>`;
+
+  if(goLiveButtonsEl){
+    goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(btn => {
+      const btnState = btn.dataset.live;
+      btn.classList.toggle('active', btnState === stateKey);
+    });
+  }
+}
+
+function showGoLiveResult(kind, text){
+  if(!goLiveResultBoxEl) return;
+  goLiveResultBoxEl.className = `organizer-result ${kind}`;
+  goLiveResultBoxEl.textContent = text;
+  goLiveResultBoxEl.style.display = '';
+}
+
+async function setGoLive(value){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day){ showGoLiveResult('error', 'Pick a tournament day first.'); return; }
+  if(value === false && !window.confirm(`Hide Live Matches/Standings on the public site for ${day.label}? Spectators will see the standard "not live yet" schedule until you set this back to Auto or Force live.`)){
+    return;
+  }
+  const secret = loadOrgSecret();
+  if(!secret.trim()){ showGoLiveResult('error', 'Paste the shared secret above first.'); return; }
+
+  if(goLiveButtonsEl) goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
+  showGoLiveResult('loading', `Setting ${day.label} to ${value}…`);
+
+  try {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/${day.key}/live`, {
+      method: 'POST',
+      headers: { 'X-Sync-Secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isLive: value })
+    });
+    const body = await res.json().catch(() => null);
+    if(!res.ok){
+      showGoLiveResult('error', `Failed: ${body?.error || `HTTP ${res.status}`}`);
+    } else {
+      showGoLiveResult('ok', body.republished
+        ? `${day.label} set to ${value}. The public site will reflect this within one poll (~10s).`
+        : `${day.label} set to ${value}. No snapshot has been published yet for this day — this will take effect on the first sync.`);
+      // Reflect the change immediately without waiting for events.json's own
+      // ~10 minute Pages cache to expire — update the in-memory registry
+      // entry the same way the commit just changed it on GitHub.
+      const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+      if(rawEvent?.days?.[day.key]) rawEvent.days[day.key].isLive = value;
+      renderGoLiveControl();
+    }
+  } catch(err){
+    showGoLiveResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+  } finally {
+    if(goLiveButtonsEl) goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = false; });
+  }
+}
+
+if(goLiveButtonsEl){
+  goLiveButtonsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.golive-btn');
+    if(!btn) return;
+    const raw = btn.dataset.live;
+    setGoLive(raw === 'true' ? true : raw === 'false' ? false : 'auto');
+  });
+}
+
 const orgFacilityRowEl = document.getElementById('orgFacilityRow');
 const orgFacilityResyncGroupEl = document.getElementById('orgFacilityResyncGroup');
-if(orgFacilityResyncGroupEl) orgFacilityResyncGroupEl.style.display = FACILITIES.length <= 1 ? 'none' : '';
-if(orgFacilityRowEl && FACILITIES.length > 1){
-  orgFacilityRowEl.innerHTML = FACILITIES.map(f =>
-    `<button type="button" class="organizer-facility-btn" data-facility="${escapeHtml(f.name)}">${escapeHtml(f.name)}</button>`
-  ).join('');
+let orgFacilityBtns = [];
+let KNOWN_FACILITIES = [];
+
+function renderFacilityControls(){
+  if(orgFacilityResyncGroupEl) orgFacilityResyncGroupEl.style.display = FACILITIES.length <= 1 ? 'none' : '';
+  if(orgFacilityRowEl){
+    orgFacilityRowEl.innerHTML = FACILITIES.length > 1
+      ? FACILITIES.map(f => `<button type="button" class="organizer-facility-btn" data-facility="${escapeHtml(f.name)}">${escapeHtml(f.name)}</button>`).join('')
+      : '';
+  }
+  orgFacilityBtns = Array.from(document.querySelectorAll('.organizer-facility-btn'));
+  orgFacilityBtns.forEach(btn => {
+    const facilityName = btn.dataset.facility;
+    const originalLabel = btn.textContent;
+    btn.addEventListener('click', () => performResync(facilityName, {
+      onStart: () => { btn.textContent = '…'; },
+      onDone: () => { btn.textContent = originalLabel; }
+    }));
+  });
+  // Same facility names sheets-sync.gs's FACILITY_NAME and this event's
+  // entry in event-data/config/events.json use, not derived from the
+  // snapshot, so a facility that has genuinely never synced still shows up
+  // as "Never synced" instead of silently not appearing in the list at all.
+  KNOWN_FACILITIES = FACILITIES.map(f => f.name);
 }
-const orgFacilityBtns = document.querySelectorAll('.organizer-facility-btn');
 
 // ---- Schedule board launcher --------------------------------------------
 // Opens in a new tab (target=_blank) because the operator is mid-session here
 // and a wall display is a separate screen, not a navigation away. Court
 // splitting is done on the board itself via its own filter, which writes the
 // range into the URL for bookmarking — no preset ranges needed here.
+// Root-absolute (not a relative "schedule.html") since the console lives at
+// /tools/match-control, not inside the event's own folder the way the
+// per-event page did — rebuilt on every event switch (see selectEvent()).
 const orgScheduleRowEl = document.getElementById('orgScheduleRow');
-if(orgScheduleRowEl){
-  orgScheduleRowEl.innerHTML =
-    '<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="schedule.html">Open schedule</a>';
+function renderScheduleLauncher(){
+  if(!orgScheduleRowEl) return;
+  orgScheduleRowEl.innerHTML = CURRENT_EVENT_KEY
+    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/schedule">Open schedule</a>`
+    : '';
 }
 
 // sessionStorage only — cleared when the tab closes, never written into
@@ -3350,12 +3778,6 @@ function updateOrganizerDayLabel(){
   organizerDayLabelEl.textContent = day ? day.label : 'No day selected';
 }
 
-// Same facility names sheets-sync.gs's FACILITY_NAME and this event's entry
-// in event-data/config/events.json use (taken from FACILITIES in the
-// CONFIGURATION block, not derived from the snapshot), so a facility that
-// has genuinely never synced still shows up as "Never synced" instead of
-// silently not appearing in the list at all.
-const KNOWN_FACILITIES = FACILITIES.map(f => f.name);
 const STALE_WARNING_MS = 5 * 60 * 1000; // flag a facility's data as aging once it's this old
 
 function relativeTimeFromNow(isoString){
@@ -3378,6 +3800,7 @@ const orgStatusBox = document.getElementById('orgStatusBox');
 // purely a read of data that's already on the page, so switching to this
 // tab or waiting for the next poll both update it for free.
 function renderOrganizerStatus(){
+  renderGoLiveControl();
   if(!orgStatusBox) return;
   if(!LAST_SNAPSHOT){
     orgStatusBox.innerHTML = `<div class="organizer-status-empty">No sync data loaded yet for this day.</div>`;
@@ -3523,33 +3946,148 @@ if(orgResyncBtn){
   }));
 }
 
-orgFacilityBtns.forEach(btn => {
-  const facilityName = btn.dataset.facility;
-  const originalLabel = btn.textContent;
-  btn.addEventListener('click', () => performResync(facilityName, {
-    onStart: () => { btn.textContent = '\u2026'; },
-    onDone: () => { btn.textContent = originalLabel; }
-  }));
-});
+// ---------- Event/day selection (spec §5) --------------------------------
+const eventPickerEl = document.getElementById('eventPicker');
+const eventTitleLineEl = document.getElementById('eventTitleLine');
 
-// If a previous visit picked a day, silently re-run that same selection on
-// load (tabs/status stay hidden behind the loading prompt until it
-// resolves) instead of leaving the person to re-pick it from scratch every
-// time they reopen the site during the tournament. A single-day event has
-// no picker to have chosen from (see dayPickerWrapEl above), so it always
-// auto-loads its one day instead.
-const savedDayIdx = loadSavedDayIndex();
-if(savedDayIdx !== null){
-  selectDay(savedDayIdx, { isInitialLoad: true });
-} else if(DAYS.length === 1){
-  selectDay(0, { isInitialLoad: true });
+function renderEventPicker(){
+  if(!eventPickerEl) return;
+  const keys = Array.from(EVENTS_REGISTRY.keys());
+  eventPickerEl.innerHTML = keys.length
+    ? keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(EVENTS_REGISTRY.get(k).title || k)}</option>`).join('')
+    : '<option value="">No registered events</option>';
 }
-// Otherwise nothing to load yet — currentDayIndex stays null until the
-// person picks a day, and loadLiveData() no-ops until then anyway.
 
-// Pause the 15s poll while the tab/app is backgrounded — no point spending
-// battery and mobile data re-fetching three spreadsheets nobody's looking
-// at — and catch up with an immediate refresh as soon as it's visible again.
+// Shared by the event picker's change handler and boot()'s initial
+// resolution. isInitialLoad only affects whether a previously-saved search
+// is brought back afterwards (see selectDay) — a manual event switch drops
+// it, same as a manual day switch always has.
+async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = null } = {}){
+  const rawEvent = EVENTS_REGISTRY.get(eventKey);
+  CURRENT_EVENT_KEY = eventKey;
+  // type must be explicit and recognized — never inferred (spec §1/§2.1).
+  CURRENT_TYPE = rawEvent && (rawEvent.type === 'dual-meet' || rawEvent.type === 'standard') ? rawEvent.type : null;
+  DISPLAY = (rawEvent && rawEvent.display) || {};
+  parseCodeCache.clear();
+
+  if(eventPickerEl) eventPickerEl.value = eventKey;
+  if(eventTitleLineEl) eventTitleLineEl.textContent = rawEvent && rawEvent.title ? rawEvent.title : eventKey;
+  renderScheduleLauncher();
+
+  // Reset all per-event state so nothing from a previous event lingers.
+  currentDayIndex = null;
+  MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
+  FACILITIES = [];
+  viewTabsWrapEl.style.display = 'none';
+  syncStatusEl.style.display = 'none';
+  liveResultsEl.style.display = 'none';
+  searchPanelEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+  standingsResultsEl.style.display = 'none';
+  if(organizerResultsEl) organizerResultsEl.style.display = 'none';
+
+  if(!rawEvent){
+    DAYS = [];
+    renderDayPicker();
+    dayPromptEl.innerHTML = `Unknown event "${escapeHtml(eventKey)}".`;
+    dayPromptEl.style.display = '';
+    return;
+  }
+  if(!CURRENT_TYPE){
+    DAYS = [];
+    renderDayPicker();
+    dayPromptEl.innerHTML = `<strong>Configuration error:</strong> event "${escapeHtml(eventKey)}" has a missing or unrecognized <code>type</code> (must be "dual-meet" or "standard") in event-data/config/events.json — not guessing, fix the config to use this console for this event.`;
+    dayPromptEl.style.display = '';
+    return;
+  }
+
+  DAYS = Object.entries(rawEvent.days || {})
+    .map(([key, d]) => ({ key, label: d.label, date: d.date || null }))
+    .sort((a, b) => (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99'));
+  renderDayPicker();
+
+  if(DAYS.length === 0){
+    dayPromptEl.textContent = `${eventKey} has no days configured yet.`;
+    dayPromptEl.style.display = '';
+    return;
+  }
+
+  let dayIdx = null;
+  if(initialDayKey){
+    const found = DAYS.findIndex(d => d.key === initialDayKey);
+    if(found !== -1) dayIdx = found;
+  }
+  if(dayIdx === null && DAYS.length === 1) dayIdx = 0;
+
+  if(dayIdx !== null){
+    await selectDay(dayIdx, { isInitialLoad });
+  } else {
+    // Multi-day event, nothing specific to land on — leave currentDayIndex
+    // null until the operator picks one, same as today's per-event page.
+    dayPromptEl.textContent = 'Select a tournament day above to load its matches and standings.';
+    dayPromptEl.style.display = '';
+  }
+}
+
+if(eventPickerEl){
+  eventPickerEl.addEventListener('change', () => {
+    const key = eventPickerEl.value;
+    if(key) selectEvent(key);
+  });
+}
+
+async function boot(){
+  let raw;
+  try {
+    const res = await fetch(configUrlFor(), { cache: 'no-store' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    raw = await res.json();
+  } catch(err){
+    dayPromptEl.innerHTML = `Couldn't load the event registry (event-data/config/events.json): ${escapeHtml(err.message)}. <button id="retryBootBtn" class="retry-btn">Retry</button>`;
+    dayPromptEl.style.display = '';
+    if(eventPickerEl) eventPickerEl.innerHTML = '<option value="">Failed to load</option>';
+    const retryBtn = document.getElementById('retryBootBtn');
+    if(retryBtn) retryBtn.addEventListener('click', boot);
+    return;
+  }
+
+  // Archived events are filtered out here, before display ever needs to
+  // read them (spec decision 9.4) — dead registry entries just don't show
+  // up in the picker at all.
+  EVENTS_REGISTRY = new Map(Object.entries(raw.events || {}).filter(([, e]) => !e.archived));
+  renderEventPicker();
+
+  if(EVENTS_REGISTRY.size === 0){
+    dayPromptEl.textContent = 'No registered (non-archived) events found in event-data/config/events.json.';
+    dayPromptEl.style.display = '';
+    return;
+  }
+
+  // Resolution order: ?event=&day= URL params, then the last localStorage
+  // selection, then just the first registered event (spec §5).
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlEvent = urlParams.get('event');
+  const saved = loadSavedSelection();
+
+  let initialEvent, initialDay = null;
+  if(urlEvent && EVENTS_REGISTRY.has(urlEvent)){
+    initialEvent = urlEvent;
+    initialDay = urlParams.get('day');
+  } else if(saved && saved.event && EVENTS_REGISTRY.has(saved.event)){
+    initialEvent = saved.event;
+    initialDay = saved.day;
+  } else {
+    initialEvent = EVENTS_REGISTRY.keys().next().value;
+  }
+
+  await selectEvent(initialEvent, { isInitialLoad: true, initialDayKey: initialDay });
+}
+
+boot();
+
+// Pause the poll while the tab/app is backgrounded — no point spending
+// battery and mobile data re-fetching data nobody's looking at — and catch
+// up with an immediate refresh as soon as it's visible again.
 let pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
 document.addEventListener('visibilitychange', () => {
   if(document.hidden){

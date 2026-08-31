@@ -100,10 +100,11 @@ clubs; it is not a general multi-club template.
    ```
 
 4. **Fill in the `// EXAMPLE — replace` config values** in `index.html`'s
-   and `match-control.html`'s `CONFIGURATION` block: `DAYS`, `FACILITIES`,
-   `DIVISIONS`, `EVENTS` — and, for `dual-meet-template/`, `CLUBS` (which
-   is filled from tokens directly, not left as an example — see §3).
-   `bracket-generator.html` needs no config at all.
+   `CONFIGURATION` block: `DAYS`, `FACILITIES`, `DIVISIONS`, `EVENTS` — and,
+   for `dual-meet-template/`, `CLUBS` (which is filled from tokens directly,
+   not left as an example — see §3). `bracket-generator.html` needs no
+   config at all. The operator console (`tools/match-control.html`) takes
+   its config from `event-data/config/events.json` — see step 7.
 
 5. **Leave the theme alone unless the event genuinely needs its own.** Every
    page ships the S.A.G.E. house palette — navy structure, green accent,
@@ -133,10 +134,10 @@ clubs; it is not a general multi-club template.
 6. **Set up the schedule board** (`schedule.html`). This is the venue wall
    display — courts as columns, time slots as rows, one card per match. It
    is **unlisted from the public pages on purpose**: nothing links to it
-   except the `Open schedule` button at the foot of Mission Control in
-   `match-control.html`, so operators can launch it and spectators never
-   see it. GitHub Pages resolves extensionless HTML, so it is reachable as
-   `/events/<event-key>/schedule`.
+   except the `Open schedule` button at the foot of Mission Control in the
+   operator console (`tools/match-control.html`), so operators can launch
+   it and spectators never see it. GitHub Pages resolves extensionless
+   HTML, so it is reachable as `/events/<event-key>/schedule`.
 
    Two things to fill in beyond the shared tokens:
 
@@ -183,6 +184,58 @@ clubs; it is not a general multi-club template.
    — a sync attempt against a day key that isn't live yet fails with
    `UnknownSyncDayError`.
 
+   **Also fill in this event's display block.** Beyond the day/facility
+   registry the sync itself needs, the entry carries a few fields that exist
+   purely so the central Match Control console can render this event without
+   any per-event code of its own:
+
+   ```jsonc
+   "<event-key>": {
+     "type": "dual-meet",              // or "standard" — picks the layout
+     "title": "PNF × BUP Dual Meet",   // masthead
+     "days": { ... },                  // as above
+     "display": {                      // optional — see below
+       "divisions": { "LI": "Low Intermediate", "HI": "High Intermediate" },
+       "events":    { "WD": "Women's Doubles", "MD": "Men's Doubles" },
+       "clubs":     { "PNF": "Pickle & Friends Community" }
+     }
+   }
+   ```
+
+   - **`type` is required and must be explicit** (`"dual-meet"` or
+     `"standard"`, matching which template you copied in step 1). It decides
+     both the standings layout and how team codes are split. It is deliberately
+     not inferred from the data: guessing from code shape works most of the
+     time and fails *silently*, and an unmatched code currently disappears into
+     an "Other" bucket with no warning.
+   - **`display` is optional.** Without it the console still works — it just
+     shows raw codes (`LIWD`, `PNF`) instead of "Low Intermediate Women's
+     Doubles" and the full club name. Fill it in when convenient; a newly
+     registered event is usable immediately either way.
+   - All three maps are the same shape: **code → label**. Only codes that
+     actually appear in `teamCode1`/`teamCode2` matter.
+   - **Order comes from key order.** Categories are displayed in the order the
+     division and event keys appear in the JSON, so there is no separate
+     ordering config to keep in step.
+   - **No logos here.** `display.clubs` maps to a plain name string. The
+     console shows the 3-letter code on every row, so a logo beside it would
+     be repeating information (and the live board would render 18 of them at
+     once). Club logos remain an `index.html` concern — see `{{CLUB_A_LOGO}}`
+     in §3.
+
+   > These are presentation labels living in the *data* repo, which is a
+   > deliberate trade: it is the only place the console reads, so it is the
+   > only place they can live without reintroducing per-event code. The cost
+   > is that fixing a division label is a commit to `event-data` rather than
+   > to this repo. The public `index.html` is unaffected — it keeps its own
+   > `DIVISIONS`/`EVENTS`/`CLUBS` block from step 4.
+
+   > The operator console lives at `tools/match-control.html` (see
+   > `specs/match-control-console-spec.md`). Filling these fields in is what
+   > makes a newly registered event usable there immediately; leaving them
+   > out (or leaving `type` unset/wrong) shows a visible error there rather
+   > than guessing — see §1 above.
+
 8. **Install the sync script.** Once per facility spreadsheet for this
    event (this is the Apps Script side of things — `scripts/sheets-sync.gs`
    lives in `sage-tools-api`, not in this repo):
@@ -194,8 +247,10 @@ clubs; it is not a general multi-club template.
       this spreadsheet is for (the same key you used in `DAYS` in step 4
       and in `config/events.json` in step 7), set `FACILITY_NAME` to
       match a `name` in this event's `FACILITIES` array **exactly**
-      (case-sensitive), and set `CLOUD_RUN_BASE_URL` to the same URL you
-      used for `{{CLOUD_RUN_BASE_URL}}` in step 3 (no trailing slash).
+      (case-sensitive), and set `CLOUD_RUN_BASE_URL` to `sage-tools-api`'s
+      Cloud Run URL (no trailing slash) — the same fixed platform value
+      `tools/match-control.html` hardcodes in its own `CLOUD_RUN_BASE_URL`
+      constant.
    4. Check `WATCHED_SHEET_GIDS`. The SCHEDULE/COURT CONTROL tab GIDs are
       per-spreadsheet (a new spreadsheet's tabs get their own GIDs), so
       confirm the shipped defaults actually match *this* spreadsheet's
@@ -224,8 +279,8 @@ clubs; it is not a general multi-club template.
 
 ## 3. Required `{{TOKEN}}` replacements
 
-**Both templates** (`index.html`, `match-control.html`, and — for a few of
-these — `bracket-generator.html`):
+**Both templates** (`index.html`, and — for a few of these —
+`bracket-generator.html`):
 
 | Token | Meaning |
 | --- | --- |
@@ -239,13 +294,7 @@ these — `bracket-generator.html`):
 | `{{QR_URL}}` | The short link printed under the QR code. |
 | `{{SCHEDULE_DAY_KEY}}` | `schedule.html` only — which day's key the wall display shows (§2 step 6). |
 
-`match-control.html` only:
-
-| Token | Meaning |
-| --- | --- |
-| `{{CLOUD_RUN_BASE_URL}}` | The Cloud Run service's base URL (must match `CLOUD_RUN_BASE_URL` in the installed Apps Script). |
-
-`dual-meet-template/` only (`index.html` and `match-control.html`):
+`dual-meet-template/` only (`index.html`):
 
 | Token | Meaning |
 | --- | --- |
@@ -310,24 +359,23 @@ An unrecognised tail falls back to `RR`, matching `standingsStageKey()`.
 
 ## 5.1 Things that must be kept in sync by hand
 
-Within one event's folder, across `index.html`, `match-control.html` and
-`schedule.html`:
+Within one event's folder, across `index.html` and `schedule.html`:
 
 | Value | Where |
 | --- | --- |
-| `EVENT_KEY` | all three — and the `events/` folder name, and the `event-data` folder name |
-| `DAYS[].key` | `index.html` / `match-control.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's `DAY_KEY` in `sheets-sync.gs` |
-| `FACILITIES[].name` | `index.html` / `match-control.html`, and each spreadsheet's `FACILITY_NAME` in `sheets-sync.gs` — compared exactly, case-sensitive |
-| `LIVE_GO_LIVE_HOUR_PH` | `index.html` and `match-control.html` (the latter doesn't use it, but parity avoids confusion later) |
-| `CLUBS` | `index.html` / `match-control.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
-| theme `:root` | all pages — plus the two non-CSS palettes noted in §2 step 5 |
+| `EVENT_KEY` | both — and the `events/` folder name, and the `event-data` folder name |
+| `DAYS[].key` | `index.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's `DAY_KEY` in `sheets-sync.gs` |
+| `FACILITIES[].name` | `index.html`, and each spreadsheet's `FACILITY_NAME` in `sheets-sync.gs` — compared exactly, case-sensitive |
+| `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
+| theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
 
-`LIVE_GO_LIVE_HOUR_PH` is a real per-event knob, not boilerplate: it is the
-hour (Philippine time) at which a day's Live Matches and Standings tabs
-switch on. The templates ship `7`, which suits an all-day event; an
-evening-only event should push it later so those tabs aren't sitting empty
-from breakfast onwards. Setting a day's `isLive` to `true`/`false`
-overrides it either way.
+`index.html`'s `computeDayIsLive()` derives the auto-live threshold from
+the day's own data: it goes live `GO_LIVE_LEAD_HOURS` (4) before the
+earliest scheduled match time on the synced Schedule column, computed
+fresh from whatever's published — no hour to set or keep in sync per
+event. A day's `isLive` override (`true`/`false`), set from the Match
+Control console, wins over `auto` either way — see
+`specs/match-control-console-spec.md` §4.1.
 
 ## 6. Root-absolute asset paths — do not "fix" them to relative
 

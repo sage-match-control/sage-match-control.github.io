@@ -1503,31 +1503,59 @@ const EVENT_KEY = 'pnf-x-bup-dual-meet';
 // the day picker shows and gates the tabs until a day is chosen; with
 // exactly one day the picker hides and that day auto-loads.
 //
-// isLive controls whether that day's Live Matches/Standings tabs and match
-// card scores/pills are shown at all (see computeDayIsLive() below):
-//   'auto'  — the normal case. Goes live automatically at 7:00 AM
-//             Philippine Time on the day's `date`, and stays live forever
-//             after that (so past days keep showing their results).
-//   true    — override: force live now, even before its scheduled time.
-//   false   — override: force hidden, even after its scheduled time (a
-//             kill switch if something needs to come down mid-day).
+// isLive itself is no longer read from `date`/a config value here — it
+// comes from the published snapshot (see computeDayIsLive() below), which
+// sage-tools-api stamps with this day's current config value on every
+// sync, and immediately on a Match Control console override. So a kill
+// switch can never be silently reverted by an unrelated sheet edit, and
+// this local `date` only feeds the auto-live threshold math.
 const DAYS = [
-  { key: 'pnf-x-bup-day1', label: 'Sep 12', date: '2026-09-12', isLive: 'auto' }
+  { key: 'pnf-x-bup-day1', label: 'Sep 12', date: '2026-09-12' }
 ];
 
-// Noon Philippine Time — three hours before first serve (3 PM). Not the
-// template's 7 AM default: this is a one-day evening dual meet, so the
-// default would leave the Live/Standings tabs sitting empty since early
-// morning for no reason.
-const LIVE_GO_LIVE_HOUR_PH = 12;
-function computeDayIsLive(day){
-  if(day.isLive === true) return true;
-  if(day.isLive === false) return false;
-  // 'auto' (or anything else/unset): live once we're at/after 7 AM PH
-  // time on the day's date, and permanently live after that point.
-  if(!day.date) return false; // no date configured yet -> can't compute, stays hidden until a date or an explicit override is set
-  const threshold = new Date(`${day.date}T${String(LIVE_GO_LIVE_HOUR_PH).padStart(2,'0')}:00:00+08:00`);
-  return Date.now() >= threshold.getTime();
+// Auto-live threshold: GO_LIVE_LEAD_HOURS before this day's earliest
+// scheduled match time (currently 3:00 PM, per the synced Schedule column
+// -> live from 11:00 AM), read straight from the data rather than a
+// hand-set hour. Replaces the old LIVE_GO_LIVE_HOUR_PH = 12 override —
+// there is nothing left here to keep in sync by hand.
+const GO_LIVE_LEAD_HOURS = 4;
+
+function parseScheduleTimeToMinutes(raw){
+  const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m) return null;
+  let h = parseInt(m[1], 10) % 12;
+  if(/pm/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+function earliestScheduleMinutesFrom(snapshot){
+  let earliest = null;
+  (snapshot.facilities || []).forEach(f => {
+    rowsToMatches(parseCSV(f.matchesCsv)).forEach(m => {
+      const mins = parseScheduleTimeToMinutes(m.time);
+      if(mins !== null && (earliest === null || mins < earliest)) earliest = mins;
+    });
+  });
+  return earliest;
+}
+
+// snapshot: the day's published snapshot, or null before the first fetch
+// resolves (selectDay's preliminary guess — always not-live until real
+// data says otherwise, same safe default as today's "no date configured").
+function computeDayIsLive(day, snapshot){
+  const raw = snapshot ? snapshot.isLive : undefined;
+  if(raw === true) return true;
+  if(raw === false) return false;
+  // 'auto' (or missing — an older snapshot published before this shipped):
+  // live once we're at/after GO_LIVE_LEAD_HOURS before the day's earliest
+  // scheduled match time, and permanently live after that point.
+  if(!snapshot || !day.date) return false;
+  const earliestMin = earliestScheduleMinutesFrom(snapshot);
+  if(earliestMin === null) return false; // no parseable Schedule values synced yet -> stays hidden
+  const hh = String(Math.floor(earliestMin / 60)).padStart(2, '0');
+  const mm = String(earliestMin % 60).padStart(2, '0');
+  const firstServe = new Date(`${day.date}T${hh}:${mm}:00+08:00`);
+  return Date.now() >= firstServe.getTime() - GO_LIVE_LEAD_HOURS * 60 * 60 * 1000;
 }
 
 // ---- Venues / courts ---------------------------------------------------------
@@ -1820,12 +1848,12 @@ async function loadLiveData(){
     STANDINGS = standings;
 
     // Re-checked every poll (not just on day-select) so a page left open
-    // across the 7 AM PH go-live threshold flips over on its own, without
-    // needing a reload. Only re-sync tab visibility when it actually
-    // changed, though — calling this every 10s regardless would yank the
-    // person off whatever tab they're currently looking at.
+    // across the go-live threshold flips over on its own, without needing
+    // a reload. Only re-sync tab visibility when it actually changed,
+    // though — calling this every 10s regardless would yank the person off
+    // whatever tab they're currently looking at.
     const wasLive = dayIsLive;
-    dayIsLive = computeDayIsLive(day);
+    dayIsLive = computeDayIsLive(day, snapshot);
     if(dayIsLive !== wasLive) revealLiveTabsAfterLoad();
 
     rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
@@ -2581,7 +2609,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   currentDayIndex = idx;
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
-  dayIsLive = computeDayIsLive(day);
+  dayIsLive = computeDayIsLive(day, null); // preliminary guess — loadLiveData() below re-checks against the real snapshot
 
   // Switching days always drops back to the same "first screen" shown on
   // initial page load — tabs/status hidden, just the centered prompt —
