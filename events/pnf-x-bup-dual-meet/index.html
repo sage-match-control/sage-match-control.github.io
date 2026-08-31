@@ -589,11 +589,17 @@
     font-size:13px;
     color:var(--muted);
   }
-  td.live-cat-cell{
+  /* Qualified with table.live-table so it actually wins: the generic
+     `table.live-table td` rule above is (0,1,2) and outranks a bare
+     `td.live-cat-cell` (0,1,1), which silently swallowed this padding.
+     Kept tight — it is a label strip, and every pixel here is multiplied
+     by the court count down the board. */
+  table.live-table td.live-cat-cell{
     border-bottom:none;
-    padding:8px 10px 3px;
+    padding:3px 10px 1px;
     font-family:'IBM Plex Mono',monospace;
-    font-size:10px;
+    font-size:9px;
+    line-height:1.35;
     letter-spacing:.03em;
     text-transform:uppercase;
     color:var(--muted);
@@ -1381,7 +1387,7 @@
     .live-team-players{font-size:11px;}
     .live-match-pill{font-size:7.5px; padding:1px 5px;}
     .live-vs-score{font-size:11px;}
-    td.live-cat-cell{font-size:8.5px; padding:6px 5px 2px;}
+    table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
   }
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}

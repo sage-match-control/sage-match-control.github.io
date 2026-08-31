@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dual Meet — Schedule</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Theme lifted from the SAGE tools (scoresheet-generator / tournament-calculator):
+     off-white paper, navy structure, SAGE green accent, Archivo Black display,
+     Barlow Condensed labels, Inter body. */
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  /* Flex column rather than a hardcoded grid height: the masthead changes
+     height when collapsed, and any fixed calc(100vh - Npx) silently desyncs
+     from it. This way the board always takes exactly the remaining space. */
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- MASTHEAD ----------
+     The tools use a tall navy "bezel" panel on a stand. A wall display needs
+     that vertical space for match rows, so this is the same navy bezel and
+     green eyebrow rendered as one compact bar. */
+  .bezel{
+    background:var(--navy);
+    border-radius:0 0 6px 6px;
+    padding:7px 16px;
+    display:flex; align-items:center; gap:14px;
+    box-shadow:0 10px 30px -14px rgba(11,24,38,.55);
+    flex:0 0 auto; z-index:40;
+  }
+  /* Collapsed: keep the SAGE identity, the event name, the colour key, and a
+     trimmed sub (date + match count only — see paintSub). The operator chrome
+     hides: the court filter (its state is already carried in the URL) and the
+     export button. Ctrl+P still prints, so nothing is actually lost. */
+  .bezel.compact{ padding:4px 16px; }
+  .bezel.compact .courtfilter,
+  .bezel.compact .bezel-export{ display:none; }
+  .bezel.compact img{ width:26px; height:26px; }
+  .bezel.compact h1{ font-size:15px; }
+  .bezel-export{
+    display:flex; align-items:center; gap:5px;
+    padding:4px 10px; flex:0 0 auto;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    border-radius:6px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.28);
+    background:transparent; color:rgba(255,255,255,.7);
+    transition:background .12s, color .12s, border-color .12s;
+  }
+  .bezel-export:hover{ background:var(--green); border-color:var(--green); color:var(--navy); }
+  .bezel-export svg{ width:13px; height:13px; }
+
+  .bezel-toggle{
+    display:flex; align-items:center; justify-content:center;
+    width:26px; height:26px; flex:0 0 auto;
+    border-radius:6px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.28);
+    background:transparent; color:rgba(255,255,255,.7);
+    transition:background .12s, color .12s, border-color .12s;
+  }
+  .bezel-toggle:hover{ border-color:var(--green); color:var(--white); }
+  .bezel-toggle svg{ width:13px; height:13px; transition:transform .18s; }
+  .bezel.compact .bezel-toggle svg{ transform:rotate(180deg); }
+  .bezel img{ width:34px; height:34px; object-fit:contain; flex-shrink:0; }
+  .bezel .titles{ display:flex; flex-direction:column; }
+  .eyebrow{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; letter-spacing:.2em; text-transform:uppercase;
+    font-size:10px; color:var(--green); margin:0;
+  }
+  .bezel h1{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400; font-size:17px; line-height:1.05;
+    color:var(--white); margin:0; letter-spacing:.01em;
+  }
+  .meta{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+    font-size:11px; color:rgba(255,255,255,.62); white-space:nowrap;
+  }
+  /* ---------- COURT FILTER ----------
+     Drives which court columns render. Bookmarkable via ?courts= so a second
+     screen boots straight into its own range with nobody clicking anything. */
+  .courtfilter{
+    display:flex; align-items:center; gap:4px;
+    margin-left:18px; padding-left:16px;
+    border-left:1px solid rgba(255,255,255,.22);
+  }
+  .cf-label{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+    color:rgba(255,255,255,.5); margin-right:3px;
+  }
+  .cf-btn{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:12px; letter-spacing:.04em;
+    min-width:22px; padding:2px 6px;
+    border-radius:5px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.28);
+    background:transparent; color:rgba(255,255,255,.6);
+    transition:background .12s, color .12s, border-color .12s;
+  }
+  .cf-btn:hover{ border-color:var(--green); color:var(--white); }
+  .cf-btn.on{ background:var(--green); border-color:var(--green); color:var(--navy); }
+  .cf-btn.all{ letter-spacing:.12em; text-transform:uppercase; padding:2px 9px; }
+
+  .legend{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
+  .legend-item{
+    display:flex; align-items:center; gap:5px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:rgba(255,255,255,.85); white-space:nowrap;
+  }
+  .legend-swatch{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
+  .legend-live{
+    display:flex; align-items:center; gap:5px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--green);
+    padding-left:11px; border-left:1px solid rgba(255,255,255,.22);
+  }
+
+  /* ---------- GRID ---------- */
+  .grid-wrap{ overflow:auto; flex:1 1 auto; min-height:0; position:relative; }
+  /* Fluid: court columns share whatever width the window gives them (1fr), so
+     the board fills a 1600px laptop and a 3250px wall panel alike, and gets
+     wider still when the court filter narrows the set. The 190px floor is the
+     point below which the face-off stops being readable — past that the
+     wrapper scrolls horizontally rather than crushing the cells further.
+     No min-width:max-content here: that pinned the grid to its content width
+     and forced a scrollbar even when there was room to fit. */
+  .sched-grid{
+    display:grid;
+    grid-template-columns:64px repeat(var(--cols,9), minmax(190px, 1fr));
+    gap:4px; padding:5px;
+  }
+  .corner{ position:sticky; top:0; left:0; z-index:35; background:var(--paper); }
+  .col-head{
+    position:sticky; top:0; z-index:25;
+    background:var(--navy);
+    border-radius:7px; padding:4px 4px 5px; text-align:center;
+  }
+  .col-head .ch-label{
+    display:block;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:9px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--green);
+  }
+  .col-head .ch-num{
+    font-family:'Archivo Black',sans-serif; font-size:16px;
+    color:var(--white); line-height:1.1;
+  }
+  .time-cell{
+    position:sticky; left:0; z-index:20;
+    background:var(--navy);
+    border-radius:7px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:4px 2px;
+  }
+  .time-cell .tc-time{
+    font-family:'Archivo Black',sans-serif; font-size:12px;
+    color:var(--white); line-height:1.25; white-space:nowrap;
+  }
+  .time-cell .tc-warn{
+    margin-top:3px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:.08em;
+    color:var(--navy); background:var(--green);
+    border-radius:100px; padding:0 6px;
+  }
+
+  /* ---------- MATCH CELL ----------
+     Light theme, so the organiser's category colours can be used the way the
+     spreadsheet itself uses them: a soft tint of the hue behind navy text,
+     with the solid hue as a left rule. No lightness compression needed here —
+     unlike the dark build, where they had to be pushed to ~48% to stay apart. */
+  .cell{
+    /* 40%: the strongest tint that still clears ~6.9:1 contrast for navy body
+       text on the darkest category (HI WD). Measured, not guessed. */
+    background:color-mix(in srgb, var(--cat, var(--ink-soft)) 40%, var(--white));
+    border:1px solid var(--line);
+    border-left:5px solid var(--cat, var(--ink-soft));
+    border-radius:8px;
+    padding:4px 9px 5px;
+    display:flex; flex-direction:column;
+    min-height:60px; position:relative; overflow:hidden;
+  }
+  .cell-top{ display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+  .cell-num{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:11px; letter-spacing:.06em;
+    color:var(--ink-soft);
+  }
+  .cell-cat{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--cat-text, var(--white));
+    background:var(--cat, var(--ink-soft));
+    border-radius:100px; padding:1px 7px;
+  }
+  /* Stage of the ladder. Pool play is the overwhelming majority of cells, so
+     it stays a quiet outline — shouting "RR" 224 times would just be noise.
+     Playoff rounds invert to solid navy so a Bronze or Final is findable at a
+     glance from across the room. */
+  .cell-stage{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft);
+    background:transparent;
+    border:1px solid var(--line);
+    border-radius:100px; padding:0 6px;
+  }
+  .cell-stage.playoff{
+    color:var(--white);
+    background:var(--navy);
+    border-color:var(--navy);
+  }
+  .cell-live{
+    margin-left:auto;
+    display:inline-flex; align-items:center; gap:4px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--white); background:var(--green-dark);
+    border-radius:100px; padding:1px 7px 1px 5px;
+  }
+  .dot{
+    width:5px; height:5px; border-radius:50%; background:var(--white);
+    animation:pulse 1.8s infinite; flex:0 0 auto;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,255,255,.75);}
+    70%{box-shadow:0 0 0 6px rgba(255,255,255,0);}
+    100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}
+  }
+
+  /* Face-off: club tag inline beside the stacked names, mirrored either side
+     of the centre score. */
+  .faceoff{ display:flex; align-items:center; gap:8px; flex:1 1 auto; }
+  .fo-side{ flex:1 1 0; min-width:0; display:flex; align-items:center; gap:6px; }
+  .fo-side.right{ flex-direction:row-reverse; text-align:right; }
+  .fo-names{ min-width:0; display:flex; flex-direction:column; }
+  .fo-club{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:10px; letter-spacing:.1em; color:var(--white);
+    border-radius:3px; padding:2px 5px; flex:0 0 auto;
+  }
+  .fo-club.pnf{ background:var(--navy); }
+  .fo-club.bup{ background:var(--ink-soft); }
+  .fo-name{
+    font-size:12px; font-weight:700; color:var(--ink);
+    line-height:1.3; max-width:100%;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .fo-name.unknown{ color:var(--ink-soft); font-weight:500; font-style:italic; }
+  .fo-center{
+    flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
+    padding:0 2px; min-width:52px;
+  }
+  .fo-score{
+    font-family:'Archivo Black',sans-serif; font-size:17px; line-height:1;
+    color:var(--ink); white-space:nowrap;
+  }
+  /* Loser muted, winner full navy. The separator uses --ink-soft, not --line:
+     the card sits on a category tint, and --line disappears against it. */
+  .fo-score .lose{ color:var(--ink-soft); font-weight:400; }
+  .fo-score .sep{ color:var(--ink-soft); margin:0 4px; font-size:12px; opacity:.65; }
+  .fo-vs{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--ink-soft);
+  }
+
+  /* states */
+  /* Dimmed enough to recede behind live/upcoming, but not so far that the
+     darkest category drops under 4.5:1 for its body text. */
+  .cell.done{ opacity:.84; }
+  .cell.live{
+    border-color:var(--green);
+    border-left-color:var(--cat, var(--green));
+    box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px rgba(124,185,44,.6);
+  }
+  .cell.empty{
+    background:var(--paper-dim);
+    border:1px dashed var(--line);
+    border-left:1px dashed var(--line);
+    align-items:center; justify-content:center;
+    color:var(--ink-soft); opacity:.5;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+  }
+
+  /* ---------- BOARD MESSAGE ----------
+     Shown only in place of the grid before the first successful load, or if
+     that first load fails outright. Once a real snapshot has rendered once,
+     a failed poll leaves it exactly as-is instead of replacing it with this —
+     a stale board beats an error on a wall display. */
+  .board-msg{
+    display:flex; align-items:center; justify-content:center; height:100%;
+    padding:40px; text-align:center;
+    font-family:'Barlow Condensed',sans-serif; font-weight:600;
+    font-size:15px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .board-msg .retry-btn{
+    margin-left:12px; font-family:inherit; font-weight:700; letter-spacing:.08em;
+    font-size:13px; text-transform:uppercase; padding:5px 14px;
+    border-radius:100px; border:1px solid var(--ink-soft);
+    background:transparent; color:var(--ink); cursor:pointer;
+  }
+  .board-msg .retry-btn:hover{ border-color:var(--green-dark); color:var(--green-dark); }
+
+  /* ---------- PRINT / PDF ----------
+     The board is far wider than any sheet, so buildPrintPages() emits one
+     .print-page per group of courts and the browser handles the breaks. Screen
+     chrome is dropped entirely; what prints is a titled grid per sheet. */
+  #printRoot{ display:none; }
+  @page{ size:A4 landscape; margin:9mm; }
+  @media print{
+    html,body{ height:auto; display:block; background:var(--white); }
+    .bezel, .grid-wrap{ display:none !important; }
+    #printRoot{ display:block; }
+
+    .print-page{ break-after:page; }
+    .print-page:last-child{ break-after:auto; }
+
+    .print-head{
+      display:flex; align-items:flex-end; justify-content:space-between;
+      border-bottom:2px solid var(--navy);
+      padding-bottom:4px; margin-bottom:6px;
+    }
+    .print-eyebrow{
+      display:block;
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:600; font-size:8pt; letter-spacing:.18em; text-transform:uppercase;
+      color:var(--green-dark);
+    }
+    .print-title{
+      font-family:'Archivo Black',sans-serif; font-size:13pt; color:var(--navy);
+    }
+    .print-head-right{ text-align:right; }
+    .print-scope{
+      display:block;
+      font-family:'Archivo Black',sans-serif; font-size:11pt; color:var(--navy);
+    }
+    .print-meta{
+      font-family:'Barlow Condensed',sans-serif;
+      font-weight:600; font-size:8pt; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--ink-soft);
+    }
+
+    /* Compact enough that all 15 slots clear a single sheet's height. */
+    .print-grid{ gap:2px; padding:0; }
+    .print-grid .cell{ min-height:0; padding:2px 5px 3px; border-radius:4px; }
+    .print-grid .col-head, .print-grid .time-cell{ border-radius:4px; padding:2px; }
+    .print-grid .col-head .ch-num{ font-size:11pt; }
+    .print-grid .col-head .ch-label{ font-size:5.5pt; }
+    .print-grid .time-cell .tc-time{ font-size:8pt; }
+    .print-grid .cell-num, .print-grid .cell-cat, .print-grid .cell-stage{ font-size:5.5pt; }
+    /* 6.5pt, not 7pt: at 7pt a 4-court sheet (~244px columns) clipped a handful
+       of names, and on paper there is no hover to recover them. 6.5pt clears
+       every shape tested — 1, 3, 4 and 9 courts, 15 to 40 slots — with no extra
+       sheets. 6pt buys nothing further, so this is the largest that works. */
+    .print-grid .fo-name{ font-size:6.5pt; line-height:1.15; }
+    .print-grid .fo-club{ font-size:5.5pt; padding:1px 3px; }
+    .print-grid .fo-score{ font-size:10pt; }
+    .print-grid .fo-vs{ font-size:7pt; }
+    .print-grid .cell.done{ opacity:1; }   /* ink is cheap; contrast is not */
+    .print-grid .cell.live{ box-shadow:none; border:2px solid var(--green-dark); }
+
+    /* Tints and the category rule must survive the print pipeline. */
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bezel">
+  <img src="/assets/logo.png" alt="S.A.G.E. logo">
+  <div class="titles">
+    <p class="eyebrow">S.A.G.E. &middot; Match Control Experts</p>
+    <h1>PNF &times; BUP Dual Meet</h1>
+  </div>
+  <span class="meta" id="sub">Loading schedule&hellip;</span>
+  <div class="courtfilter" id="courtfilter"></div>
+  <div class="legend" id="legend"></div>
+  <div class="legend-live"><span class="dot"></span>Live now</div>
+  <button class="bezel-export" id="exportBtn" type="button"
+          title="Print / save as PDF — splits across sheets automatically">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4.5 6V2.5h7V6M4.5 12H3V7h10v5h-1.5M4.5 10h7v3.5h-7z"
+            stroke="currentColor" stroke-width="1.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>PDF</span>
+  </button>
+  <button class="bezel-toggle" id="bezelToggle" type="button"
+          aria-expanded="true" aria-controls="courtfilter" title="Hide header details">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 10l5-5 5 5" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<div class="grid-wrap">
+  <div class="sched-grid" id="grid"></div>
+  <div class="board-msg" id="boardMsg" style="display:none;"></div>
+</div>
+
+<!-- Populated only when printing; hidden on screen. -->
+<div id="printRoot" aria-hidden="true"></div>
+
+<script>
+// ============================================================================
+// CONFIGURATION — the only things this page needs per-event. Keep these three
+// in sync by hand with the matching constants in index.html / match-control.html
+// (EVENT_KEY doubles as this event's folder in the shared event-data repo;
+// DAY_KEY must match one of that event's configured days). COURTS is
+// deliberately not listed here — see buildScheduleData() below, which derives
+// it from the data instead of needing a fourth hand-synced value.
+// ============================================================================
+const EVENT_KEY     = 'pnf-x-bup-dual-meet';
+const GHPAGES_OWNER  = 'sage-match-control';
+const GHPAGES_REPO   = 'event-data';
+const DAY_KEY        = 'pnf-x-bup-day1';
+
+// How long to wait on the snapshot fetch before giving up (venue wifi at a
+// live event can hang rather than fail outright).
+const FETCH_TIMEOUT_MS = 8000;
+// Same cadence index.html/match-control.html poll at — Apps Script's own edit
+// debounce is ~10s, so polling faster wouldn't reveal fresher data any sooner.
+const POLL_INTERVAL_MS = 10000;
+
+// Category colours are the organiser's own, read off the colour-coded SCHEDULE
+// tab of the source spreadsheet. Hue = event (Women's berry, Men's blue,
+// Mixed orange), lightness = division (Low Int. -> High Int. -> Advanced).
+const CAT_META = {
+  LIWD: { short:'LI WD', color:'#C27BA0' },
+  HIWD: { short:'HI WD', color:'#741B47' },
+  LIMD: { short:'LI MD', color:'#6D9EEB' },
+  HIMD: { short:'HI MD', color:'#1155CC' },
+  AMD:  { short:'A MD',  color:'#1C4587' },
+  LIXD: { short:'LI XD', color:'#F6B26B' },
+  HIXD: { short:'HI XD', color:'#B45F06' }
+};
+const FALLBACK = { short:'?', color:'#5B6B74' };
+const meta = c => CAT_META[c] || FALLBACK;
+
+// The palette spans very light (LI XD #F6B26B) to very dark (HI WD #741B47),
+// so the chip's text colour is derived per category rather than fixed — white
+// on the dark hues, navy on the light ones.
+function readableOn(hex){
+  const [r,g,b] = [1,3,5].map(i => parseInt(hex.substr(i,2),16));
+  return (0.2126*r + 0.7152*g + 0.0722*b) > 140 ? '#14263C' : '#FFFFFF';
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Club is read per side rather than assumed by position — semifinal rows are
+// intra-club, so a cell can be PNF-vs-PNF or BUP-vs-BUP.
+const clubOf = code => (String(code).split('_')[0] || '').toLowerCase();
+
+// Stage of the ladder, from the tail of the team code. Regexes are lifted
+// verbatim from roundKeyword() in index.html so this page classifies a code
+// exactly the way the rest of the site does.
+//
+// Current data only carries "1".."4" (pool), "B" and "F", but QF/SF/R16 are
+// supported because the bracket generator emits them and this must not need
+// editing the first time a bigger event runs.
+//
+// Order matters: SF is tested before F, and "SF_1" cannot match the F pattern
+// anyway because that requires F at the start or after an underscore.
+const STAGE_META = {
+  RR:  { label: 'RR',     playoff: false },
+  R16: { label: 'R16',    playoff: true  },
+  QF:  { label: 'QF',     playoff: true  },
+  SF:  { label: 'SF',     playoff: true  },
+  B:   { label: 'BRONZE', playoff: true  },
+  F:   { label: 'FINAL',  playoff: true  }
+};
+
+function stageOf(code){
+  const m = String(code).match(/^[A-Z]+_[A-Z]+_(.+)$/);
+  const rest = m ? m[1] : '';
+  if(/^\d+$/.test(rest)) return 'RR';           // plain pool number
+  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'R16';
+  if(/(^|_)QF(_|\d|$)/.test(rest))  return 'QF';
+  if(/(^|_)SF(_|\d|$)/.test(rest))  return 'SF';
+  if(/(^|_)F(_|\d|$)/.test(rest))   return 'F';
+  if(/(^|_)B(_|\d|$)/.test(rest))   return 'B';
+  return 'RR';                                   // unrecognised -> pool, as standingsStageKey does
+}
+
+function nameHTML(n, codeFallback){
+  return n
+    ? `<span class="fo-name">${esc(n)}</span>`
+    : `<span class="fo-name unknown">${esc(codeFallback)}</span>`;
+}
+
+function cellHTML(m){
+  if(!m) return `<div class="cell empty">Open</div>`;
+  const cm = meta(m.cat);
+  // Stage is read from team 1; both sides of a match are always the same stage.
+  const sm = STAGE_META[stageOf(m.c1)] || STAGE_META.RR;
+  const live = !!m.liveCourt;
+  const done = m.s1 !== null && m.s2 !== null;
+  const w1 = done && m.s1 > m.s2, w2 = done && m.s2 > m.s1;
+
+  const centre = done
+    ? `<div class="fo-score"><span class="${w2?'lose':''}">${m.s1}</span><span class="sep">:</span><span class="${w1?'lose':''}">${m.s2}</span></div>`
+    : `<div class="fo-vs">VS</div>`;
+
+  return `
+  <div class="cell ${live?'live':(done?'done':'')}" style="--cat:${cm.color};--cat-text:${readableOn(cm.color)}">
+    <div class="cell-top">
+      <span class="cell-num">#${m.num}</span>
+      <span class="cell-cat">${cm.short}</span>
+      <span class="cell-stage${sm.playoff ? ' playoff' : ''}">${sm.label}</span>
+      ${live?`<span class="cell-live"><span class="dot"></span>Court ${esc(m.liveCourt)}</span>`:''}
+    </div>
+    <div class="faceoff">
+      <div class="fo-side">
+        <span class="fo-club ${clubOf(m.c1)}">${clubOf(m.c1).toUpperCase()}</span>
+        <span class="fo-names">${nameHTML(m.p1a, m.c1)}${nameHTML(m.p1b, ' ')}</span>
+      </div>
+      <div class="fo-center">${centre}</div>
+      <div class="fo-side right">
+        <span class="fo-club ${clubOf(m.c2)}">${clubOf(m.c2).toUpperCase()}</span>
+        <span class="fo-names">${nameHTML(m.p2a, m.c2)}${nameHTML(m.p2b, ' ')}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------- COURT FILTER STATE ----------
+// Held in the URL (?courts=1-5 or ?courts=1,2,7) rather than only in memory,
+// so each wall screen can be bookmarked to its own range and returns to it
+// after a refresh or power cycle with nobody touching the machine.
+let DATA = null;
+let visibleCourts = null;            // Set of court numbers; null = show all
+
+const allCourts = total => new Set(Array.from({length: total}, (_, i) => i + 1));
+
+function parseCourtsParam(total){
+  const raw = new URLSearchParams(location.search).get("courts");
+  if(!raw) return null;
+  const set = new Set();
+  raw.split(",").forEach(part => {
+    const t = part.trim();
+    const m = t.match(/^(\d+)\s*-\s*(\d+)$/);
+    if(m){ for(let i = +m[1]; i <= +m[2]; i++) if(i >= 1 && i <= total) set.add(i); }
+    else if(/^\d+$/.test(t) && +t >= 1 && +t <= total) set.add(+t);
+  });
+  return set.size ? set : null;
+}
+
+// Collapse the selection back to the shortest readable form (1,2,3,4 -> 1-4).
+function courtsToParam(set, total){
+  if(!set || set.size === 0 || set.size === total) return null;
+  const s = [...set].sort((a, b) => a - b), out = [];
+  for(let i = 0; i < s.length; ){
+    let j = i;
+    while(j + 1 < s.length && s[j + 1] === s[j] + 1) j++;
+    out.push(i === j ? String(s[i]) : s[i] + "-" + s[j]);
+    i = j + 1;
+  }
+  return out.join(",");
+}
+
+let compact = new URLSearchParams(location.search).get("compact") === "1";
+
+// The sub line has two forms. Expanded carries the operator detail (slots and
+// which courts this screen is showing); collapsed keeps only what a spectator
+// needs — the date and how many matches are on this board. Both are computed
+// in renderGrid and re-painted whenever the toggle flips.
+let subFull = "", subCompact = "";
+function paintSub(){
+  const el = document.getElementById("sub");
+  if(el) el.textContent = compact ? subCompact : subFull;
+}
+
+function syncUrl(){
+  const p = DATA ? courtsToParam(visibleCourts, DATA.courts) : null;
+  const url = new URL(location.href);
+  if(p) url.searchParams.set("courts", p); else url.searchParams.delete("courts");
+  if(compact) url.searchParams.set("compact", "1"); else url.searchParams.delete("compact");
+  history.replaceState(null, "", url);
+}
+
+// Collapsed state rides in the URL alongside ?courts, so a wall screen can be
+// bookmarked to boot straight into the stripped-down header.
+function applyCompact(){
+  const bar = document.querySelector(".bezel");
+  const btn = document.getElementById("bezelToggle");
+  bar.classList.toggle("compact", compact);
+  btn.setAttribute("aria-expanded", String(!compact));
+  btn.title = compact ? "Show header details" : "Hide header details";
+  paintSub();
+}
+
+document.getElementById("bezelToggle").addEventListener("click", () => {
+  compact = !compact;
+  applyCompact();
+  syncUrl();
+});
+
+// ---------- EXPORT (print / PDF) ----------
+// Print rather than a canvas render: the board is far too wide for one sheet,
+// and pagination is the whole requirement. The browser already does page
+// breaking, page size and DPI properly, and "Save as PDF" is built into every
+// print dialog. A hand-drawn canvas (as in bracket-generator.html) would mean
+// re-implementing every cell in Canvas 2D and chunking pages by hand, and that
+// copy would drift from the CSS the moment either changed.
+//
+// Courts per sheet is a measured budget, not a guess. A landscape A4 at 96dpi
+// gives ~1054px usable. Fitting 5 courts leaves 196px columns and truncates 87
+// of 504 player names — unacceptable on paper, where there is no hover to
+// recover the rest. 4 balances to 3+3+3 at 328px columns with zero truncation.
+// One extra sheet is a cheap price for nothing being cut off.
+const PRINT_COURTS_PER_PAGE = 4;
+// Height budget, same reasoning as the width one. A landscape A4 gives ~726px
+// usable; the page header and column-head row take ~70px, and a print row
+// measures ~42px including its gap, leaving room for about 15 slots. A 12-hour
+// day at 25-minute slots is ~29 rows, so this axis genuinely has to paginate
+// too — without it the browser breaks a sheet mid-row wherever it happens to
+// run out of paper.
+const PRINT_SLOTS_PER_PAGE = 15;
+
+// Balanced chunking: prefers even pages over a full-then-orphan split, so 9
+// courts at 4/page becomes 3+3+3 rather than 4+4+1.
+function chunkBalanced(list, maxPerPage){
+  if(list.length === 0) return [];
+  const pages = Math.ceil(list.length / maxPerPage);
+  const per = Math.ceil(list.length / pages);
+  const out = [];
+  for(let i = 0; i < list.length; i += per) out.push(list.slice(i, i + per));
+  return out;
+}
+
+function buildPrintPages(){
+  const total = DATA.courts;
+  const shown = [...(visibleCourts || allCourts(total))].sort((a, b) => a - b);
+
+  // Two-dimensional: courts across, time slots down. Either axis alone can
+  // overflow a sheet — 9 courts is too wide, a 12-hour day too tall — so both
+  // are chunked and the pages are the cross product. Courts are the outer loop
+  // so one court group's whole day stays on consecutive sheets.
+  const courtGroups = chunkBalanced(shown, PRINT_COURTS_PER_PAGE);
+  const slotGroups  = chunkBalanced(DATA.rows, PRINT_SLOTS_PER_PAGE);
+
+  const sheets = [];
+  courtGroups.forEach(courts => {
+    slotGroups.forEach(rows => sheets.push({ courts, rows }));
+  });
+
+  const courtLabel = c => c.length === 1 ? `Court ${c[0]}` : `Courts ${c[0]}–${c[c.length - 1]}`;
+  // Only worth naming a time window when the day is actually split.
+  const timeLabel = rows => slotGroups.length === 1
+    ? "" : ` &middot; ${esc(rows[0].slot)}–${esc(rows[rows.length - 1].slot)}`;
+
+  document.getElementById("printRoot").innerHTML = sheets.map((s, i) => `
+    <section class="print-page">
+      <div class="print-head">
+        <div class="print-head-left">
+          <span class="print-eyebrow">S.A.G.E. &middot; Match Control Experts</span>
+          <span class="print-title">PNF &times; BUP Dual Meet</span>
+        </div>
+        <div class="print-head-right">
+          <span class="print-scope">${courtLabel(s.courts)}${timeLabel(s.rows)}</span>
+          <span class="print-meta">${esc(DATA.label)} &middot; ${DATA.matchCount} matches &middot; page ${i + 1} of ${sheets.length}</span>
+        </div>
+      </div>
+      <div class="sched-grid print-grid" style="--cols:${s.courts.length}">${gridHTML(s.courts, s.rows)}</div>
+    </section>`).join("");
+}
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  if(!DATA) return;
+  buildPrintPages();
+  window.print();
+});
+
+// Rebuild on a print triggered outside our button (Ctrl+P, or the dialog being
+// reopened) so the sheet always reflects the current filter.
+window.addEventListener("beforeprint", () => { if(DATA) buildPrintPages(); });
+
+function renderFilter(){
+  const total = DATA.courts;
+  const showing = visibleCourts || allCourts(total);
+  const allOn = showing.size === total;
+  let html = `<span class="cf-label">Courts</span>`;
+  html += `<button class="cf-btn all ${allOn ? "on" : ""}" data-all="1">All</button>`;
+  for(let c = 1; c <= total; c++){
+    html += `<button class="cf-btn ${showing.has(c) ? "on" : ""}" data-court="${c}">${c}</button>`;
+  }
+  document.getElementById("courtfilter").innerHTML = html;
+}
+
+function renderGrid(){
+  const total = DATA.courts;
+  const shown = [...(visibleCourts || allCourts(total))].sort((a, b) => a - b);
+  const rows = DATA.rows;
+  const grid = document.getElementById("grid");
+  grid.style.setProperty("--cols", shown.length);
+
+  // The legend keys what is actually on screen, so it follows the filter.
+  const inView = m => m && shown.includes(m.court);
+  const cats = [...new Set(rows.flatMap(r => r.courts.filter(inView).map(m => m.cat)))];
+  const scope = shown.length === total
+    ? "all courts"
+    : "courts " + courtsToParam(new Set(shown), total);
+
+  // Match count is event-wide and identical on every screen; it is the scope
+  // ("courts 1-5") that says what this particular screen is showing. Using a
+  // filtered count here would make the same label mean different things on
+  // the two halves of a split-screen setup. It also includes any unplaced
+  // (overflow) matches, not just the ones that landed in a visible cell.
+  subFull = `${DATA.label} · ${DATA.matchCount} matches · ${rows.length} slots · ${scope}`;
+  subCompact = `${DATA.label} · ${DATA.matchCount} matches`;
+  paintSub();
+  document.getElementById("legend").innerHTML = cats.map(c =>
+    `<span class="legend-item"><span class="legend-swatch" style="background:${meta(c).color}"></span>${meta(c).short}</span>`
+  ).join("");
+
+  grid.innerHTML = gridHTML(shown);
+}
+
+// Grid markup for an arbitrary set of courts. Shared by the live board and by
+// each printed page, so the export can never drift from what is on screen —
+// there is exactly one implementation of a cell and a row.
+function gridHTML(shown, rows = DATA.rows){
+  let html = `<div class="corner"></div>`;
+  shown.forEach(c => {
+    html += `<div class="col-head"><span class="ch-label">Court</span><span class="ch-num">${c}</span></div>`;
+  });
+  rows.forEach(row => {
+    // Only warn about overflow this view can actually show.
+    const un = row.unplaced.filter(m => m.court == null || shown.includes(m.court));
+    const warn = un.length
+      ? `<span class="tc-warn" title="No free court: #${un.map(m => m.num).join(", #")}">+${un.length}</span>`
+      : "";
+    html += `<div class="time-cell"><span class="tc-time">${esc(row.slot)}</span>${warn}</div>`;
+    shown.forEach(c => { html += cellHTML(row.courts[c - 1]); });
+  });
+  return html;
+}
+
+document.getElementById("courtfilter").addEventListener("click", e => {
+  const btn = e.target.closest(".cf-btn");
+  if(!btn || !DATA) return;
+  const total = DATA.courts;
+  if(btn.dataset.all){
+    visibleCourts = null;
+  } else {
+    const c = +btn.dataset.court;
+    const set = new Set(visibleCourts || allCourts(total));
+    if(set.has(c)) set.delete(c); else set.add(c);
+    if(set.size === 0) set.add(c);          // never leave a blank board
+    visibleCourts = set.size === total ? null : set;
+  }
+  syncUrl(); renderFilter(); renderGrid();
+});
+
+// ============================================================================
+// LIVE DATA — CSV parsing and court assignment (spec §5)
+// ============================================================================
+
+// Same hand-rolled tokenizer index.html/match-control.html use — kept in this
+// self-contained page rather than shared, per this repo's no-build-step,
+// one-file-per-page convention.
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+// Spec §5.1: empty or "#REF!" collapses to "no name" (rendered as the muted
+// team-code fallback via nameHTML); everything else — including a placeholder
+// bracket slot where the sheet repeats the team code as the player name — is
+// taken as literal text, unchanged, matching what the reviewed mockup showed.
+function nameOrNull(raw){
+  const v = (raw || '').trim();
+  return (v === '' || v === '#REF!') ? null : v;
+}
+
+function scoreOrNull(raw){
+  const v = (raw || '').trim();
+  return v !== '' && !isNaN(v) ? parseInt(v, 10) : null;
+}
+
+// CourtAssignment holds "Court 1".."Court 9" — pull the trailing integer.
+// Blank or unparseable (e.g. a stray "SCORE") both come back null, which
+// assignCourts() below treats as "needs a free lane" rather than a specific one.
+function parseCourtAssignment(raw){
+  const m = String(raw || '').match(/(\d+)\s*$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function parseFacilityCsv(text){
+  const rows = parseCSV(text);
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iNum = idx('matchNumber'), iSched = idx('Schedule'), iCourtAssign = idx('CourtAssignment'),
+        iLiveCourt = idx('court'), iT1 = idx('teamCode1'), iT2 = idx('teamCode2'),
+        iP1a = idx('team1Player1'), iP1b = idx('team1Player2'),
+        iP2a = idx('team2Player1'), iP2b = idx('team2Player2'),
+        iS1 = idx('team1Score'), iS2 = idx('team2Score');
+
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const c1 = (row[iT1] || '').trim();
+    if(c1 === '-') continue; // spacer row
+    const num = parseInt(row[iNum], 10);
+    if(!num) continue;
+    out.push({
+      num,
+      slot: (row[iSched] || '').trim(),
+      c1,
+      c2: (row[iT2] || '').trim(),
+      // "<CLUB>_<CATEGORY>_<REST>" — middle segment, no DIVISIONS/EVENTS config needed.
+      cat: c1.split('_')[1] || '',
+      p1a: nameOrNull(row[iP1a]), p1b: nameOrNull(row[iP1b]),
+      p2a: nameOrNull(row[iP2a]), p2b: nameOrNull(row[iP2b]),
+      s1: scoreOrNull(row[iS1]), s2: scoreOrNull(row[iS2]),
+      liveCourt: (row[iLiveCourt] || '').trim(),
+      court: parseCourtAssignment(row[iCourtAssign])
+    });
+  }
+  return out;
+}
+
+// Defensive placement (spec §5.2), in order:
+//   1. valid court, lane free -> place there
+//   2. blank / unparseable / duplicate -> first free lane
+//   3. slot already full -> surface, never drop (returned in `unplaced`)
+// Never falls back to row order implying court — an earlier build did, and it
+// happened to be correct, which is exactly what made it dangerous: an
+// undocumented contract that breaks silently on a row reorder.
+function assignCourts(matches, total){
+  const courts = new Array(total).fill(null);
+  const remaining = [];
+  matches.forEach(m => {
+    if(m.court && m.court >= 1 && m.court <= total && !courts[m.court - 1]) courts[m.court - 1] = m;
+    else remaining.push(m);
+  });
+  const unplaced = [];
+  remaining.forEach(m => {
+    const free = courts.findIndex(x => x === null);
+    if(free === -1) unplaced.push(m);
+    else courts[free] = m;
+  });
+  return { courts, unplaced };
+}
+
+// Rows = time slots in first-appearance order once matches are sorted by
+// number (matchNumber is unique and monotonic with time across facilities, so
+// this groups correctly even when a venue has more than one sheet).
+// Courts = derived from the highest CourtAssignment actually seen, rather
+// than a hand-maintained constant — one fewer value to keep in sync with
+// FACILITIES elsewhere on this event's pages.
+function buildScheduleData(snapshot){
+  const allRows = snapshot.facilities.flatMap(f => parseFacilityCsv(f.matchesCsv));
+  allRows.sort((a, b) => a.num - b.num);
+
+  const slotOrder = [];
+  const bySlot = new Map();
+  allRows.forEach(m => {
+    if(!bySlot.has(m.slot)){ bySlot.set(m.slot, []); slotOrder.push(m.slot); }
+    bySlot.get(m.slot).push(m);
+  });
+
+  const total = Math.max(1, ...allRows.map(m => m.court || 0));
+  const rows = slotOrder.map(slot => {
+    const { courts, unplaced } = assignCourts(bySlot.get(slot), total);
+    return { slot, courts, unplaced };
+  });
+
+  return { courts: total, rows, matchCount: allRows.length, label: snapshot.label || '' };
+}
+
+// ---------- FETCH / POLL ----------
+// jsDelivr/GitHub Pages can hang on a bad connection (likely at a live event
+// on venue wifi) rather than failing outright — cap every request so a
+// stalled fetch degrades into the retry UI instead of leaving "Loading
+// schedule..." on screen forever.
+async function fetchDaySnapshot(){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    // Cache-busted: the snapshot is regenerated behind the same filename, and
+    // GitHub Pages caches responses for ~10 minutes — without this a stale
+    // copy renders silently and looks correct.
+    const url = `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${DAY_KEY}.json?t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    if(!res.ok){
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } catch(err){
+    if(err.name === 'AbortError') throw new Error('timed out');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function showBoardMessage(html){
+  const grid = document.getElementById("grid");
+  const msg = document.getElementById("boardMsg");
+  grid.style.display = "none";
+  msg.style.display = "flex";
+  msg.innerHTML = html;
+}
+function hideBoardMessage(){
+  document.getElementById("grid").style.display = "";
+  document.getElementById("boardMsg").style.display = "none";
+}
+
+async function loadSchedule(isInitial){
+  const wrap = document.querySelector(".grid-wrap");
+  const savedScroll = wrap ? wrap.scrollTop : 0;
+  try {
+    const snapshot = await fetchDaySnapshot();
+    const data = buildScheduleData(snapshot);
+    if(data.matchCount === 0) throw new Error('No matches parsed from any facility');
+
+    DATA = data;
+    if(isInitial){
+      visibleCourts = parseCourtsParam(DATA.courts);
+    } else if(visibleCourts){
+      // Court count can't normally shrink mid-event, but never let a stale
+      // selection point past the current grid.
+      const clipped = new Set([...visibleCourts].filter(c => c <= DATA.courts));
+      visibleCourts = clipped.size === 0 ? null : clipped;
+    }
+
+    hideBoardMessage();
+    applyCompact();
+    renderFilter();
+    renderGrid();
+    // Preserve scroll position across a poll-driven re-render — a wall
+    // display re-rendering every 10s must not visibly jump.
+    if(wrap) wrap.scrollTop = savedScroll;
+  } catch(err){
+    // A failed poll must leave the last good board on screen — a wall display
+    // showing stale data beats one showing an error. Only the very first load
+    // (nothing on screen yet) is allowed to show this message at all.
+    if(DATA) return;
+    const notPublishedYet = err.status === 404;
+    const message = notPublishedYet
+      ? `Schedule isn't published yet &mdash; check back soon.`
+      : `Couldn't load the schedule (${esc(err.message)}).<button type="button" class="retry-btn" id="retryBtn">Retry</button>`;
+    showBoardMessage(message);
+    const retryBtn = document.getElementById("retryBtn");
+    if(retryBtn) retryBtn.addEventListener("click", () => loadSchedule(true));
+  }
+}
+
+loadSchedule(true);
+
+// Pause polling while the tab/app is backgrounded — no point spending battery
+// and mobile data re-fetching a snapshot nobody's looking at — and catch up
+// with an immediate refresh as soon as it's visible again.
+let pollTimer = setInterval(() => loadSchedule(false), POLL_INTERVAL_MS);
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    clearInterval(pollTimer);
+  } else {
+    loadSchedule(false);
+    pollTimer = setInterval(() => loadSchedule(false), POLL_INTERVAL_MS);
+  }
+});
+</script>
+</body>
+</html>
