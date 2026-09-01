@@ -94,10 +94,12 @@
     margin-bottom:28px;
   }
   .crown-mark{
-    width:40px; height:auto;
+    width:56px; height:56px;
+    object-fit:contain;
     margin:0 auto 14px;
-    color:var(--court);
-    filter:drop-shadow(0 2px 6px rgba(124,185,44,.4));
+    border-radius:14px;
+    background:var(--white);
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
   }
   .regal-rule{
     display:flex;
@@ -1626,6 +1628,146 @@
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+  /* ---------- AWARDS (podium finishers) ---------- */
+  .awards-summary{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    margin:0 0 22px;
+    text-align:center;
+  }
+  .awards-summary-stat{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink-soft);
+    letter-spacing:.03em;
+  }
+  .awards-export-all-btn{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:13.5px;
+    padding:10px 20px;
+    border-radius:10px;
+    border:none;
+    background:var(--cork);
+    color:#fff;
+    cursor:pointer;
+    transition:background .12s ease;
+  }
+  .awards-export-all-btn:hover{background:var(--navy-deep);}
+  .awards-summary-note{
+    flex-basis:100%;
+    font-size:12px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+  .awards-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:18px;
+  }
+  @media (max-width:700px){
+    .awards-grid{ grid-template-columns:1fr; }
+  }
+  .award-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:var(--card-shadow);
+  }
+  .award-card-head{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    color:var(--navy);
+    margin-bottom:12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .award-chip{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:9.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    padding:2px 8px;
+    border-radius:100px;
+  }
+  .award-chip.by-standings{background:rgba(20,27,44,.08); color:var(--ink-soft);}
+  .award-chip.walkover{background:rgba(124,185,44,.18); color:var(--green-dark);}
+  .award-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid rgba(20,27,44,.08);
+  }
+  .award-row:last-of-type{border-bottom:none;}
+  .award-rank{
+    flex:none;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+  }
+  .award-row.gold .award-rank{background:rgba(212,175,55,.2);}
+  .award-row.silver .award-rank{background:rgba(192,198,204,.3);}
+  .award-row.bronze .award-rank{background:rgba(176,118,58,.2);}
+  .award-names{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:var(--ink);
+  }
+  .award-club{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    margin-left:auto;
+    white-space:nowrap;
+  }
+  .award-pending{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12px;
+    font-style:italic;
+    color:var(--muted);
+  }
+  .award-warning{
+    font-size:12.5px;
+    color:#B3261E;
+    font-weight:600;
+    padding:8px 0;
+  }
+  .awards-export-btn{
+    margin-top:12px;
+    width:100%;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid rgba(20,27,44,.18);
+    background:transparent;
+    color:var(--ink);
+    cursor:pointer;
+    transition:border-color .12s ease, color .12s ease;
+  }
+  .awards-export-btn:hover{border-color:var(--cork); color:var(--cork);}
+  .awards-export-btn:disabled{opacity:.5; cursor:not-allowed;}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
@@ -1635,25 +1777,7 @@
 <body>
 
 <header class="hero">
-  <svg class="crown-mark" viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <!-- Shield -->
-    <path d="M13 2 L35 2 L35 16 Q35 28 24 36 Q13 28 13 16 Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" fill="none"/>
-    <!-- Crossed paddles + ball, the league's charge, set inside the shield -->
-    <g transform="translate(13 6.9) scale(0.46)">
-      <g stroke="currentColor" stroke-width="4" stroke-linecap="round">
-        <path d="M6 8 L30 34" fill="none"/>
-        <path d="M42 8 L18 34" fill="none"/>
-      </g>
-      <ellipse cx="9" cy="6" rx="7" ry="9" transform="rotate(-38 9 6)" fill="currentColor"/>
-      <ellipse cx="39" cy="6" rx="7" ry="9" transform="rotate(38 39 6)" fill="currentColor"/>
-      <circle cx="24" cy="34" r="6.5" fill="currentColor"/>
-      <circle cx="21.5" cy="31.5" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="26.5" cy="31.5" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="24" cy="35" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="21.5" cy="37" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="26.5" cy="37" r="1.3" fill="var(--court-dark)"/>
-    </g>
-  </svg>
+  <img class="crown-mark" src="/assets/logo.png" alt="S.A.G.E." />
   <div class="eyebrow">S.A.G.E. Operator Console</div>
   <h1 class="title">Match Control</h1>
   <div class="domination-line" id="eventTitleLine"></div>
@@ -1674,6 +1798,7 @@
     <button class="view-tab active" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
+    <button class="view-tab" data-view="awards" type="button">Awards</button>
     <button class="view-tab" data-view="organizer" type="button">Mission Control</button>
   </div>
 
@@ -1712,6 +1837,10 @@
     </div>
     <div id="resolutionWarning" class="empty-state resolution-warning" style="display:none;"></div>
     <div id="standingsBody"></div>
+  </div>
+  <div id="awardsResults" style="display:none;">
+    <div class="awards-summary" id="awardsSummaryBar"></div>
+    <div class="awards-grid" id="awardsGrid"></div>
   </div>
   <div id="organizerResults" style="display:none;">
     <div class="organizer-panel">
@@ -2091,6 +2220,7 @@ async function loadLiveData(){
       renderStandings();
       renderLiveMatches();
     }
+    if(typeof renderAwards === 'function') renderAwards();
 
     // "Synced" reflects when Cloud Run actually published this snapshot
     // (i.e. when the sheet was last edited and its debounce settled), not
@@ -2273,6 +2403,34 @@ function roundLabel(rest){
   return ROUND_KEYWORD_LABELS[keyword] + suffix;
 }
 
+// ---- Bye detection (awards-podium-tab-spec §2.3) ----------------------
+// Twice-to-beat brackets often have no bronze match to actually play — the
+// third-place finisher is already determined by the bracket structure.
+// Rather than special-case that, it's encoded in the data: the operator
+// types BYE into the opponent's team code or either player-name cell,
+// making the real side a winner by walkover. Checking all three cells
+// (not just one) is deliberate — the sheet fills these by formula, so
+// whichever cell the operator overrides has to work.
+const BYE_RE = /^bye$/i;
+function sideIsBye(code, p1, p2){
+  return BYE_RE.test((code || '').trim())
+      || BYE_RE.test((p1   || '').trim())
+      || BYE_RE.test((p2   || '').trim());
+}
+function matchByeSide(m){
+  const t1Bye = sideIsBye(m.t1, m.t1p1, m.t1p2);
+  const t2Bye = sideIsBye(m.t2, m.t2p1, m.t2p2);
+  if(t1Bye && t2Bye) return 'both'; // data error
+  if(t1Bye) return 't1';
+  if(t2Bye) return 't2';
+  return null;
+}
+// A standings row for a bye "team" — never a real pair, dropped wherever
+// standings rows are consumed (spec §2.6 rule 1).
+function isByeStandingRow(s){
+  return BYE_RE.test((s.teamCode || '').trim()) || BYE_RE.test((s.player1 || '').trim());
+}
+
 function divisionLabel(code){
   const p = parseCode(code);
   if(!p.category) return null;
@@ -2345,7 +2503,152 @@ function pairCell(s){
   return `<td class="pair"><span>${p1}</span><span>${p2}</span></td>`;
 }
 
+// ---- Awards podium derivation (awards-podium-tab-spec §2) --------------
+// Everything below is a pure function over MATCHES/STANDINGS — no fetch, no
+// config, no new failure mode. See specs/awards-podium-tab-spec.md.
+
+// The non-bye side's code — used to read a match's category/round/instance
+// off the *real* team's code, since a literal "BYE" code parses to garbage.
+function nonByeCode(m){
+  return matchByeSide(m) === 't1' ? m.t2 : m.t1;
+}
+function matchCategoryOf(m){ return parseCode(nonByeCode(m)).category; }
+function matchRestOf(m){ return parseCode(nonByeCode(m)).rest; }
+
+// The decisive match (§2.4) for one category+round keyword: among all
+// matches for that round, the resolved instance with the highest instance
+// number (missing instance treated as 0). "Resolved" means played, or
+// decided by a bye walkover. Returns:
+//   { any:false }                        — no such round exists for this category
+//   { any:true, match:null, error:null } — round exists, nothing resolved yet (pending)
+//   { any:true, match, error:null }      — resolved cleanly, `match` is decisive
+//   { any:true, match, error:'tie'|'bothBye' } — a data error at that instance
+function resolveDecisiveMatch(category, keyword){
+  const candidates = MATCHES.filter(m => matchCategoryOf(m) === category && roundKeyword(matchRestOf(m)) === keyword);
+  if(candidates.length === 0) return { any: false, match: null, error: null };
+  const byInstanceDesc = candidates.slice().sort((a, b) =>
+    (matchInstanceOf(matchRestOf(b)) || 0) - (matchInstanceOf(matchRestOf(a)) || 0));
+  for(const m of byInstanceDesc){
+    const side = matchByeSide(m);
+    if(side === 'both') return { any: true, match: m, error: 'bothBye' };
+    if(side === 't1' || side === 't2') return { any: true, match: m, error: null };
+    if(m.played){
+      if(m.t1Score === m.t2Score) return { any: true, match: m, error: 'tie' };
+      return { any: true, match: m, error: null };
+    }
+    // this instance hasn't happened yet — fall through to a lower instance
+  }
+  return { any: true, match: null, error: null }; // exists, nothing resolved yet
+}
+
+function winnerOfMatch(m){
+  const side = matchByeSide(m);
+  if(side === 't1') return { p1: m.t2p1, p2: m.t2p2, code: m.t2 };
+  if(side === 't2') return { p1: m.t1p1, p2: m.t1p2, code: m.t1 };
+  return m.t1Score > m.t2Score
+    ? { p1: m.t1p1, p2: m.t1p2, code: m.t1 }
+    : { p1: m.t2p1, p2: m.t2p2, code: m.t2 };
+}
+// The loser is only meaningful for a real, non-bye-decided match — a bye
+// side is never rendered as a person (§2.3).
+function loserOfMatch(m){
+  if(matchByeSide(m)) return null;
+  return m.t1Score > m.t2Score
+    ? { p1: m.t2p1, p2: m.t2p2, code: m.t2 }
+    : { p1: m.t1p1, p2: m.t1p2, code: m.t1 };
+}
+
+function medalistFromTeam(team){
+  if(!team) return null;
+  const club = CURRENT_TYPE === 'dual-meet' ? parseCode(team.code).club : null;
+  return { p1: team.p1, p2: team.p2, club, clubLabel: club ? clubLabel(club) : null };
+}
+
+// True when a category's decisive Bronze match was won by walkover — used
+// to drop the whole BRONZE block from Standings (§2.6 rule 2), not just the
+// BYE row, since a one-sided "Bronze Battle" block is worse than none.
+function categoryBronzeIsByeDecided(category){
+  const res = resolveDecisiveMatch(category, 'B');
+  return !!(res.match && !res.error && matchByeSide(res.match));
+}
+
+// §2.5 — categories with no bracket at all fall back to the top three RR
+// standings rows, same sort Standings already applies.
+function standingsTop3ForCategory(category){
+  const rows = STANDINGS.filter(s => parseCode(s.teamCode).category === category && !isEmptyStanding(s) && !isByeStandingRow(s));
+  rows.sort((a, b) => {
+    if(b.wins !== a.wins) return b.wins - a.wins;
+    const qa = a.quotient ?? -Infinity, qb = b.quotient ?? -Infinity;
+    return qb - qa;
+  });
+  return rows.slice(0, 3).map(s => {
+    const club = CURRENT_TYPE === 'dual-meet' ? parseCode(s.teamCode).club : null;
+    return { p1: s.player1, p2: s.player2, club, clubLabel: club ? clubLabel(club) : null };
+  });
+}
+
+// -> [{ category, source: 'bracket'|'standings', gold, silver, bronze,
+//       bronzeWalkover, warning }], ordered by CATEGORY_ORDER_INDEX so the
+// Awards tab agrees with Standings' own category order.
+function buildPodiums(){
+  const categoryTokens = Array.from(new Set(MATCHES.map(m => matchCategoryOf(m)).filter(Boolean)));
+  const orderIndex = buildCategoryOrderIndex(categoryTokens);
+  const results = [];
+
+  categoryTokens.forEach(category => {
+    const orderIdx = orderIndex.has(category) ? orderIndex.get(category) : 999;
+    const finalRes = resolveDecisiveMatch(category, 'F');
+
+    if(!finalRes.any){
+      // No Final ever plays for this category — pure round robin, standings decide it.
+      const top3 = standingsTop3ForCategory(category);
+      if(top3.length === 0) return; // nothing to show at all — omitted (§2.7)
+      results.push({
+        category, source: 'standings',
+        gold: top3[0] || null, silver: top3[1] || null, bronze: top3[2] || null,
+        bronzeWalkover: false, warning: null, orderIdx
+      });
+      return;
+    }
+
+    if(finalRes.error){
+      results.push({
+        category, source: 'bracket',
+        gold: null, silver: null, bronze: null, bronzeWalkover: false,
+        warning: `Check the score for match #${finalRes.match.num}`, orderIdx
+      });
+      return;
+    }
+
+    const bronzeRes = resolveDecisiveMatch(category, 'B');
+    if(bronzeRes.error){
+      results.push({
+        category, source: 'bracket',
+        gold: null, silver: null, bronze: null, bronzeWalkover: false,
+        warning: `Check the score for match #${bronzeRes.match.num}`, orderIdx
+      });
+      return;
+    }
+
+    results.push({
+      category, source: 'bracket',
+      gold: medalistFromTeam(finalRes.match ? winnerOfMatch(finalRes.match) : null),
+      silver: medalistFromTeam(finalRes.match ? loserOfMatch(finalRes.match) : null),
+      bronze: medalistFromTeam(bronzeRes.match ? winnerOfMatch(bronzeRes.match) : null),
+      bronzeWalkover: !!(bronzeRes.match && matchByeSide(bronzeRes.match)),
+      warning: null, orderIdx
+    });
+  });
+
+  results.sort((a, b) => a.orderIdx - b.orderIdx);
+  return results;
+}
+
 function renderStageTables(rows){
+  // A bye is never a real standings row — drop it wherever standings rows
+  // are consumed (awards-podium-tab-spec §2.6 rule 1).
+  rows = rows.filter(s => !isByeStandingRow(s));
+
   // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
   // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2"). A blank bracket
   // means every RR row for this division is one single group — no Br column
@@ -2375,6 +2678,14 @@ function renderStageTables(rows){
       return qb - qa;
     });
   });
+
+  // A bye-decided Bronze has no contest to report — drop the whole block,
+  // not just its BYE row (§2.6 rule 2). The medalist still shows up in
+  // their own Round Robin row above.
+  if(stages.has('BRONZE') && rows.length){
+    const category = parseCode(rows[0].teamCode).category;
+    if(categoryBronzeIsByeDecided(category)) stages.delete('BRONZE');
+  }
 
   if(rrGroups.size === 0 && stages.size === 0) return '';
 
@@ -2549,12 +2860,22 @@ function renderClubSubsection(clubCode, rows){
 // against the other's — the same mechanism that pairs same-club rows within
 // a per-club R16/QF/SF stage, just fed cross-club rows instead this time.
 function renderSharedStages(rows){
+  // A bye is never a real standings row — drop it wherever standings rows
+  // are consumed (awards-podium-tab-spec §2.6 rule 1).
+  rows = rows.filter(s => !isByeStandingRow(s));
   const stages = new Map();
   rows.forEach(s => {
     const stageKey = standingsStageKey(s.teamCode);
     if(!stages.has(stageKey)) stages.set(stageKey, []);
     stages.get(stageKey).push(s);
   });
+  // A bye-decided Bronze has no contest to report — drop the whole block,
+  // not just its BYE row (§2.6 rule 2). The medalist still shows up in
+  // their own Round Robin row.
+  if(stages.has('BRONZE') && rows.length){
+    const category = parseCode(rows[0].teamCode).category;
+    if(categoryBronzeIsByeDecided(category)) stages.delete('BRONZE');
+  }
   if(stages.size === 0) return '';
   let html = `<div class="shared-stages">`;
   sortStageKeys(Array.from(stages.keys())).forEach(key => {
@@ -2995,7 +3316,7 @@ function pairKey(code, p1, p2){
 function rebuildTeamIndex(){
   const byPair = new Map();
   const addSide = (code, p1, p2) => {
-    if(p1 === 'TBD') return;
+    if(p1 === 'TBD' || sideIsBye(code, p1, p2)) return;
     const key = pairKey(code, p1, p2);
     if(!byPair.has(key)){
       byPair.set(key, { p1, p2, label: `${p1} / ${p2}`, codes: new Set() });
@@ -3036,6 +3357,7 @@ const standingsBodyEl = document.getElementById('standingsBody');
 const liveBoardEl = document.getElementById('liveBoard');
 const liveBoardMetaEl = document.getElementById('liveBoardMeta');
 const organizerResultsEl = document.getElementById('organizerResults');
+const awardsResultsEl = document.getElementById('awardsResults');
 viewTabs.forEach(btn => {
   btn.addEventListener('click', () => {
     viewTabs.forEach(b => b.classList.remove('active'));
@@ -3045,9 +3367,11 @@ viewTabs.forEach(btn => {
     searchPanelEl.style.display = view === 'finder' ? '' : 'none';
     resultsEl.style.display = view === 'finder' ? '' : 'none';
     standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
+    if(awardsResultsEl) awardsResultsEl.style.display = view === 'awards' ? '' : 'none';
     if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
     if(view === 'standings') renderStandings();
     if(view === 'live') renderLiveMatches();
+    if(view === 'awards') renderAwards();
     if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function'){
       updateOrganizerDayLabel();
       renderOrganizerStatus();
@@ -3112,6 +3436,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
+  if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
   dayPromptEl.textContent = `Loading ${day.label}\u2026`;
   dayPromptEl.style.display = '';
@@ -3371,15 +3696,18 @@ function courtNumberFrom(courtAssignment){
 function buildFacilityCourtGroups(){
   const groups = new Map();
   MATCHES_BY_FACILITY.forEach(({ name, matches }) => {
+    // A bye is never a real match — it's never played, never assigned a
+    // court, and has no opponent (awards-podium-tab-spec §2.6).
+    const realMatches = matches.filter(m => matchByeSide(m) === null);
     const byCourt = new Map();
-    matches.forEach(m => {
+    realMatches.forEach(m => {
       const n = courtNumberFrom(m.court);
       if(n !== null && !byCourt.has(n)) byCourt.set(n, null);
     });
     // Last match (by matchNumber order) with a liveCourt wins — that's the
     // current one. A live court outside the scheduled set (a mid-event
     // reassignment) still shows up rather than being dropped.
-    matches.forEach(m => { if(m.liveCourt) byCourt.set(m.liveCourt, m); });
+    realMatches.forEach(m => { if(m.liveCourt) byCourt.set(m.liveCourt, m); });
     const sortedCourts = Array.from(byCourt.keys()).sort((a, b) => courtSortKey(a) - courtSortKey(b));
     groups.set(name, sortedCourts.map(c => [c, byCourt.get(c)]));
   });
@@ -3535,7 +3863,9 @@ function runSearch(){
 
   selectedTeam = team;
   const codes = team.codes;
-  const teamMatches = MATCHES.filter(m => codes.includes(m.t1) || codes.includes(m.t2))
+  // A bye is never a real match — exclude it so no "Next Up" ticket ever
+  // points at one (awards-podium-tab-spec §2.6).
+  const teamMatches = MATCHES.filter(m => (codes.includes(m.t1) || codes.includes(m.t2)) && matchByeSide(m) === null)
                               .sort((a,b) => a.num - b.num);
   // "Next" = the first match in schedule order that hasn't been played and
   // isn't currently live (a live one is already flagged by the Live pill).
@@ -3568,6 +3898,373 @@ function renderIntro(){
 }
 
 renderIntro();
+
+// ---------- Awards tab (podium finishers + image export) ----------------
+// Read-only, derived tab — no fetch, no config, no auth. See
+// specs/awards-podium-tab-spec.md. buildPodiums() (defined above, next to
+// the Standings render functions it shares helpers with) does all the
+// derivation; everything here is presentation + Canvas 2D export.
+const awardsSummaryBarEl = document.getElementById('awardsSummaryBar');
+const awardsGridEl = document.getElementById('awardsGrid');
+
+function medalRowHTML(rankEmoji, rankClass, medalist){
+  if(!medalist){
+    return `<div class="award-row ${rankClass}"><span class="award-rank">${rankEmoji}</span><span class="award-pending">Pending</span></div>`;
+  }
+  return `<div class="award-row ${rankClass}">
+    <span class="award-rank">${rankEmoji}</span>
+    <span class="award-names">${escapeHtml(medalist.p1)} / ${escapeHtml(medalist.p2)}</span>
+    ${medalist.clubLabel ? `<span class="award-club">${escapeHtml(medalist.clubLabel)}</span>` : ''}
+  </div>`;
+}
+
+function awardsCardHTML(p){
+  if(p.warning){
+    return `<div class="award-card">
+      <div class="award-card-head">${escapeHtml(categoryLabel(p.category))}</div>
+      <div class="award-warning">${escapeHtml(p.warning)}</div>
+      <button type="button" class="awards-export-btn" disabled>Export image</button>
+    </div>`;
+  }
+  return `<div class="award-card">
+    <div class="award-card-head">
+      ${escapeHtml(categoryLabel(p.category))}
+      ${p.source === 'standings' ? '<span class="award-chip by-standings">By standings</span>' : ''}
+    </div>
+    ${medalRowHTML('\u{1F947}', 'gold', p.gold)}
+    ${medalRowHTML('\u{1F948}', 'silver', p.silver)}
+    <div class="award-row bronze">
+      <span class="award-rank">\u{1F949}</span>
+      ${p.bronze
+        ? `<span class="award-names">${escapeHtml(p.bronze.p1)} / ${escapeHtml(p.bronze.p2)}</span>${p.bronze.clubLabel ? `<span class="award-club">${escapeHtml(p.bronze.clubLabel)}</span>` : ''}`
+        : `<span class="award-pending">Pending</span>`}
+      ${p.bronzeWalkover ? '<span class="award-chip walkover">Walkover</span>' : ''}
+    </div>
+    <button type="button" class="awards-export-btn" data-category="${escapeHtml(p.category)}">Export image</button>
+  </div>`;
+}
+
+function renderAwards(){
+  if(!awardsGridEl || !awardsSummaryBarEl) return;
+  const podiums = buildPodiums();
+
+  if(podiums.length === 0){
+    awardsSummaryBarEl.innerHTML = '';
+    awardsGridEl.innerHTML = `<div class="empty-state">No categories found for this day yet.</div>`;
+    return;
+  }
+
+  const completeCount = podiums.filter(p => !p.warning && p.gold && p.silver && p.bronze).length;
+  const pendingCount = podiums.length - completeCount;
+  awardsSummaryBarEl.innerHTML = `
+    <div class="awards-summary-stat">${completeCount} of ${podiums.length} podium${podiums.length===1?'':'s'} complete</div>
+    <button type="button" class="awards-export-all-btn" id="exportAllPodiumsBtn">Export whole tournament</button>
+    ${pendingCount > 0 ? `<div class="awards-summary-note">${pendingCount} categor${pendingCount===1?'y':'ies'} still pending — the exported sheet will have gaps.</div>` : ''}
+  `;
+  awardsGridEl.innerHTML = podiums.map(p => awardsCardHTML(p)).join('');
+
+  const exportAllBtn = document.getElementById('exportAllPodiumsBtn');
+  if(exportAllBtn) exportAllBtn.addEventListener('click', () => exportWholeTournamentImage(podiums));
+  awardsGridEl.querySelectorAll('.awards-export-btn[data-category]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const podium = podiums.find(p => p.category === btn.dataset.category);
+      if(podium) exportCategoryImage(podium);
+    });
+  });
+}
+
+// ---- Image export: Canvas 2D, no library (spec §4.1) --------------------
+const EXPORT_W = 1080, EXPORT_H = 1350, EXPORT_SCALE = 2;
+// iOS Safari caps total canvas area near 16.7M pixels — stay comfortably
+// under that rather than risk a silently-blank canvas (§4.3).
+const EXPORT_MAX_AREA = 16000000;
+
+const AWARDS_EXPORT_COLORS = {
+  bg: '#0B1826',      // --navy-deep
+  panel: '#14263C',   // --navy
+  accent: '#7CB92C',  // --green
+  paper: '#F6F7F2',   // --paper
+  secondary: '#9FB1AC',
+  gold: '#D4AF37',
+  silver: '#C0C6CC',
+  bronze: '#B0763A'
+};
+
+async function loadExportFonts(){
+  await Promise.all([
+    '400 56px "Archivo Black"',
+    '700 34px "Barlow Condensed"',
+    '600 30px "Barlow Condensed"',
+    '600 34px "Inter"',
+    '400 24px "Inter"',
+  ].map(f => document.fonts.load(f)));
+  await document.fonts.ready;
+}
+
+// The site's own logo (/assets/logo.png, a square raster mark — same file
+// og:image points at) decoded once and cached, rather than re-decoded on
+// every export in a run. Same-origin, so it never taints the canvas.
+let cachedSageLogoImage = null;
+async function getSageMarkImage(){
+  if(cachedSageLogoImage) return cachedSageLogoImage;
+  try {
+    const img = new Image();
+    img.src = '/assets/logo.png';
+    await img.decode();
+    cachedSageLogoImage = img;
+    return img;
+  } catch(e){
+    return null;
+  }
+}
+
+function wrapCanvasText(ctx, text, maxWidth){
+  const words = String(text).split(' ');
+  const lines = [];
+  let line = '';
+  words.forEach(w => {
+    const test = line ? `${line} ${w}` : w;
+    if(line && ctx.measureText(test).width > maxWidth){
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  });
+  if(line) lines.push(line);
+  return lines;
+}
+
+function exportEventTitle(){
+  const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  return (rawEvent && rawEvent.title) || CURRENT_EVENT_KEY || '';
+}
+function exportDayLabel(){
+  const day = DAYS[currentDayIndex];
+  if(!day) return '';
+  return day.date ? `${day.label} · ${day.date}` : day.label;
+}
+function exportVenueLabel(){
+  return FACILITIES.map(f => f.name).join(' · ');
+}
+
+function slugify(str){
+  return String(str || '').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+function categoryFilenameFor(podium){
+  const day = DAYS[currentDayIndex];
+  return `${slugify(CURRENT_EVENT_KEY)}-${slugify(day && day.key)}-${slugify(podium.category)}-podium.png`;
+}
+function wholeTournamentFilename(){
+  const day = DAYS[currentDayIndex];
+  return `${slugify(CURRENT_EVENT_KEY)}-${slugify(day && day.key)}-podium-all.png`;
+}
+
+function downloadCanvasAsPng(canvas, filename){
+  canvas.toBlob(blob => {
+    if(!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, 'image/png');
+}
+
+// One SAGE-branded card: header, category headline, gold/silver/bronze rows,
+// footer (spec §4.2).
+async function drawPodiumCard(ctx, w, h, podium){
+  const c = AWARDS_EXPORT_COLORS;
+  const sageMark = await getSageMarkImage();
+
+  ctx.fillStyle = c.bg;
+  ctx.fillRect(0, 0, w, h);
+  ctx.textAlign = 'center';
+
+  // ---- Header band (~200px) ----
+  const markW = 76, markH = 76; // logo.png is square
+  if(sageMark) ctx.drawImage(sageMark, w / 2 - markW / 2, 34, markW, markH);
+  let y = 34 + markH + 30;
+  ctx.fillStyle = c.accent;
+  ctx.font = '600 20px "Barlow Condensed"';
+  ctx.fillText('S . A . G . E .', w / 2, y);
+  y += 38;
+  ctx.fillStyle = c.paper;
+  ctx.font = '700 32px "Barlow Condensed"';
+  wrapCanvasText(ctx, exportEventTitle(), w - 140).slice(0, 1).forEach(line => { ctx.fillText(line, w / 2, y); });
+  y += 32;
+  ctx.fillStyle = c.secondary;
+  ctx.font = '400 22px "Inter"';
+  ctx.fillText(exportDayLabel(), w / 2, y);
+
+  // ---- Category headline (~180px) ----
+  y += 68;
+  ctx.fillStyle = c.paper;
+  ctx.font = '400 54px "Archivo Black"';
+  const catLines = wrapCanvasText(ctx, categoryLabel(podium.category).toUpperCase(), w - 120).slice(0, 2);
+  catLines.forEach((line, i) => { ctx.fillText(line, w / 2, y + i * 60); });
+  y += catLines.length > 1 ? 60 * 2 : 60;
+  if(podium.source === 'standings'){
+    y += 34;
+    ctx.fillStyle = c.accent;
+    ctx.font = '600 20px "Barlow Condensed"';
+    ctx.fillText('BY STANDINGS', w / 2, y);
+  }
+  y += 40;
+
+  // ---- Gold / silver / bronze rows (3 x ~250px) ----
+  const rows = [
+    { label: 'GOLD', initial: 'G', tint: c.gold, medal: podium.gold },
+    { label: 'SILVER', initial: 'S', tint: c.silver, medal: podium.silver },
+    { label: 'BRONZE', initial: 'B', tint: c.bronze, medal: podium.bronze, walkover: podium.bronzeWalkover }
+  ];
+  const rowH = 250, rowPad = 20, rowX = 60, rowW = w - 120;
+  rows.forEach(row => {
+    const cy = y + (rowH - rowPad) / 2;
+    ctx.fillStyle = c.panel;
+    ctx.fillRect(rowX, y, rowW, rowH - rowPad);
+
+    ctx.beginPath();
+    ctx.fillStyle = row.tint;
+    ctx.arc(rowX + 84, cy, 46, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = c.bg;
+    ctx.font = '700 32px "Barlow Condensed"';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.initial, rowX + 84, cy + 11);
+
+    ctx.textAlign = 'left';
+    const textX = rowX + 170;
+    if(row.medal){
+      ctx.fillStyle = c.paper;
+      ctx.font = '600 38px "Inter"';
+      const nameLine = `${row.medal.p1} / ${row.medal.p2}`;
+      ctx.fillText(nameLine, textX, row.medal.clubLabel ? cy - 8 : cy + 12);
+      if(row.medal.clubLabel){
+        ctx.fillStyle = c.secondary;
+        ctx.font = '400 26px "Inter"';
+        ctx.fillText(row.medal.clubLabel, textX, cy + 32);
+      }
+    } else {
+      ctx.fillStyle = c.secondary;
+      ctx.font = '600 30px "Barlow Condensed"';
+      ctx.fillText('PENDING', textX, cy + 10);
+    }
+    if(row.walkover){
+      ctx.textAlign = 'right';
+      ctx.fillStyle = c.accent;
+      ctx.font = '600 20px "Barlow Condensed"';
+      ctx.fillText('WALKOVER', rowX + rowW - 24, cy + 7);
+    }
+    ctx.textAlign = 'center';
+    y += rowH;
+  });
+
+  // ---- Footer (~120px) ----
+  ctx.fillStyle = c.secondary;
+  ctx.font = '400 22px "Inter"';
+  ctx.fillText(exportVenueLabel(), w / 2, h - 68);
+  ctx.fillStyle = c.accent;
+  ctx.font = '600 17px "Barlow Condensed"';
+  ctx.fillText('sage-match-control.github.io', w / 2, h - 38);
+}
+
+async function exportCategoryImage(podium){
+  await loadExportFonts();
+  let scale = EXPORT_SCALE;
+  if((EXPORT_W * scale) * (EXPORT_H * scale) > EXPORT_MAX_AREA) scale = 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = EXPORT_W * scale;
+  canvas.height = EXPORT_H * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  await drawPodiumCard(ctx, EXPORT_W, EXPORT_H, podium);
+  downloadCanvasAsPng(canvas, categoryFilenameFor(podium));
+}
+
+// The whole-tournament sheet: one condensed row per category, same 1080
+// logical width, height computed from category count (spec §4.3).
+async function drawWholeTournamentSheet(ctx, w, h, podiums){
+  const c = AWARDS_EXPORT_COLORS;
+  const headerH = 210, rowH = 92, footerH = 110;
+  const sageMark = await getSageMarkImage();
+
+  ctx.fillStyle = c.bg;
+  ctx.fillRect(0, 0, w, h);
+  ctx.textAlign = 'center';
+
+  const markW = 66, markH = 66; // logo.png is square
+  if(sageMark) ctx.drawImage(sageMark, w / 2 - markW / 2, 26, markW, markH);
+  ctx.fillStyle = c.accent;
+  ctx.font = '600 18px "Barlow Condensed"';
+  ctx.fillText('S . A . G . E .  ·  TOURNAMENT RESULTS', w / 2, 26 + markH + 26);
+  ctx.fillStyle = c.paper;
+  ctx.font = '700 30px "Barlow Condensed"';
+  ctx.fillText(exportEventTitle(), w / 2, 26 + markH + 62);
+  ctx.fillStyle = c.secondary;
+  ctx.font = '400 20px "Inter"';
+  ctx.fillText(exportDayLabel(), w / 2, 26 + markH + 92);
+
+  let y = headerH;
+  podiums.forEach(p => {
+    ctx.fillStyle = c.panel;
+    ctx.fillRect(50, y, w - 100, rowH - 14);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = c.paper;
+    ctx.font = '600 24px "Barlow Condensed"';
+    const catText = categoryLabel(p.category);
+    const catLine = wrapCanvasText(ctx, catText, 300)[0] || catText;
+    ctx.fillText(catLine, 70, y + (rowH - 14) / 2 + 8);
+
+    if(p.warning){
+      ctx.fillStyle = '#FFB4A2';
+      ctx.font = '600 18px "Barlow Condensed"';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.warning, w - 70, y + (rowH - 14) / 2 + 6);
+    } else {
+      ctx.textAlign = 'right';
+      let xRight = w - 70;
+      [
+        { medal: p.bronze, tint: c.bronze },
+        { medal: p.silver, tint: c.silver },
+        { medal: p.gold, tint: c.gold }
+      ].forEach(({ medal, tint }) => {
+        ctx.font = '400 19px "Inter"';
+        ctx.fillStyle = medal ? c.paper : c.secondary;
+        const text = medal ? `${medal.p1}/${medal.p2}` : 'Pending';
+        ctx.fillText(text, xRight, y + (rowH - 14) / 2 + 7);
+        xRight -= ctx.measureText(text).width + 36;
+      });
+    }
+    y += rowH;
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = c.secondary;
+  ctx.font = '400 20px "Inter"';
+  ctx.fillText(exportVenueLabel(), w / 2, h - 56);
+  ctx.fillStyle = c.accent;
+  ctx.font = '600 16px "Barlow Condensed"';
+  ctx.fillText('sage-match-control.github.io', w / 2, h - 28);
+}
+
+async function exportWholeTournamentImage(podiums){
+  await loadExportFonts();
+  const headerH = 210, rowH = 92, footerH = 110;
+  const h = headerH + podiums.length * rowH + footerH;
+  let scale = EXPORT_SCALE;
+  if((EXPORT_W * scale) * (h * scale) > EXPORT_MAX_AREA) scale = 1;
+  const canvas = document.createElement('canvas');
+  canvas.width = EXPORT_W * scale;
+  canvas.height = h * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  await drawWholeTournamentSheet(ctx, EXPORT_W, h, podiums);
+  downloadCanvasAsPng(canvas, wholeTournamentFilename());
+}
 
 // ---------- Organizer tab: resync + sign-in handling ----------
 const orgLoginFormEl = document.getElementById('orgLoginForm');
@@ -4077,6 +4774,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
+  if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
 
   if(!rawEvent){

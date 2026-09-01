@@ -33,6 +33,7 @@ Follow §2.1–§2.2 below to get signed in and resynced, then check:
 - [ ] **Live Matches** tab: Match A shows the final score you set; Match B shows a live pill on the court you set; every other configured court on that facility shows idle placeholders, not blank/missing
 - [ ] **Standings** tab: a visible warning banner naming Match C's unmapped code — not a silent "Other" bucket
 - [ ] **Match Finder** tab: search a real player name from any match → returns their matches in schedule order, correct opponent/score state
+- [ ] **Awards** tab: loads without errors and lists every category — before any Final/Bronze match is played, every placing reads "Pending," not a fabricated winner
 - [ ] **Live/Hide** toggle: set to `false`, then back to `auto` → a confirmation prompt appears before `false` takes effect; the console's own tabs stay visible throughout either way; it flips back cleanly to `auto`
 
 Don't move on until every check above passes.
@@ -105,5 +106,6 @@ that pipeline needs a nudge:
 ### 2.5 End of day
 
 - [ ] After the last match, check **Standings** on the console look complete and correct
+- [ ] Once the day's Finals and Bronze matches are scored, check the **Awards** tab — every category should show its gold/silver/bronze (or a named-match warning if a score looks wrong); use **Export image** per category, or **Export whole tournament**, to hand results to the emcee/ceremony
 - [ ] No action needed on the go-live switch — `auto` stays live permanently once it's triggered, so there's nothing to turn off
 - [ ] If anything broke mid-day, note the rough time — `event-data`'s git history (both `config/events.json` and the day's published JSON) has a timestamped commit for every sync and every override, so it's reconstructable after the fact
