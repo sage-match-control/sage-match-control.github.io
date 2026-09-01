@@ -103,7 +103,7 @@ clubs; it is not a general multi-club template.
    `CONFIGURATION` block: `DAYS`, `FACILITIES`, `DIVISIONS`, `EVENTS` — and,
    for `dual-meet-template/`, `CLUBS` (which is filled from tokens directly,
    not left as an example — see §3). `bracket-generator.html` needs no
-   config at all. The operator console (`tools/match-control.html`) takes
+   config at all. Control Center (`tools/control-center.html`) takes
    its config from `event-data/config/events.json` — see step 7.
 
 5. **Leave the theme alone unless the event genuinely needs its own.** Every
@@ -134,8 +134,8 @@ clubs; it is not a general multi-club template.
 6. **Set up the schedule board** (`schedule.html`). This is the venue wall
    display — courts as columns, time slots as rows, one card per match. It
    is **unlisted from the public pages on purpose**: nothing links to it
-   except the `Open schedule` button at the foot of Mission Control in the
-   operator console (`tools/match-control.html`), so operators can launch
+   except the `Open schedule` button at the foot of Mission Control in
+   Control Center (`tools/control-center.html`), so operators can launch
    it and spectators never see it. GitHub Pages resolves extensionless
    HTML, so it is reachable as `/events/<event-key>/schedule`.
 
@@ -186,7 +186,7 @@ clubs; it is not a general multi-club template.
 
    **Also fill in this event's display block.** Beyond the day/facility
    registry the sync itself needs, the entry carries a few fields that exist
-   purely so the central Match Control console can render this event without
+   purely so the central Control Center console can render this event without
    any per-event code of its own:
 
    ```jsonc
@@ -230,8 +230,9 @@ clubs; it is not a general multi-club template.
    > to this repo. The public `index.html` is unaffected — it keeps its own
    > `DIVISIONS`/`EVENTS`/`CLUBS` block from step 4.
 
-   > The operator console lives at `tools/match-control.html` (see
-   > `specs/match-control-console-spec.md`). Filling these fields in is what
+   > Control Center lives at `tools/control-center.html` (see
+   > `specs/match-control-console-spec.md`, written before the console's
+   > rename from "Match Control" to "Control Center"). Filling these fields in is what
    > makes a newly registered event usable there immediately; leaving them
    > out (or leaving `type` unset/wrong) shows a visible error there rather
    > than guessing — see §1 above.
@@ -249,7 +250,7 @@ clubs; it is not a general multi-club template.
       match a `name` in this event's `FACILITIES` array **exactly**
       (case-sensitive), and set `CLOUD_RUN_BASE_URL` to `sage-tools-api`'s
       Cloud Run URL (no trailing slash) — the same fixed platform value
-      `tools/match-control.html` hardcodes in its own `CLOUD_RUN_BASE_URL`
+      `tools/control-center.html` hardcodes in its own `CLOUD_RUN_BASE_URL`
       constant.
    4. Check `WATCHED_SHEET_GIDS`. The SCHEDULE/COURT CONTROL tab GIDs are
       per-spreadsheet (a new spreadsheet's tabs get their own GIDs), so

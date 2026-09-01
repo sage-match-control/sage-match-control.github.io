@@ -1,4 +1,4 @@
-# PNF x BUP Dual Meet — Match Control Runbook
+# PNF x BUP Dual Meet — Control Center Runbook
 
 Two parts: **Part 1** is a one-time rehearsal against this event's real
 sheet, using a few temporarily-faked rows instead of a separate scratch day —
@@ -62,7 +62,7 @@ Follow §2.3 below (screen setup), then:
 **Operator device (laptop/tablet) — get this working first, before anything public:**
 
 - [ ] Confirm it's on the venue wifi/network
-- [ ] Open Match Control (`tools/match-control.html`)
+- [ ] Open Control Center (`tools/control-center.html`)
 - [ ] Select `PNF x BUP Dual Meet` → today's day
 - [ ] Sign in with the operator username and password in Mission Control
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it

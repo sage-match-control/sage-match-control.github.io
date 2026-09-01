@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dual Meet — Match Finder</title>
+<title>Dual Meet — Tournament Hub</title>
 <meta name="description" content="Find your pair's full Dual Meet match schedule, live scores, and standings.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Dual Meet — Match Finder">
+<meta property="og:title" content="Dual Meet — Tournament Hub">
 <meta property="og:description" content="Find your pair's full match schedule, live scores, and standings.">
 <meta property="og:image" content="/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1401,9 +1401,9 @@
 <body>
 
 <div class="qr-panel" aria-hidden="false">
-  <img src="assets/qr.png" alt="QR code linking to this match finder site" />
+  <img src="assets/qr.png" alt="QR code linking to this Tournament Hub site" />
   <div class="qr-link-text">tinyurl.com/SAGExPNFxBUP</div>
-  <div class="qr-caption">Scan to open the Match Finder &amp; Standings on your phone</div>
+  <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
 </div>
 
 <header class="hero">
@@ -1563,7 +1563,7 @@ function computeDayIsLive(day, snapshot){
 // of court numbers at that venue — facilityForCourt() below maps a court
 // number to its facility name via this list. Length drives the UI: with a
 // single facility, the facility title row on the Live Matches board and the
-// per-facility resync row in match-control.html are both suppressed.
+// per-facility resync row in control-center.html are both suppressed.
 const FACILITIES = [
   { name: 'Pampanga Pickleball Center', courts: [1, 9] }
 ];

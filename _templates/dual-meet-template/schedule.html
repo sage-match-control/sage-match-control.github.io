@@ -523,7 +523,7 @@
 <script>
 // ============================================================================
 // CONFIGURATION — the only things this page needs per-event. Keep these three
-// in sync by hand with the matching constants in index.html / match-control.html
+// in sync by hand with the matching constants in index.html / control-center.html
 // (EVENT_KEY doubles as this event's folder in the shared event-data repo;
 // DAY_KEY must match one of that event's configured days). COURTS is
 // deliberately not listed here — see buildScheduleData() below, which derives
@@ -537,7 +537,7 @@ const DAY_KEY        = '{{SCHEDULE_DAY_KEY}}';
 // How long to wait on the snapshot fetch before giving up (venue wifi at a
 // live event can hang rather than fail outright).
 const FETCH_TIMEOUT_MS = 8000;
-// Same cadence index.html/match-control.html poll at — Apps Script's own edit
+// Same cadence index.html/control-center.html poll at — Apps Script's own edit
 // debounce is ~10s, so polling faster wouldn't reveal fresher data any sooner.
 const POLL_INTERVAL_MS = 10000;
 
@@ -903,7 +903,7 @@ document.getElementById("courtfilter").addEventListener("click", e => {
 // LIVE DATA — CSV parsing and court assignment (spec §5)
 // ============================================================================
 
-// Same hand-rolled tokenizer index.html/match-control.html use — kept in this
+// Same hand-rolled tokenizer index.html/control-center.html use — kept in this
 // self-contained page rather than shared, per this repo's no-build-step,
 // one-file-per-page convention.
 function parseCSV(text){
