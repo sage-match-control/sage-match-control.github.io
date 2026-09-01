@@ -1,6 +1,6 @@
 {
   "name": "SAGE Tourney Calculator",
-  "short_name": "Tourney Calc",
+  "short_name": "Tourney Calculator",
   "description": "Estimate tournament duration, court load, and schedule breakdown.",
   "start_url": "/tools/tournament-calculator.html",
   "scope": "/tools/tournament-calculator.html",
