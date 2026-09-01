@@ -1739,15 +1739,17 @@
 
       <div class="organizer-divider"></div>
 
-      <label class="search-label" for="orgUsernameInput">Sign in</label>
-      <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
-      <div class="organizer-secret-row" style="margin-top:8px;">
-        <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
-        <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
+      <div id="orgLoginForm">
+        <label class="search-label" for="orgUsernameInput">Sign in</label>
+        <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
+        <div class="organizer-secret-row" style="margin-top:8px;">
+          <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
+          <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
+        </div>
       </div>
       <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
       <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
-      <p class="organizer-hint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
+      <p class="organizer-hint" id="orgAuthHint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
 
       <label class="organizer-checkbox-row">
         <input type="checkbox" id="orgUseCsvMethod" />
@@ -3568,6 +3570,7 @@ function renderIntro(){
 renderIntro();
 
 // ---------- Organizer tab: resync + sign-in handling ----------
+const orgLoginFormEl = document.getElementById('orgLoginForm');
 const orgUsernameInput = document.getElementById('orgUsernameInput');
 const orgPasswordInput = document.getElementById('orgPasswordInput');
 const orgSignInBtn = document.getElementById('orgSignInBtn');
@@ -3735,8 +3738,20 @@ const orgFacilityResyncGroupEl = document.getElementById('orgFacilityResyncGroup
 let orgFacilityBtns = [];
 let KNOWN_FACILITIES = [];
 
+// Hides whichever action controls can't actually be used right now — signed
+// out (every one of these calls requires a token) or, for the per-facility
+// row specifically, a single-facility day with nothing to scope down to.
+// Called whenever either condition changes (auth state or facility count),
+// so the two checks never fight each other.
+function syncActionAvailability(){
+  const signedIn = !!currentAuthToken();
+  if(orgResyncBtn) orgResyncBtn.style.display = signedIn ? '' : 'none';
+  if(orgFacilityResyncGroupEl) orgFacilityResyncGroupEl.style.display = (signedIn && FACILITIES.length > 1) ? '' : 'none';
+  if(goLiveButtonsEl) goLiveButtonsEl.style.display = signedIn ? '' : 'none';
+}
+
 function renderFacilityControls(){
-  if(orgFacilityResyncGroupEl) orgFacilityResyncGroupEl.style.display = FACILITIES.length <= 1 ? 'none' : '';
+  syncActionAvailability();
   if(orgFacilityRowEl){
     orgFacilityRowEl.innerHTML = FACILITIES.length > 1
       ? FACILITIES.map(f => `<button type="button" class="organizer-facility-btn" data-facility="${escapeHtml(f.name)}">${escapeHtml(f.name)}</button>`).join('')
@@ -3801,11 +3816,14 @@ function renderAuthStatus(){
     orgAuthStatusEl.textContent = `Signed in until ${until}.`;
     orgAuthStatusEl.classList.add('signed-in');
     if(orgSignOutBtn) orgSignOutBtn.style.display = '';
+    if(orgLoginFormEl) orgLoginFormEl.style.display = 'none';
   } else {
     orgAuthStatusEl.textContent = 'Not signed in.';
     orgAuthStatusEl.classList.remove('signed-in');
     if(orgSignOutBtn) orgSignOutBtn.style.display = 'none';
+    if(orgLoginFormEl) orgLoginFormEl.style.display = '';
   }
+  syncActionAvailability();
 }
 
 async function signIn(){
