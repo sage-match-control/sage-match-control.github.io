@@ -1756,12 +1756,16 @@
       <div class="organizer-divider"></div>
 
       <!-- The schedule board is a venue wall display, deliberately unlisted from
-           the public pages. This is its only entry point: operators launch it
-           from here, spectators never see a link to it. -->
-      <label class="search-label">Schedule board</label>
+           the public pages — this is its only entry point, operators launch it
+           from here and spectators never see a link to it. Match finder just
+           opens the event's real public page, so an operator can see exactly
+           what a player/spectator sees right now, in the same click. -->
+      <label class="search-label">Public pages</label>
       <p class="organizer-hint" style="margin-bottom:12px;">
-        Full-screen wall display &mdash; courts as columns, time slots as rows.
-        Opens in a new tab; pick courts from the board itself to drive a second screen.
+        Schedule board is the full-screen wall display &mdash; courts as columns,
+        time slots as rows, pick courts from the board itself to drive a
+        second screen. Match finder opens this event's actual public page.
+        Both open in a new tab.
       </p>
       <div class="organizer-schedule-row" id="orgScheduleRow"></div>
     </div>
@@ -3750,7 +3754,8 @@ const orgScheduleRowEl = document.getElementById('orgScheduleRow');
 function renderScheduleLauncher(){
   if(!orgScheduleRowEl) return;
   orgScheduleRowEl.innerHTML = CURRENT_EVENT_KEY
-    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/schedule">Open schedule</a>`
+    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/schedule">Open schedule</a>
+       <a class="organizer-schedule-btn" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/">Open match finder</a>`
     : '';
 }
 
