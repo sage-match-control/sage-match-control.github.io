@@ -1,6 +1,6 @@
 {
   "name": "S.A.G.E. Control Center",
-  "short_name": "SAGE Control",
+  "short_name": "Control Center",
   "description": "Operator console for live matches, standings, sync status, and podium awards across every registered S.A.G.E. event.",
   "start_url": "/tools/control-center.html",
   "scope": "/tools/control-center.html",
