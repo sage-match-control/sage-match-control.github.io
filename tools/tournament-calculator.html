@@ -923,8 +923,20 @@ function exportCSV(){
    ['courts',cfg.courts],['duration_min',cfg.dur],['buffer_min',cfg.buf],
    ['format',cfg.format],['club_a',cfg.clubA],['club_b',cfg.clubB]]
     .forEach(([k,v])=>lines.push(['setting',k,csvCell(v),'','','',''].join(',')));
-  cats.forEach(c=>lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
-    c.teams,cfg.format==='dual'?(c.groupDual||1):c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',c.poFormat||''].join(',')));
+  // `teams` (dual: no live UI field once "Pairs per club" replaced it — see
+  // calculator-dual-meet-spec.md — so it's stale dead weight there) and
+  // `po_format` (only meaningful with 2+ brackets, per the same p.groups>=2
+  // gate the playoff-format toggle itself uses in recalc()) are both blank
+  // outside the format/bracket-count they actually apply to, instead of
+  // leaking a value the UI never let the operator set or see.
+  const isDual=cfg.format==='dual';
+  cats.forEach((c,i)=>{
+    const p=r.per[i];
+    const teamsCell=isDual?'':c.teams;
+    const poFormatCell=(isDual&&p&&p.groups>=2)?(c.poFormat||''):'';
+    lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
+      teamsCell,isDual?(c.groupDual||1):c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',poFormatCell].join(','));
+  });
   const name=(cfg.title?cfg.title.replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase():'tournament')
     +(cfg.date?'-'+cfg.date:'')+'-plan.csv';
   try{
