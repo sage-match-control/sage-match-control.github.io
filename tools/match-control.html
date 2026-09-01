@@ -1630,6 +1630,40 @@
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 
   /* ---------- AWARDS (podium finishers) ---------- */
+  /* Overall Champion banner — dual-meet only (computeOverallChampion). */
+  .champion-banner{
+    background:var(--navy);
+    color:var(--paper);
+    border-radius:18px;
+    padding:20px 22px;
+    margin:0 0 22px;
+    box-shadow:var(--card-shadow);
+    text-align:center;
+  }
+  .champion-headline{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(18px,4vw,26px);
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    color:var(--green);
+  }
+  .champion-headline.muted{ color:rgba(255,255,255,.55); }
+  .champion-runnerup{
+    margin-top:6px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.02em;
+    color:rgba(255,255,255,.6);
+  }
+  .champion-note{
+    margin-top:12px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:11.5px;
+    color:rgba(255,255,255,.55);
+    font-style:italic;
+  }
   .awards-summary{
     display:flex;
     flex-wrap:wrap;
@@ -1839,6 +1873,7 @@
     <div id="standingsBody"></div>
   </div>
   <div id="awardsResults" style="display:none;">
+    <div id="awardsChampionBanner"></div>
     <div class="awards-summary" id="awardsSummaryBar"></div>
     <div class="awards-grid" id="awardsGrid"></div>
   </div>
@@ -2642,6 +2677,48 @@ function buildPodiums(){
 
   results.sort((a, b) => a.orderIdx - b.orderIdx);
   return results;
+}
+
+// Dual-meet only: which club is ahead overall — same metric, same source
+// data, as the Standings tab's own club-summary bar (renderClubSummary):
+// total wins across Round Robin rows only, per club. Deliberately the same
+// computation rather than a podium-derived one (e.g. gold count), so the
+// two tabs never disagree about who's "ahead." Named explicitly as "Tied"
+// rather than inventing a tiebreak — consistent with this tab's "never
+// guess" rule elsewhere (§2.7).
+// -> null (not a dual-meet, or nothing to compare yet) | {
+//      rows: [{ club, clubLabel, wins }],  // per DISPLAY.clubs order
+//      champion: <row> | null,   // null when 0-0 so far, or tied
+//      tied: boolean
+//    }
+function computeOverallChampion(){
+  if(CURRENT_TYPE !== 'dual-meet' || STANDINGS.length === 0) return null;
+
+  const byClub = new Map();
+  STANDINGS.forEach(s => {
+    const clubCode = parseCode(s.teamCode).club || 'OTHER';
+    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
+    byClub.get(clubCode).push(s);
+  });
+
+  const knownClubOrder = DISPLAY.clubs ? Object.keys(DISPLAY.clubs) : Array.from(byClub.keys());
+  if(knownClubOrder.length < 2) return null; // nothing meaningful to compare
+
+  const rows = knownClubOrder.map(code => {
+    const clubRows = byClub.get(code) || [];
+    const wins = clubRows
+      .filter(s => standingsStageKey(s.teamCode) === 'RR')
+      .reduce((sum, s) => sum + (s.wins || 0), 0);
+    return { club: code, clubLabel: clubLabel(code), wins };
+  });
+
+  const maxWins = Math.max(...rows.map(r => r.wins));
+  let champion = null, tied = false;
+  if(maxWins > 0){
+    const leaders = rows.filter(r => r.wins === maxWins);
+    if(leaders.length === 1) champion = leaders[0]; else tied = true;
+  }
+  return { rows, champion, tied };
 }
 
 function renderStageTables(rows){
@@ -3906,6 +3983,30 @@ renderIntro();
 // derivation; everything here is presentation + Canvas 2D export.
 const awardsSummaryBarEl = document.getElementById('awardsSummaryBar');
 const awardsGridEl = document.getElementById('awardsGrid');
+const awardsChampionBannerEl = document.getElementById('awardsChampionBanner');
+
+function overallChampionHTML(oc){
+  if(!oc) return '';
+  const winLabel = w => `${w} win${w === 1 ? '' : 's'}`;
+
+  if(oc.champion){
+    const runnersUp = oc.rows.filter(r => r.club !== oc.champion.club);
+    return `<div class="champion-banner">
+      <div class="champion-headline">\u{1F3C6} Overall Champion: ${escapeHtml(oc.champion.clubLabel)} — ${winLabel(oc.champion.wins)}</div>
+      ${runnersUp.map(r => `<div class="champion-runnerup">${escapeHtml(r.clubLabel)} — ${winLabel(r.wins)}</div>`).join('')}
+    </div>`;
+  }
+  if(oc.tied){
+    return `<div class="champion-banner">
+      <div class="champion-headline muted">Overall Champion — Tied</div>
+      ${oc.rows.map(r => `<div class="champion-runnerup">${escapeHtml(r.clubLabel)} — ${winLabel(r.wins)}</div>`).join('')}
+    </div>`;
+  }
+  return `<div class="champion-banner">
+    <div class="champion-headline muted">Overall Champion</div>
+    <div class="champion-note">No Round Robin matches decided yet</div>
+  </div>`;
+}
 
 function medalRowHTML(rankEmoji, rankClass, medalist){
   if(!medalist){
@@ -3947,6 +4048,8 @@ function awardsCardHTML(p){
 function renderAwards(){
   if(!awardsGridEl || !awardsSummaryBarEl) return;
   const podiums = buildPodiums();
+
+  if(awardsChampionBannerEl) awardsChampionBannerEl.innerHTML = overallChampionHTML(computeOverallChampion());
 
   if(podiums.length === 0){
     awardsSummaryBarEl.innerHTML = '';
@@ -4018,18 +4121,39 @@ async function getSageMarkImage(){
   }
 }
 
+// Word-wraps to maxWidth under ctx's currently-set font. Guarantees every
+// returned line actually fits: a single "word" too wide on its own (a long
+// hyphenated surname, most often) is force-broken at the character level
+// instead of being left to overflow — the export's whole point is that
+// nothing ever gets cut off or spills past its box, so wrapping has to
+// handle this case too, not just the space-separated common one.
 function wrapCanvasText(ctx, text, maxWidth){
   const words = String(text).split(' ');
   const lines = [];
   let line = '';
   words.forEach(w => {
-    const test = line ? `${line} ${w}` : w;
-    if(line && ctx.measureText(test).width > maxWidth){
-      lines.push(line);
-      line = w;
-    } else {
-      line = test;
+    if(ctx.measureText(w).width <= maxWidth){
+      const test = line ? `${line} ${w}` : w;
+      if(line && ctx.measureText(test).width > maxWidth){
+        lines.push(line);
+        line = w;
+      } else {
+        line = test;
+      }
+      return;
     }
+    if(line){ lines.push(line); line = ''; }
+    let chunk = '';
+    for(const ch of w){
+      const test = chunk + ch;
+      if(chunk && ctx.measureText(test).width > maxWidth){
+        lines.push(chunk);
+        chunk = ch;
+      } else {
+        chunk = test;
+      }
+    }
+    line = chunk;
   });
   if(line) lines.push(line);
   return lines;
@@ -4115,48 +4239,67 @@ async function drawPodiumCard(ctx, w, h, podium){
   y += 40;
 
   // ---- Gold / silver / bronze rows (3 x ~250px) ----
+  // A decided placing fills the whole row in its medal tint (dark navy text
+  // reads well on all three — checked: navy-on-gold ~7.3:1, navy-on-silver
+  // ~8.9:1, navy-on-bronze ~4.7:1). An undecided placing stays on the plain
+  // navy panel with muted "PENDING" text, so the row itself signals whether
+  // that medal has actually been won yet, not just what it says.
   const rows = [
-    { label: 'GOLD', initial: 'G', tint: c.gold, medal: podium.gold },
-    { label: 'SILVER', initial: 'S', tint: c.silver, medal: podium.silver },
-    { label: 'BRONZE', initial: 'B', tint: c.bronze, medal: podium.bronze, walkover: podium.bronzeWalkover }
+    { initial: '\u{1F947}', tint: c.gold, medal: podium.gold },
+    { initial: '\u{1F948}', tint: c.silver, medal: podium.silver },
+    { initial: '\u{1F949}', tint: c.bronze, medal: podium.bronze, walkover: podium.bronzeWalkover }
   ];
   const rowH = 250, rowPad = 20, rowX = 60, rowW = w - 120;
   rows.forEach(row => {
     const cy = y + (rowH - rowPad) / 2;
-    ctx.fillStyle = c.panel;
+    const decided = !!row.medal;
+    const rowBg = decided ? row.tint : c.panel;
+    const textColor = decided ? c.bg : c.secondary;
+    ctx.fillStyle = rowBg;
     ctx.fillRect(rowX, y, rowW, rowH - rowPad);
 
+    // Coin badge: dark on a tinted (decided) row, tinted on the plain
+    // (pending) panel — always the higher-contrast pairing either way.
     ctx.beginPath();
-    ctx.fillStyle = row.tint;
+    ctx.fillStyle = decided ? c.bg : row.tint;
     ctx.arc(rowX + 84, cy, 46, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = c.bg;
-    ctx.font = '700 32px "Barlow Condensed"';
+    ctx.font = '38px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(row.initial, rowX + 84, cy + 11);
+    ctx.fillText(row.initial, rowX + 84, cy + 14);
 
     ctx.textAlign = 'left';
     const textX = rowX + 170;
     if(row.medal){
-      ctx.fillStyle = c.paper;
-      ctx.font = '600 38px "Inter"';
+      ctx.fillStyle = textColor;
+      ctx.font = '700 38px "Inter"';
       const nameLine = `${row.medal.p1} / ${row.medal.p2}`;
       ctx.fillText(nameLine, textX, row.medal.clubLabel ? cy - 8 : cy + 12);
       if(row.medal.clubLabel){
-        ctx.fillStyle = c.secondary;
+        ctx.fillStyle = decided ? 'rgba(11,24,38,.7)' : c.secondary;
         ctx.font = '400 26px "Inter"';
         ctx.fillText(row.medal.clubLabel, textX, cy + 32);
       }
     } else {
-      ctx.fillStyle = c.secondary;
+      ctx.fillStyle = textColor;
       ctx.font = '600 30px "Barlow Condensed"';
       ctx.fillText('PENDING', textX, cy + 10);
     }
     if(row.walkover){
-      ctx.textAlign = 'right';
+      // A small navy pill keeps this legible regardless of the row's own
+      // background tint.
+      const pillLabel = 'WALKOVER', pillPadX = 14, pillH = 32;
+      ctx.font = '600 18px "Barlow Condensed"';
+      const pillW = ctx.measureText(pillLabel).width + pillPadX * 2;
+      const pillX = rowX + rowW - 24 - pillW, pillY = cy - pillH / 2;
+      ctx.fillStyle = c.bg;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2) : ctx.rect(pillX, pillY, pillW, pillH);
+      ctx.fill();
       ctx.fillStyle = c.accent;
-      ctx.font = '600 20px "Barlow Condensed"';
-      ctx.fillText('WALKOVER', rowX + rowW - 24, cy + 7);
+      ctx.textAlign = 'center';
+      ctx.fillText(pillLabel, pillX + pillW / 2, pillY + pillH / 2 + 6);
+      ctx.textAlign = 'left';
     }
     ctx.textAlign = 'center';
     y += rowH;
@@ -4186,83 +4329,273 @@ async function exportCategoryImage(podium){
 
 // The whole-tournament sheet: one condensed row per category, same 1080
 // logical width, height computed from category count (spec §4.3).
-async function drawWholeTournamentSheet(ctx, w, h, podiums){
+function canvasRoundRectPath(ctx, x, y, w, h, r){
+  if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+// Column count for the whole-tournament grid — picked to keep the sheet
+// closer to a shareable aspect ratio instead of one long, narrow list as
+// the category count grows.
+function wholeTournamentGridCols(count){
+  if(count <= 2) return 1;
+  if(count <= 6) return 2;
+  if(count <= 15) return 3;
+  return 4;
+}
+
+// One category's grid card. Called twice per render — once with draw=false
+// purely to get its natural height (nothing is painted, x/y don't matter),
+// once with draw=true at its real position — so measuring and painting run
+// through the exact same wrapping logic and can never disagree about where
+// anything lands. Nothing here is ever truncated: a name or club that
+// doesn't fit just wraps to another line and the card grows to fit it.
+function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
   const c = AWARDS_EXPORT_COLORS;
-  const headerH = 210, rowH = 92, footerH = 110;
-  const sageMark = await getSageMarkImage();
+  const pad = 18;
+  const contentW = cellW - pad * 2;
+  if(draw) ctx.textAlign = 'left';
+  let cy = y + pad;
 
-  ctx.fillStyle = c.bg;
-  ctx.fillRect(0, 0, w, h);
-  ctx.textAlign = 'center';
-
-  const markW = 66, markH = 66; // logo.png is square
-  if(sageMark) ctx.drawImage(sageMark, w / 2 - markW / 2, 26, markW, markH);
-  ctx.fillStyle = c.accent;
-  ctx.font = '600 18px "Barlow Condensed"';
-  ctx.fillText('S . A . G . E .  ·  TOURNAMENT RESULTS', w / 2, 26 + markH + 26);
-  ctx.fillStyle = c.paper;
-  ctx.font = '700 30px "Barlow Condensed"';
-  ctx.fillText(exportEventTitle(), w / 2, 26 + markH + 62);
-  ctx.fillStyle = c.secondary;
-  ctx.font = '400 20px "Inter"';
-  ctx.fillText(exportDayLabel(), w / 2, 26 + markH + 92);
-
-  let y = headerH;
-  podiums.forEach(p => {
-    ctx.fillStyle = c.panel;
-    ctx.fillRect(50, y, w - 100, rowH - 14);
-
-    ctx.textAlign = 'left';
-    ctx.fillStyle = c.paper;
-    ctx.font = '600 24px "Barlow Condensed"';
-    const catText = categoryLabel(p.category);
-    const catLine = wrapCanvasText(ctx, catText, 300)[0] || catText;
-    ctx.fillText(catLine, 70, y + (rowH - 14) / 2 + 8);
-
-    if(p.warning){
-      ctx.fillStyle = '#FFB4A2';
-      ctx.font = '600 18px "Barlow Condensed"';
-      ctx.textAlign = 'right';
-      ctx.fillText(p.warning, w - 70, y + (rowH - 14) / 2 + 6);
-    } else {
-      ctx.textAlign = 'right';
-      let xRight = w - 70;
-      [
-        { medal: p.bronze, tint: c.bronze },
-        { medal: p.silver, tint: c.silver },
-        { medal: p.gold, tint: c.gold }
-      ].forEach(({ medal, tint }) => {
-        ctx.font = '400 19px "Inter"';
-        ctx.fillStyle = medal ? c.paper : c.secondary;
-        const text = medal ? `${medal.p1}/${medal.p2}` : 'Pending';
-        ctx.fillText(text, xRight, y + (rowH - 14) / 2 + 7);
-        xRight -= ctx.measureText(text).width + 36;
-      });
-    }
-    y += rowH;
+  ctx.font = '700 24px "Barlow Condensed"';
+  const catLines = wrapCanvasText(ctx, categoryLabel(p.category), contentW);
+  catLines.forEach(line => {
+    cy += 26;
+    if(draw){ ctx.fillStyle = c.paper; ctx.font = '700 24px "Barlow Condensed"'; ctx.fillText(line, x + pad, cy); }
   });
 
-  ctx.textAlign = 'center';
-  ctx.fillStyle = c.secondary;
+  if(p.source === 'standings'){
+    cy += 22;
+    if(draw){ ctx.fillStyle = c.accent; ctx.font = '600 13px "Barlow Condensed"'; ctx.fillText('BY STANDINGS', x + pad, cy); }
+  }
+  cy += 10;
+
+  if(p.warning){
+    ctx.font = '600 16px "Barlow Condensed"';
+    const lines = wrapCanvasText(ctx, p.warning, contentW);
+    lines.forEach(line => {
+      cy += 21;
+      if(draw){ ctx.fillStyle = '#FFB4A2'; ctx.font = '600 16px "Barlow Condensed"'; ctx.fillText(line, x + pad, cy); }
+    });
+    cy += pad;
+  } else {
+    // A decided placing fills its box in the medal tint (dark navy text —
+    // same contrast-checked pairing as the per-category card); a pending
+    // one stays on the plain navy panel.
+    const specs = [
+      { emoji: '\u{1F947}', tint: c.gold, medal: p.gold },
+      { emoji: '\u{1F948}', tint: c.silver, medal: p.silver },
+      { emoji: '\u{1F949}', tint: c.bronze, medal: p.bronze, walkover: p.bronzeWalkover }
+    ];
+    specs.forEach(spec => {
+      const decided = !!spec.medal;
+      ctx.font = '700 18px "Inter"';
+      const nameText = decided ? `${spec.medal.p1} / ${spec.medal.p2}` : 'Pending';
+      const nameLines = wrapCanvasText(ctx, nameText, contentW - 34);
+      let clubLines = null;
+      if(decided && spec.medal.clubLabel){
+        ctx.font = '400 14px "Inter"';
+        clubLines = wrapCanvasText(ctx, spec.medal.clubLabel, contentW - 34);
+      }
+      const boxH = 20 + nameLines.length * 23 + (clubLines ? clubLines.length * 17 : 0);
+      const boxY = cy;
+
+      if(draw){
+        ctx.fillStyle = decided ? spec.tint : c.bg;
+        canvasRoundRectPath(ctx, x + pad - 8, boxY, contentW + 16, boxH, 8);
+        ctx.fill();
+        const textColor = decided ? c.bg : c.secondary;
+        ctx.font = '17px sans-serif';
+        ctx.fillStyle = textColor;
+        ctx.fillText(spec.emoji, x + pad, boxY + 27);
+        let ty = boxY + 10;
+        ctx.font = '700 18px "Inter"';
+        ctx.fillStyle = textColor;
+        nameLines.forEach(line => { ty += 18; ctx.fillText(line, x + pad + 34, ty); ty += 5; });
+        if(clubLines){
+          ctx.font = '400 14px "Inter"';
+          ctx.fillStyle = decided ? 'rgba(11,24,38,.7)' : c.secondary;
+          clubLines.forEach(line => { ty += 14; ctx.fillText(line, x + pad + 34, ty); ty += 3; });
+        }
+        if(spec.walkover){
+          ctx.font = '600 11px "Barlow Condensed"';
+          ctx.fillStyle = decided ? c.bg : c.accent;
+          ctx.textAlign = 'right';
+          ctx.fillText('WALKOVER', x + cellW - pad, boxY + 16);
+          ctx.textAlign = 'left';
+        }
+      }
+      cy = boxY + boxH + 10;
+    });
+    cy += pad - 10;
+  }
+
+  return cy - y;
+}
+
+// Same measure-then-draw pattern as the cards above, for the Overall
+// Champion band (dual-meet only).
+function renderChampionBand(ctx, x, y, bandW, oc, draw){
+  const c = AWARDS_EXPORT_COLORS;
+  const pad = 18;
+  const contentW = bandW - pad * 2;
+  let cy = y + pad;
+
+  const winLabel = wins => `${wins} win${wins === 1 ? '' : 's'}`;
+
+  ctx.font = '700 22px "Barlow Condensed"';
+  const headline = oc.champion
+    ? `\u{1F3C6} OVERALL CHAMPION: ${oc.champion.clubLabel.toUpperCase()} — ${winLabel(oc.champion.wins).toUpperCase()}`
+    : (oc.tied ? 'OVERALL CHAMPION — TIED ON WINS' : 'OVERALL CHAMPION — TBD');
+  wrapCanvasText(ctx, headline, contentW).forEach(line => {
+    cy += 24;
+    if(draw){
+      ctx.textAlign = 'center';
+      ctx.font = '700 22px "Barlow Condensed"';
+      ctx.fillStyle = oc.champion ? c.accent : c.secondary;
+      ctx.fillText(line, x + bandW / 2, cy);
+    }
+  });
+
+  // Runner(s)-up below the headline — everyone but the champion when
+  // there is one, otherwise every club (a tie has no runner-up to single
+  // out, and 0-0 has nothing worth stating twice).
+  const secondaryRows = oc.champion ? oc.rows.filter(r => r.club !== oc.champion.club) : (oc.tied ? oc.rows : []);
+  if(secondaryRows.length){
+    cy += 8;
+    ctx.font = '400 18px "Inter"';
+    const secondaryText = secondaryRows.map(r => `${r.clubLabel} — ${winLabel(r.wins)}`).join('   ·   ');
+    wrapCanvasText(ctx, secondaryText, contentW).forEach(line => {
+      cy += 20;
+      if(draw){
+        ctx.textAlign = 'center';
+        ctx.font = '400 18px "Inter"';
+        ctx.fillStyle = c.paper;
+        ctx.fillText(line, x + bandW / 2, cy);
+      }
+    });
+  }
+
+  cy += pad;
+  return cy - y;
+}
+
+// The whole sheet: header, Overall Champion band (dual-meet only), a grid
+// of category cards, footer. Run once with draw=false (against a scratch
+// context, before the real canvas exists) to get the total height, then
+// again with draw=true to actually paint — this is the only way the
+// canvas's own size and everything drawn onto it can't disagree, since
+// every card wraps to fit its content rather than ever being truncated.
+function renderWholeTournamentSheet(ctx, w, podiums, draw, sageMark){
+  const c = AWARDS_EXPORT_COLORS;
+  const overallChampion = computeOverallChampion();
+
+  if(draw) ctx.textAlign = 'center';
+  const markW = 66, markH = 66; // logo.png is square
+  if(draw && sageMark) ctx.drawImage(sageMark, w / 2 - markW / 2, 26, markW, markH);
+  let cy = 26 + markH;
+
+  cy += 26;
+  if(draw){
+    ctx.font = '600 18px "Barlow Condensed"';
+    ctx.fillStyle = c.accent;
+    ctx.fillText('S . A . G . E .  ·  TOURNAMENT RESULTS', w / 2, cy);
+  }
+
+  ctx.font = '700 30px "Barlow Condensed"';
+  wrapCanvasText(ctx, exportEventTitle(), w - 100).forEach(line => {
+    cy += 32;
+    if(draw){ ctx.font = '700 30px "Barlow Condensed"'; ctx.fillStyle = c.paper; ctx.fillText(line, w / 2, cy); }
+  });
+
   ctx.font = '400 20px "Inter"';
-  ctx.fillText(exportVenueLabel(), w / 2, h - 56);
-  ctx.fillStyle = c.accent;
-  ctx.font = '600 16px "Barlow Condensed"';
-  ctx.fillText('sage-match-control.github.io', w / 2, h - 28);
+  wrapCanvasText(ctx, exportDayLabel(), w - 100).forEach(line => {
+    cy += 26;
+    if(draw){ ctx.font = '400 20px "Inter"'; ctx.fillStyle = c.secondary; ctx.fillText(line, w / 2, cy); }
+  });
+
+  cy += 24;
+
+  if(overallChampion){
+    const bandX = 50, bandW = w - 100;
+    const bandH = renderChampionBand(ctx, bandX, cy, bandW, overallChampion, false);
+    if(draw){
+      ctx.fillStyle = c.panel;
+      ctx.fillRect(bandX, cy, bandW, bandH);
+      renderChampionBand(ctx, bandX, cy, bandW, overallChampion, true);
+    }
+    cy += bandH + 24;
+  }
+
+  // ---- Grid of category cards ----
+  const outerPad = 50, gutter = 20;
+  const cols = wholeTournamentGridCols(podiums.length);
+  const cellW = (w - outerPad * 2 - gutter * (cols - 1)) / cols;
+  const cardHeights = podiums.map(p => renderWholeTournamentCard(ctx, 0, 0, cellW, p, false));
+
+  let gy = cy;
+  for(let i = 0; i < podiums.length; i += cols){
+    const rowPodiums = podiums.slice(i, i + cols);
+    const rowH = Math.max(...cardHeights.slice(i, i + cols));
+    rowPodiums.forEach((p, j) => {
+      const cx = outerPad + j * (cellW + gutter);
+      if(draw){
+        ctx.fillStyle = c.panel;
+        ctx.fillRect(cx, gy, cellW, rowH);
+        renderWholeTournamentCard(ctx, cx, gy, cellW, p, true);
+      }
+    });
+    gy += rowH + gutter;
+  }
+  cy = podiums.length ? gy - gutter : gy;
+
+  // ---- Footer ----
+  cy += 50;
+  if(draw){
+    ctx.textAlign = 'center';
+    ctx.fillStyle = c.secondary;
+    ctx.font = '400 20px "Inter"';
+    ctx.fillText(exportVenueLabel(), w / 2, cy);
+  }
+  cy += 30;
+  if(draw){
+    ctx.fillStyle = c.accent;
+    ctx.font = '600 16px "Barlow Condensed"';
+    ctx.fillText('sage-match-control.github.io', w / 2, cy);
+  }
+  cy += 30;
+
+  return cy;
 }
 
 async function exportWholeTournamentImage(podiums){
   await loadExportFonts();
-  const headerH = 210, rowH = 92, footerH = 110;
-  const h = headerH + podiums.length * rowH + footerH;
+
+  // Measure pass — a throwaway context, no scale, no image. Its result
+  // (totalH) is the only thing the real canvas needs from it.
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  const totalH = renderWholeTournamentSheet(measureCtx, EXPORT_W, podiums, false, null);
+
   let scale = EXPORT_SCALE;
-  if((EXPORT_W * scale) * (h * scale) > EXPORT_MAX_AREA) scale = 1;
+  if((EXPORT_W * scale) * (totalH * scale) > EXPORT_MAX_AREA) scale = 1;
   const canvas = document.createElement('canvas');
   canvas.width = EXPORT_W * scale;
-  canvas.height = h * scale;
+  canvas.height = totalH * scale;
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
-  await drawWholeTournamentSheet(ctx, EXPORT_W, h, podiums);
+
+  const sageMark = await getSageMarkImage();
+  ctx.fillStyle = AWARDS_EXPORT_COLORS.bg;
+  ctx.fillRect(0, 0, EXPORT_W, totalH);
+  renderWholeTournamentSheet(ctx, EXPORT_W, podiums, true, sageMark);
+
   downloadCanvasAsPng(canvas, wholeTournamentFilename());
 }
 
