@@ -731,7 +731,7 @@
   }
   .organizer-check-conn-btn{width:100%;}
   .organizer-secret-row{display:flex; gap:8px;}
-  #orgSecretInput{
+  .organizer-text-input{
     flex:1;
     font-family:'Barlow Condensed',sans-serif;
     font-size:14px;
@@ -743,8 +743,17 @@
     color:var(--ink);
     outline:none;
     min-width:0;
+    width:100%;
   }
-  #orgSecretInput:focus{border-color:var(--court);}
+  .organizer-text-input:focus{border-color:var(--court);}
+  .organizer-text-input + .organizer-text-input{ margin-top:8px; }
+  .organizer-auth-status{
+    font-size:12px;
+    color:var(--muted);
+    margin:8px 0 12px;
+    line-height:1.5;
+  }
+  .organizer-auth-status.signed-in{ color:var(--green-dark); }
   .organizer-secondary-btn{
     font-family:'Barlow Condensed',sans-serif;
     font-size:12px;
@@ -1730,12 +1739,15 @@
 
       <div class="organizer-divider"></div>
 
-      <label class="search-label" for="orgSecretInput">Shared secret</label>
-      <div class="organizer-secret-row">
-        <input id="orgSecretInput" type="password" placeholder="Paste the sync shared secret" autocomplete="off" />
-        <button type="button" id="orgForgetSecretBtn" class="organizer-secondary-btn">Forget</button>
+      <label class="search-label" for="orgUsernameInput">Sign in</label>
+      <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
+      <div class="organizer-secret-row" style="margin-top:8px;">
+        <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
+        <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
       </div>
-      <p class="organizer-hint">Held only for this browser tab (cleared when you close it) — never saved to the page itself.</p>
+      <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
+      <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
+      <p class="organizer-hint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
 
       <label class="organizer-checkbox-row">
         <input type="checkbox" id="orgUseCsvMethod" />
@@ -1845,12 +1857,13 @@ const FETCH_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 10000;
 
 // ---- Browser storage keys -------------------------------------------------
-// One secret for the whole session, not namespaced per event (spec §4) —
-// one SYNC_SHARED_SECRET covers every event, so an operator running two
-// events pastes it once, not twice.
+// One session for the whole console, not namespaced per event (spec §4) —
+// signing in once covers every event, so an operator running two events
+// doesn't sign in twice. Holds the token /auth/login returns, never the
+// raw SYNC_SHARED_SECRET/password — see AuthService.mjs on the backend.
 const STORAGE_SELECTION_KEY = 'sage.lastSelection'; // { event, day } JSON — last picked, for a bare visit (spec §5)
 const STORAGE_SEARCH_KEY = 'sage.search';
-const ORG_SECRET_STORAGE_KEY = 'sage.orgSecret';
+const AUTH_TOKEN_STORAGE_KEY = 'sage.authToken';
 
 // ============================================================================
 // END CONFIGURATION — implementation follows below
@@ -3554,10 +3567,13 @@ function renderIntro(){
 
 renderIntro();
 
-// ---------- Organizer tab: resync + secret handling ----------
-const orgSecretInput = document.getElementById('orgSecretInput');
+// ---------- Organizer tab: resync + sign-in handling ----------
+const orgUsernameInput = document.getElementById('orgUsernameInput');
+const orgPasswordInput = document.getElementById('orgPasswordInput');
+const orgSignInBtn = document.getElementById('orgSignInBtn');
+const orgSignOutBtn = document.getElementById('orgSignOutBtn');
+const orgAuthStatusEl = document.getElementById('orgAuthStatus');
 const orgUseCsvMethodEl = document.getElementById('orgUseCsvMethod');
-const orgForgetSecretBtn = document.getElementById('orgForgetSecretBtn');
 const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgResultBox = document.getElementById('orgResultBox');
 const organizerDayLabelEl = document.getElementById('organizerDayLabel');
@@ -3672,8 +3688,8 @@ async function setGoLive(value){
   if(value === false && !window.confirm(`Hide Live Matches/Standings on the public site for ${day.label}? Spectators will see the standard "not live yet" schedule until you set this back to Auto or Force live.`)){
     return;
   }
-  const secret = loadOrgSecret();
-  if(!secret.trim()){ showGoLiveResult('error', 'Paste the shared secret above first.'); return; }
+  const token = currentAuthToken();
+  if(!token){ showGoLiveResult('error', 'Sign in above first.'); return; }
 
   if(goLiveButtonsEl) goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
   showGoLiveResult('loading', `Setting ${day.label} to ${value}…`);
@@ -3681,7 +3697,7 @@ async function setGoLive(value){
   try {
     const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/${day.key}/live`, {
       method: 'POST',
-      headers: { 'X-Sync-Secret': secret, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ isLive: value })
     });
     const body = await res.json().catch(() => null);
@@ -3760,22 +3776,76 @@ function renderScheduleLauncher(){
 }
 
 // sessionStorage only — cleared when the tab closes, never written into
-// this file, so the secret never ends up anywhere that gets committed,
-// deployed, or shared alongside the page itself.
-function loadOrgSecret(){ try{ return sessionStorage.getItem(ORG_SECRET_STORAGE_KEY) || ''; } catch(e){ return ''; } }
-function saveOrgSecret(v){ try{ sessionStorage.setItem(ORG_SECRET_STORAGE_KEY, v); } catch(e){} }
-function clearOrgSecret(){ try{ sessionStorage.removeItem(ORG_SECRET_STORAGE_KEY); } catch(e){} }
+// this file. Holds { token, expiresAt } from a successful /auth/login —
+// never the username/password themselves, and never SYNC_SHARED_SECRET,
+// which stays server-side always (see AuthService.mjs).
+function loadAuthToken(){ try{ return JSON.parse(sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || 'null'); } catch(e){ return null; } }
+function saveAuthToken(token, expiresAt){ try{ sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt })); } catch(e){} }
+function clearAuthToken(){ try{ sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY); } catch(e){} }
 
-if(orgSecretInput){
-  orgSecretInput.value = loadOrgSecret();
-  orgSecretInput.addEventListener('input', () => saveOrgSecret(orgSecretInput.value));
+// The token string if signed in and not yet expired, else null — checked
+// fresh on every call rather than cached, so an expired session is caught
+// the moment it's used instead of failing later with a confusing 401.
+function currentAuthToken(){
+  const stored = loadAuthToken();
+  if(!stored || !stored.token || !stored.expiresAt) return null;
+  if(Date.now() >= stored.expiresAt){ clearAuthToken(); return null; }
+  return stored.token;
 }
-if(orgForgetSecretBtn){
-  orgForgetSecretBtn.addEventListener('click', () => {
-    clearOrgSecret();
-    if(orgSecretInput) orgSecretInput.value = '';
+
+function renderAuthStatus(){
+  if(!orgAuthStatusEl) return;
+  const stored = currentAuthToken() ? loadAuthToken() : null;
+  if(stored){
+    const until = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(stored.expiresAt));
+    orgAuthStatusEl.textContent = `Signed in until ${until}.`;
+    orgAuthStatusEl.classList.add('signed-in');
+    if(orgSignOutBtn) orgSignOutBtn.style.display = '';
+  } else {
+    orgAuthStatusEl.textContent = 'Not signed in.';
+    orgAuthStatusEl.classList.remove('signed-in');
+    if(orgSignOutBtn) orgSignOutBtn.style.display = 'none';
+  }
+}
+
+async function signIn(){
+  const username = (orgUsernameInput?.value || '').trim();
+  const password = orgPasswordInput?.value || '';
+  if(!username || !password){ showOrgResult('error', 'Enter a username and password first.'); return; }
+
+  if(orgSignInBtn){ orgSignInBtn.disabled = true; orgSignInBtn.textContent = 'Signing in…'; }
+  showOrgResult('loading', 'Signing in…');
+  try {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const body = await res.json().catch(() => null);
+    if(!res.ok){
+      showOrgResult('error', `Sign-in failed: ${body?.error || `HTTP ${res.status}`}`);
+      return;
+    }
+    saveAuthToken(body.token, body.expiresAt);
+    if(orgPasswordInput) orgPasswordInput.value = '';
+    renderAuthStatus();
+    showOrgResult('ok', 'Signed in.');
+  } catch(err){
+    showOrgResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+  } finally {
+    if(orgSignInBtn){ orgSignInBtn.disabled = false; orgSignInBtn.textContent = 'Sign in'; }
+  }
+}
+
+if(orgSignInBtn) orgSignInBtn.addEventListener('click', signIn);
+if(orgPasswordInput) orgPasswordInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') signIn(); });
+if(orgSignOutBtn){
+  orgSignOutBtn.addEventListener('click', () => {
+    clearAuthToken();
+    renderAuthStatus();
   });
 }
+renderAuthStatus();
 
 function updateOrganizerDayLabel(){
   if(!organizerDayLabelEl) return;
@@ -3894,9 +3964,9 @@ async function performResync(facilityName, { onStart, onDone } = {}){
     showOrgResult('error', 'Pick a tournament day first.');
     return;
   }
-  const secret = loadOrgSecret();
-  if(!secret.trim()){
-    showOrgResult('error', 'Paste the shared secret above first.');
+  const token = currentAuthToken();
+  if(!token){
+    showOrgResult('error', 'Sign in above first.');
     return;
   }
   const useCsvMethod = !!(orgUseCsvMethodEl && orgUseCsvMethodEl.checked);
@@ -3914,7 +3984,7 @@ async function performResync(facilityName, { onStart, onDone } = {}){
     const url = `${CLOUD_RUN_BASE_URL}/sync/${day.key}` + (qs ? `?${qs}` : '');
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'X-Sync-Secret': secret }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     const body = await res.json().catch(() => null);
 
