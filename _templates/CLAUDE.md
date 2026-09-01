@@ -277,6 +277,17 @@ clubs; it is not a general multi-club template.
    sync create it). Nothing else in that repo needs touching per-event —
    see §0 above if it needs setting up for the first time.
 
+10. **Copy the dry-run/day-of runbook.** Copy
+    `_templates/dry-run-checklist-template.md` to
+    `events/<event-key>/dry-run-checklist.md` and replace `{{EVENT_TITLE}}`
+    (the same token you already filled in step 3). It's two things in one
+    file: a rehearsal against this event's real sheet using a few
+    temporarily-faked rows (do this once, before the event), and the actual
+    day-of steps for running it for real — screens, signing in, deciding on
+    go-live timing, what to watch during play. Genuinely optional (nothing
+    breaks without it) but cheap, and worth having before the first event
+    you run through the console rather than improvising it live.
+
 ## 3. Required `{{TOKEN}}` replacements
 
 **Both templates** (`index.html`, and — for a few of these —
