@@ -360,6 +360,37 @@
     gap:8px;
     margin-bottom:24px;
   }
+  /* The five pills need ~400px in a row, so on a phone they used to spill out
+     of the hero and get clipped at both ends — the first and last tabs became
+     unreachable. Below the breakpoint the row becomes a horizontal scroller
+     instead of wrapping, which keeps the hero short on a small screen.
+     justify-content flips to flex-start there because a centred flex row that
+     overflows makes its leading items unreachable in every browser. */
+  .view-tabs.is-scrollable{
+    justify-content:flex-start;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;          /* Firefox */
+    scroll-behavior:smooth;
+  }
+  .view-tabs.is-scrollable::-webkit-scrollbar{display:none;}
+  .view-tabs .view-tab{flex:0 0 auto;}
+  /* Fade the edge the content continues past, so it reads as scrollable
+     rather than as a row that happens to end. A mask is used rather than a
+     gradient overlay so it stays correct on the hero's navy without having
+     to hard-code that colour here. Classes are toggled in syncViewTabsScroll. */
+  .view-tabs.can-scroll-right{
+    -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);
+    mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);
+  }
+  .view-tabs.can-scroll-left{
+    -webkit-mask-image:linear-gradient(to right,transparent 0,#000 28px);
+    mask-image:linear-gradient(to right,transparent 0,#000 28px);
+  }
+  .view-tabs.can-scroll-left.can-scroll-right{
+    -webkit-mask-image:linear-gradient(to right,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
+    mask-image:linear-gradient(to right,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
+  }
   .view-tab{
     font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
@@ -777,7 +808,11 @@
     font-weight:600;
     text-transform:uppercase;
     letter-spacing:.04em;
+    /* Zero vertical padding left these only as tall as their line box — about
+       16px, which is awkward to hit with a mouse and worse with a thumb. The
+       min-height matches the adjacent selects so the row still lines up. */
     padding:0 16px;
+    min-height:34px;
     border-radius:10px;
     border:1px solid rgba(20,27,44,.18);
     background:transparent;
@@ -1615,6 +1650,29 @@
   @media (max-width:520px){
     .search-row{flex-direction:column;}
     button#searchBtn{padding:13px;}
+
+    /* Slightly tighter pills so more of the row is visible at a glance; the
+       rest is reachable by swiping (see .view-tabs.is-scrollable). */
+    .view-tab{padding:9px 15px; font-size:12px; letter-spacing:.05em;}
+    .view-tabs{gap:6px; margin-bottom:18px;}
+
+    /* The two club boxes are flex:1 but their contents were flex:0 0 auto, so
+       nothing could give and each box overflowed its own border. Letting the
+       identity and stat shrink (and trimming the padding that squeezed them)
+       keeps both boxes inside the row. */
+    .club-summary{gap:8px; padding:10px 4px;}
+    .club-summary-item{gap:8px; padding:10px;}
+    .cs-identity, .cs-stat{min-width:0;}
+    .cs-identity .cs-name{max-width:72px;}
+
+    /* Mission Control's status rows are dot + fixed-width name + detail +
+       sheet link on one line, which needs more width than a small phone has.
+       Letting the row wrap drops the detail onto its own line rather than
+       truncating the facility name or hiding the link. */
+    .org-status-row{flex-wrap:wrap; gap:4px 9px;}
+    .org-status-name{width:auto;}
+    .org-status-detail{min-width:0; flex:1 1 100%;}
+    .org-status-sheet-link{margin-left:0;}
   }
 
   @media (max-width:480px){
@@ -1639,6 +1697,18 @@
     .live-match-pill{font-size:7.5px; padding:1px 5px;}
     .live-vs-score{font-size:11px;}
     table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
+  }
+
+  /* Touch devices get roomier controls regardless of screen width — a tablet
+     is wide but still driven by a thumb, so this keys off the pointer rather
+     than a breakpoint. Tabs stop at 40px instead of the usual 44 because
+     they wrap to two rows on a phone, and 44 each would cost the hero
+     another chunk of a small screen for no real gain in hit accuracy. */
+  @media (pointer:coarse){
+    .view-tab{min-height:40px;}
+    .organizer-secondary-btn{min-height:44px; padding:0 18px;}
+    /* Both the event and day selects sit in .day-picker wrappers. */
+    .day-picker select, .jump-today-btn{min-height:44px;}
   }
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
@@ -2324,6 +2394,10 @@ function revealLiveTabsAfterLoad(){
   if(dayPromptEl) dayPromptEl.style.display = 'none';
   if(viewTabsWrapEl) viewTabsWrapEl.style.display = '';
   if(syncStatusEl) syncStatusEl.style.display = '';
+  // Only now does the row have a measurable width — while it was display:none
+  // its scrollWidth/clientWidth were both 0, so the scroller state has to be
+  // (re)computed here rather than at script load.
+  if(typeof syncViewTabsScroll === 'function') syncViewTabsScroll();
 
   const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
   const standingsTabBtn = document.querySelector('.view-tab[data-view="standings"]');
@@ -3450,10 +3524,51 @@ const liveBoardEl = document.getElementById('liveBoard');
 const liveBoardMetaEl = document.getElementById('liveBoardMeta');
 const organizerResultsEl = document.getElementById('organizerResults');
 const awardsResultsEl = document.getElementById('awardsResults');
+// The tab row turns into a horizontal scroller on narrow screens. These keep
+// it honest: `is-scrollable` only when the pills actually overflow, and the
+// edge fades only on the side that still has content past it — a permanent
+// fade would imply there is more to reach when there isn't.
+// Looked up per call rather than held in a const — `viewTabsWrapEl` is
+// already declared further down for the day picker, and a second top-level
+// const of the same name is a SyntaxError that would take the page with it.
+function viewTabsRow(){ return document.getElementById('viewTabsWrap'); }
+function syncViewTabsScroll(){
+  const row = viewTabsRow();
+  if(!row) return;
+  const overflows = row.scrollWidth > row.clientWidth + 2;
+  row.classList.toggle('is-scrollable', overflows);
+  if(!overflows){
+    row.classList.remove('can-scroll-left','can-scroll-right');
+    return;
+  }
+  const x = row.scrollLeft;
+  const max = row.scrollWidth - row.clientWidth;
+  row.classList.toggle('can-scroll-left', x > 2);
+  row.classList.toggle('can-scroll-right', x < max - 2);
+}
+// Bring the newly selected tab fully into view — without this, activating a
+// tab that is only half on screen leaves the active pill clipped, so the row
+// looks like nothing happened.
+function revealActiveTab(btn){
+  const row = viewTabsRow();
+  if(!row || !row.classList.contains('is-scrollable')) return;
+  const r = btn.getBoundingClientRect();
+  const box = row.getBoundingClientRect();
+  if(r.left < box.left) row.scrollLeft -= (box.left - r.left) + 12;
+  else if(r.right > box.right) row.scrollLeft += (r.right - box.right) + 12;
+}
+(function(){
+  const row = viewTabsRow();
+  if(!row) return;
+  row.addEventListener('scroll', syncViewTabsScroll, {passive:true});
+  window.addEventListener('resize', syncViewTabsScroll);
+})();
+
 viewTabs.forEach(btn => {
   btn.addEventListener('click', () => {
     viewTabs.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    revealActiveTab(btn);
     const view = btn.dataset.view;
     liveResultsEl.style.display = view === 'live' ? '' : 'none';
     searchPanelEl.style.display = view === 'finder' ? '' : 'none';
