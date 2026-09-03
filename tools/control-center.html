@@ -2045,7 +2045,7 @@
 // CONFIGURATION — platform-wide constants only. Everything event-specific
 // (days, facilities, categories, clubs) is resolved at runtime from
 // event-data/config/events.json — see "Event/day selection" further down.
-// This is the whole point of the console (specs/match-control-console-spec.md):
+// This is the whole point of the console (sage-docs/specs/match-control-console-spec.md):
 // one file, no per-event edits, ever.
 // ============================================================================
 
@@ -2629,7 +2629,7 @@ function pairCell(s){
 
 // ---- Awards podium derivation (awards-podium-tab-spec §2) --------------
 // Everything below is a pure function over MATCHES/STANDINGS — no fetch, no
-// config, no new failure mode. See specs/awards-podium-tab-spec.md.
+// config, no new failure mode. See sage-docs/specs/awards-podium-tab-spec.md.
 
 // The non-bye side's code — used to read a match's category/round/instance
 // off the *real* team's code, since a literal "BYE" code parses to garbage.
@@ -4112,7 +4112,7 @@ renderIntro();
 
 // ---------- Awards tab (podium finishers + image export) ----------------
 // Read-only, derived tab — no fetch, no config, no auth. See
-// specs/awards-podium-tab-spec.md. buildPodiums() (defined above, next to
+// sage-docs/specs/awards-podium-tab-spec.md. buildPodiums() (defined above, next to
 // the Standings render functions it shares helpers with) does all the
 // derivation; everything here is presentation + Canvas 2D export.
 const awardsSummaryBarEl = document.getElementById('awardsSummaryBar');

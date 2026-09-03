@@ -82,7 +82,7 @@ clubs; it is not a general multi-club template.
 > It does **not** produce `SCHEDULE`, nor resize the `CSV`/`STANDINGSCSV`/
 > `Court Control` tabs that read from it — those are still hand work, and
 > until they are done the workbook carries whatever event the master was
-> copied from. See `specs/dual-meet-sheet-generator-spec.md`.
+> copied from. See `sage-docs/specs/dual-meet-sheet-generator-spec.md`.
 
 1. **Copy the template folder** into `events/` under this event's key:
 
@@ -244,7 +244,7 @@ clubs; it is not a general multi-club template.
    > `DIVISIONS`/`EVENTS`/`CLUBS` block from step 4.
 
    > Control Center lives at `tools/control-center.html` (see
-   > `specs/match-control-console-spec.md`, written before the console's
+   > `sage-docs/specs/match-control-console-spec.md`, written before the console's
    > rename from "Match Control" to "Control Center"). Filling these fields in is what
    > makes a newly registered event usable there immediately; leaving them
    > out (or leaving `type` unset/wrong) shows a visible error there rather
@@ -400,7 +400,7 @@ earliest scheduled match time on the synced Schedule column, computed
 fresh from whatever's published — no hour to set or keep in sync per
 event. A day's `isLive` override (`true`/`false`), set from the Match
 Control console, wins over `auto` either way — see
-`specs/match-control-console-spec.md` §4.1.
+`sage-docs/specs/match-control-console-spec.md` §4.1.
 
 ## 6. Root-absolute asset paths — do not "fix" them to relative
 
