@@ -71,6 +71,19 @@ clubs; it is not a general multi-club template.
 
 ## 2. The steps
 
+> **Dual meets: the event workbook can be generated, not hand-copied.** These
+> steps instantiate the *site*; they assume the event's Google Sheets already
+> exist (step 8 installs the sync script into them). For a dual meet, build
+> that workbook with the Dual Meet Sheet Generator instead of duplicating the
+> previous event's and find-replacing team codes: export the plan from the
+> Tournament Time Calculator, hit **Copy plan & open generator**, make your
+> own copy of the master, and run `SAGE -> Generate event tabs`. It produces
+> every category tab plus `Variables`, `Title` and `Reference for Players`.
+> It does **not** produce `SCHEDULE`, nor resize the `CSV`/`STANDINGSCSV`/
+> `Court Control` tabs that read from it — those are still hand work, and
+> until they are done the workbook carries whatever event the master was
+> copied from. See `specs/dual-meet-sheet-generator-spec.md`.
+
 1. **Copy the template folder** into `events/` under this event's key:
 
    ```
@@ -394,15 +407,13 @@ Control console, wins over `auto` either way — see
 Both templates load icons and images with root-absolute paths
 (`/assets/favicons/...`, `/assets/logo.png` — one shared `assets/` folder
 at the repo root, used by every page on the site), not relative ones
-(`../favicons/...`). This is deliberate, not an oversight: several of the
-earliest event pages in `events/archives/` were originally written with
-relative paths, then moved there as pure renames — which broke their
-icons, because a relative path resolves differently depending on how deep
-the page's own folder is nested. Root-absolute paths work regardless of
-nesting, because `sage-match-control.github.io` is a user/org Pages site
-served at the domain root. Leave them root-absolute; do not "simplify"
-them to relative paths, or archiving this event later (§7) will silently
-break its icons the same way it broke those earlier pages'.
+(`../favicons/...`). This is deliberate, not an oversight. A relative path
+resolves differently depending on how deep the page's own folder is nested,
+so archiving a page — a pure rename into `events/archives/` — silently
+breaks every icon on it. Root-absolute paths work regardless of nesting,
+because `sage-match-control.github.io` is a user/org Pages site served at
+the domain root. Leave them root-absolute; do not "simplify" them to
+relative paths, or archiving this event later (§7) will break its icons.
 
 (If this site is ever moved to a project-pages repo served under a
 `/<repo>/` prefix, every template's root-absolute paths would need an
