@@ -136,6 +136,13 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
 .iomsg{margin-top:8px;font-size:13px;border-radius:10px;padding:9px 13px;border:1.5px solid}
 .iomsg.good{background:#F1F8E7;border-color:#C4DFA0;color:#3F6317}
 .iomsg.bad{background:#FBEAE6;border-color:#E4B3A8;color:#7C2D1E}
+/* Sits under the export buttons once Dual meet is picked — the exported CSV
+   is the generator's input, so the handoff belongs next to the export. */
+.genbox{margin-top:14px;border:1.5px solid var(--rule);border-radius:12px;padding:13px 15px;background:#FAFBF7}
+.genbox h3{margin:0 0 4px;font-family:'Barlow Condensed';font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;font-size:14px;color:var(--navy)}
+.genbox p{margin:0 0 11px;font-size:13px;color:var(--muted);line-height:1.5}
+.genbox .btn{display:block;text-decoration:none}
 
 @media(max-width:640px){
   header.hero{padding:24px 16px 18px;border-radius:16px 16px 6px 6px}
@@ -237,6 +244,14 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
     </div>
     <input type="file" id="importfile" accept=".csv,text/csv" hidden>
     <div id="iomsg" class="iomsg" hidden></div>
+    <div class="genbox" id="genbox" hidden>
+      <h3>Build the event workbook</h3>
+      <p>Copies this plan to your clipboard and opens the generator's copy dialog.
+        Make the copy, then in it run <strong>SAGE &rarr; Generate event tabs</strong>
+        and paste into the sidebar.</p>
+      <a class="btn primary" id="genlink" target="_blank" rel="noopener"
+         href="https://docs.google.com/spreadsheets/d/1cBvQ5r6Nm29BJ7Hpsk_gonX31hWJHOrCK1WPLgQaqtg/copy">Copy plan &amp; open generator</a>
+    </div>
   </div>
 </main>
 
@@ -712,7 +727,13 @@ async function load(){
 /* ---------------- form <-> state ---------------- */
 const $=id=>document.getElementById(id);
 function isDualFormat(){ const el=$('f-format'); return !!el && el.value==='dual'; }
-function toggleDualClubsVisibility(){ const w=$('dualClubs'); if(w) w.style.display=isDualFormat()?'':'none'; }
+function toggleDualClubsVisibility(){
+  const w=$('dualClubs'); if(w) w.style.display=isDualFormat()?'':'none';
+  // The workbook generator only knows the dual-meet format, so its handoff
+  // stays hidden under standard. A standard-tournament generator is planned;
+  // when it lands this becomes a swap rather than a show/hide.
+  const g=$('genbox'); if(g) g.hidden=!isDualFormat();
+}
 function clubNames(){
   const a=($('f-clubA')&&$('f-clubA').value.trim())||'Club A';
   const b=($('f-clubB')&&$('f-clubB').value.trim())||'Club B';
@@ -913,8 +934,10 @@ function ioMsg(text,cls){
   const el=$('iomsg');el.textContent=text;el.className='iomsg '+cls;el.hidden=false;
   clearTimeout(msgTimer);msgTimer=setTimeout(()=>{el.hidden=true;},5000);
 }
-function exportCSV(){
-  const cfg=readForm();const r=calcAll(cfg);
+// Builds the export CSV as a string. Split out from exportCSV so the dual-meet
+// generator handoff can put the exact same bytes on the clipboard instead of
+// through a downloaded file.
+function buildPlanCsv(cfg,r){
   const lines=[];
   lines.push('# Tournament Time Calculator export — use Import CSV to restore this setup');
   if(r.matches)lines.push(csvCell('# '+r.matches+' matches · projected finish '+fmtTime(r.endMin)));
@@ -937,10 +960,15 @@ function exportCSV(){
     lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
       teamsCell,isDual?(c.groupDual||1):c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',poFormatCell].join(','));
   });
+  return lines.join('\n');
+}
+function exportCSV(){
+  const cfg=readForm();const r=calcAll(cfg);
+  const csv=buildPlanCsv(cfg,r);
   const name=(cfg.title?cfg.title.replace(/[^\w]+/g,'-').replace(/^-+|-+$/g,'').toLowerCase():'tournament')
     +(cfg.date?'-'+cfg.date:'')+'-plan.csv';
   try{
-    const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
     document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),2000);
@@ -1054,7 +1082,39 @@ function importCSVText(text){
 }
 
 /* ---------------- events ---------------- */
+// Clipboard write must start inside the click itself or the browser refuses
+// it. The anchor's own navigation opens the copy dialog, so nothing is
+// awaited here first — awaiting would push the navigation outside the user
+// gesture and into the popup blocker.
+function copyPlanToClipboard(){
+  const cfg=readForm();
+  const csv=buildPlanCsv(cfg,calcAll(cfg));
+  const done=ok=>ioMsg(ok
+    ? 'Plan copied — paste it into the generator sidebar with Ctrl+V (Cmd+V on Mac).'
+    : 'Could not reach the clipboard. Use Export CSV instead, then paste the file’s contents into the generator.',
+    ok?'good':'bad');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(csv).then(()=>done(true),()=>done(copyFallback(csv)));
+  }else{
+    done(copyFallback(csv));
+  }
+}
+// execCommand('copy') is deprecated but still the only option on browsers
+// without the async clipboard API, and on any page served over plain http
+// (the async API is secure-context only).
+function copyFallback(text){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.top='-1000px';
+    document.body.appendChild(ta);ta.select();
+    const ok=document.execCommand('copy');
+    ta.remove();
+    return ok;
+  }catch(err){return false;}
+}
 $('add').addEventListener('click',()=>{cats.push(defaultCat());renderCats();recalc();});
+if($('genlink'))$('genlink').addEventListener('click',copyPlanToClipboard);
 $('exportbtn').addEventListener('click',exportCSV);
 $('xlsxbtn').addEventListener('click',exportXLSX);
 $('importbtn').addEventListener('click',()=>$('importfile').click());
