@@ -281,8 +281,17 @@ clubs; it is not a general multi-club template.
 
    Once configured, the **SAGE** menu also carries **Generate
    Scoresheets**, which deep-links into `tools/scoresheet-generator.html`
-   with this workbook's day and facility preselected. It needs no
-   authorization of its own — it opens a link and calls nothing.
+   with this workbook's day and facility preselected (it needs no
+   authorization of its own — it opens a link and calls nothing), and
+   **Pause live sync** / **Resume live sync**, which stops and restarts
+   automatic publishing without touching the saved config — for editing a
+   watched tab (a late roster or schedule fix) after sync is already wired
+   up. Do the setup step *last*, after rosters and schedule fixes, and you
+   generally won't need it: the trigger doesn't exist until setup runs.
+
+   **SAGE → Help** is present in every workbook whether configured or not,
+   and carries this whole procedure plus a troubleshooting list — point an
+   operator at it rather than at this file.
 
 9. **Create the data folder.** In the `event-data` repo, create
    `<event-key>/data/` (an empty folder — or just let the first successful
