@@ -27,32 +27,8 @@
     --shadow: 0 14px 30px -20px rgba(11,24,38,.25);
   }
 
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#0B1826;
-      --bg-alt:#101F30;
-      --card:#16283D;
-      --ink:#EAEFE6;
-      --muted:#9FB1AC;
-      --line:rgba(237,239,233,.14);
-      --green:#8FCB3F;
-      --green-dark:#6FA82A;
-      --warn:#D99A3F;
-      --shadow: 0 14px 30px -18px rgba(0,0,0,.55);
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#0B1826;
-    --bg-alt:#101F30;
-    --card:#16283D;
-    --ink:#EAEFE6;
-    --muted:#9FB1AC;
-    --line:rgba(237,239,233,.14);
-    --green:#8FCB3F;
-    --green-dark:#6FA82A;
-    --warn:#D99A3F;
-    --shadow: 0 14px 30px -18px rgba(0,0,0,.55);
-  }
+  /* Always light — matches control-center.html and scoresheet-generator.html,
+     neither of which follow system dark mode either. */
 
   *{box-sizing:border-box;}
   html{overflow-x:hidden;}
