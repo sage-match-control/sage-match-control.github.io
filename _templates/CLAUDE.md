@@ -252,45 +252,37 @@ clubs; it is not a general multi-club template.
 
 8. **Install the sync script.** Once per facility spreadsheet for this
    event (this is the Apps Script side of things — `scripts/sheets-sync.gs`
-   lives in `sage-tools-api`, not in this repo):
+   lives in `sage-tools-api`, not in this repo — though a dual meet's
+   generated workbook carries it already, so this reduces to reload + set up
+   for those):
 
    1. Open the spreadsheet → Extensions → Apps Script.
    2. Delete the default empty `Code.gs` content and paste in the whole
-      contents of `sage-tools-api/scripts/sheets-sync.gs`.
-   3. Edit its `CONFIG` block: set `DAY_KEY` to match whatever day key
-      this spreadsheet is for (the same key you used in `DAYS` in step 4
-      and in `config/events.json` in step 7), set `FACILITY_NAME` to
-      match a `name` in this event's `FACILITIES` array **exactly**
-      (case-sensitive), and set `CLOUD_RUN_BASE_URL` to `sage-tools-api`'s
-      Cloud Run URL (no trailing slash) — the same fixed platform value
-      `tools/control-center.html` hardcodes in its own `CLOUD_RUN_BASE_URL`
-      constant.
-   4. Check `WATCHED_SHEET_GIDS`. The SCHEDULE/COURT CONTROL tab GIDs are
-      per-spreadsheet (a new spreadsheet's tabs get their own GIDs), so
-      confirm the shipped defaults actually match *this* spreadsheet's
-      tabs instead of assuming they carry over — find a tab's GID in its
-      URL (`.../edit#gid=<number>`).
-   5. Run the `setup` function once (select it from the function dropdown
-      at the top, click Run). It will:
-      - prompt you to authorize the script (needed for `UrlFetchApp` +
-        trigger management) — approve it;
-      - ask you to paste the shared secret — this is the same value as
-        `SYNC_SHARED_SECRET` in Cloud Run's env vars, stored here in this
-        script's own Script Properties, never in the source code;
-      - install the installable `onEdit` trigger the script relies on.
-   6. Repeat steps 1–5 for every other facility spreadsheet this event
-      uses (a different `DAY_KEY`/`FACILITY_NAME` each time). Full detail,
-      including why this needs an *installable* trigger rather than a
-      bare `onEdit(e)`, is in the script's own header comment.
+      contents of `sage-tools-api/scripts/sheets-sync.gs`. The file is
+      identical for every workbook of every event — nothing in it is
+      spreadsheet-specific.
+   3. Reload the spreadsheet and run **SAGE → Set up live sync**.
+   4. Enter the day key (the same key you used in `DAYS` in step 4 and in
+      `config/events.json` in step 7) and the facility name (must match a
+      `name` in this event's `FACILITIES` array **exactly**,
+      case-sensitive), confirm the tabs to watch (SCHEDULE and Court
+      Control are pre-ticked when present), and supply the shared secret
+      if prompted — the same value as `SYNC_SHARED_SECRET` in Cloud Run's
+      env vars. Setup validates the secret, the day key and the facility
+      name against Cloud Run — including a real test sync — before saving
+      anything, and reports what it found.
+   5. Repeat for every other facility spreadsheet this event uses (a
+      different day key/facility name each time). Full detail, including
+      why this needs an *installable* `onEdit` trigger rather than a bare
+      `onEdit(e)`, is in the script's own header comment.
 
-   You can sanity-check an install without waiting for a real edit: run
-   `testSyncNow` from the function dropdown to fire a sync immediately.
+   You can sanity-check an install without waiting for a real edit: **SAGE →
+   Sync now** fires a sync immediately and reports the result in a dialog.
 
-   Reloading the spreadsheet after this install also adds a **SAGE →
-   Generate Scoresheets** menu item, which deep-links into
-   `tools/scoresheet-generator.html` with this workbook's `DAY_KEY` and
-   `FACILITY_NAME` preselected. It needs no authorization of its own — it
-   opens a link and calls nothing.
+   Once configured, the **SAGE** menu also carries **Generate
+   Scoresheets**, which deep-links into `tools/scoresheet-generator.html`
+   with this workbook's day and facility preselected. It needs no
+   authorization of its own — it opens a link and calls nothing.
 
 9. **Create the data folder.** In the `event-data` repo, create
    `<event-key>/data/` (an empty folder — or just let the first successful
