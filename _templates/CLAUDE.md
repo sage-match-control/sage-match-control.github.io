@@ -115,9 +115,8 @@ clubs; it is not a general multi-club template.
 4. **Fill in the `// EXAMPLE — replace` config values** in `index.html`'s
    `CONFIGURATION` block: `DAYS`, `FACILITIES`, `DIVISIONS`, `EVENTS` — and,
    for `dual-meet-template/`, `CLUBS` (which is filled from tokens directly,
-   not left as an example — see §3). `bracket-generator.html` needs no
-   config at all. Control Center (`tools/control-center.html`) takes
-   its config from `event-data/config/events.json` — see step 7.
+   not left as an example — see §3). Control Center (`tools/control-center.html`)
+   takes its config from `event-data/config/events.json` — see step 7.
 
 5. **Leave the theme alone unless the event genuinely needs its own.** Every
    page ships the S.A.G.E. house palette — navy structure, green accent,
@@ -139,10 +138,8 @@ clubs; it is not a general multi-club template.
    > text on it (~5.4:1), or on a navy panel. Small text on paper is
    > `--ink` or `--ink-soft`. The banner in each file repeats this.
 
-   Two places do **not** resolve through `:root` and must be changed by hand
-   if you re-skin: `bracket-generator.html`'s `BADGE_FILL`/`BADGE_TEXT` and
-   the colours in its canvas export (see §8), and `schedule.html`'s
-   `CAT_META` (see step 6).
+   One place does **not** resolve through `:root` and must be changed by hand
+   if you re-skin: `schedule.html`'s `CAT_META` (see step 6).
 
 6. **Set up the schedule board** (`schedule.html`). This is the venue wall
    display — courts as columns, time slots as rows, one card per match. It
@@ -265,12 +262,17 @@ clubs; it is not a general multi-club template.
    4. Enter the day key (the same key you used in `DAYS` in step 4 and in
       `config/events.json` in step 7) and the facility name (must match a
       `name` in this event's `FACILITIES` array **exactly**,
-      case-sensitive), confirm the tabs to watch (SCHEDULE and Court
-      Control are pre-ticked when present), and supply the shared secret
-      if prompted — the same value as `SYNC_SHARED_SECRET` in Cloud Run's
-      env vars. Setup validates the secret, the day key and the facility
-      name against Cloud Run — including a real test sync — before saving
-      anything, and reports what it found.
+      case-sensitive), and confirm the tabs to watch (SCHEDULE and Court
+      Control are pre-ticked when present). Setup validates the secret, the
+      day key and the facility name against Cloud Run — including a real
+      test sync — before saving anything, and reports what it found.
+
+      The dialog asks for the **shared secret** only in a workbook that
+      doesn't already have one — that is, one you pasted `sheets-sync.gs`
+      into by hand. A workbook copied from the Dual Meet Master carries the
+      secret with it and shows *Secret stored* instead. If you do have to
+      enter it, it's the same value as `SYNC_SHARED_SECRET` in Cloud Run's
+      env vars.
    5. Repeat for every other facility spreadsheet this event uses (a
       different day key/facility name each time). Full detail, including
       why this needs an *installable* `onEdit` trigger rather than a bare
@@ -311,13 +313,12 @@ clubs; it is not a general multi-club template.
 
 ## 3. Required `{{TOKEN}}` replacements
 
-**Both templates** (`index.html`, and — for a few of these —
-`bracket-generator.html`):
+**Both templates** (`index.html`):
 
 | Token | Meaning |
 | --- | --- |
 | `{{EVENT_KEY}}` | Folder-name-safe slug. Must equal the `events/` folder name and the `event-data` folder name. |
-| `{{EVENT_TITLE}}` | Event name — `<title>`, hero `<h1>`, footer, bracket generator. |
+| `{{EVENT_TITLE}}` | Event name — `<title>`, hero `<h1>`, footer. |
 | `{{EVENT_TAGLINE}}` | Hero subtitle line. |
 | `{{EVENT_HEADLINE}}` | Hero's big secondary line. Optional — blank is fine. |
 | `{{EVENT_DATE_RANGE}}` | Hero eyebrow, footer, meta description. |
@@ -438,24 +439,3 @@ Because its asset paths are root-absolute (§6), nothing needs
 re-prefixing — this is the exact step the earliest, pre-template event
 pages got wrong, and why their icons are currently broken in
 `events/archives/`.
-
-## 8. `bracket-generator.html`
-
-Byte-identical in both templates by design — a change to one must be
-mirrored to the other (each copy has a comment at the top saying so). It's
-fully self-contained: no config block, no sheet access, pairs are pasted
-in by hand. Copy it as-is; the only tokens in it are `{{EVENT_TITLE}}`
-(§3), which get replaced along with everything else in step 3.
-
-It exports a PNG by hand-drawing to a `<canvas>`, which means **its palette
-lives in JS literals, not in `:root`** — `BADGE_FILL` / `BADGE_TEXT` plus
-the background, glow, header and footer fills inside `exportAsImage`. Those
-are kept in step with the `.badge-0..3` CSS rules above them; if you re-skin
-the theme (§2 step 5), change both or the exported image will not match the
-page it came from.
-
-The four bracket fills are each paired with a text colour that clears
-4.5:1 against it. Two of them (`--green-dark` under white at 4.3:1, and the
-stock purple at 3.3:1) don't clear it at their natural values, so they ship
-darkened — don't "restore" them to the palette tokens without re-checking
-the contrast.

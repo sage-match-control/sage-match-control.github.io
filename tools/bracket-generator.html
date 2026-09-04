@@ -1,15 +1,9 @@
-<!--
-  This file is byte-identical to the copy in the sibling template folder
-  (dual-meet-template <-> standard-tournament-template) by design, so
-  instantiating either template is a single `cp -r` of one folder. If you
-  change this file, mirror the same change to the other copy.
--->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{EVENT_TITLE}} — Bracket Draw</title>
+<title>Bracket Generator — S.A.G.E.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,13 +11,15 @@
   /* ============================ THEME ============================
      S.A.G.E. house palette — navy structure, green accent, off-white
      paper — taken from /assets/logo.png and shared verbatim with
-     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
-     and this event's own schedule.html, so every S.A.G.E. surface reads
-     as one product.
+     /tools/scoresheet-generator.html and /tools/tournament-calculator.html,
+     so every S.A.G.E. surface reads as one product.
 
-     To re-skin an event, change the brand tokens below and nothing else:
-     every rule in this file resolves through them or through the role
-     aliases underneath.
+     A re-skin changes ONLY the tokens in this block (including the eight
+     --badge-*-fill/-text pairs below) and nothing else — every rule in this
+     file, and the canvas export in exportAsImage(), resolves through them
+     or through the role aliases underneath. See §4.1/§6 of the bracket
+     generator spec for why the export reads these same tokens at draw time
+     instead of keeping its own copy.
 
      Contrast rules this palette has to respect — the green is a *fill*
      colour, not a text colour:
@@ -58,6 +54,16 @@
     --muted:var(--ink-soft);
     --navy-mid:var(--navy-deep);
     --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
+
+    /* Four bracket fills, each paired with a text colour clearing 4.5:1
+       against it. --badge-2-fill and --badge-3-fill are shipped DARKENED
+       from --green-dark (4.3:1) and the stock purple (3.3:1), which don't
+       clear that floor at their natural values — a re-skin must re-check
+       contrast if it touches these two, not just carry the new hue over. */
+    --badge-0-fill:var(--navy);  --badge-0-text:var(--white);
+    --badge-1-fill:var(--green); --badge-1-text:var(--navy);
+    --badge-2-fill:#4C7A19;      --badge-2-text:var(--white);
+    --badge-3-fill:#6C5CE0;      --badge-3-text:var(--white);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -84,9 +90,10 @@
     margin-bottom:28px;
   }
   .crown-mark{
-    width:40px; height:auto;
+    display:block;
+    width:44px; height:44px;
+    object-fit:contain;
     margin:0 auto 14px;
-    color:var(--court);
     filter:drop-shadow(0 2px 6px rgba(124,185,44,.4));
   }
   .regal-rule{
@@ -187,6 +194,15 @@
     color:var(--muted);
     margin-bottom:8px;
   }
+  .field-optional{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-left:4px;
+  }
+  .field-hint{ text-align:left; }
   .field-input, .field-textarea{
     width:100%;
     font-family:'Inter',sans-serif;
@@ -293,6 +309,15 @@
   /* ---------- RESULTS ---------- */
   #resultsSection{ display:none; margin-top:46px; }
   .result-head{ text-align:center; margin-bottom:26px; }
+  #resultEvent{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12.5px;
+    color:var(--green-dark);
+    margin-bottom:6px;
+  }
   .result-title{
     font-family:'Archivo Black',sans-serif;
     font-weight:400;
@@ -348,12 +373,13 @@
   /* Four bracket fills that each clear 4.5:1 against their own label at
      14.5px. --green-dark and the stock purple both land in the 3.3-4.3
      range against either black or white, so those two are darkened here
-     rather than left to fail quietly. Mirrored in BADGE_FILL/BADGE_TEXT
-     below, which paint the same headers onto the PNG export. */
-  .badge-0{background:var(--navy); color:var(--white);}
-  .badge-1{background:var(--green); color:var(--navy);}
-  .badge-2{background:#4C7A19; color:var(--white);}
-  .badge-3{background:#6C5CE0; color:var(--white);}
+     rather than left to fail quietly (see the THEME banner above). The PNG
+     export reads these same --badge-*-fill/-text tokens at draw time via
+     cssVar() rather than keeping its own copy — see exportAsImage() below. */
+  .badge-0{background:var(--badge-0-fill); color:var(--badge-0-text);}
+  .badge-1{background:var(--badge-1-fill); color:var(--badge-1-text);}
+  .badge-2{background:var(--badge-2-fill); color:var(--badge-2-text);}
+  .badge-3{background:var(--badge-3-fill); color:var(--badge-3-text);}
 
   .bracket-list{
     list-style:none;
@@ -488,30 +514,20 @@
 <body>
 
 <header class="hero">
-  <svg class="crown-mark" viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <!-- Shield -->
-    <path d="M13 2 L35 2 L35 16 Q35 28 24 36 Q13 28 13 16 Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" fill="none"/>
-    <!-- Crossed paddles + ball, the league's charge, set inside the shield -->
-    <g transform="translate(13 6.9) scale(0.46)">
-      <g stroke="currentColor" stroke-width="4" stroke-linecap="round">
-        <path d="M6 8 L30 34" fill="none"/>
-        <path d="M42 8 L18 34" fill="none"/>
-      </g>
-      <ellipse cx="9" cy="6" rx="7" ry="9" transform="rotate(-38 9 6)" fill="currentColor"/>
-      <ellipse cx="39" cy="6" rx="7" ry="9" transform="rotate(38 39 6)" fill="currentColor"/>
-      <circle cx="24" cy="34" r="6.5" fill="currentColor"/>
-      <circle cx="21.5" cy="31.5" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="26.5" cy="31.5" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="24" cy="35" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="21.5" cy="37" r="1.3" fill="var(--court-dark)"/>
-      <circle cx="26.5" cy="37" r="1.3" fill="var(--court-dark)"/>
-    </g>
-  </svg>
-  <div class="eyebrow">{{EVENT_TITLE}} &nbsp;·&nbsp; {{EVENT_DATE_RANGE}} &nbsp;·&nbsp; {{VENUE}}</div>
-  <h1 class="title">{{EVENT_TITLE}} <span class="accent">Bracket Draw</span></h1>
+  <img class="crown-mark" src="/assets/logo.png" alt="S.A.G.E. logo">
+  <div class="eyebrow">S.A.G.E. &middot; Match Control Experts</div>
+  <h1 class="title">Bracket <span class="accent">Generator</span></h1>
   <p class="subtitle">Drop in a category and your pairs, set the number of brackets, and let the draw decide. Export the results as an image or a text file.</p>
 
   <div class="input-panel">
+    <div class="field">
+      <label class="field-label" for="eventNameInput">Event name <span class="field-optional">optional</span></label>
+      <input id="eventNameInput" class="field-input" type="text"
+             placeholder="e.g. BKL Pickleball Cup 2026" autocomplete="off" maxlength="80" />
+      <div class="field-meta">
+        <span class="field-hint">Stamped on the exported image and text file. Leave blank for plain S.A.G.E. branding.</span>
+      </div>
+    </div>
     <div class="field">
       <label class="field-label" for="categoryInput">Category name</label>
       <input id="categoryInput" class="field-input" type="text" placeholder="e.g. Beginner 18+ Men's Doubles" autocomplete="off" />
@@ -540,6 +556,7 @@
 <div class="wrap">
   <div id="resultsSection">
     <div class="result-head">
+      <div id="resultEvent" hidden></div>
       <div class="result-title" id="resultTitle"></div>
       <div class="result-meta" id="resultMeta"></div>
     </div>
@@ -553,7 +570,7 @@
 </div>
 
 <footer>
-  {{EVENT_TITLE}} &middot; Bracket Draw Tool<br>
+  S.A.G.E. Bracket Generator<br>
   Powered by S.A.G.E. Match Control Experts
 </footer>
 
@@ -606,9 +623,11 @@ function pickColumns(n){
 
 // ==================== State ====================
 let currentCategory = '';
+let currentEventName = '';
 let currentBrackets = []; // [{ label, pairs: [] }]
 
 // ==================== Elements ====================
+const eventNameInput = document.getElementById('eventNameInput');
 const categoryInput = document.getElementById('categoryInput');
 const pairsInput = document.getElementById('pairsInput');
 const bracketCountInput = document.getElementById('bracketCountInput');
@@ -618,12 +637,30 @@ const formErrorEl = document.getElementById('formError');
 const generateBtn = document.getElementById('generateBtn');
 
 const resultsSection = document.getElementById('resultsSection');
+const resultEventEl = document.getElementById('resultEvent');
 const resultTitleEl = document.getElementById('resultTitle');
 const resultMetaEl = document.getElementById('resultMeta');
 const bracketGridEl = document.getElementById('bracketGrid');
 const randomizeAgainBtn = document.getElementById('randomizeAgainBtn');
 const exportImageBtn = document.getElementById('exportImageBtn');
 const exportTextBtn = document.getElementById('exportTextBtn');
+
+// ==================== Event name: persistence + ?event= prefill ====================
+// Only the event name is remembered — category and pairs change every draw,
+// and a prefilled pair list is a live hazard (see spec §3.6). Wrapped in
+// try/catch because localStorage throws in some private-browsing modes.
+const STORAGE_EVENT_KEY = 'sage-bracket-event-name';
+function saveEventName(v){ try{ localStorage.setItem(STORAGE_EVENT_KEY, v); } catch(e){} }
+function loadEventName(){ try{ return localStorage.getItem(STORAGE_EVENT_KEY) || ''; } catch(e){ return ''; } }
+
+(function initEventName(){
+  const params = new URLSearchParams(location.search);
+  const fromQuery = params.get('event');
+  const initial = fromQuery !== null ? fromQuery.trim() : loadEventName();
+  eventNameInput.value = initial;
+  if(fromQuery !== null) saveEventName(initial);
+})();
+eventNameInput.addEventListener('change', () => saveEventName(eventNameInput.value.trim()));
 
 // ==================== Input handling ====================
 function parsePairs(){
@@ -680,7 +717,8 @@ function generateBrackets(){
     showFormError(`Only ${pluralize(pairs.length, 'pair')} entered, so the bracket count was capped at ${numBrackets}.`);
   }
 
-  currentCategory = categoryInput.value.trim();
+  currentCategory  = categoryInput.value.trim();
+  currentEventName = eventNameInput.value.trim();
 
   // Lock in the real result up front so the animation is purely cosmetic —
   // what the user sees settle on is exactly what gets rendered/exported.
@@ -690,6 +728,13 @@ function generateBrackets(){
 }
 
 function renderResultsHeader(){
+  if(currentEventName){
+    resultEventEl.textContent = currentEventName;
+    resultEventEl.hidden = false;
+  } else {
+    resultEventEl.textContent = '';
+    resultEventEl.hidden = true;
+  }
   resultTitleEl.textContent = currentCategory || 'Untitled Category';
   const totalPairs = currentBrackets.reduce((sum, b) => sum + b.pairs.length, 0);
   resultMetaEl.textContent =
@@ -824,6 +869,7 @@ function exportAsText(){
   const now = new Date();
   const totalPairs = currentBrackets.reduce((s, b) => s + b.pairs.length, 0);
   let out = '';
+  if(currentEventName) out += `${currentEventName.toUpperCase()}\n`;
   out += `${(currentCategory || 'UNTITLED CATEGORY').toUpperCase()}\n`;
   out += `Drawn ${now.toLocaleString()}\n`;
   out += `${pluralize(currentBrackets.length, 'bracket')}, ${pluralize(totalPairs, 'pair')}\n`;
@@ -840,10 +886,15 @@ function exportAsText(){
     out += '\n';
   });
 
-  out += '{{EVENT_TITLE}} \u00b7 Bracket Draw Tool\n';
+  out += currentEventName
+    ? `${currentEventName} \u00b7 Bracket Draw\n`
+    : 'S.A.G.E. Bracket Draw\n';
   out += 'Powered by S.A.G.E. Match Control Experts\n';
 
-  downloadBlob(new Blob([out], { type: 'text/plain' }), `${slugify(currentCategory)}-brackets.txt`);
+  const filenameBase = currentEventName
+    ? `${slugify(currentEventName)}-${slugify(currentCategory)}`
+    : slugify(currentCategory);
+  downloadBlob(new Blob([out], { type: 'text/plain' }), `${filenameBase}-brackets.txt`);
 }
 
 function downloadBlob(blob, filename){
@@ -860,10 +911,23 @@ function downloadBlob(blob, filename){
 exportTextBtn.addEventListener('click', exportAsText);
 
 // ==================== Export as image (self-contained canvas render) ====================
-// Kept in lockstep with the .badge-0..3 rules in the stylesheet above — the
-// canvas export has to paint the same bracket headers the page shows.
-const BADGE_FILL = ['#14263C', '#7CB92C', '#4C7A19', '#6C5CE0'];
-const BADGE_TEXT = ['#FFFFFF', '#14263C', '#FFFFFF', '#FFFFFF'];
+// The exported PNG is hand-drawn to a canvas, which takes colour strings, not
+// CSS variables — so it resolves the same :root tokens the page renders from.
+// This is what keeps a re-skin a one-block edit (§4.1): change the tokens and
+// the export follows, with no second list of colours to keep in step.
+// `fallback` matters: a token that resolves empty (a malformed re-skin) would
+// make `ctx.fillStyle = ''` a silent no-op, leaving whatever colour was set
+// last. Falling back to the shipped value degrades to today's palette instead.
+const cssVar = (name, fallback) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+const cssVarAlpha = (name, a) => {
+  const hex = cssVar(name);
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if(!m) return `rgba(0,0,0,${a})`;   // token isn't a plain hex — no glow rather than a wrong one
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+};
 
 function roundRect(ctx, x, y, w, h, r){
   ctx.beginPath();
@@ -944,23 +1008,23 @@ function layoutBracketCard(ctx, bracket, colWidth, headHeight, padding){
   return { rows, totalHeight };
 }
 
-function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, colorIdx){
+function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, colorIdx, badgeFills, badgeTexts, colors){
   const h = layout.totalHeight;
 
   roundRect(ctx, x, y, w, h, 12);
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = colors.white;
   ctx.fill();
-  ctx.strokeStyle = '#D9DED2';
+  ctx.strokeStyle = colors.line;
   ctx.lineWidth = 1;
   ctx.stroke();
 
   roundRectTop(ctx, x, y, w, headHeight, 12);
-  ctx.fillStyle = BADGE_FILL[colorIdx % 4];
+  ctx.fillStyle = badgeFills[colorIdx % 4];
   ctx.fill();
 
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
-  ctx.fillStyle = BADGE_TEXT[colorIdx % 4];
+  ctx.fillStyle = badgeTexts[colorIdx % 4];
   ctx.font = '800 15px Inter, sans-serif';
   ctx.fillText(`Bracket ${bracket.label}`, x + 14, y + headHeight / 2 + 1);
 
@@ -971,23 +1035,23 @@ function drawBracketCard(ctx, x, y, w, headHeight, padding, bracket, layout, col
   ctx.textAlign = 'left';
   let ry = y + headHeight + padding;
   if(layout.rows.length === 0){
-    ctx.fillStyle = '#5B6B74';
+    ctx.fillStyle = colors.inkSoft;
     ctx.font = 'italic 500 12.5px Inter, sans-serif';
     ctx.fillText('No pairs assigned', x + 14, ry + 14);
   } else {
     layout.rows.forEach((row, i) => {
       const cy = ry + row.height / 2;
-      ctx.fillStyle = '#ECEEE6';
+      ctx.fillStyle = colors.paperDim;
       ctx.beginPath();
       ctx.arc(x + 14 + 9, cy, 9, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#14263C';
+      ctx.fillStyle = colors.navy;
       ctx.textAlign = 'center';
       ctx.font = '700 10px "Barlow Condensed", sans-serif';
       ctx.fillText(String(i + 1), x + 14 + 9, cy + 1);
 
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#14263C';
+      ctx.fillStyle = colors.navy;
       ctx.font = NAME_FONT;
       const blockHeight = row.lines.length * NAME_LINE_HEIGHT;
       let lineY = cy - blockHeight / 2 + NAME_LINE_HEIGHT / 2;
@@ -1050,11 +1114,25 @@ async function exportAsImage(){
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
 
-  // Background: matches the page's dark gradient + soft glows.
+  // Resolved once per export, after fonts are ready \u2014 a token read at load
+  // time would miss a re-skin applied afterwards (\u00a76.2).
+  const badgeFills = [0,1,2,3].map(i => cssVar(`--badge-${i}-fill`));
+  const badgeTexts = [0,1,2,3].map(i => cssVar(`--badge-${i}-text`));
+  const colors = {
+    white: cssVar('--white', '#FFFFFF'),
+    paper: cssVar('--paper', '#F6F7F2'),
+    line: cssVar('--line', '#D9DED2'),
+    paperDim: cssVar('--paper-dim', '#ECEEE6'),
+    navy: cssVar('--navy', '#14263C'),
+    inkSoft: cssVar('--ink-soft', '#5B6B74'),
+    greenDark: cssVar('--green-dark', '#5C8F1F'),
+  };
+
+  // Background: matches the page's paper gradient + soft glows.
   const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-  bgGrad.addColorStop(0, '#F6F7F2');
-  bgGrad.addColorStop(0.45, '#FFFFFF');
-  bgGrad.addColorStop(1, '#F6F7F2');
+  bgGrad.addColorStop(0, colors.paper);
+  bgGrad.addColorStop(0.45, colors.white);
+  bgGrad.addColorStop(1, colors.paper);
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
@@ -1065,23 +1143,25 @@ async function exportAsImage(){
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
   }
-  glow(width * 0.5, -40, 460, 'rgba(124,185,44,.10)');
-  glow(width, 30, 380, 'rgba(20,38,60,.05)');
+  glow(width * 0.5, -40, 460, cssVarAlpha('--green', .10));
+  glow(width, 30, 380, cssVarAlpha('--navy', .05));
 
-  // Header
+  // Header \u2014 the event name is *output* branding (\u00a73.3): the canvas eyebrow
+  // and footer carry it, the on-page hero never does.
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#5C8F1F';
+  ctx.fillStyle = colors.greenDark;
   ctx.font = '600 12px "Barlow Condensed", sans-serif';
-  ctx.fillText('{{EVENT_TITLE}}'.toUpperCase() + ' \u00b7 BRACKET DRAW', width / 2, 42);
+  const eyebrowText = (currentEventName ? currentEventName.toUpperCase() + ' \u00b7 ' : 'S.A.G.E. \u00b7 ') + 'BRACKET DRAW';
+  ctx.fillText(truncateToWidth(ctx, eyebrowText, width - 120), width / 2, 42);
 
-  ctx.fillStyle = '#14263C';
+  ctx.fillStyle = colors.navy;
   ctx.font = '400 38px "Archivo Black", sans-serif';
   const titleText = truncateToWidth(ctx, (currentCategory || 'UNTITLED CATEGORY').toUpperCase(), width - 120);
   ctx.fillText(titleText, width / 2, 88);
 
   const totalPairs = currentBrackets.reduce((s, b) => s + b.pairs.length, 0);
-  ctx.fillStyle = '#5B6B74';
+  ctx.fillStyle = colors.inkSoft;
   ctx.font = '500 13.5px Inter, sans-serif';
   ctx.fillText(
     `${pluralize(currentBrackets.length, 'bracket')} \u00b7 ${pluralize(totalPairs, 'pair')} \u00b7 Drawn ${new Date().toLocaleString()}`,
@@ -1095,7 +1175,7 @@ async function exportAsImage(){
     const totalRowWidth = row.length * colWidth + (row.length - 1) * colGap;
     let x = (width - totalRowWidth) / 2;
     row.forEach(cell => {
-      drawBracketCard(ctx, x, y, colWidth, headHeight, cardPadding, cell.bracket, cell.layout, cell.colorIdx);
+      drawBracketCard(ctx, x, y, colWidth, headHeight, cardPadding, cell.bracket, cell.layout, cell.colorIdx, badgeFills, badgeTexts, colors);
       x += colWidth + colGap;
     });
     y += rowH + colGap;
@@ -1103,13 +1183,19 @@ async function exportAsImage(){
 
   // Footer
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#5B6B74';
+  ctx.fillStyle = colors.inkSoft;
   ctx.font = '500 11px "Barlow Condensed", sans-serif';
-  ctx.fillText('{{EVENT_TITLE}} \u00b7 Powered by S.A.G.E. Match Control Experts', width / 2, height - 24);
+  const footerText = currentEventName
+    ? `${currentEventName} \u00b7 Powered by S.A.G.E. Match Control Experts`
+    : 'Powered by S.A.G.E. Match Control Experts';
+  ctx.fillText(truncateToWidth(ctx, footerText, width - 120), width / 2, height - 24);
 
+  const filenameBase = currentEventName
+    ? `${slugify(currentEventName)}-${slugify(currentCategory)}`
+    : slugify(currentCategory);
   canvas.toBlob(blob => {
     if(!blob) return;
-    downloadBlob(blob, `${slugify(currentCategory)}-brackets.png`);
+    downloadBlob(blob, `${filenameBase}-brackets.png`);
   }, 'image/png');
 }
 
