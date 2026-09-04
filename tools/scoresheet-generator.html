@@ -170,6 +170,28 @@
     gap:12px;
   }
   @media(max-width:560px){ .type-grid{grid-template-columns:1fr;} }
+  .type-grid.two{grid-template-columns:repeat(2,1fr);}
+  .source-panel{margin-top:18px;}
+  .picker-grid{display:grid; gap:12px; grid-template-columns:1fr;}
+  @media (min-width:620px){ .picker-grid{grid-template-columns:1.4fr 1fr 1.2fr;} }
+  .picker-grid .f{display:flex; flex-direction:column; gap:6px;}
+  .picker-grid .lab{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink-soft);
+  }
+  .picker-grid select{
+    width:100%; padding:11px 12px;
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:15px;
+  }
+  .picker-grid select:disabled{background:var(--paper-dim); color:var(--ink-soft);}
+  .picker-meta{
+    margin:12px 0 0; font-size:13px; color:var(--ink-soft); min-height:18px;
+  }
+  .picker-meta.warn{color:#9A6B00;}
+  .picker-meta.err{color:#B3261E;}
 
   .type-card{
     position:relative;
@@ -411,16 +433,62 @@
 
   <form id="sheetForm">
 
-    <!-- Step 1: Event name -->
+    <!-- Step 1: Where the matches come from -->
     <div class="card">
-      <div class="step-label"><span class="step-num">1</span><span class="step-title">Name the event</span></div>
+      <div class="step-label"><span class="step-num">1</span><span class="step-title">Choose your matches</span></div>
+      <p class="step-help">Pull them from a registered event, or upload a CSV yourself.</p>
+
+      <div class="type-grid two">
+        <label class="type-card">
+          <input type="radio" name="source" value="event" checked>
+          <span class="dot"></span>
+          <span class="t-name">Registered event</span>
+          <span class="t-desc">Straight from live event data</span>
+        </label>
+        <label class="type-card">
+          <input type="radio" name="source" value="upload">
+          <span class="dot"></span>
+          <span class="t-name">Upload a CSV</span>
+          <span class="t-desc">Any matches file</span>
+        </label>
+      </div>
+
+      <!-- Event mode -->
+      <div id="eventPanel" class="source-panel">
+        <div class="picker-grid">
+          <label class="f"><span class="lab">Event</span>
+            <select id="eventSelect"></select></label>
+          <label class="f"><span class="lab">Day</span>
+            <select id="daySelect"></select></label>
+          <label class="f"><span class="lab">Venue</span>
+            <select id="facilitySelect"></select></label>
+        </div>
+        <p class="picker-meta" id="pickerMeta"></p>
+      </div>
+
+      <!-- Upload mode: the existing dropzone, moved here verbatim -->
+      <div id="uploadPanel" class="source-panel" hidden>
+        <div class="dropzone" id="dropzone">
+          <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M12 3l-4 4M12 3l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          <div id="dzText">
+            <div class="dz-main">Drop matches.csv here</div>
+            <div class="dz-sub">or click to browse your files</div>
+          </div>
+        </div>
+        <input type="file" id="csvInput" accept=".csv">
+      </div>
+    </div>
+
+    <!-- Step 2: Event name -->
+    <div class="card">
+      <div class="step-label"><span class="step-num">2</span><span class="step-title">Name the event</span></div>
       <p class="step-help">This prints on every scoresheet header.</p>
       <input type="text" id="evtName" name="evt" placeholder="e.g. Downtown Pickleball Open" required>
     </div>
 
-    <!-- Step 2: Type -->
+    <!-- Step 3: Type -->
     <div class="card">
-      <div class="step-label"><span class="step-num">2</span><span class="step-title">Pick a scoresheet type</span></div>
+      <div class="step-label"><span class="step-num">3</span><span class="step-title">Pick a scoresheet type</span></div>
       <p class="step-help">Choose the layout that matches how your matches are run.</p>
       <div class="type-grid">
         <label class="type-card">
@@ -450,20 +518,6 @@
       </div>
     </div>
 
-    <!-- Step 3: CSV -->
-    <div class="card">
-      <div class="step-label"><span class="step-num">3</span><span class="step-title">Upload your matches CSV</span></div>
-      <p class="step-help">The file that lists matchups for the event.</p>
-      <div class="dropzone" id="dropzone">
-        <svg class="dz-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M12 3l-4 4M12 3l4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-        <div id="dzText">
-          <div class="dz-main">Drop matches.csv here</div>
-          <div class="dz-sub">or click to browse your files</div>
-        </div>
-      </div>
-      <input type="file" id="csvInput" accept=".csv" required>
-    </div>
-
     <!-- Step 4: Blank scoresheets -->
     <div class="card">
       <div class="step-label"><span class="step-num">4</span><span class="step-title">Add blank scoresheets</span><span style="font-size:13px;color:var(--ink-soft);">(optional)</span></div>
@@ -491,11 +545,28 @@
 
   </form>
 
-  <footer>Powered by <b>S.A.G.E.</b> — sends your CSV straight to the scoresheet API, nothing is stored.</footer>
+  <footer>Powered by <b>S.A.G.E.</b> — matches go straight to the scoresheet API, nothing is stored.</footer>
 </div>
 
 <script>
   const API_URL = "https://sage-tools-api-811926984834.us-central1.run.app/scoresheets/generate/stream";
+
+  // event-data is a project repo under the same GitHub Pages org, so these are
+  // same-origin — no CORS. Pages caches every response for ~10 minutes with no
+  // way to force an early refresh; the ?t= param is what keeps a fetch fresh
+  // instead of stuck on a stale copy. Same arrangement as control-center.html.
+  const GHPAGES_OWNER = 'sage-match-control';
+  const GHPAGES_REPO  = 'event-data';
+  const configUrlFor   = () => `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
+  const snapshotUrlFor = (eventKey, dayKey) => `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${eventKey}/data/${dayKey}.json?t=${Date.now()}`;
+  const FETCH_TIMEOUT_MS = 8000;   // venue wifi hangs rather than fails outright
+  const SCORESHEET_TYPES = ['scoresheet', 'scoresheet-best-of-3', 'scoresheet-no-ref', 'scoresheet-no-ref-wide'];
+
+  let REGISTRY = new Map();  // eventKey -> registry entry, archived excluded
+  let RAW_EVENTS = {};       // unfiltered events.json events, for archived deep-link lookups
+  let SNAPSHOT = null;       // the currently selected day's snapshot, or null
+  let CURRENT_EVENT_KEY = null;
+  let lastAutoFilledName = '';
 
   const dropzone = document.getElementById('dropzone');
   const csvInput = document.getElementById('csvInput');
@@ -509,6 +580,263 @@
   const progressFill = document.getElementById('progressFill');
   const progressPhase = document.getElementById('progressPhase');
   const progressPct = document.getElementById('progressPct');
+  const evtNameInput = document.getElementById('evtName');
+  const sourceRadios = form.querySelectorAll('input[name="source"]');
+  const eventPanel = document.getElementById('eventPanel');
+  const uploadPanel = document.getElementById('uploadPanel');
+  const eventSelect = document.getElementById('eventSelect');
+  const daySelect = document.getElementById('daySelect');
+  const facilitySelect = document.getElementById('facilitySelect');
+  const pickerMeta = document.getElementById('pickerMeta');
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function relativeTimeFromNow(isoString){
+    if(!isoString) return 'unknown';
+    const ms = Date.now() - new Date(isoString).getTime();
+    if(ms < 0 || ms < 30000) return 'just now';
+    const sec = Math.floor(ms / 1000);
+    if(sec < 60) return `${sec}s ago`;
+    const min = Math.floor(sec / 60);
+    if(min < 60) return `${min} min ago`;
+    const hr = Math.floor(min / 60);
+    if(hr < 24) return `${hr}h ago`;
+    return `${Math.floor(hr / 24)}d ago`;
+  }
+
+  const slugPart = (s) => String(s).replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '');
+
+  const countMatches = (csv) =>
+    csv.split(/\r?\n/).slice(1).filter(l => l.trim() !== '').length;
+
+  function setPickerMeta(text, kind){
+    pickerMeta.textContent = text;
+    pickerMeta.className = 'picker-meta' + (kind ? ' ' + kind : '');
+  }
+
+  function selectedFacility(){
+    if (!SNAPSHOT) return null;
+    return (SNAPSHOT.facilities || []).find(f => f.name === facilitySelect.value) || null;
+  }
+
+  function applySourceMode(){
+    const mode = form.querySelector('input[name="source"]:checked').value;
+    eventPanel.hidden = mode !== 'event';
+    uploadPanel.hidden = mode !== 'upload';
+  }
+  sourceRadios.forEach(r => r.addEventListener('change', applySourceMode));
+
+  function eventTitle(key){
+    const entry = REGISTRY.get(key);
+    return (entry && entry.title) || key;
+  }
+
+  function maybeAutoFillName(){
+    const mode = form.querySelector('input[name="source"]:checked').value;
+    if (mode !== 'event' || !eventSelect.value) return;
+    const title = eventTitle(eventSelect.value);
+    const current = evtNameInput.value;
+    if (current === '' || current === lastAutoFilledName) {
+      evtNameInput.value = title;
+      lastAutoFilledName = title;
+    }
+  }
+
+  async function fetchJson(url){
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`responded ${res.status}`);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
+
+  async function loadRegistry(){
+    const raw = await fetchJson(configUrlFor());
+    RAW_EVENTS = raw.events || {};
+    REGISTRY = new Map(Object.entries(RAW_EVENTS).filter(([, e]) => !e.archived));
+  }
+
+  function populateEventSelect(){
+    eventSelect.innerHTML = Array.from(REGISTRY.entries())
+      .map(([key, e]) => `<option value="${escapeHtml(key)}">${escapeHtml(e.title || key)}</option>`)
+      .join('');
+  }
+
+  // today / next upcoming / first day, mirroring control-center.html's
+  // getTodayOrNextDayIndex (Asia/Manila, matching the isLive 7am-PH threshold
+  // elsewhere in the system).
+  function defaultDayKey(days){
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(new Date());
+    const exact = days.find(d => d.date === todayStr);
+    if (exact) return exact.key;
+    const next = days.find(d => d.date && d.date > todayStr);
+    if (next) return next.key;
+    return days.length ? days[0].key : '';
+  }
+
+  function populateFacilitySelect(presetFacility){
+    const facilities = (SNAPSHOT && SNAPSHOT.facilities) || [];
+    facilitySelect.innerHTML = facilities.map(f => {
+      const count = countMatches(f.matchesCsv);
+      const label = count === 0 ? `${f.name} — no matches yet` : f.name;
+      return `<option value="${escapeHtml(f.name)}"${count === 0 ? ' disabled' : ''}>${escapeHtml(label)}</option>`;
+    }).join('');
+    facilitySelect.disabled = facilities.length === 0;
+
+    if (presetFacility !== undefined && presetFacility !== null) {
+      // Exact and case-sensitive — matches how the sync itself compares
+      // facility names everywhere else in the system. See §5.7.
+      const match = facilities.find(f => f.name === presetFacility);
+      if (match && countMatches(match.matchesCsv) > 0) {
+        facilitySelect.value = presetFacility;
+        updatePickerMeta();
+      } else {
+        facilitySelect.value = '';
+        const names = facilities.map(f => f.name).join(', ') || 'nothing';
+        setPickerMeta(`No venue named "${presetFacility}" on this day — facility names are case-sensitive. This day has: ${names}.`, 'err');
+      }
+      return;
+    }
+
+    const firstUsable = facilities.find(f => countMatches(f.matchesCsv) > 0);
+    facilitySelect.value = firstUsable ? firstUsable.name : '';
+    updatePickerMeta();
+  }
+
+  function updatePickerMeta(){
+    const fac = selectedFacility();
+    if (!fac) { setPickerMeta('', ''); return; }
+    const count = countMatches(fac.matchesCsv);
+    let msg = `${count} match${count === 1 ? '' : 'es'} · synced ${relativeTimeFromNow(fac.syncedAt)}`;
+    let kind = '';
+    const stale = (SNAPSHOT && SNAPSHOT.staleFacilities) || [];
+    const failed = (SNAPSHOT && SNAPSHOT.failedFacilities) || [];
+    if (stale.includes(fac.name)) {
+      msg += ` · venue last synced ${relativeTimeFromNow(fac.syncedAt)}, data may be behind the sheet`;
+      kind = 'warn';
+    }
+    if (failed.some(s => s.startsWith(fac.name + ': '))) {
+      msg += ` · last sync for this venue failed`;
+      kind = 'warn';
+    }
+    setPickerMeta(msg, kind);
+  }
+
+  async function selectDay(dayKey, opts){
+    opts = opts || {};
+    SNAPSHOT = null;
+    facilitySelect.innerHTML = '';
+    facilitySelect.disabled = true;
+    if (!dayKey) { setPickerMeta('', ''); return; }
+    setPickerMeta('Loading day data…', '');
+    try {
+      SNAPSHOT = await fetchJson(snapshotUrlFor(CURRENT_EVENT_KEY, dayKey));
+    } catch (err) {
+      setPickerMeta('No published data for this day yet — it appears after the first sync. Upload a CSV instead.', 'warn');
+      return;
+    }
+    populateFacilitySelect(opts.presetFacility);
+  }
+
+  async function selectEvent(key, opts){
+    opts = opts || {};
+    const entry = REGISTRY.get(key);
+    if (!entry) return;
+    CURRENT_EVENT_KEY = key;
+
+    const days = Object.entries(entry.days || {})
+      .map(([k, d]) => ({ key: k, label: d.label, date: d.date || null }))
+      .sort((a, b) => (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99'));
+
+    daySelect.innerHTML = days.map(d => `<option value="${escapeHtml(d.key)}">${escapeHtml(d.label || d.key)}</option>`).join('');
+
+    let dayKey = opts.presetDayKey && days.some(d => d.key === opts.presetDayKey)
+      ? opts.presetDayKey
+      : defaultDayKey(days);
+    daySelect.value = dayKey;
+
+    await selectDay(dayKey, { presetFacility: opts.presetFacility });
+    maybeAutoFillName();
+  }
+
+  eventSelect.addEventListener('change', () => { selectEvent(eventSelect.value); });
+  daySelect.addEventListener('change', () => { selectDay(daySelect.value).then(maybeAutoFillName); });
+  facilitySelect.addEventListener('change', () => { updatePickerMeta(); maybeAutoFillName(); });
+
+  function applyTypeParam(type){
+    if (!type || !SCORESHEET_TYPES.includes(type)) return;
+    const radio = Array.from(form.querySelectorAll('input[name="type"]')).find(r => r.value === type);
+    if (radio) radio.checked = true;
+  }
+
+  function disableEventMode(){
+    const eventRadio = form.querySelector('input[name="source"][value="event"]');
+    eventRadio.disabled = true;
+    eventRadio.title = "Couldn't load the event list — upload a CSV instead.";
+    form.querySelector('input[name="source"][value="upload"]').checked = true;
+    setPickerMeta("Couldn't load the event list — upload a CSV instead.", 'err');
+    applySourceMode();
+  }
+
+  async function initEventMode(){
+    try {
+      await loadRegistry();
+    } catch (err) {
+      disableEventMode();
+      return;
+    }
+    if (REGISTRY.size === 0) {
+      disableEventMode();
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const dayParam = params.get('day');
+    const facilityParam = params.get('facility');
+    applyTypeParam(params.get('type'));
+
+    let targetKey = null;
+    let dayFound = false;
+
+    if (dayParam) {
+      for (const [key, entry] of REGISTRY) {
+        if (entry.days && Object.prototype.hasOwnProperty.call(entry.days, dayParam)) {
+          targetKey = key; dayFound = true; break;
+        }
+      }
+      if (!targetKey) {
+        for (const [key, entry] of Object.entries(RAW_EVENTS)) {
+          if (REGISTRY.has(key)) continue;
+          if (entry.days && Object.prototype.hasOwnProperty.call(entry.days, dayParam)) {
+            REGISTRY.set(key, Object.assign({}, entry, { title: (entry.title || key) + ' (archived)' }));
+            targetKey = key; dayFound = true; break;
+          }
+        }
+      }
+    }
+
+    populateEventSelect();
+
+    const useKey = targetKey || REGISTRY.keys().next().value;
+    if (!useKey) return;
+
+    eventSelect.value = useKey;
+    await selectEvent(useKey, {
+      presetDayKey: dayFound ? dayParam : undefined,
+      presetFacility: dayFound && facilityParam ? facilityParam : undefined,
+    });
+
+    if (dayParam && !dayFound) {
+      setPickerMeta(`Day "${dayParam}" isn't in the event registry — check DAY_KEY in this workbook's sync script. Showing ${eventTitle(useKey)} instead.`, 'err');
+    }
+  }
+
+  applySourceMode();
+  initEventMode();
 
   dropzone.addEventListener('click', () => csvInput.click());
 
@@ -615,13 +943,28 @@
 
     const evt = document.getElementById('evtName').value.trim();
     const type = form.querySelector('input[name="type"]:checked').value;
-    const file = csvInput.files[0];
+    const mode = form.querySelector('input[name="source"]:checked').value;
 
     const blanksRaw = blankCountInput.value.trim();
     const blanks = blanksRaw === '' ? 0 : Number(blanksRaw);
 
-    if (!evt || !file) {
-      setStatus('Add an event name and a CSV file to continue.', 'err');
+    let csvPart, csvPartName, fac = null;
+    if (mode === 'event') {
+      fac = selectedFacility();
+      if (!fac || !countMatches(fac.matchesCsv)) {
+        setStatus('Pick an event, day and venue that has matches in it.', 'err');
+        return;
+      }
+      csvPart = new Blob([fac.matchesCsv], { type: 'text/csv' });
+      csvPartName = 'matches.csv';
+    } else {
+      csvPart = csvInput.files[0];
+      if (!csvPart) { setStatus('Add a CSV file to continue.', 'err'); return; }
+      csvPartName = csvPart.name;
+    }
+
+    if (!evt) {
+      setStatus('Add an event name to continue.', 'err');
       return;
     }
 
@@ -633,7 +976,7 @@
     const fd = new FormData();
     fd.append('evt', evt);
     fd.append('type', type);
-    fd.append('csv', file);
+    fd.append('csv', csvPart, csvPartName);   // third arg matters — see ScoresheetService/multer originalname
     fd.append('blanks', String(blanks));
 
     btn.disabled = true;
@@ -666,8 +1009,10 @@
         } else if (event.phase === 'done') {
           setProgress(100, PHASE_LABELS.done, false);
           const blob = base64ToBlob(event.pdfBase64, 'application/pdf');
-          const safeName = evt.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'scoresheet';
-          triggerDownload(blob, `${safeName.toUpperCase()}_SCORESHEET`);
+          const fileNameBase = mode === 'event'
+            ? [evt, daySelect.value, fac.name].map(slugPart).filter(Boolean).join('_').toUpperCase() || 'SCORESHEET'
+            : (slugPart(evt) || 'scoresheet').toUpperCase();
+          triggerDownload(blob, `${fileNameBase}_SCORESHEET`);
         } else if (event.phase === 'error') {
           streamError = event.message;
         }

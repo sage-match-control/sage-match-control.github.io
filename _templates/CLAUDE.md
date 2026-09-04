@@ -286,6 +286,12 @@ clubs; it is not a general multi-club template.
    You can sanity-check an install without waiting for a real edit: run
    `testSyncNow` from the function dropdown to fire a sync immediately.
 
+   Reloading the spreadsheet after this install also adds a **SAGE →
+   Generate Scoresheets** menu item, which deep-links into
+   `tools/scoresheet-generator.html` with this workbook's `DAY_KEY` and
+   `FACILITY_NAME` preselected. It needs no authorization of its own — it
+   opens a link and calls nothing.
+
 9. **Create the data folder.** In the `event-data` repo, create
    `<event-key>/data/` (an empty folder — or just let the first successful
    sync create it). Nothing else in that repo needs touching per-event —
