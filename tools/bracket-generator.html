@@ -203,6 +203,20 @@
     margin-left:4px;
   }
   .field-hint{ text-align:left; }
+  /* Inline "How it works" trigger. A <button>, not an <a> — it opens a dialog
+     rather than navigating — styled to read as a link inside the hint row. */
+  .link-btn{
+    appearance:none;
+    background:none;
+    border:none;
+    padding:0;
+    font:inherit;
+    color:var(--green-dark);
+    font-weight:700;
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .link-btn:hover{ color:var(--navy); }
   .field-input, .field-textarea{
     width:100%;
     font-family:'Inter',sans-serif;
@@ -317,6 +331,14 @@
     font-size:12.5px;
     color:var(--green-dark);
     margin-bottom:6px;
+  }
+  #resultSeed{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:11.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-top:6px;
   }
   .result-title{
     font-family:'Archivo Black',sans-serif;
@@ -499,6 +521,82 @@
     line-height:1.7;
   }
 
+  /* ---------- HOW IT WORKS DIALOG ---------- */
+  dialog.how-dialog{
+    max-width:560px;
+    width:calc(100% - 32px);
+    max-height:80vh;
+    padding:0;
+    border:none;
+    border-radius:16px;
+    background:var(--white);
+    color:var(--ink);
+    box-shadow:0 30px 70px -30px rgba(11,24,38,.6);
+  }
+  dialog.how-dialog::backdrop{ background:rgba(11,24,38,.55); }
+  .how-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:18px 22px;
+    background:var(--navy);
+  }
+  .how-head h2{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:17px;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    color:var(--white);
+    margin:0;
+  }
+  .how-close{
+    appearance:none;
+    background:none;
+    border:none;
+    color:var(--white);
+    font-size:22px;
+    line-height:1;
+    padding:2px 8px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .how-close:hover{ background:rgba(255,255,255,.15); }
+  .how-body{
+    padding:20px 22px 26px;
+    overflow-y:auto;
+    max-height:calc(80vh - 62px);
+    font-size:14px;
+    line-height:1.6;
+  }
+  .how-lead{
+    background:var(--paper-dim);
+    border-left:3px solid var(--green);
+    border-radius:0 8px 8px 0;
+    padding:12px 14px;
+    margin:0 0 18px;
+  }
+  .how-body h3{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--green-dark);
+    margin:22px 0 8px;
+  }
+  .how-body p{ margin:0 0 12px; }
+  .how-body ol, .how-body ul{ margin:0 0 12px; padding-left:20px; }
+  .how-body li{ margin-bottom:8px; }
+  .how-body code{
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12.5px;
+    background:var(--paper-dim);
+    padding:1px 5px;
+    border-radius:4px;
+  }
+
   @media (max-width:600px){
     .bracket-count-row{ flex-wrap:wrap; }
     .action-bar{ flex-direction:column; align-items:stretch; }
@@ -526,6 +624,14 @@
              placeholder="e.g. BKL Pickleball Cup 2026" autocomplete="off" maxlength="80" />
       <div class="field-meta">
         <span class="field-hint">Stamped on the exported image and text file. Leave blank for plain S.A.G.E. branding.</span>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="seedInput">Seed <span class="field-optional">optional</span></label>
+      <input id="seedInput" class="field-input" type="text"
+             placeholder="e.g. MANGO, 42, 7-3" autocomplete="off" maxlength="40" />
+      <div class="field-meta">
+        <span class="field-hint">For a public draw, ask someone in the room for a word or number &mdash; it decides the draw, and anyone can check it afterwards. Leave blank and one is generated for you. <button type="button" class="link-btn" id="howItWorksLink">How it works</button></span>
       </div>
     </div>
     <div class="field">
@@ -559,12 +665,14 @@
       <div id="resultEvent" hidden></div>
       <div class="result-title" id="resultTitle"></div>
       <div class="result-meta" id="resultMeta"></div>
+      <div id="resultSeed"></div>
     </div>
     <div class="bracket-grid" id="bracketGrid"></div>
     <div class="action-bar">
       <button type="button" class="action-btn" id="randomizeAgainBtn">Randomize again</button>
       <button type="button" class="action-btn solid" id="exportImageBtn">Export as image</button>
       <button type="button" class="action-btn" id="exportTextBtn">Export as text</button>
+      <button type="button" class="action-btn" id="howItWorksBtn">How it works</button>
     </div>
   </div>
 </div>
@@ -573,6 +681,53 @@
   S.A.G.E. Bracket Generator<br>
   Powered by S.A.G.E. Match Control Experts
 </footer>
+
+<dialog class="how-dialog" id="howDialog" aria-labelledby="howDialogTitle">
+  <div class="how-head">
+    <h2 id="howDialogTitle">How this draw works</h2>
+    <button type="button" class="how-close" id="howCloseBtn" aria-label="Close">&times;</button>
+  </div>
+  <div class="how-body">
+    <p class="how-lead"><strong>The short version:</strong> the brackets are decided by a single short word or number &mdash; the <em>seed</em> &mdash; and anyone can check afterwards that the result really came from it. At a public draw, that word comes from someone in the room.</p>
+
+    <p><strong>1. Everyone sees the list first.</strong> Before anything is drawn, the full list of pairs is up on screen. Nothing can be added or taken away after that without it being obvious.</p>
+
+    <p><strong>2. A seed is set.</strong> A word, a number, anything. For a public draw it should be called out by a player rather than the organiser &mdash; then typed in and shown on screen, so you can photograph it. If nobody supplies one, the app generates one and displays it, and the sheet says which of the two happened.</p>
+
+    <p><strong>3. Every pair gets a fingerprint.</strong> The computer takes the seed and a pair's names together and turns them into a long code &mdash; a fingerprint (technically a <em>hash</em>) that looks like <code>07a3f91c&hellip;</code></p>
+
+    <p>The same names with the same seed always give the same fingerprint. But change a single letter of the seed and every fingerprint changes completely. Nobody can work out ahead of time what fingerprint a pair will get.</p>
+
+    <p>It is not a code we invent. It is a standard calculation used all over the world, and there are free websites that will do it for you &mdash; which is what makes it possible for you to check us.</p>
+
+    <p><strong>4. Pairs are sorted by fingerprint, then dealt out.</strong> Lowest fingerprint first, the way you would sort a list alphabetically. Then they are dealt around the brackets one at a time &mdash; first pair to Bracket A, second to Bracket B, and so on &mdash; so every bracket ends up the same size, or within one.</p>
+
+    <p><strong>5. That is the whole draw.</strong> Because the fingerprints come from the seed, the result was already settled the moment the seed was set. Pressing the button does not roll anything &mdash; it just shows what the seed had already decided. The few seconds of shuffling on screen are there to make the reveal watchable, not to pick the winner.</p>
+
+    <h3>Where did this seed come from?</h3>
+    <p>Look at the sheet. Next to the seed it says one of two things.</p>
+    <p><strong>(entered)</strong> &mdash; a person typed it in. At a public draw that should be a player calling it out, not the organiser.</p>
+    <p><strong>(auto)</strong> &mdash; nobody supplied one, so the app made one up at the moment of the draw.</p>
+    <p>Either way the result can still be checked afterwards, and a bracket that has been altered will not match. The difference is what it proves about <em>how the seed was chosen</em> &mdash; only a seed called out in the room shows the organiser didn't go hunting for one they liked.</p>
+
+    <h3>Why this is hard to rig</h3>
+    <ul>
+      <li><strong>Nobody can predict what a seed will produce.</strong> There is no way to look at a word and know which bracket it will hand you &mdash; you have to run it.</li>
+      <li><strong>Pressing again changes nothing.</strong> The same seed always gives the same brackets. A different result needs a different seed &mdash; and at a public draw that means asking the room again, out loud, in front of everyone.</li>
+      <li><strong>The sheet counts the draws.</strong> If it says Draw #3, three seeds were tried on this list. That number cannot be hidden.</li>
+      <li><strong>The exported file records everything</strong> &mdash; the seed, every pair, and every fingerprint &mdash; so the draw can still be checked long after the day.</li>
+    </ul>
+
+    <h3>Check it yourself</h3>
+    <p>You do not have to take our word for any of this, and you do not need to understand all of it to check your own pair.</p>
+    <ol>
+      <li>Search the web for <strong>"SHA-256 calculator"</strong> and open any of them.</li>
+      <li>Type in the seed, a <code>|</code> character, then your pair exactly as it appears on the sheet &mdash; for example <code>MANGO|Player 1 / Player 2</code></li>
+      <li>Compare the start of the result to the fingerprint printed next to your name in the exported list. They should match.</li>
+    </ol>
+    <p>Pairs with lower fingerprints were dealt first. If your fingerprint is in the right place in that order, your bracket is exactly where the draw put it.</p>
+  </div>
+</dialog>
 
 <script>
 // ==================== Helpers ====================
@@ -584,6 +739,47 @@ function slugify(s){
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'brackets';
 }
 
+// ==================== Verifiable draw ====================
+// The draw is a deterministic function of (seed, pair list): each pair is
+// fingerprinted with SHA-256 and the list sorted by that fingerprint, so anyone
+// can reproduce it without this tool — including on a third-party SHA-256 site,
+// which is the whole point. Spec: sage-docs/docs/specs/
+// bracket-generator-verifiable-draw-spec.md
+const SEED_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'; // no I/O/0/1 — read aloud safely
+const AUTO_SEED_LENGTH = 8;
+
+// Trim + uppercase, and the field is rewritten to match, so what is displayed
+// is exactly what was hashed. If those two can ever differ, every external
+// check fails and the feature is decorative.
+const normalizeSeed = s => String(s).trim().toUpperCase();
+
+function generateAutoSeed(){
+  const bytes = new Uint8Array(AUTO_SEED_LENGTH);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map(b => SEED_ALPHABET[b % SEED_ALPHABET.length]).join('');
+}
+
+async function sha256Hex(s){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Sorts on the FULL hash — the 8-char form in the export is display only, and a
+// truncated sort key would start colliding around 65k items. Ties can only come
+// from two identical pair strings (identical input hashes identically), so they
+// fall back to the pair text and then input position, keeping the order defined.
+async function fingerprintPairs(pairs, seed){
+  const hashes = await Promise.all(pairs.map(p => sha256Hex(seed + '|' + p)));
+  return pairs
+    .map((pair, i) => ({ pair, hash: hashes[i], i }))
+    .sort((a, b) => a.hash < b.hash ? -1 : a.hash > b.hash ? 1 :
+                    a.pair < b.pair ? -1 : a.pair > b.pair ? 1 : a.i - b.i);
+}
+
+// Animation only. The real draw is fingerprintPairs() above — this feeds
+// runShuffleAnimation()'s cosmetic per-tick re-deals, which are thrown away and
+// never exported, so they need no reproducibility. Do not wire dealBrackets()
+// back to this.
 function shuffle(arr){
   const a = arr.slice();
   for(let i = a.length - 1; i > 0; i--){
@@ -625,9 +821,15 @@ function pickColumns(n){
 let currentCategory = '';
 let currentEventName = '';
 let currentBrackets = []; // [{ label, pairs: [] }]
+let currentSeed = '';
+let currentSeedSource = '';   // 'entered' | 'auto'
+let currentFingerprints = []; // [{ pair, hash }] in draw order
+let drawCount = 0;
+let lastDrawInputKey = '';    // drawCount resets when the category or pairs change
 
 // ==================== Elements ====================
 const eventNameInput = document.getElementById('eventNameInput');
+const seedInput = document.getElementById('seedInput');
 const categoryInput = document.getElementById('categoryInput');
 const pairsInput = document.getElementById('pairsInput');
 const bracketCountInput = document.getElementById('bracketCountInput');
@@ -644,6 +846,11 @@ const bracketGridEl = document.getElementById('bracketGrid');
 const randomizeAgainBtn = document.getElementById('randomizeAgainBtn');
 const exportImageBtn = document.getElementById('exportImageBtn');
 const exportTextBtn = document.getElementById('exportTextBtn');
+const resultSeedEl = document.getElementById('resultSeed');
+const howDialog = document.getElementById('howDialog');
+const howItWorksLink = document.getElementById('howItWorksLink');
+const howItWorksBtn = document.getElementById('howItWorksBtn');
+const howCloseBtn = document.getElementById('howCloseBtn');
 
 // ==================== Event name: persistence + ?event= prefill ====================
 // Only the event name is remembered — category and pairs change every draw,
@@ -661,6 +868,26 @@ function loadEventName(){ try{ return localStorage.getItem(STORAGE_EVENT_KEY) ||
   if(fromQuery !== null) saveEventName(initial);
 })();
 eventNameInput.addEventListener('change', () => saveEventName(eventNameInput.value.trim()));
+
+// ==================== How it works dialog ====================
+const openHowDialog = () => howDialog.showModal();
+howItWorksLink.addEventListener('click', openHowDialog);
+howItWorksBtn.addEventListener('click', openHowDialog);
+howCloseBtn.addEventListener('click', () => howDialog.close());
+// Clicking the backdrop lands on the <dialog> itself rather than its contents.
+howDialog.addEventListener('click', e => { if(e.target === howDialog) howDialog.close(); });
+
+// ==================== Secure-context guard ====================
+// SubtleCrypto needs a secure context. GitHub Pages is HTTPS, so this only bites
+// a local file:// open. Fail closed rather than falling back to an unverifiable
+// shuffle that still prints a seed — an export naming a seed it wasn't produced
+// from is a false proof, which is worse than having no feature at all.
+const CRYPTO_OK = !!(window.crypto && window.crypto.subtle && window.crypto.getRandomValues);
+if(!CRYPTO_OK){
+  generateBtn.disabled = true;
+  seedInput.disabled = true;
+  showFormError('This page has to be served over HTTPS to run a verifiable draw. Open it at https://sage-match-control.github.io/tools/bracket-generator.html');
+}
 
 // ==================== Input handling ====================
 function parsePairs(){
@@ -693,14 +920,15 @@ function clearFormError(){
 }
 
 // ==================== Generate / randomize ====================
-function dealBrackets(pairs, numBrackets){
-  const shuffled = shuffle(pairs);
+// Takes an ALREADY-ORDERED list — the ordering is the draw, and it comes from
+// fingerprintPairs(). Deals round-robin so bracket sizes differ by at most one.
+function dealBrackets(orderedPairs, numBrackets){
   const buckets = Array.from({ length: numBrackets }, () => []);
-  shuffled.forEach((pair, i) => buckets[i % numBrackets].push(pair));
+  orderedPairs.forEach((pair, i) => buckets[i % numBrackets].push(pair));
   return buckets.map((list, i) => ({ label: bracketLabel(i), pairs: list }));
 }
 
-function generateBrackets(){
+async function generateBrackets(){
   const pairs = parsePairs();
   clearFormError();
 
@@ -720,14 +948,46 @@ function generateBrackets(){
   currentCategory  = categoryInput.value.trim();
   currentEventName = eventNameInput.value.trim();
 
+  // A blank seed gets one generated and written back to the field, so there is
+  // always a seed and every draw is reproducible. Only *who chose it* varies,
+  // which is what the (entered)/(auto) label on the exports records.
+  const typedSeed = normalizeSeed(seedInput.value);
+  currentSeedSource = typedSeed ? 'entered' : 'auto';
+  currentSeed = typedSeed || generateAutoSeed();
+  seedInput.value = currentSeed;
+
+  // Counts seeds tried against THIS input, so a re-roll is on the record rather
+  // than invisible. Same seed re-drawn gives the same brackets, so the number
+  // only advances meaningfully when the seed changed too.
+  // JSON.stringify rather than a delimiter: no separator can collide with a
+  // category name or a pair, so the key is unambiguous by construction.
+  const inputKey = JSON.stringify([currentCategory, pairs]);
+  if(inputKey !== lastDrawInputKey){ drawCount = 0; lastDrawInputKey = inputKey; }
+  drawCount += 1;
+
+  // Disabled across the await so a double-press can't start two overlapping
+  // draws; runShuffleAnimation's setControlsDisabled takes over from here.
+  generateBtn.disabled = true;
+  let ordered;
+  try {
+    ordered = await fingerprintPairs(pairs, currentSeed);
+  } catch(e){
+    generateBtn.disabled = false;
+    showFormError('Could not compute the draw fingerprints. Reload the page and try again.');
+    return;
+  }
+  currentFingerprints = ordered.map(o => ({ pair: o.pair, hash: o.hash }));
+
   // Lock in the real result up front so the animation is purely cosmetic —
   // what the user sees settle on is exactly what gets rendered/exported.
-  const finalDeal = dealBrackets(pairs, numBrackets);
+  const finalDeal = dealBrackets(ordered.map(o => o.pair), numBrackets);
 
   runShuffleAnimation(pairs, finalDeal);
 }
 
 function renderResultsHeader(){
+  resultSeedEl.textContent =
+    `Seed ${currentSeed} (${currentSeedSource}) · Draw #${drawCount}`;
   if(currentEventName){
     resultEventEl.textContent = currentEventName;
     resultEventEl.hidden = false;
@@ -885,6 +1145,26 @@ function exportAsText(){
     }
     out += '\n';
   });
+
+  // The audit trail travels with the artifact: seed, every fingerprint, and the
+  // instructions to re-check it. Self-describing on purpose \u2014 there is no hosted
+  // verification page to keep alive, and the file still works years later.
+  out += 'DRAW VERIFICATION\n';
+  out += `${'-'.repeat(24)}\n`;
+  out += `Seed:   ${currentSeed}  (${currentSeedSource})\n`;
+  out += `Draw:   #${drawCount}\n`;
+  out += 'Method: SHA-256(seed + "|" + pair), sorted ascending, dealt round-robin\n\n';
+  out += 'Fingerprints, in draw order:\n';
+  currentFingerprints.forEach(f => { out += `  ${f.hash.slice(0, 8)}...  ${f.pair}\n`; });
+  out += '\n';
+  out += 'TO CHECK THIS DRAW YOURSELF\n';
+  out += 'Search the web for "SHA-256 calculator" and paste in exactly:\n';
+  if(currentFingerprints.length) out += `  ${currentSeed}|${currentFingerprints[0].pair}\n`;
+  out += 'The result should start with the fingerprint above. Pairs are sorted\n';
+  out += 'from lowest fingerprint to highest, then dealt one at a time around\n';
+  out += 'the brackets: 1st to Bracket A, 2nd to Bracket B, and so on.\n\n';
+  out += 'If two fingerprints match on the digits shown, compare more of them \u2014\n';
+  out += 'the order is decided by the full code, not the first eight characters.\n\n';
 
   out += currentEventName
     ? `${currentEventName} \u00b7 Bracket Draw\n`
@@ -1103,7 +1383,7 @@ async function exportAsImage(){
   const gridRowHeights = gridRows.map(row => Math.max(...row.map(c => c.layout.totalHeight)));
 
   const topH = 168;
-  const bottomH = 56;
+  const bottomH = 74; // two footer lines: the verification stamp, then branding
   const totalGridH = gridRowHeights.reduce((s, h) => s + h, 0) + Math.max(0, gridRows.length - 1) * colGap;
   const height = topH + totalGridH + bottomH;
 
@@ -1189,6 +1469,14 @@ async function exportAsImage(){
     ? `${currentEventName} \u00b7 Powered by S.A.G.E. Match Control Experts`
     : 'Powered by S.A.G.E. Match Control Experts';
   ctx.fillText(truncateToWidth(ctx, footerText, width - 120), width / 2, height - 24);
+
+  // Verification stamp. Per-pair fingerprints stay out of the image — they live
+  // in the text export — so the poster stays readable on a wall.
+  ctx.font = '500 10.5px "Barlow Condensed", sans-serif';
+  const verifyText =
+    `Seed: ${currentSeed} (${currentSeedSource}) · Draw #${drawCount} · ` +
+    'SHA-256 verifiable — see the text export to check';
+  ctx.fillText(truncateToWidth(ctx, verifyText, width - 80), width / 2, height - 42);
 
   const filenameBase = currentEventName
     ? `${slugify(currentEventName)}-${slugify(currentCategory)}`
