@@ -1365,12 +1365,22 @@
     .standings-board-desktop{
       display:flex;
       flex-direction:row;
-      justify-content:center;
+      /* flex-start, not center: centering a flex row that's actually
+         overflowing makes its start unreachable by scrolling in Chromium —
+         the row shifts left of the scrollport with no way to scroll to that
+         negative offset, permanently cutting off the first category or two.
+         Centered only applies via .has-overflow below, once JS (see
+         updateStandingsBoardAlignment) has confirmed there's nothing to
+         scroll to in the first place. */
+      justify-content:flex-start;
       align-items:stretch;
       gap:20px;
       overflow-x:auto;
       overflow-y:visible;
       padding-bottom:20px;
+    }
+    .standings-board-desktop:not(.has-overflow){
+      justify-content:center;
     }
     .standings-board-desktop .standings-col{
       /* flex-shrink:0 (via the 0 in "1 0 340px") is the point: columns grow
@@ -3206,6 +3216,13 @@ function renderStandings(){
   } else {
     renderDualMeetStandings();
   }
+
+  // Whether the desktop row actually needs to scroll — see .has-overflow in
+  // the .standings-board-desktop CSS: centering an overflowing flex row (via
+  // justify-content:center) makes its start unreachable by scrolling in some
+  // browsers, so this flips it to a plain flex-start once there isn't enough
+  // room for every category, and back to centered once there is.
+  updateStandingsBoardAlignment();
 
   restoreScrollPositions(bodyEl, scrollPositions);
   renderResolutionWarning();
