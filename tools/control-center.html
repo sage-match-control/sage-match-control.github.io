@@ -1202,18 +1202,24 @@
     text-transform:uppercase;
     letter-spacing:.04em;
   }
-  .br-table{
-    width:100%;
-    table-layout:fixed;
-    border-collapse:collapse;
-    background:var(--white);
+  /* Wraps .br-table so a wide pair column (full, untruncated names) scrolls
+     horizontally within its own card instead of forcing the whole page wide
+     or truncating names with an ellipsis — the box-shadow/radius that used
+     to live on .br-table itself moves here since the table inside is now
+     free to grow past 100% width. */
+  .br-table-wrap{
+    overflow-x:auto;
     border-radius:10px;
-    overflow:hidden;
     box-shadow:var(--card-shadow);
     margin-bottom:10px;
   }
-  .stage-banner + .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
-  .br-table:last-child{margin-bottom:0;}
+  .stage-banner + .br-table-wrap{ border-radius:0 0 10px 10px; margin-top:0; }
+  .br-table-wrap:last-child{margin-bottom:0;}
+  .br-table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--white);
+  }
   /* Vertical dividers (border-right) plus the existing row dividers
      (border-bottom) turn this into a real grid — easier to scan Pair/W/L/Q
      as columns at a glance instead of just a list of rows. */
@@ -1246,10 +1252,11 @@
      fewer rows overall — tight line-height keeps the two names close
      together so this doesn't cost back all the vertical space that saved. */
   .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.15;}
-  /* Long names wrapping to a second line blows up the row height and breaks
-     alignment with the fixed-height W/L/Q cells beside them — truncate with
-     an ellipsis instead so every row stays one line tall. */
-  .br-table td.pair span{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* nowrap (not ellipsis) — a long name grows .br-table past its wrap's
+     100% width instead of wrapping to a second line or getting truncated;
+     .br-table-wrap's overflow-x:auto turns that into a horizontal scroll
+     scoped to this card. */
+  .br-table td.pair span{display:block; white-space:nowrap;}
   .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
   .br-table td.num{text-align:center; width:26px;}
   .br-table td.quo{text-align:center; width:54px;}
@@ -2864,7 +2871,7 @@ function renderStageTables(rows){
   if(rrGroups.size > 0){
     const showBracketColumn = Array.from(rrGroups.keys()).some(k => k !== '');
     html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
-      <table class="br-table"><thead><tr>
+      <div class="br-table-wrap"><table class="br-table"><thead><tr>
         ${showBracketColumn ? '<th class="br-badge">Br</th>' : ''}<th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
       </tr></thead><tbody>`;
     let badgeIdx = 0;
@@ -2882,7 +2889,7 @@ function renderStageTables(rows){
         </tr>`;
       });
     });
-    html += `</tbody></table></div>`;
+    html += `</tbody></table></div></div>`;
   }
 
   // Playoff-style stages, in a sensible order, unknown stages appended at the end
@@ -3109,7 +3116,7 @@ function isDesktopStandings(){
 // and the Live Matches board (per-facility horizontal table scroll on
 // mobile) — both fully rebuild their HTML on every refresh, so without this
 // their scroll position would silently reset every 15 seconds.
-const SCROLLABLE_SELECTOR = '.standings-col, .category-clubs-row, .live-table-wrap';
+const SCROLLABLE_SELECTOR = '.standings-col, .category-clubs-row, .live-table-wrap, .br-table-wrap';
 
 // Stable identity for a scrollable node, preferred over raw className/
 // tagName matching — the same category or facility can render in a
