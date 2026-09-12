@@ -1347,16 +1347,11 @@
   }
 
   /* Desktop: break the standings board out of the page's narrow .wrap
-     max-width so it can actually use the screen. Each category becomes its
-     own column in a 4-column grid: the first 3 columns hold one row per
-     division (top row Low Intermediate, then High Intermediate — sortedCats
-     is already grouped by division then event, so consecutive same-division
-     categories land on the same row automatically), and the 4th column is
-     reserved for any division with fewer categories than a "full" division
-     has (see renderDualMeetStandings' fullEventCount) — renderStandings
-     wraps those in .standings-col-overflow, spanning the
-     full row-height of the columns beside it and vertically centered there
-     instead of leaving a half-empty row of its own. */
+     max-width so it can actually use the screen. Every category is one
+     column in a single row (sortedCats' division-then-event order reads
+     left to right) that scrolls horizontally rather than wrapping into a
+     grid — a category card is never squeezed narrower than its own content
+     needs just to make a row of 4 line up. */
   @media (min-width: 980px){
     #standingsResults{
       width:100vw;
@@ -1368,31 +1363,24 @@
       box-sizing:border-box;
     }
     .standings-board-desktop{
-      display:grid;
-      grid-template-columns:repeat(4, minmax(240px, 1fr));
-      overflow:visible;
-      max-height:none;
-      max-width:2160px;
-      margin:0 auto;
-      padding-bottom:20px;
+      display:flex;
+      flex-direction:row;
+      justify-content:center;
       align-items:stretch;
+      gap:20px;
+      overflow-x:auto;
+      overflow-y:visible;
+      padding-bottom:20px;
     }
     .standings-board-desktop .standings-col{
-      /* Wide enough to fit both clubs' brackets side by side (see
-         .category-clubs-row above) — the row itself scrolls internally, so
-         this column doesn't need its own max-height/overflow-y. */
-      width:100%;
+      /* flex-shrink:0 (via the 0 in "1 0 340px") is the point: columns grow
+         to fill spare width but never shrink below it, so once there's more
+         total content than the viewport, the row overflows and scrolls
+         instead of every column getting squeezed to fit. */
+      flex:1 0 340px;
       max-width:520px;
-      margin:0 auto;
       display:flex;
       flex-direction:column;
-    }
-    .standings-col-overflow{
-      grid-column:4;
-      display:flex;
-      flex-direction:column;
-      justify-content:center;
-      gap:20px;
     }
   }
 
@@ -2486,16 +2474,6 @@ function categoryLabel(category){
   return `${divLabel} ${evLabel}`.trim();
 }
 
-// A category token's "division bucket" for the desktop standings grid's
-// row-packing (see renderStandings) — the resolved division code when
-// display config splits it, else the whole token itself. Without display
-// config every category is structurally its own bucket (nothing to group
-// by), which just means a wider/less-dense grid, never a crash.
-function divisionGroupKeyOf(category){
-  const split = splitCategory(category);
-  return split ? split.divCode : category;
-}
-
 function clubLabel(clubCode){
   if(!clubCode) return clubCode;
   return (DISPLAY.clubs && DISPLAY.clubs[clubCode]) || clubCode;
@@ -3262,38 +3240,11 @@ function renderDualMeetStandings(){
 
   if(isDesktopStandings()){
     // Desktop: one column per category, each club's bracket stacked inside,
-    // laid out N-per-row grouped by division (see the .standings-board-desktop
-    // media query above) — except a division with fewer categories than a
-    // "full" division has (e.g. Advanced having only Men's Doubles) doesn't
-    // get a half-empty row of its own; instead it's set aside into an
-    // overflow column, spanning (and vertically centered within) the full
-    // height of the rows beside it.
-    const runs = [];
-    sortedCats.forEach(cat => {
-      const p = parseCode(categories.get(cat)[0].teamCode);
-      const division = divisionGroupKeyOf(p.category);
-      const lastRun = runs[runs.length - 1];
-      if(lastRun && lastRun.division === division) lastRun.cats.push(cat);
-      else runs.push({ division, cats: [cat] });
-    });
-    // "Full" row width: the configured event count when display.events
-    // lists the whole tournament's events, else the widest run actually
-    // seen in the data (no display config to say what "full" means).
-    const fullEventCount = DISPLAY.events ? Object.keys(DISPLAY.events).length : Math.max(1, ...runs.map(r => r.cats.length));
-    const mainRuns = runs.filter(r => r.cats.length >= fullEventCount);
-    const overflowCats = runs.filter(r => r.cats.length < fullEventCount).flatMap(r => r.cats);
-
+    // laid out in a single row (sortedCats' division-then-event order reads
+    // left to right) that scrolls horizontally past the viewport instead of
+    // wrapping into a grid — see the .standings-board-desktop media query.
     html += `<div class="standings-board standings-board-desktop">`;
-    mainRuns.forEach((run, rowIdx) => {
-      run.cats.forEach((cat, colIdx) => {
-        html += renderCategoryColumn(cat, categories.get(cat), clubOrder, `grid-column:${colIdx + 1};grid-row:${rowIdx + 1};`);
-      });
-    });
-    if(overflowCats.length > 0){
-      let overflowHtml = '';
-      overflowCats.forEach(cat => { overflowHtml += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
-      html += `<div class="standings-col-overflow" style="grid-row:1 / ${mainRuns.length + 1};">${overflowHtml}</div>`;
-    }
+    sortedCats.forEach(cat => { html += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
     html += `</div>`;
   } else {
     // Mobile/tablet: the same per-category card as desktop (see
