@@ -1246,7 +1246,10 @@
      fewer rows overall — tight line-height keeps the two names close
      together so this doesn't cost back all the vertical space that saved. */
   .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.15;}
-  .br-table td.pair span{display:block;}
+  /* Long names wrapping to a second line blows up the row height and breaks
+     alignment with the fixed-height W/L/Q cells beside them — truncate with
+     an ellipsis instead so every row stays one line tall. */
+  .br-table td.pair span{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
   .br-table td.num{text-align:center; width:26px;}
   .br-table td.quo{text-align:center; width:54px;}
