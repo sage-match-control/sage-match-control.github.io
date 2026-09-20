@@ -332,17 +332,23 @@ function tieredRounds(tiers){
 }
 
 /* Top `adv` per group advance, ranked by tier. Single elimination with
-   tiered byes as above. Single group = twice-to-beat final + auto bronze. */
-function playoffPlan(groups, adv, fill){
+   tiered byes as above. Single group = either a twice-to-beat final + auto
+   bronze, or no playoff at all with the round-robin standings deciding every
+   medal — `soloFormat` picks between the two. */
+function playoffPlan(groups, adv, fill, soloFormat){
   adv=Math.min(4,Math.max(1,adv||2));
-  if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,bronzeText:null};
+  if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,rrOnly:false,bronzeText:null};
   if(groups===1){
+    if(soloFormat==='rr'){
+      return {rounds:[], total:0, min:0, qualifiers:0, direct:0, wc:0, byes:0,
+        single:true, rrOnly:true, bronzeText:null};
+    }
     return {rounds:[{label:'Final · twice-to-beat',matches:2,byes:0}],
-      total:2, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:true, bronzeText:'RR #3 automatic'};
+      total:2, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:true, rrOnly:false, bronzeText:'RR #3 automatic'};
   }
   const direct=groups*adv;
   if(direct===2) return {rounds:[{label:'Final',matches:1,byes:0}],
-    total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, bronzeText:null};
+    total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, rrOnly:false, bronzeText:null};
 
   const raw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
   let wc=0, byes=raw[0].byes;
@@ -366,7 +372,7 @@ function playoffPlan(groups, adv, fill){
   if(qualifiers>=4) rounds.splice(rounds.length-1, 0, {label:'Bronze match', matches:1, byes:0});
   else bronzeText='losing semifinalist automatic';
   const total=rounds.reduce((s,r)=>s+r.matches,0);
-  return {rounds, total, min:total, qualifiers, direct, wc, byes, single:false, bronzeText};
+  return {rounds, total, min:total, qualifiers, direct, wc, byes, single:false, rrOnly:false, bronzeText};
 }
 
 /* ---- Dual meet ----
@@ -460,7 +466,7 @@ function calcCategory(c, cfg){
   const requestedAdv = Math.min(4,Math.max(1,c.adv||2));
   const smallest = groups>0 ? Math.min(...sizes) : requestedAdv;
   const adv = Math.min(requestedAdv, smallest); // can't advance more teams than the smallest bracket actually has
-  const plan = playoffPlan(groups, adv, c.fill||'bye');
+  const plan = playoffPlan(groups, adv, c.fill||'bye', c.soloFormat||'ttb');
   const notes=[];
   const wanted=Math.min(30,Math.max(1,Math.round(c.group)||4));
   if(groups>0 && groups<wanted) notes.push(`Only ${groups} bracket${groups>1?'s':''} possible with ${c.teams} pairs (each bracket needs at least 2) — using ${groups}.`);
@@ -480,7 +486,7 @@ function seqParts(p,courts){
   if(!p.sizes||!p.sizes.length||courts<1)return {rr:0,po:0};
   if(p.plan.bestOf3)return {rr:0,po:3};
   const rrS=Math.ceil(p.rr/courts);
-  if(p.plan.single)return {rr:rrS,po:2};
+  if(p.plan.single)return {rr:rrS,po:p.plan.rrOnly?0:2};
   let po=0,bronze=0;
   for(const rd of p.plan.rounds){
     if(rd.label==='Bronze match'){bronze=rd.matches;continue;}
@@ -544,6 +550,7 @@ function buildChart(p){
       +col('Final · best of 3',[box(slot('<span class="sd">Pair 1</span>'),slot('<span class="sd">Pair 2</span>'),'gold')])
       +'</div><div class="legend">First to two wins takes gold, the other silver. Match 3 is played only if the series is tied 1–1.</div>';
   }
+  if(plan.rrOnly) return '';
   if(plan.single){
     return '<div class="chart">'
       +col('Final · twice-to-beat',[box(slot('<span class="sd">RR #1</span> needs one win'),slot('<span class="sd">RR #2</span> must win twice'),'gold')])
@@ -697,7 +704,9 @@ function legendDualTxt(p){
 /* ---------------- state & presets ---------------- */
 const PRESETS=[
   ['NWD',"Novice Women's Doubles"],['NMD',"Novice Men's Doubles"],['NXD','Novice Mixed Doubles'],
+  ['LIWD',"Low Intermediate Women's Doubles"],['LIMD',"Low Intermediate Men's Doubles"],['LIXD','Low Intermediate Mixed Doubles'],
   ['IWD',"Intermediate Women's Doubles"],['IMD',"Intermediate Men's Doubles"],['IXD','Intermediate Mixed Doubles'],
+  ['HIWD',"High Intermediate Women's Doubles"],['HIMD',"High Intermediate Men's Doubles"],['HIXD','High Intermediate Mixed Doubles'],
   ['AWD',"Advanced Women's Doubles"],['AMD',"Advanced Men's Doubles"],['AXD','Advanced Mixed Doubles'],
   ['OPEN',"Open Men's Doubles"],['CUSTOM','Custom…']];
 
@@ -707,7 +716,7 @@ function defaultCat(){
   const used=cats.map(c=>c.code);
   const free=PRESETS.find(p=>p[0]!=='CUSTOM'&&!used.includes(p[0]))||PRESETS[0];
   return {id:nextId++, code:free[0], name:free[1], teams:16, group:4, adv:2, fill:'bye',
-    groupDual:1, teamsA:5, teamsB:5, poFormat:'semis'};
+    groupDual:1, teamsA:5, teamsB:5, poFormat:'semis', soloFormat:'ttb'};
 }
 
 /* ---------------- persistence (window.storage in claude.ai artifacts, localStorage elsewhere) ---------------- */
@@ -812,7 +821,7 @@ function recalc(){
   document.querySelectorAll('.cat').forEach((el,i)=>{
     const p=r.per[i];
     const planEl=el.querySelector('.plan'), lineEl=el.querySelector('.catline');
-    el.querySelector('.chartbtn').style.display=(p.sizes&&p.sizes.length)?'':'none';
+    el.querySelector('.chartbtn').style.display=(p.sizes&&p.sizes.length&&!p.plan.rrOnly)?'':'none';
     if(p.dual){
       if(!p.sizes.length){ planEl.innerHTML=''; el.querySelector('.chartwrap').innerHTML=''; lineEl.innerHTML=p.notes[0]||'Enter at least 1 pair for both clubs.'; return; }
       const [nameA,nameB]=clubNames();
@@ -842,16 +851,26 @@ function recalc(){
         <button type="button" class="po fillbtn" data-fill="bye" aria-pressed="${(cats[i].fill||'bye')==='bye'}">Byes for top seeds</button>
         <button type="button" class="po fillbtn" data-fill="wc" aria-pressed="${cats[i].fill==='wc'}">+${deficit} wildcard${deficit>1?'s':''}</button>
       </div>`:'';
-    planEl.innerHTML=fillUI+'<div class="playoffs">'+p.plan.rounds.map(rd=>
-      `<span class="tagchip">${rd.label}: ${rd.matches}${rd.byes?` <small>(+${rd.byes} bye${rd.byes>1?'s':''})</small>`:''}</span>`).join('')
-      +(p.plan.bronzeText?`<span class="tagchip">Bronze: ${p.plan.bronzeText}</span>`:'')+'</div>';
-    el.querySelector('.advlab').textContent=p.plan.bestOf3?'Format · head-to-head best of 3':p.plan.single?'Playoffs · single group format':`Playoffs · top ${p.adv} per group advance`;
+    const soloUI=p.plan.single?
+      `<div class="playoffs" style="margin-bottom:6px">
+        <button type="button" class="po fillbtn" data-solo="ttb" aria-pressed="${(cats[i].soloFormat||'ttb')==='ttb'}">Twice-to-beat final</button>
+        <button type="button" class="po fillbtn" data-solo="rr" aria-pressed="${cats[i].soloFormat==='rr'}">Round robin only</button>
+      </div>`:'';
+    planEl.innerHTML=fillUI+soloUI+'<div class="playoffs">'+(p.plan.rrOnly
+      ?'<span class="tagchip">No playoff <small>standings decide all three medals</small></span>'
+      :p.plan.rounds.map(rd=>
+        `<span class="tagchip">${rd.label}: ${rd.matches}${rd.byes?` <small>(+${rd.byes} bye${rd.byes>1?'s':''})</small>`:''}</span>`).join('')
+        +(p.plan.bronzeText?`<span class="tagchip">Bronze: ${p.plan.bronzeText}</span>`:''))+'</div>';
+    el.querySelector('.advlab').textContent=p.plan.bestOf3?'Format · head-to-head best of 3':p.plan.rrOnly?'Format · round robin only, no playoff':p.plan.single?'Playoffs · single group format':`Playoffs · top ${p.adv} per group advance`;
     const grpTxt=groupShorthand(p);
     const btn=el.querySelector('.chartbtn'),wrap=el.querySelector('.chartwrap'),c=cats[i];
     btn.textContent=c.showChart?'Hide playoff chart':'Show playoff chart';
     wrap.innerHTML=c.showChart?buildChart(p):'';
     lineEl.innerHTML = p.plan.bestOf3
       ? `<b>${p.totalMin}–${p.total} matches</b> — head-to-head series, no round robin. First to 2 wins takes gold; match 3 is played only if the series splits 1–1.`
+      : p.plan.rrOnly
+      ? `<b>${p.total} matches</b> — ${grpTxt} → ${p.rr} round-robin, no playoff.`
+        +` Final standings decide gold, silver and bronze.`
       : p.plan.single
       ? `<b>${p.totalMin}–${p.total} matches</b> — ${grpTxt} → ${p.rr} round-robin + final.`
         +` RR #1 needs one win, #2 must beat them twice; #3 takes bronze with no match.`
@@ -883,8 +902,9 @@ function recalc(){
   if($('th-rrtime')) $('th-rrtime').textContent = dual?'Group time':'RR time';
   const SHORT={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bz','Final':'F','Final · twice-to-beat':'F ×2','Final · best of 3':'Bo3'};
   $('r-rows').innerHTML=r.per.map((p,i)=>{
-    const struct=p.sizes.length?p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1').replace(/^Club playoff/,'CP')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
-      +(p.plan.wc?` · ${p.plan.wc}WC`:'')+(p.plan.bronzeText?' · Bz auto':''):'—';
+    const struct=!p.sizes.length?'—':p.plan.rrOnly?'RR only · standings decide'
+      :p.plan.rounds.map(rd=>`${SHORT[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1').replace(/^Club playoff/,'CP')} ${rd.matches}${rd.byes?`+${rd.byes}b`:''}`).join(' · ')
+      +(p.plan.wc?` · ${p.plan.wc}WC`:'')+(p.plan.bronzeText?' · Bz auto':'');
     const ct=catTime(p, cfg);
     const catTotalMin=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
     const teamsCell = p.dual ? (p.sizes.length?`${p.a} v ${p.b}`:'—') : cats[i].teams;
@@ -896,7 +916,7 @@ function recalc(){
     <td class="num">${ct.po?fmtDur(ct.po):'—'}</td>
     <td class="num"><b>${catTotalMin?fmtDur(catTotalMin):'—'}</b></td></tr>`;}).join('')
     ||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px">No categories yet</td></tr>';
-  const hasTTB=r.per.some(p=>p.plan&&(p.plan.single||p.plan.bestOf3));
+  const hasTTB=r.per.some(p=>p.plan&&((p.plan.single&&!p.plan.rrOnly)||p.plan.bestOf3));
   $('r-windows').innerHTML=(r.matches?`RR/PO time = court time for that phase with all ${cfg.courts} court${cfg.courts>1?'s':''} on it (${cfg.dur}-min matches${cfg.buf?` + ${cfg.buf}-min buffer`:''}), respecting that playoff rounds and series games run one after another.`:'')
     +(hasTTB?' <b>Note:</b> twice-to-beat finals and best-of-3 series are counted at full length so the plan covers the worst case; the day ends earlier if they\u2019re decided sooner.':'');
   $('r-windows').style.display=(r.matches||hasTTB)?'':'none';
@@ -943,24 +963,26 @@ function buildPlanCsv(cfg,r){
   const lines=[];
   lines.push('# Tournament Time Calculator export — use Import CSV to restore this setup');
   if(r.matches)lines.push(csvCell('# '+r.matches+' matches · projected finish '+fmtTime(r.endMin)));
-  lines.push('type,key,value,teams,brackets,advance,fill,note,teams_a,teams_b,po_format');
+  lines.push('type,key,value,teams,brackets,advance,fill,note,teams_a,teams_b,po_format,solo_format');
   [['title',cfg.title],['date',cfg.date],['start',cfg.start],
    ['courts',cfg.courts],['duration_min',cfg.dur],['buffer_min',cfg.buf],
    ['format',cfg.format],['club_a',cfg.clubA],['club_b',cfg.clubB]]
     .forEach(([k,v])=>lines.push(['setting',k,csvCell(v),'','','',''].join(',')));
   // `teams` (dual: no live UI field once "Pairs per club" replaced it — see
-  // calculator-dual-meet-spec.md — so it's stale dead weight there) and
+  // calculator-dual-meet-spec.md — so it's stale dead weight there),
   // `po_format` (only meaningful with 2+ brackets, per the same p.groups>=2
-  // gate the playoff-format toggle itself uses in recalc()) are both blank
-  // outside the format/bracket-count they actually apply to, instead of
-  // leaking a value the UI never let the operator set or see.
+  // gate the playoff-format toggle itself uses in recalc()) and `solo_format`
+  // (standard only, and only once the category actually resolves to a single
+  // bracket) are all blank outside the format/bracket-count they apply to,
+  // instead of leaking a value the UI never let the operator set or see.
   const isDual=cfg.format==='dual';
   cats.forEach((c,i)=>{
     const p=r.per[i];
     const teamsCell=isDual?'':c.teams;
     const poFormatCell=(isDual&&p&&p.groups>=2)?(c.poFormat||''):'';
+    const soloFormatCell=(!isDual&&p&&p.plan&&p.plan.single&&!p.plan.bestOf3)?(c.soloFormat||'ttb'):'';
     lines.push(['category',c.code==='CUSTOM'?(c.ccode||'CUSTOM'):c.code,csvCell(c.code==='CUSTOM'?(c.name||'Custom'):catName(c)),
-      teamsCell,isDual?(c.groupDual||1):c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',poFormatCell].join(','));
+      teamsCell,isDual?(c.groupDual||1):c.group,c.adv||2,c.fill||'bye',csvCell(c.note||''),c.teamsA||'',c.teamsB||'',poFormatCell,soloFormatCell].join(','));
   });
   return lines.join('\n');
 }
@@ -1005,7 +1027,9 @@ function exportXLSX(){
       : p.dual
         ? (p.groups>1?`${p.groups} brackets (`+p.aSizes.map((n,j)=>`${n}v${p.bSizes[j]}`).join(', ')+')':`1 bracket (${p.a}v${p.b})`)
           +' → '+p.plan.rounds.map(rd=>(SHORT[rd.label]||rd.label)+' '+rd.matches).join(', ')
-        : groupShorthand(p)+' → '+p.plan.rounds.map(rd=>(SHORT[rd.label]||rd.label)+' '+rd.matches+(rd.byes?` (+${rd.byes} bye)`:'')).join(', ')+(p.plan.wc?` +${p.plan.wc} wildcard`:'');
+        : p.plan.rrOnly
+          ? groupShorthand(p)+' → no playoff, standings decide'
+          : groupShorthand(p)+' → '+p.plan.rounds.map(rd=>(SHORT[rd.label]||rd.label)+' '+rd.matches+(rd.byes?` (+${rd.byes} bye)`:'')).join(', ')+(p.plan.wc?` +${p.plan.wc} wildcard`:'');
     const pairsCell = p.dual ? (p.sizes.length?`${p.a} v ${p.b}`:'—') : c.teams;
     aoa.push([catCode(c),catName(c),pairsCell,p.groups,bracketShorthand(p),fmt,p.rr,p.po,p.total,
       ct.rr?fmtDur(ct.rr):'—', ct.po?fmtDur(ct.po):'—', totMin?fmtDur(totMin):'—', c.note||'']);
@@ -1046,6 +1070,7 @@ function importCSVText(text){
         teamsB=Math.max(1,teamsRaw-teamsA);
       }
       const poFormat=(row[10]||'').trim()==='aggregate'?'aggregate':'semis';
+      const soloFormat=(row[11]||'').trim()==='rr'?'rr':'ttb';
       // The brackets column (row[4]) means "group" or "groupDual" depending on
       // which format the file was exported under — the format setting row is
       // written before any category rows, so st.format is already known here.
@@ -1061,7 +1086,7 @@ function importCSVText(text){
         adv:Math.min(4,Math.max(1,parseInt(row[5],10)||2)),
         fill:(row[6]||'').trim()==='wc'?'wc':'bye',
         note:(row[7]||'').trim(),
-        teamsA, teamsB, poFormat});
+        teamsA, teamsB, poFormat, soloFormat});
       found=true;
     }
   }
@@ -1146,6 +1171,7 @@ $('cats').addEventListener('click',e=>{
   if(fb){
     if(fb.dataset.fill)c.fill=fb.dataset.fill;
     if(fb.dataset.poformat)c.poFormat=fb.dataset.poformat;
+    if(fb.dataset.solo)c.soloFormat=fb.dataset.solo;
     recalc();
   }
 });
