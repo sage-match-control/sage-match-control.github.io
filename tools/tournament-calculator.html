@@ -313,21 +313,26 @@ function solveForTarget(tiers, target){
   }
   return solveForTarget(rest, target-tier0);
 }
-// Full recursive solve for `tiers` (best first) down to a single champion.
+/* Full recursive solve for `tiers` (best first) down to a single champion.
+   `prelim` marks the rounds the lower tiers play before the top tier enters.
+   It does NOT affect round names — those stay positional (see playoffPlan) —
+   it exists so the legend can say whether those extra rounds are happening,
+   which it can't read off `byes` (wildcards zero that out). A single tier is
+   an ordinary bracket with byes-by-lot, so none of its rounds are prelim. */
 function tieredRounds(tiers){
   tiers=tiers.filter(t=>t>0);
   if(tiers.length===0) return [];
   if(tiers.length===1){
     const n=tiers[0];
     if(n<2) return [];
-    if(n===2) return [{matches:1,byes:0}];
-    return reduceToTarget(n,2).concat([{matches:1,byes:0}]);
+    if(n===2) return [{matches:1,byes:0,prelim:false}];
+    return reduceToTarget(n,2).map(r=>({...r,prelim:false})).concat([{matches:1,byes:0,prelim:false}]);
   }
   const [tier0,...rest]=tiers;
   let R=4; while(R<=tier0) R*=2; // smallest round STRICTLY bigger than tier0
   const remaining=R-tier0;
-  const subRounds=solveForTarget(rest, remaining);
-  const normal=[]; for(let s=R; s>=2; s/=2) normal.push({matches:s/2, byes:0});
+  const subRounds=solveForTarget(rest, remaining).map(r=>({...r,prelim:true}));
+  const normal=[]; for(let s=R; s>=2; s/=2) normal.push({matches:s/2, byes:0, prelim:false});
   return subRounds.concat(normal);
 }
 
@@ -350,29 +355,57 @@ function playoffPlan(groups, adv, fill, soloFormat){
   if(direct===2) return {rounds:[{label:'Final',matches:1,byes:0}],
     total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, rrOnly:false, bronzeText:null};
 
-  const raw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
-  let wc=0, byes=raw[0].byes;
-  if(fill==='wc' && byes>0){
-    wc=byes;
-    raw[0]={matches:raw[0].matches+byes, byes:0};
-    byes=0;
+  // Two ways to deal with a field that doesn't fill a bracket cleanly.
+  //
+  // `bye` keeps the tiered ladder: group winners bye ahead to the smallest
+  // round bigger than their own number, and the lower tiers play down among
+  // themselves for whatever seats are left.
+  //
+  // `wc` instead fills the draw out to a **complete** bracket — enough
+  // wildcards to reach the next power of two, so every qualifier starts in
+  // the same round, nobody byes, and nobody has a longer road to gold than
+  // anyone else. That is the whole point of choosing wildcards over byes, so
+  // the count is measured against the bracket (6 qualifiers in a draw of 8 =
+  // 2 wildcards), not against the single play-in round the tiered ladder
+  // happened to leave short.
+  let raw, wc=0, byes=0;
+  if(fill==='wc'){
+    let B=2; while(B<direct) B*=2;
+    wc=B-direct;
+    raw=[]; for(let s=B; s>=2; s/=2) raw.push({matches:s/2, byes:0, prelim:false});
+  }else{
+    raw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
+    byes=raw[0].byes;
   }
   const qualifiers=direct+wc;
 
   // Label from the end: last round is always Final; walking backward the
-  // structural size doubles each step (SF=4, QF=8, R16=16, R32=32…).
+  // structural size doubles each step (SF=4, QF=8, R16=16, R32=32…). This
+  // stays positional even when a tiered ladder's early rounds hold far fewer
+  // pairs than the name implies — a four-round ladder is R16 · QF · SF ·
+  // Final however small the field, because those names are the stage
+  // identifiers the standard-tournament workbook, Control Center and the
+  // schedule board all key off (standard-tournament-master-spec.md §1.1).
   const n=raw.length;
+  const prelims=raw.filter(rd=>rd.prelim).length;
   const rounds=raw.map((rd,i)=>{
     const distFromEnd=n-1-i;
     const label = distFromEnd===0 ? 'Final' : roundLabel(2**(distFromEnd+1));
     return {label, matches:rd.matches, byes:rd.byes};
   });
 
+  // How many spots the preliminary chain is playing for — the survivors of
+  // its last round, which are exactly the slots left over once the top tier
+  // has taken its own. Reported so the legend can describe the real shape
+  // instead of inferring it from `byes`, which wildcards zero out.
+  const lastPrelim=prelims?raw[prelims-1]:null;
+  const prelimSpots=lastPrelim?lastPrelim.matches+lastPrelim.byes:0;
+
   let bronzeText=null;
   if(qualifiers>=4) rounds.splice(rounds.length-1, 0, {label:'Bronze match', matches:1, byes:0});
   else bronzeText='losing semifinalist automatic';
   const total=rounds.reduce((s,r)=>s+r.matches,0);
-  return {rounds, total, min:total, qualifiers, direct, wc, byes, single:false, rrOnly:false, bronzeText};
+  return {rounds, total, min:total, qualifiers, direct, wc, byes, prelims, prelimSpots, single:false, rrOnly:false, bronzeText};
 }
 
 /* ---- Dual meet ----
@@ -537,7 +570,7 @@ function fmtTime(min){
   const ap=h>=12?'PM':'AM'; h=h%12||12;
   return `${h}:${String(m).padStart(2,'0')} ${ap}${dayOver?` (+${dayOver}d)`:''}`;
 }
-function fmtDur(min){const h=Math.floor(min/60),m=min%60;return (h?`${h}h `:'')+(m?`${m}m`:h?'':'0m');}
+function fmtDur(min){const h=Math.floor(min/60),m=min%60;return h&&m?`${h}h ${m}m`:h?`${h}h`:`${m}m`;}
 
 /* ---------------- playoff chart ---------------- */
 const roundAbbr=size=>({4:'SF',8:'QF'})[size]||('R'+size);
@@ -612,16 +645,24 @@ function buildChart(p){
   // since there's never room to separate them further) finish reducing
   // themselves down to fill whatever's left.
   const tier0Count=p.groups;
-  const restTotal=tier0Count*(p.adv-1);
-  let R=4; while(R<=tier0Count) R*=2;
+  // Wildcards join the lower-ranked pool, so they occupy draw positions in
+  // the same earliest round. Leaving them out leaves that round short of
+  // entrants for the slots it actually has.
+  const restSeeded=tier0Count*(p.adv-1);
   const nonBronze=plan.rounds.filter(r=>r.label!=='Bronze match');
-  const freshIndex=nonBronze.length-Math.round(Math.log2(R));
+  // Which round the group winners enter at — exactly the number of rounds the
+  // lower tiers play before them. Zero for a wildcard-filled draw, where the
+  // bracket is complete and everyone starts together.
+  const freshIndex=plan.prelims;
   const restLabel = p.adv===2 ? 'Runner-up' : `Rank 2\u2013${p.adv}`;
 
   let restDrawN=0, tier0DrawN=0, carries=[];
   const cols=nonBronze.map((rd,i)=>{
     let occupants=[];
-    if(i===0) for(let k=0;k<restTotal;k++) occupants.push(`<span class="sd">${restLabel} D${++restDrawN}</span>drawn`);
+    if(i===0){
+      for(let k=0;k<restSeeded;k++) occupants.push(`<span class="sd">${restLabel} D${++restDrawN}</span>drawn`);
+      for(let k=0;k<plan.wc;k++) occupants.push(`<span class="sd">Wildcard D${++restDrawN}</span>drawn`);
+    }
     if(i===freshIndex) for(let k=0;k<tier0Count;k++) occupants.push(`<span class="sd">Group winner D${++tier0DrawN}</span>drawn`);
     occupants=occupants.concat(carries);
 
@@ -654,8 +695,12 @@ function legendTxt(p){
   if(p.plan.wc)t+=` plus ${p.plan.wc} wildcard${p.plan.wc>1?'s':''} (best non-qualifier${p.plan.wc>1?'s':''} across brackets by wins, then score quotient)`;
   t+='. Draw positions within a rank are by lot';
   if(p.adv>1){
+    if(p.plan.wc){
+      t+='. The wildcards fill the draw out to a complete bracket, so every qualifier starts in the same round and no one byes — seeding only decides who meets whom.';
+      return t;
+    }
     t+='. Group winners are seeded ahead of runner-ups (and lower): they get a bye all the way through to their first match';
-    t+=p.plan.byes?`, and the lower-ranked qualifiers play ${p.plan.byes>1?'preliminary rounds':'a preliminary round'} first to earn the remaining spot${p.plan.byes>1?'s':''} in that round.`:', with no preliminary rounds needed this time — the field divides evenly.';
+    t+=p.plan.prelims?`, and the lower-ranked qualifiers play ${p.plan.prelims>1?`${p.plan.prelims} preliminary rounds`:'a preliminary round'} first to earn the remaining spot${p.plan.prelimSpots>1?'s':''} in that round.`:', with no preliminary rounds needed this time — the field divides evenly.';
   }else{
     t+=p.plan.byes?`, and ${p.plan.byes} drawn position${p.plan.byes>1?'s':''} receive a first-round bye.`:'.';
   }
