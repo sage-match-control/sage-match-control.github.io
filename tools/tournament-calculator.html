@@ -342,18 +342,22 @@ function tieredRounds(tiers){
    medal — `soloFormat` picks between the two. */
 function playoffPlan(groups, adv, fill, soloFormat){
   adv=Math.min(4,Math.max(1,adv||2));
-  if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,wc:0,byes:0,single:false,rrOnly:false,bronzeText:null};
+  // Every plan carries the same fields so callers never meet an `undefined`
+  // where a count belongs; `nofill` is the shape for the cases with no empty
+  // seats to argue about at all.
+  const nofill={wc:0, wcFill:0, byes:0, tieredByes:0, prelims:0, prelimSpots:0};
+  if(groups<1) return {rounds:[],total:0,min:0,qualifiers:0,direct:0,...nofill,single:false,rrOnly:false,bronzeText:null};
   if(groups===1){
     if(soloFormat==='rr'){
-      return {rounds:[], total:0, min:0, qualifiers:0, direct:0, wc:0, byes:0,
+      return {rounds:[], total:0, min:0, qualifiers:0, direct:0, ...nofill,
         single:true, rrOnly:true, bronzeText:null};
     }
     return {rounds:[{label:'Final · twice-to-beat',matches:2,byes:0}],
-      total:2, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:true, rrOnly:false, bronzeText:'RR #3 automatic'};
+      total:2, min:1, qualifiers:2, direct:2, ...nofill, single:true, rrOnly:false, bronzeText:'RR #3 automatic'};
   }
   const direct=groups*adv;
   if(direct===2) return {rounds:[{label:'Final',matches:1,byes:0}],
-    total:1, min:1, qualifiers:2, direct:2, wc:0, byes:0, single:false, rrOnly:false, bronzeText:null};
+    total:1, min:1, qualifiers:2, direct:2, ...nofill, single:false, rrOnly:false, bronzeText:null};
 
   // Two ways to deal with a field that doesn't fill a bracket cleanly.
   //
@@ -368,14 +372,25 @@ function playoffPlan(groups, adv, fill, soloFormat){
   // the count is measured against the bracket (6 qualifiers in a draw of 8 =
   // 2 wildcards), not against the single play-in round the tiered ladder
   // happened to leave short.
+  // `wcFill` is how many wildcards the wc option WOULD add, computed the same
+  // way whichever fill is active. The toggle's label reads it, so the button
+  // can't promise one number and deliver another once it's pressed.
+  let bracket=2; while(bracket<direct) bracket*=2;
+  const wcFill=bracket-direct;
+
+  // The tiered ladder is built either way: in wc mode its bye count is still
+  // needed, because whether the two fills differ at all — and so whether the
+  // toggle is offered — must not depend on which one is currently active.
+  const tieredRaw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
+  const tieredByes=tieredRaw[0].byes;
+
   let raw, wc=0, byes=0;
   if(fill==='wc'){
-    let B=2; while(B<direct) B*=2;
-    wc=B-direct;
-    raw=[]; for(let s=B; s>=2; s/=2) raw.push({matches:s/2, byes:0, prelim:false});
+    wc=wcFill;
+    raw=[]; for(let s=bracket; s>=2; s/=2) raw.push({matches:s/2, byes:0, prelim:false});
   }else{
-    raw=tieredRounds(Array(adv).fill(groups)); // earliest -> latest, unlabeled
-    byes=raw[0].byes;
+    raw=tieredRaw;
+    byes=tieredByes;
   }
   const qualifiers=direct+wc;
 
@@ -405,7 +420,7 @@ function playoffPlan(groups, adv, fill, soloFormat){
   if(qualifiers>=4) rounds.splice(rounds.length-1, 0, {label:'Bronze match', matches:1, byes:0});
   else bronzeText='losing semifinalist automatic';
   const total=rounds.reduce((s,r)=>s+r.matches,0);
-  return {rounds, total, min:total, qualifiers, direct, wc, byes, prelims, prelimSpots, single:false, rrOnly:false, bronzeText};
+  return {rounds, total, min:total, qualifiers, direct, wc, wcFill, byes, tieredByes, prelims, prelimSpots, single:false, rrOnly:false, bronzeText};
 }
 
 /* ---- Dual meet ----
@@ -490,7 +505,8 @@ function calcCategory(c, cfg){
   if(cfg && cfg.format==='dual') return calcDualCategory(c, cfg);
   if(c.teams===2){
     const plan={rounds:[{label:'Final · best of 3',matches:3,byes:0}],total:3,min:2,
-      qualifiers:2,direct:2,wc:0,byes:0,single:false,bestOf3:true,bronzeText:null};
+      qualifiers:2,direct:2,wc:0,wcFill:0,byes:0,tieredByes:0,prelims:0,prelimSpots:0,
+      single:false,bestOf3:true,bronzeText:null};
     return {sizes:[2],groups:1,rr:0,plan,adv:1,po:3,total:3,totalMin:2,qualifiers:2,notes:[]};
   }
   const sizes = groupSizes(c.teams, c.group);
@@ -895,11 +911,17 @@ function recalc(){
       return;
     }
     if(!p.sizes.length){ planEl.innerHTML=''; el.querySelector('.chartwrap').innerHTML=''; lineEl.innerHTML='Needs at least 2 teams.'; return; }
-    const deficit=p.plan.byes+p.plan.wc;
-    const fillUI=(!p.plan.single&&deficit>0)?
+    // Offer the choice whenever the two fills actually differ — that's when
+    // the tiered ladder has byes to hand out, or filling the draw would pull
+    // extra pairs in. Either can be zero while the other isn't, so testing
+    // only one hides a live option. The wildcard count comes from the plan's
+    // `wcFill`, which is the same number in both modes, so the label doesn't
+    // change the moment it's pressed.
+    const wcAdds=p.plan.wcFill||0;
+    const fillUI=(!p.plan.single&&(wcAdds>0||p.plan.tieredByes>0))?
       `<div class="playoffs" style="margin-bottom:6px">
         <button type="button" class="po fillbtn" data-fill="bye" aria-pressed="${(cats[i].fill||'bye')==='bye'}">Byes for top seeds</button>
-        <button type="button" class="po fillbtn" data-fill="wc" aria-pressed="${cats[i].fill==='wc'}">+${deficit} wildcard${deficit>1?'s':''}</button>
+        <button type="button" class="po fillbtn" data-fill="wc" aria-pressed="${cats[i].fill==='wc'}">${wcAdds?`+${wcAdds} wildcard${wcAdds>1?'s':''}`:'Full bracket, no byes'}</button>
       </div>`:'';
     const soloUI=p.plan.single?
       `<div class="playoffs" style="margin-bottom:6px">
