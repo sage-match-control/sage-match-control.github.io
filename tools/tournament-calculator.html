@@ -478,6 +478,19 @@ function calcCategory(c, cfg){
     totalMin: rr+plan.min, qualifiers:plan.qualifiers, notes };
 }
 
+/* A pair can't be on two courts at once, so a bracket's round robin needs one
+   slot per round of its own schedule no matter how many courts sit free: a
+   bracket of n needs n-1 rounds when n is even, n when it's odd (the bye
+   rotates). A dual bracket is a cross-product rather than a round robin, so
+   its floor is the larger club's pair count instead. Brackets are independent
+   and interleave across courts, so a category's floor is its biggest
+   bracket's, not the sum. */
+function rrRoundFloor(p){
+  if(!p.sizes||!p.sizes.length)return 0;
+  if(p.dual)return p.aSizes.reduce((m,n,i)=>Math.max(m,n,p.bSizes[i]),0);
+  return p.sizes.reduce((m,n)=>Math.max(m, n%2?n:n-1),0);
+}
+
 /* Matches that depend on each other can't share a time slot:
    best-of-3 games, twice-to-beat games, and each playoff round
    must wait for the previous one. This gives a per-category floor.
@@ -485,7 +498,7 @@ function calcCategory(c, cfg){
 function seqParts(p,courts){
   if(!p.sizes||!p.sizes.length||courts<1)return {rr:0,po:0};
   if(p.plan.bestOf3)return {rr:0,po:3};
-  const rrS=Math.ceil(p.rr/courts);
+  const rrS=Math.max(Math.ceil(p.rr/courts), rrRoundFloor(p));
   if(p.plan.single)return {rr:rrS,po:p.plan.rrOnly?0:2};
   let po=0,bronze=0;
   for(const rd of p.plan.rounds){
@@ -504,15 +517,7 @@ function calcAll(cfg){
   const maxSeq = per.reduce((m,p)=>Math.max(m, p.seq.rr+p.seq.po), 0);
   const slots = cfg.courts>0 ? Math.max(Math.ceil(matches/cfg.courts), maxSeq) : 0;
   const playMin = slots>0 ? slots*slotLen - cfg.buf : 0;   // no buffer after last slot
-  // sequential per-category time windows
-  let cursor = cfg.startMin; const windows=[];
-  per.forEach(p=>{
-    const cslots = cfg.courts>0?Math.ceil(p.total/cfg.courts):0;
-    const dur = cslots>0 ? cslots*slotLen : 0;
-    windows.push({start:cursor, end:cursor+ (dur? dur-cfg.buf:0)});
-    cursor += dur;
-  });
-  return { per, matches, slots, playMin, endMin: matches? cfg.startMin+playMin : null, windows };
+  return { per, matches, slots, playMin, endMin: matches? cfg.startMin+playMin : null };
 }
 // Per-category RR/PO wall-clock time, given courts run in parallel but
 // dependent rounds/games run in sequence. Shared by the on-page table and
@@ -917,7 +922,7 @@ function recalc(){
     <td class="num"><b>${catTotalMin?fmtDur(catTotalMin):'—'}</b></td></tr>`;}).join('')
     ||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:16px">No categories yet</td></tr>';
   const hasTTB=r.per.some(p=>p.plan&&((p.plan.single&&!p.plan.rrOnly)||p.plan.bestOf3));
-  $('r-windows').innerHTML=(r.matches?`RR/PO time = court time for that phase with all ${cfg.courts} court${cfg.courts>1?'s':''} on it (${cfg.dur}-min matches${cfg.buf?` + ${cfg.buf}-min buffer`:''}), respecting that playoff rounds and series games run one after another.`:'')
+  $('r-windows').innerHTML=(r.matches?`RR/PO time = court time for that phase with all ${cfg.courts} court${cfg.courts>1?'s':''} on it (${cfg.dur}-min matches${cfg.buf?` + ${cfg.buf}-min buffer`:''}), respecting that playoff rounds and series games run one after another and that no pair can be on two courts at once — a small bracket can leave courts idle.`:'')
     +(hasTTB?' <b>Note:</b> twice-to-beat finals and best-of-3 series are counted at full length so the plan covers the worst case; the day ends earlier if they\u2019re decided sooner.':'');
   $('r-windows').style.display=(r.matches||hasTTB)?'':'none';
   save();
