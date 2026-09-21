@@ -778,6 +778,32 @@
     letter-spacing:.01em;
     color:var(--navy);
   }
+  /* Symmetric padding keeps the title centred clear of the toggle. */
+  .standings-col-head.has-toggle{padding-left:64px; padding-right:64px;}
+  .bracket-cols-toggle{
+    position:absolute;
+    top:50%;
+    right:10px;
+    transform:translateY(-50%);
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    padding:3px 9px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--navy);
+    cursor:pointer;
+  }
+  .bracket-cols-toggle:hover{border-color:var(--navy);}
+  .standings-col--stacked .rr-bracket-grid{grid-template-columns:1fr;}
+  /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
+  @media (max-width:979px){
+    .standings-col-head.has-toggle{padding-left:14px; padding-right:14px;}
+    .bracket-cols-toggle{display:none;}
+  }
 
   .stage-block{margin-bottom:16px;}
   .stage-block:last-child{margin-bottom:0;}
@@ -2136,9 +2162,15 @@ function renderMatchup(pair){
 function renderCategoryCard(cat, rows){
   const { html: stageHtml, hasMultiBracket } = renderStageTables(rows);
   if(!stageHtml) return '';
-  return `<div class="standings-col${hasMultiBracket ? ' standings-col--wide' : ''}" data-cat-key="${escapeHtml(cat)}">
-    <div class="standings-col-head">
+  const stacked = hasMultiBracket && stackedCategories.has(cat);
+  const colClass = !hasMultiBracket ? '' : stacked ? ' standings-col--stacked' : ' standings-col--wide';
+  const toggleHTML = hasMultiBracket
+    ? `<button type="button" class="bracket-cols-toggle" data-cat="${escapeHtml(cat)}" aria-pressed="${stacked}" title="${stacked ? 'Show brackets side by side' : 'Stack brackets in one column'}">${stacked ? '2 cols' : '1 col'}</button>`
+    : '';
+  return `<div class="standings-col${colClass}" data-cat-key="${escapeHtml(cat)}">
+    <div class="standings-col-head${hasMultiBracket ? ' has-toggle' : ''}">
       <span class="cat-title">${escapeHtml(cat)}</span>
+      ${toggleHTML}
     </div>
     <div class="standings-col-body">${stageHtml}</div>
   </div>`;
@@ -2201,6 +2233,7 @@ let selectedStandingsCategory = null; // mobile: category label chosen from the 
 let CATEGORY_OPTIONS = [];            // sorted list of current category labels
 let CATEGORIES_MAP = new Map();       // category label -> standings rows
 let hiddenCategories = new Set();     // desktop: category labels toggled off via the toggle bar
+let stackedCategories = new Set();    // desktop: multi-bracket categories switched to one bracket column
 
 function renderStandings(){
   const bodyEl = standingsBodyEl;
@@ -2376,6 +2409,14 @@ const searchPanelEl = document.getElementById('searchPanel');
 const standingsResultsEl = document.getElementById('standingsResults');
 const liveResultsEl = document.getElementById('liveResults');
 const standingsBodyEl = document.getElementById('standingsBody');
+standingsBodyEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.bracket-cols-toggle');
+  if(!btn) return;
+  const cat = btn.dataset.cat;
+  if(stackedCategories.has(cat)) stackedCategories.delete(cat);
+  else stackedCategories.add(cat);
+  renderStandings();
+});
 const liveBoardEl = document.getElementById('liveBoard');
 const liveBoardMetaEl = document.getElementById('liveBoardMeta');
 viewTabs.forEach(btn => {
