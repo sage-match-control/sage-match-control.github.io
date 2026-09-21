@@ -980,9 +980,6 @@
       max-height:none;
       padding-bottom:20px;
       align-items:stretch;
-      justify-content:center;
-    }
-    .standings-board-desktop.has-overflow{
       justify-content:flex-start;
     }
     .standings-board-desktop .standings-col{
@@ -2303,18 +2300,6 @@ function renderStandingsBody(){
   }
 
   bodyEl.innerHTML = html;
-  updateStandingsBoardAlignment();
-}
-
-// Keeps the desktop standings board centered when its category cards all fit
-// on screen without needing to scroll; once there are enough categories to
-// overflow, it switches to left-aligned so the first card isn't cut off
-// (a centered flex row can otherwise hide overflowing content off-screen).
-function updateStandingsBoardAlignment(){
-  const board = standingsBodyEl && standingsBodyEl.querySelector('.standings-board-desktop');
-  if(!board) return;
-  const hasOverflow = board.scrollWidth > board.clientWidth + 1;
-  board.classList.toggle('has-overflow', hasOverflow);
 }
 
 // Re-render standings if the viewport crosses the desktop/mobile breakpoint
@@ -2329,8 +2314,6 @@ window.addEventListener('resize', () => {
       lastStandingsIsDesktop = nowDesktop;
       const el = standingsResultsEl;
       if(el && el.style.display !== 'none') renderStandings();
-    } else {
-      updateStandingsBoardAlignment();
     }
   }, 200);
 });

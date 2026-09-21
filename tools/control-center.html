@@ -1238,9 +1238,12 @@
     color:var(--muted);
     border-bottom:1px solid rgba(20,27,44,.16);
   }
-  /* Pair is the only column without an explicit width, so table-layout:fixed
-     hands it all the leftover space. Q gets its own (wider) width since
-     "0.6667" doesn't fit in the same width as a plain W/L integer. */
+  /* Pair is the only column without an explicit width, so it gets all the
+     leftover space once the table's stretched to 100% of its (fixed-size,
+     same as the public event pages') column — same trade-off those pages
+     make, at the same column size, so it doesn't look any emptier here.
+     Q gets its own (wider) width since "0.6667" doesn't fit in the same
+     width as a plain W/L integer. */
   .br-table th.num{width:26px; text-align:center;}
   .br-table th.quo{width:54px; text-align:center;}
   .br-table th.br-badge{width:22px; text-align:center;}
@@ -1277,6 +1280,12 @@
     gap:10px;
     margin-bottom:10px;
   }
+  /* Overrides the generic wrap's inline-block hug: a bracket cell's colored
+     label sits directly above and stretches to the full grid cell (it's a
+     plain block with no content-driven width of its own), so the wrap
+     underneath has to match that same full width or the two would go
+     out of alignment. The inner .br-table still shrinks to its own
+     content either way — this only affects the wrap around it. */
   .rr-bracket-grid .br-table-wrap{ margin-bottom:0; }
   .rr-bracket-label{
     font-family:'Barlow Condensed',sans-serif;
@@ -1392,13 +1401,11 @@
     .standings-board-desktop{
       display:flex;
       flex-direction:row;
-      /* flex-start, not center: centering a flex row that's actually
-         overflowing makes its start unreachable by scrolling in Chromium —
+      /* Always flex-start (left-aligned), even when every category fits
+         without scrolling — centering a flex row that's actually
+         overflowing makes its start unreachable by scrolling in Chromium,
          the row shifts left of the scrollport with no way to scroll to that
-         negative offset, permanently cutting off the first category or two.
-         Centered only applies via .has-overflow below, once JS (see
-         updateStandingsBoardAlignment) has confirmed there's nothing to
-         scroll to in the first place. */
+         negative offset, permanently cutting off the first category or two. */
       justify-content:flex-start;
       align-items:stretch;
       gap:20px;
@@ -1406,26 +1413,33 @@
       overflow-y:visible;
       padding-bottom:20px;
     }
-    .standings-board-desktop:not(.has-overflow){
-      justify-content:center;
-    }
     .standings-board-desktop .standings-col{
-      /* flex-shrink:0 (via the 0 in "1 0 340px") is the point: columns grow
-         to fill spare width but never shrink below it, so once there's more
-         total content than the viewport, the row overflows and scrolls
-         instead of every column getting squeezed to fit. */
-      flex:1 0 340px;
-      max-width:520px;
+      /* Fixed width, same as the public event pages' standings board (not
+         flex-grow): a category that grew to fill spare row width stretched
+         its bracket tables wider than the event pages' equivalent column,
+         which is exactly the "too much whitespace" a fixed-size table
+         doesn't have room to create. flex-shrink:0 still keeps columns from
+         getting squeezed once the row overflows — it scrolls instead. */
+      flex:0 0 360px;
+      max-width:360px;
       display:flex;
       flex-direction:column;
+      /* Capped and independently scrollable, same as the public event
+         pages' standings board, so one long category doesn't stretch every
+         column in the row down to match it. */
+      max-height:92vh;
+      overflow-y:auto;
     }
+    .standings-board-desktop .standings-col::-webkit-scrollbar{width:5px;}
+    .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
     /* A category with a 2-column Round Robin bracket grid (see
        .rr-bracket-grid) spans a whole column's width plus the gap between
        columns, so it resizes to exactly two normal columns' worth of space
-       instead of cramming two mini tables into one 340-520px card. */
+       instead of cramming two mini tables into one 360px card — same
+       740px (360*2 + the 20px gap) as the public event pages. */
     .standings-board-desktop .standings-col.standings-col--wide{
-      flex:1 0 700px;
-      max-width:1060px;
+      flex:0 0 740px;
+      max-width:740px;
     }
   }
 
@@ -3265,13 +3279,6 @@ function renderStandings(){
     renderDualMeetStandings();
   }
 
-  // Whether the desktop row actually needs to scroll — see .has-overflow in
-  // the .standings-board-desktop CSS: centering an overflowing flex row (via
-  // justify-content:center) makes its start unreachable by scrolling in some
-  // browsers, so this flips it to a plain flex-start once there isn't enough
-  // room for every category, and back to centered once there is.
-  updateStandingsBoardAlignment();
-
   restoreScrollPositions(bodyEl, scrollPositions);
   renderResolutionWarning();
 }
@@ -3353,13 +3360,6 @@ function renderCategoryToggleBar(){
   bar.innerHTML = `<span class="cat-toggle-label">Categories</span>${chips}<button type="button" class="cat-toggle-action" data-action="all">Show all</button><button type="button" class="cat-toggle-action" data-action="none">Hide all</button>`;
 }
 
-function updateStandingsBoardAlignment(){
-  const board = standingsBodyEl && standingsBodyEl.querySelector('.standings-board-desktop');
-  if(!board) return;
-  const hasOverflow = board.scrollWidth > board.clientWidth + 1;
-  board.classList.toggle('has-overflow', hasOverflow);
-}
-
 function renderStandardStandings(){
   const bodyEl = standingsBodyEl;
   const categories = new Map();
@@ -3397,7 +3397,6 @@ function renderStandardStandings(){
   }
 
   bodyEl.innerHTML = html;
-  updateStandingsBoardAlignment();
 }
 
 if(document.getElementById('categoryToggleBar')){
