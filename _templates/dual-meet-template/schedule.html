@@ -60,6 +60,7 @@
      hides: the court filter (its state is already carried in the URL) and the
      export button. Ctrl+P still prints, so nothing is actually lost. */
   .bezel.compact{ padding:4px 16px; }
+  .bezel.compact .venuefilter,
   .bezel.compact .courtfilter,
   .bezel.compact .bezel-export{ display:none; }
   .bezel.compact img{ width:26px; height:26px; }
@@ -130,6 +131,18 @@
   .cf-btn:hover{ border-color:var(--green); color:var(--white); }
   .cf-btn.on{ background:var(--green); border-color:var(--green); color:var(--navy); }
   .cf-btn.all{ letter-spacing:.12em; text-transform:uppercase; padding:2px 9px; }
+
+  /* ---------- VENUE FILTER ----------
+     Rendered only when the day has more than one venue. Narrows the board to
+     one venue's matches and courts. Bookmarkable via ?venue=, like ?courts=,
+     and styled with the court filter's buttons. */
+  .venuefilter{
+    display:flex; align-items:center; gap:4px;
+    margin-left:18px; padding-left:16px;
+    border-left:1px solid rgba(255,255,255,.22);
+  }
+  .venuefilter[hidden]{ display:none; }
+  .venuefilter .cf-btn{ padding:2px 9px; }
 
   .legend{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
   .legend-item{
@@ -370,6 +383,7 @@
     /* Each of these takes a full row of its own rather than competing for
        what is left of a 375px line. */
     .meta{ order:5; flex:1 0 100%; white-space:normal; font-size:10px; }
+    .venuefilter,
     .courtfilter{
       order:6; flex:1 0 100%; flex-wrap:wrap;
       margin-left:0; padding-left:0; border-left:none;
@@ -491,6 +505,7 @@
     <h1>{{EVENT_TITLE}}</h1>
   </div>
   <span class="meta" id="sub">Loading schedule&hellip;</span>
+  <div class="venuefilter" id="venuefilter" hidden></div>
   <div class="courtfilter" id="courtfilter"></div>
   <div class="legend" id="legend"></div>
   <div class="legend-live"><span class="dot"></span>Live now</div>
@@ -675,26 +690,34 @@ function cellHTML(m){
 // so each wall screen can be bookmarked to its own range and returns to it
 // after a refresh or power cycle with nobody touching the machine.
 let DATA = null;
-let visibleCourts = null;            // Set of court numbers; null = show all
+let SNAPSHOT = null;                 // last good snapshot, so switching venue needs no fetch
+let visibleCourts = null;            // Set of court numbers; null = all of DATA.courtList
 
-const allCourts = total => new Set(Array.from({length: total}, (_, i) => i + 1));
+// Venue to narrow the board to, or null for every venue. Held in the URL
+// (?venue=PCPH%20Annex) for the same reason as ?courts: a screen at each venue
+// boots straight into its own board. A name the data doesn't have shows every
+// venue, and stays in the URL until someone picks from the filter.
+let venue = new URLSearchParams(location.search).get("venue");
 
-function parseCourtsParam(total){
+// Every court this view can show: the whole day's, or one venue's.
+const allCourts = () => new Set(DATA.courtList);
+
+function parseCourtsParam(courtList){
   const raw = new URLSearchParams(location.search).get("courts");
   if(!raw) return null;
   const set = new Set();
   raw.split(",").forEach(part => {
     const t = part.trim();
     const m = t.match(/^(\d+)\s*-\s*(\d+)$/);
-    if(m){ for(let i = +m[1]; i <= +m[2]; i++) if(i >= 1 && i <= total) set.add(i); }
-    else if(/^\d+$/.test(t) && +t >= 1 && +t <= total) set.add(+t);
+    if(m){ for(let i = +m[1]; i <= +m[2]; i++) if(courtList.includes(i)) set.add(i); }
+    else if(/^\d+$/.test(t) && courtList.includes(+t)) set.add(+t);
   });
   return set.size ? set : null;
 }
 
 // Collapse the selection back to the shortest readable form (1,2,3,4 -> 1-4).
-function courtsToParam(set, total){
-  if(!set || set.size === 0 || set.size === total) return null;
+function courtsToParam(set, courtList){
+  if(!set || set.size === 0 || set.size === courtList.length) return null;
   const s = [...set].sort((a, b) => a - b), out = [];
   for(let i = 0; i < s.length; ){
     let j = i;
@@ -718,9 +741,11 @@ function paintSub(){
 }
 
 function syncUrl(){
-  const p = DATA ? courtsToParam(visibleCourts, DATA.courts) : null;
+  const p = DATA ? courtsToParam(visibleCourts, DATA.courtList) : null;
   const url = new URL(location.href);
   if(p) url.searchParams.set("courts", p); else url.searchParams.delete("courts");
+  if(DATA && DATA.venue) url.searchParams.set("venue", DATA.venue);
+  else if(DATA) url.searchParams.delete("venue");
   if(compact) url.searchParams.set("compact", "1"); else url.searchParams.delete("compact");
   history.replaceState(null, "", url);
 }
@@ -776,8 +801,7 @@ function chunkBalanced(list, maxPerPage){
 }
 
 function buildPrintPages(){
-  const total = DATA.courts;
-  const shown = [...(visibleCourts || allCourts(total))].sort((a, b) => a - b);
+  const shown = [...(visibleCourts || allCourts())].sort((a, b) => a - b);
 
   // Two-dimensional: courts across, time slots down. Either axis alone can
   // overflow a sheet — 9 courts is too wide, a 12-hour day too tall — so both
@@ -804,7 +828,7 @@ function buildPrintPages(){
           <span class="print-title">{{EVENT_TITLE}}</span>
         </div>
         <div class="print-head-right">
-          <span class="print-scope">${courtLabel(s.courts)}${timeLabel(s.rows)}</span>
+          <span class="print-scope">${DATA.venue ? esc(DATA.venue) + " &middot; " : ""}${courtLabel(s.courts)}${timeLabel(s.rows)}</span>
           <span class="print-meta">${esc(DATA.label)} &middot; ${DATA.matchCount} matches &middot; page ${i + 1} of ${sheets.length}</span>
         </div>
       </div>
@@ -822,21 +846,33 @@ document.getElementById("exportBtn").addEventListener("click", () => {
 // reopened) so the sheet always reflects the current filter.
 window.addEventListener("beforeprint", () => { if(DATA) buildPrintPages(); });
 
+function renderVenueFilter(){
+  const el = document.getElementById("venuefilter");
+  el.hidden = DATA.venues.length < 2;
+  if(el.hidden){ el.innerHTML = ""; return; }
+  let html = `<span class="cf-label">Venue</span>`;
+  html += `<button class="cf-btn all ${DATA.venue ? "" : "on"}" data-venue="">All</button>`;
+  DATA.venues.forEach(v => {
+    html += `<button class="cf-btn ${DATA.venue === v ? "on" : ""}" data-venue="${esc(v)}">${esc(v)}</button>`;
+  });
+  el.innerHTML = html;
+}
+
 function renderFilter(){
-  const total = DATA.courts;
-  const showing = visibleCourts || allCourts(total);
-  const allOn = showing.size === total;
+  const list = DATA.courtList;
+  const showing = visibleCourts || allCourts();
+  const allOn = showing.size === list.length;
   let html = `<span class="cf-label">Courts</span>`;
   html += `<button class="cf-btn all ${allOn ? "on" : ""}" data-all="1">All</button>`;
-  for(let c = 1; c <= total; c++){
+  list.forEach(c => {
     html += `<button class="cf-btn ${showing.has(c) ? "on" : ""}" data-court="${c}">${c}</button>`;
-  }
+  });
   document.getElementById("courtfilter").innerHTML = html;
 }
 
 function renderGrid(){
-  const total = DATA.courts;
-  const shown = [...(visibleCourts || allCourts(total))].sort((a, b) => a - b);
+  const list = DATA.courtList;
+  const shown = [...(visibleCourts || allCourts())].sort((a, b) => a - b);
   const rows = DATA.rows;
   const grid = document.getElementById("grid");
   grid.style.setProperty("--cols", shown.length);
@@ -844,23 +880,36 @@ function renderGrid(){
   // The legend keys what is actually on screen, so it follows the filter.
   const inView = m => m && shown.includes(m.court);
   const cats = [...new Set(rows.flatMap(r => r.courts.filter(inView).map(m => m.cat)))];
-  const scope = shown.length === total
+  const scope = shown.length === list.length
     ? "all courts"
-    : "courts " + courtsToParam(new Set(shown), total);
+    : "courts " + courtsToParam(new Set(shown), list);
+  const where = DATA.venue ? `${DATA.venue} · ` : "";
 
-  // Match count is event-wide and identical on every screen; it is the scope
-  // ("courts 1-5") that says what this particular screen is showing. Using a
-  // filtered count here would make the same label mean different things on
-  // the two halves of a split-screen setup. It also includes any unplaced
-  // (overflow) matches, not just the ones that landed in a visible cell.
-  subFull = `${DATA.label} · ${DATA.matchCount} matches · ${rows.length} slots · ${scope}`;
-  subCompact = `${DATA.label} · ${DATA.matchCount} matches`;
+  // Match count covers the venue this board is set to (or the whole day), not
+  // the court filter; it is the scope ("courts 1-5") that says what this
+  // particular screen is showing. Counting only visible courts would make the
+  // same label mean different things on the two halves of a split-screen
+  // setup. It also includes any unplaced (overflow) matches, not just the ones
+  // that landed in a visible cell.
+  subFull = `${DATA.label} · ${where}${DATA.matchCount} matches · ${rows.length} slots · ${scope}`;
+  subCompact = `${DATA.label} · ${where}${DATA.matchCount} matches`;
   paintSub();
   document.getElementById("legend").innerHTML = cats.map(c =>
     `<span class="legend-item"><span class="legend-swatch" style="background:${meta(c).color}"></span>${meta(c).short}</span>`
   ).join("");
 
   grid.innerHTML = gridHTML(shown);
+}
+
+// Everything that depends on DATA, redrawn together. A venue with nothing
+// published yet gets a message rather than an empty grid.
+function renderBoard(){
+  applyCompact();
+  renderVenueFilter();
+  renderFilter();
+  renderGrid();
+  if(DATA.matchCount === 0) showBoardMessage(`No matches at ${esc(DATA.venue)} yet.`);
+  else hideBoardMessage();
 }
 
 // Grid markup for an arbitrary set of courts. Shared by the live board and by
@@ -886,17 +935,29 @@ function gridHTML(shown, rows = DATA.rows){
 document.getElementById("courtfilter").addEventListener("click", e => {
   const btn = e.target.closest(".cf-btn");
   if(!btn || !DATA) return;
-  const total = DATA.courts;
   if(btn.dataset.all){
     visibleCourts = null;
   } else {
     const c = +btn.dataset.court;
-    const set = new Set(visibleCourts || allCourts(total));
+    const set = new Set(visibleCourts || allCourts());
     if(set.has(c)) set.delete(c); else set.add(c);
     if(set.size === 0) set.add(c);          // never leave a blank board
-    visibleCourts = set.size === total ? null : set;
+    visibleCourts = set.size === DATA.courtList.length ? null : set;
   }
   syncUrl(); renderFilter(); renderGrid();
+});
+
+document.getElementById("venuefilter").addEventListener("click", e => {
+  const btn = e.target.closest(".cf-btn");
+  if(!btn || !SNAPSHOT) return;
+  const next = btn.dataset.venue || null;
+  if(next === DATA.venue) return;
+  venue = next;
+  visibleCourts = null;          // one venue's court selection means nothing at another
+  DATA = buildScheduleData(SNAPSHOT, venue);
+  syncUrl();
+  renderBoard();
+  document.querySelector(".grid-wrap").scrollTop = 0;
 });
 
 // ============================================================================
@@ -993,30 +1054,50 @@ function parseFacilityCsv(text){
 // Never falls back to row order implying court — an earlier build did, and it
 // happened to be correct, which is exactly what made it dangerous: an
 // undocumented contract that breaks silently on a row reorder.
-function assignCourts(matches, total){
+//
+// `lanes` is the court numbers this view shows, so a match with no usable
+// court falls into one of this venue's own lanes rather than another venue's
+// hidden column.
+function assignCourts(matches, total, lanes){
   const courts = new Array(total).fill(null);
   const remaining = [];
   matches.forEach(m => {
-    if(m.court && m.court >= 1 && m.court <= total && !courts[m.court - 1]) courts[m.court - 1] = m;
+    if(m.court && lanes.includes(m.court) && !courts[m.court - 1]) courts[m.court - 1] = m;
     else remaining.push(m);
   });
   const unplaced = [];
   remaining.forEach(m => {
-    const free = courts.findIndex(x => x === null);
-    if(free === -1) unplaced.push(m);
-    else courts[free] = m;
+    const free = lanes.find(c => !courts[c - 1]);
+    if(free === undefined) unplaced.push(m);
+    else courts[free - 1] = m;
   });
   return { courts, unplaced };
 }
 
 // Rows = time slots in first-appearance order once matches are sorted by
-// number (matchNumber is unique and monotonic with time across facilities, so
-// this groups correctly even when a venue has more than one sheet).
+// number. Within one venue, match numbers rise with time. Across venues
+// numbered in separate ranges (Main 1001..., Annex 2001...) they don't, so the
+// all-venues board takes its slot order from the first-numbered venue and
+// adds any time only a later venue uses at the bottom. A venue view has no
+// such problem.
 // Courts = derived from the highest CourtAssignment actually seen, rather
 // than a hand-maintained constant — one fewer value to keep in sync with
-// FACILITIES elsewhere on this event's pages.
-function buildScheduleData(snapshot){
-  const allRows = snapshot.facilities.flatMap(f => parseFacilityCsv(f.matchesCsv));
+// FACILITIES elsewhere on this event's pages. Court numbers run on across a
+// day's venues (Main 1-4, Annex 5-9), so the grid is sized from every venue
+// and a venue view shows only the span of courts its own matches use.
+//
+// venueName: a facility name to narrow to, or null. A name the snapshot
+// doesn't have is treated as null.
+function buildScheduleData(snapshot, venueName){
+  const facilities = (snapshot.facilities || []).map(f => ({
+    name: f.name || '', rows: parseFacilityCsv(f.matchesCsv)
+  }));
+  const venues = facilities.map(f => f.name).filter(Boolean);
+  const chosen = venueName && venues.includes(venueName) ? venueName : null;
+  const everyRow = facilities.flatMap(f => f.rows);
+  const allRows = chosen
+    ? facilities.filter(f => f.name === chosen).flatMap(f => f.rows)
+    : everyRow.slice();
   allRows.sort((a, b) => a.num - b.num);
 
   const slotOrder = [];
@@ -1026,13 +1107,21 @@ function buildScheduleData(snapshot){
     bySlot.get(m.slot).push(m);
   });
 
-  const total = Math.max(1, ...allRows.map(m => m.court || 0));
+  const total = Math.max(1, ...everyRow.map(m => m.court || 0));
+  const range = (lo, hi) => Array.from({length: hi - lo + 1}, (_, i) => lo + i);
+  const own = allRows.map(m => m.court).filter(c => c && c <= total);
+  const courtList = chosen && own.length
+    ? range(Math.min(...own), Math.max(...own))
+    : range(1, total);
   const rows = slotOrder.map(slot => {
-    const { courts, unplaced } = assignCourts(bySlot.get(slot), total);
+    const { courts, unplaced } = assignCourts(bySlot.get(slot), total, courtList);
     return { slot, courts, unplaced };
   });
 
-  return { courts: total, rows, matchCount: allRows.length, label: snapshot.label || '' };
+  return {
+    courts: total, courtList, venues, venue: chosen, rows,
+    matchCount: allRows.length, dayMatchCount: everyRow.length, label: snapshot.label || ''
+  };
 }
 
 // ---------- FETCH / POLL ----------
@@ -1080,23 +1169,21 @@ async function loadSchedule(isInitial){
   const savedScroll = wrap ? wrap.scrollTop : 0;
   try {
     const snapshot = await fetchDaySnapshot();
-    const data = buildScheduleData(snapshot);
-    if(data.matchCount === 0) throw new Error('No matches parsed from any facility');
+    const data = buildScheduleData(snapshot, venue);
+    if(data.dayMatchCount === 0) throw new Error('No matches parsed from any facility');
 
+    SNAPSHOT = snapshot;
     DATA = data;
     if(isInitial){
-      visibleCourts = parseCourtsParam(DATA.courts);
+      visibleCourts = parseCourtsParam(DATA.courtList);
     } else if(visibleCourts){
       // Court count can't normally shrink mid-event, but never let a stale
       // selection point past the current grid.
-      const clipped = new Set([...visibleCourts].filter(c => c <= DATA.courts));
+      const clipped = new Set([...visibleCourts].filter(c => DATA.courtList.includes(c)));
       visibleCourts = clipped.size === 0 ? null : clipped;
     }
 
-    hideBoardMessage();
-    applyCompact();
-    renderFilter();
-    renderGrid();
+    renderBoard();
     // Preserve scroll position across a poll-driven re-render — a wall
     // display re-rendering every 10s must not visibly jump.
     if(wrap) wrap.scrollTop = savedScroll;

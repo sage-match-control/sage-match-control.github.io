@@ -171,6 +171,13 @@ clubs; it is not a general multi-club template.
    count is derived from the data (the highest `CourtAssignment` seen), not
    configured — one less value to keep in sync.
 
+   On a day with more than one facility, the board shows a **Venue** row
+   built from the snapshot's facility names. `?venue=<facility name>`
+   narrows it to one facility's matches and courts, and composes with
+   `?courts=`, so each venue's screen can be bookmarked to its own board.
+   Nothing to configure. It relies on the continuous court numbering
+   described in step 4's `FACILITIES` (Main 1–4, Annex 5–9).
+
 7. **Add the event + its days to the shared config.** In the `event-data`
    repo, open `config/events.json` and add an entry to `events` for
    `<event-key>`, with one sub-entry per day under `days` (see
@@ -290,6 +297,15 @@ clubs; it is not a general multi-club template.
    watched tab (a late roster or schedule fix) after sync is already wired
    up. Do the setup step *last*, after rosters and schedule fixes, and you
    generally won't need it: the trigger doesn't exist until setup runs.
+
+   **SAGE → Fill match numbers** is also present whether configured or not.
+   It numbers the matches on SCHEDULE starting after a number you give it.
+   For a multi-facility day, give each facility's workbook its own range
+   (e.g. 1000 and 2000), because all of a day's facilities merge into one
+   snapshot and match numbers must not repeat within it. It writes the same
+   numbers into the `CSV` tab's `matchNumber` column. The site only shows
+   matches listed there. It leaves that column alone if it holds formulas,
+   and warns if the column still doesn't list every new number.
 
    **SAGE → Help** is present in every workbook whether configured or not,
    and carries this whole procedure plus a troubleshooting list — point an
