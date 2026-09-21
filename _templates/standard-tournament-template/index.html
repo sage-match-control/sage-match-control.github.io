@@ -852,6 +852,12 @@
     gap:10px;
     margin-bottom:10px;
   }
+  /* Mobile (below the same 980px breakpoint as isDesktopStandings) stacks
+     the brackets in one column — two side by side don't fit a phone-width
+     category card without squeezing every table. */
+  @media (max-width:979px){
+    .rr-bracket-grid{ grid-template-columns:1fr; }
+  }
   .rr-bracket-grid .br-table{ margin-bottom:0; }
   .rr-bracket-label{
     font-family:'Barlow Condensed',sans-serif;
