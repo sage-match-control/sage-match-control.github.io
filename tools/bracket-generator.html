@@ -648,7 +648,7 @@
 
   <div class="input-panel">
     <div class="field">
-      <label class="field-label" for="eventNameInput">Event name <span class="field-optional">optional</span></label>
+      <label class="field-label" for="eventNameInput">Event name <span class="field-optional">(optional)</span></label>
       <input id="eventNameInput" class="field-input" type="text"
              placeholder="e.g. BKL Pickleball Cup 2026" autocomplete="off" maxlength="80" />
       <div class="field-meta">
@@ -658,15 +658,15 @@
     <div class="field">
       <span class="field-label" id="drawModeLabel">Draw type</span>
       <div class="mode-toggle" role="radiogroup" aria-labelledby="drawModeLabel">
-        <label><input type="radio" name="drawMode" value="seeded" checked><span>Seeded</span></label>
-        <label><input type="radio" name="drawMode" value="random"><span>Random</span></label>
+        <label><input type="radio" name="drawMode" value="seeded" checked><span>Verifiable Draw</span></label>
+        <label><input type="radio" name="drawMode" value="random"><span>Random Draw</span></label>
       </div>
       <div class="field-meta">
         <span class="field-hint" id="drawModeHint"></span>
       </div>
     </div>
     <div class="field">
-      <label class="field-label" for="seedInput">Seed <span class="field-optional" id="seedOptional">optional</span></label>
+      <label class="field-label" for="seedInput">Seed <span class="field-optional" id="seedOptional">(optional)</span></label>
       <input id="seedInput" class="field-input" type="text"
              placeholder="e.g. MANGO, 42, 7-3" autocomplete="off" maxlength="40" />
       <div class="field-meta">
@@ -749,9 +749,9 @@
     <p><strong>(auto)</strong> &mdash; nobody supplied one, so the app made one up at the moment of the draw.</p>
     <p>Either way the result can still be checked afterwards, and a bracket that has been altered will not match. The difference is what it proves about <em>how the seed was chosen</em> &mdash; only a seed called out in the room shows the organiser didn't go hunting for one they liked.</p>
 
-    <h3>Seeded or Random</h3>
-    <p><strong>Seeded</strong> &mdash; everything above. Type a seed or leave it blank for one to be made up; pressing again with the same seed gives the same brackets. Use this for a draw people are watching.</p>
-    <p><strong>Random</strong> &mdash; nothing to type. Every press gives a fresh result. Behind the scenes the app still makes up a seed for each draw and marks it <strong>(auto)</strong> on the sheet, so a Random draw can still be checked afterwards if anyone asks.</p>
+    <h3>Verifiable Draw or Random Draw</h3>
+    <p><strong>Verifiable Draw</strong> &mdash; everything above. Type a seed or leave it blank for one to be made up; pressing again with the same seed gives the same brackets. Use this for a draw people are watching.</p>
+    <p><strong>Random Draw</strong> &mdash; nothing to type. Every press gives a fresh result. Behind the scenes the app still makes up a seed for each draw and marks it <strong>(auto)</strong> on the sheet, so a Random Draw can still be checked afterwards if anyone asks.</p>
 
     <h3>Why this is hard to rig</h3>
     <ul>
