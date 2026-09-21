@@ -1,5 +1,5 @@
 // Service worker for tools/tournament-calculator.html ONLY.
-// See specs/calculator-pwa-spec.md in the SAGE project folder for the design
+// See sage-docs/docs/specs/.../calculator-pwa-spec.md for the design
 // this implements. Scope is bound to the calculator's own page path via the
 // registration call in tournament-calculator.html (not the directory), and
 // this fetch handler passes everything it doesn't explicitly own straight to

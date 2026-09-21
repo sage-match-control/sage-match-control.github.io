@@ -786,8 +786,8 @@ function slugify(s){
 // The draw is a deterministic function of (seed, pair list): each pair is
 // fingerprinted with SHA-256 and the list sorted by that fingerprint, so anyone
 // can reproduce it without this tool — including on a third-party SHA-256 site,
-// which is the whole point. Spec: sage-docs/docs/specs/
-// bracket-generator-verifiable-draw-spec.md
+// which is the whole point. Spec:
+// sage-docs/docs/specs/.../bracket-generator-verifiable-draw-spec.md
 const SEED_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ'; // no I/O/0/1 — read aloud safely
 const AUTO_SEED_LENGTH = 8;
 

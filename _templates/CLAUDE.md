@@ -334,7 +334,7 @@ clubs; it is not a general multi-club template.
 | Token | Meaning |
 | --- | --- |
 | `{{EVENT_KEY}}` | Folder-name-safe slug. Must equal the `events/` folder name and the `event-data` folder name. |
-| `{{EVENT_TITLE}}` | Event name — `<title>`, hero `<h1>`, footer. |
+| `{{EVENT_TITLE}}` | Event name — `<title>`, hero `<h1>`, footer. In `schedule.html`: `<title>`, meta description and `og:title`. |
 | `{{EVENT_TAGLINE}}` | Hero subtitle line. |
 | `{{EVENT_HEADLINE}}` | Hero's big secondary line. Optional — blank is fine. |
 | `{{EVENT_DATE_RANGE}}` | Hero eyebrow, footer, meta description. |
