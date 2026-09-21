@@ -96,7 +96,10 @@ clubs; it is not a general multi-club template.
    so pick it once and keep it identical in all three places.
 
 2. **Add the event's images.** Drop the QR PNG into `events/<event-key>/`
-   (usually `assets/qr.png`) and set `{{QR_IMAGE}}` to its path. For
+   (usually `assets/qr.png`) and set `{{QR_IMAGE}}` to its path. Drop the
+   event's own logo in alongside it (e.g. `assets/logo.png`) and set
+   `{{EVENT_LOGO}}` to its path — it renders paired with the S.A.G.E. logo
+   at the top of the hero, replacing the old crown mark. For
    `dual-meet-template/`, drop both clubs' logos in alongside it and set
    `{{CLUB_A_LOGO}}` / `{{CLUB_B_LOGO}}` to their paths — these render in the
    hero, the club win summary, the Live Matches table and every match card,
@@ -341,6 +344,7 @@ clubs; it is not a general multi-club template.
 | `{{VENUE}}` | Hero eyebrow, footer. |
 | `{{QR_IMAGE}}` | Path to the QR PNG dropped in alongside `index.html` (§2 step 2). |
 | `{{QR_URL}}` | The short link printed under the QR code. |
+| `{{EVENT_LOGO}}` | Path to the event's own logo dropped in alongside `index.html` (§2 step 2). Shown paired with `/assets/logo.png` at the top of the hero. |
 | `{{SCHEDULE_DAY_KEY}}` | `schedule.html` only — which day's key the wall display shows (§2 step 6). |
 
 `dual-meet-template/` only (`index.html`):
