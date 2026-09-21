@@ -230,6 +230,35 @@
     outline:none;
   }
   .field-input:focus, .field-textarea:focus{border-color:var(--court-dark);}
+  .field-input:disabled{background:var(--paper-dim); color:var(--ink-soft); cursor:not-allowed;}
+  /* Draw type: a radio group styled as a segmented control. The inputs stay
+     real radios (keyboard arrows, form semantics) and are only visually hidden. */
+  .mode-toggle{
+    display:flex;
+    border:2px solid rgba(20,27,44,.18);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .mode-toggle label{ flex:1; position:relative; cursor:pointer; }
+  .mode-toggle label + label{ border-left:1px solid var(--line); }
+  .mode-toggle input{ position:absolute; inset:0; margin:0; opacity:0; cursor:pointer; }
+  .mode-toggle span{
+    display:block;
+    height:100%;
+    padding:10px 6px;
+    text-align:center;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    transition:background .15s ease, color .15s ease;
+  }
+  .mode-toggle input:checked + span{ background:var(--navy); color:var(--white); }
+  .mode-toggle input:focus-visible + span{ outline:2px solid var(--green); outline-offset:-4px; }
+  .mode-toggle input:disabled, .mode-toggle input:disabled + span{ cursor:not-allowed; }
+  .mode-toggle input:disabled + span{ opacity:.4; }
   .field-input::placeholder, .field-textarea::placeholder{color:#9AA3B5; font-weight:500;}
   .field-textarea{
     font-family:'Barlow Condensed',sans-serif;
@@ -627,11 +656,21 @@
       </div>
     </div>
     <div class="field">
-      <label class="field-label" for="seedInput">Seed <span class="field-optional">optional</span></label>
+      <span class="field-label" id="drawModeLabel">Draw type</span>
+      <div class="mode-toggle" role="radiogroup" aria-labelledby="drawModeLabel">
+        <label><input type="radio" name="drawMode" value="seeded" checked><span>Seeded</span></label>
+        <label><input type="radio" name="drawMode" value="random"><span>Random</span></label>
+      </div>
+      <div class="field-meta">
+        <span class="field-hint" id="drawModeHint"></span>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="seedInput">Seed <span class="field-optional" id="seedOptional">optional</span></label>
       <input id="seedInput" class="field-input" type="text"
              placeholder="e.g. MANGO, 42, 7-3" autocomplete="off" maxlength="40" />
       <div class="field-meta">
-        <span class="field-hint">For a public draw, ask someone in the room for a word or number &mdash; it decides the draw, and anyone can check it afterwards. Leave blank and one is generated for you. <button type="button" class="link-btn" id="howItWorksLink">How it works</button></span>
+        <span class="field-hint"><span id="seedHintText"></span> <button type="button" class="link-btn" id="howItWorksLink">How it works</button></span>
       </div>
     </div>
     <div class="field">
@@ -709,6 +748,10 @@
     <p><strong>(entered)</strong> &mdash; a person typed it in. At a public draw that should be a player calling it out, not the organiser.</p>
     <p><strong>(auto)</strong> &mdash; nobody supplied one, so the app made one up at the moment of the draw.</p>
     <p>Either way the result can still be checked afterwards, and a bracket that has been altered will not match. The difference is what it proves about <em>how the seed was chosen</em> &mdash; only a seed called out in the room shows the organiser didn't go hunting for one they liked.</p>
+
+    <h3>Seeded or Random</h3>
+    <p><strong>Seeded</strong> &mdash; everything above. Type a seed or leave it blank for one to be made up; pressing again with the same seed gives the same brackets. Use this for a draw people are watching.</p>
+    <p><strong>Random</strong> &mdash; nothing to type. Every press gives a fresh result. Behind the scenes the app still makes up a seed for each draw and marks it <strong>(auto)</strong> on the sheet, so a Random draw can still be checked afterwards if anyone asks.</p>
 
     <h3>Why this is hard to rig</h3>
     <ul>
@@ -823,6 +866,7 @@ let currentEventName = '';
 let currentBrackets = []; // [{ label, pairs: [] }]
 let currentSeed = '';
 let currentSeedSource = '';   // 'entered' | 'auto'
+let lastAutoSeed = '';        // the last seed this page made up and wrote into the field
 let currentFingerprints = []; // [{ pair, hash }] in draw order
 let drawCount = 0;
 let lastDrawInputKey = '';    // drawCount resets when the category or pairs change
@@ -830,6 +874,10 @@ let lastDrawInputKey = '';    // drawCount resets when the category or pairs cha
 // ==================== Elements ====================
 const eventNameInput = document.getElementById('eventNameInput');
 const seedInput = document.getElementById('seedInput');
+const seedOptionalEl = document.getElementById('seedOptional');
+const seedHintTextEl = document.getElementById('seedHintText');
+const drawModeHintEl = document.getElementById('drawModeHint');
+const drawModeRadios = [...document.querySelectorAll('input[name="drawMode"]')];
 const categoryInput = document.getElementById('categoryInput');
 const pairsInput = document.getElementById('pairsInput');
 const bracketCountInput = document.getElementById('bracketCountInput');
@@ -877,6 +925,35 @@ howCloseBtn.addEventListener('click', () => howDialog.close());
 // Clicking the backdrop lands on the <dialog> itself rather than its contents.
 howDialog.addEventListener('click', e => { if(e.target === howDialog) howDialog.close(); });
 
+// ==================== Draw type ====================
+// Random is Seeded with a fresh auto-seed forced on every press — the same
+// fingerprint draw underneath, so it stays checkable at no cost. There is no
+// unverified mode: keeping the seed costs nothing and can only help.
+const DRAW_MODE_HINTS = {
+  'seeded': 'Same seed, same brackets. The one to use for a draw people are watching.',
+  'random': 'A fresh result every press, nothing to type. Still checkable afterwards from the seed it shows.',
+};
+const SEED_HINTS = {
+  'seeded': 'For a public draw, ask someone in the room for a word or number — it decides the draw, and anyone can check it afterwards. Leave blank and one is generated for you.',
+  'random': 'Made up fresh at every draw — nothing to type. The one used is shown here and on the exports.',
+};
+
+const getDrawMode = () => (drawModeRadios.find(r => r.checked) || drawModeRadios[0]).value;
+
+function applyDrawMode(){
+  const mode = getDrawMode();
+  drawModeHintEl.textContent = DRAW_MODE_HINTS[mode];
+  seedInput.disabled = mode !== 'seeded';
+  seedOptionalEl.hidden = mode !== 'seeded';
+  seedInput.placeholder = mode === 'seeded' ? 'e.g. MANGO, 42, 7-3' : 'Generated at each draw';
+  seedHintTextEl.textContent = SEED_HINTS[mode];
+  // Back to Seeded with a made-up seed still in the field: clear it, so a public
+  // draw starts from an empty box rather than silently reusing the app's seed.
+  if(mode === 'seeded' && seedInput.value && seedInput.value === lastAutoSeed) seedInput.value = '';
+}
+drawModeRadios.forEach(r => r.addEventListener('change', applyDrawMode));
+applyDrawMode();
+
 // ==================== Secure-context guard ====================
 // SubtleCrypto needs a secure context. GitHub Pages is HTTPS, so this only bites
 // a local file:// open. Fail closed rather than falling back to an unverifiable
@@ -886,6 +963,7 @@ const CRYPTO_OK = !!(window.crypto && window.crypto.subtle && window.crypto.getR
 if(!CRYPTO_OK){
   generateBtn.disabled = true;
   seedInput.disabled = true;
+  drawModeRadios.forEach(r => { r.disabled = true; });
   showFormError('This page has to be served over HTTPS to run a verifiable draw. Open it at https://sage-match-control.github.io/tools/bracket-generator.html');
 }
 
@@ -948,12 +1026,19 @@ async function generateBrackets(){
   currentCategory  = categoryInput.value.trim();
   currentEventName = eventNameInput.value.trim();
 
-  // A blank seed gets one generated and written back to the field, so there is
-  // always a seed and every draw is reproducible. Only *who chose it* varies,
-  // which is what the (entered)/(auto) label on the exports records.
-  const typedSeed = normalizeSeed(seedInput.value);
-  currentSeedSource = typedSeed ? 'entered' : 'auto';
-  currentSeed = typedSeed || generateAutoSeed();
+  // Seeded: a blank seed gets one generated and written back to the field, so
+  // there is always a seed and every draw is reproducible. Only *who chose it*
+  // varies, which is what the (entered)/(auto) label on the exports records.
+  // The app's own seed left in the field and drawn again is still (auto) —
+  // nobody entered it. Random: always a fresh one, always (auto).
+  const typedSeed = getDrawMode() === 'seeded' ? normalizeSeed(seedInput.value) : '';
+  if(typedSeed){
+    currentSeed = typedSeed;
+    currentSeedSource = typedSeed === lastAutoSeed ? 'auto' : 'entered';
+  } else {
+    currentSeed = lastAutoSeed = generateAutoSeed();
+    currentSeedSource = 'auto';
+  }
   seedInput.value = currentSeed;
 
   // Counts seeds tried against THIS input, so a re-roll is on the record rather
@@ -1167,7 +1252,7 @@ function exportAsText(){
   out += 'the order is decided by the full code, not the first eight characters.\n\n';
 
   out += currentEventName
-    ? `${currentEventName} \u00b7 Bracket Draw\n`
+    ? `${currentEventName} · Bracket Draw\n`
     : 'S.A.G.E. Bracket Draw\n';
   out += 'Powered by S.A.G.E. Match Control Experts\n';
 
