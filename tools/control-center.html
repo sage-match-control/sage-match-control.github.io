@@ -510,6 +510,45 @@
     text-transform:none;
     color:var(--ink-soft);
   }
+
+  .facility-progress{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+    gap:12px;
+    margin:0 0 22px;
+  }
+  .facility-progress:empty{display:none;}
+  .fp-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 18px;
+    color:var(--court-line);
+    min-width:0;
+  }
+  .fp-name{
+    font-family:'Archivo Black',sans-serif;
+    font-size:13px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .fp-bar-row{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .fp-bar{flex:1; height:8px; border-radius:4px; background:var(--line); overflow:hidden;}
+  .fp-bar > span{display:block; height:100%; background:var(--amber);}
+  .fp-frac{font-size:12px; color:var(--ink-soft); white-space:nowrap;}
+  .fp-line{font-size:13px; line-height:1.5;}
+  .fp-line b{color:var(--cork);}
+  .fp-sub{font-size:11.5px; color:var(--ink-soft);}
+  .fp-behind{color:#B3541A; font-weight:600;}
+  .org-status-row.has-progress{flex-wrap:wrap; row-gap:4px;}
+  .org-status-progress{
+    flex:1 1 100%;
+    padding-left:17px;
+    font-size:12px;
+    color:var(--muted);
+  }
+  .org-status-progress b{color:var(--ink); font-weight:600;}
   .live-table-wrap{
     background:var(--white);
     border-radius:10px;
@@ -2005,6 +2044,7 @@
   <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
   <div id="liveResults" style="display:none;">
     <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div class="facility-progress" id="facilityProgress"></div>
     <div id="liveBoard"></div>
   </div>
   <div id="results" style="display:none;"></div>
@@ -4033,6 +4073,209 @@ function facilityTableHTML(facility, rows){
   </div>`;
 }
 
+// ---- Facility progress (sage-docs/docs/specs/.../facility-progress-spec.md) ----
+// Done / left / estimated finish per facility, computed from the matches
+// already loaded — no fetch. Shown twice: a card per facility on Live Matches
+// (renderFacilityProgress, called by renderLiveMatches) and one line per
+// facility in Mission Control's sync status (facilityStatusProgressHTML,
+// called by renderOrganizerStatus). Both run on every poll. The estimate is
+// the operators' own formula — (matches left + blank slots left) × slot
+// length ÷ courts — floored at the busiest court's own queue.
+const facilityProgressEl = document.getElementById('facilityProgress');
+
+// Event-day minutes (spec §3.1): minutes since midnight PH at the start of the
+// selected day's date, so play that runs past midnight keeps counting up
+// (12:30 AM next morning = 1470) instead of wrapping to 0. Anything before
+// DAY_ROLLOVER_MIN belongs to the night after the event day, not its morning.
+const DAY_ROLLOVER_MIN = 6 * 60;
+
+function eventScheduleMinutes(raw){
+  const t = parseScheduleTimeToMinutes(raw);
+  if(t === null) return null;
+  return t < DAY_ROLLOVER_MIN ? t + 1440 : t;
+}
+
+function eventDayNowMinutes(){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day || !day.date) return null;
+  return Math.floor((Date.now() - Date.parse(`${day.date}T00:00:00+08:00`)) / 60000);
+}
+
+// From midnight at the start of day.date until DAY_ROLLOVER_MIN the next
+// morning — so an event running late keeps its estimate past midnight.
+function isEventDayActive(nowMin){
+  return nowMin !== null && nowMin >= 0 && nowMin < 1440 + DAY_ROLLOVER_MIN;
+}
+
+// Event-day minutes → "4:40 PM", or "12:15 AM (+1 day)" once past the
+// event date's midnight. The offset is from the event's date, not from now.
+function eventClock(mins){
+  const r = Math.round(mins);
+  const dayOffset = Math.floor(r / 1440);
+  const label = formatMinutesAsClock(((r % 1440) + 1440) % 1440);
+  return dayOffset > 0 ? `${label} (+${dayOffset} day${dayOffset === 1 ? '' : 's'})` : label;
+}
+
+// Minutes → "20 min", "1 h", "1 h 15 min".
+function formatGap(mins){
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if(h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+function computeFacilityProgress(matches, isEventDay, nowMin){
+  const real = matches.filter(m => matchByeSide(m) === null);
+  const total = real.length;
+  const done = real.filter(m => m.played).length;
+  const left = total - done;
+  const inPlay = real.filter(m => !m.played && m.liveCourt).length;
+
+  const placed = [];
+  let unscheduledLeft = 0;
+  real.forEach(m => {
+    const c = courtNumberFrom(m.court);
+    const t = eventScheduleMinutes(m.time);
+    if(c === null || t === null){ if(!m.played) unscheduledLeft++; return; }
+    placed.push({ c, t, played: m.played });
+  });
+  const base = { total, done, left, inPlay, unscheduledLeft };
+  if(placed.length === 0){
+    return { ...base, slot: null, courts: 0, rows: 0, blanks: 0, blanksDone: 0,
+             plannedEnd: null, eta: null };
+  }
+
+  // Slot length: median positive gap between consecutive times on one court.
+  const timesByCourt = new Map();
+  placed.forEach(p => {
+    if(!timesByCourt.has(p.c)) timesByCourt.set(p.c, new Set());
+    timesByCourt.get(p.c).add(p.t);
+  });
+  const gaps = [];
+  timesByCourt.forEach(set => {
+    const sorted = Array.from(set).sort((a, b) => a - b);
+    for(let i = 1; i < sorted.length; i++) gaps.push(sorted[i] - sorted[i - 1]);
+  });
+  gaps.sort((a, b) => a - b);
+  const slot = gaps.length ? gaps[Math.floor((gaps.length - 1) / 2)] : 25;
+
+  // The grid: rows are slots from the day's first match, columns are courts.
+  const start = Math.min(...placed.map(p => p.t));
+  placed.forEach(p => { p.row = Math.round((p.t - start) / slot); });
+  const rows = Math.max(...placed.map(p => p.row)) + 1;
+  const courts = timesByCourt.size;
+  const occupied = new Set(placed.map(p => p.c + '|' + p.row));
+  const unplayedRows = placed.filter(p => !p.played).map(p => p.row);
+  const frontier = unplayedRows.length ? Math.min(...unplayedRows) : rows;
+  let blanks = 0, blanksDone = 0;
+  timesByCourt.forEach((_, c) => {
+    for(let r = 0; r < rows; r++){
+      if(occupied.has(c + '|' + r)) continue;
+      blanks++;
+      if(r < frontier) blanksDone++;
+    }
+  });
+  const plannedEnd = start + rows * slot;
+
+  const unitsLeft = (left - 0.5 * inPlay) + (blanks - blanksDone);
+  const queueByCourt = new Map();
+  real.forEach(m => {
+    const c = courtNumberFrom(m.court);
+    if(m.played || c === null || eventScheduleMinutes(m.time) === null) return;
+    queueByCourt.set(c, (queueByCourt.get(c) || 0) + (m.liveCourt ? 0.5 : 1));
+  });
+  const queue = queueByCourt.size ? Math.max(...queueByCourt.values()) : 0;
+
+  let eta = null;
+  if(isEventDay && left > 0){
+    eta = Math.max(nowMin, start) + Math.max(unitsLeft * slot / courts, queue * slot);
+  }
+
+  return { ...base, slot, courts, rows, blanks, blanksDone, plannedEnd, eta };
+}
+
+// Same rule as renderOrganizerStatus's isWarn — keep the two in step.
+// STALE_WARNING_MS is declared further down the script; this only ever runs
+// from a poll or render, after the whole script has loaded.
+function facilityDataIsStale(name){
+  const entry = LAST_SNAPSHOT ? (LAST_SNAPSHOT.facilities || []).find(f => f.name === name) : null;
+  if(!entry) return false;
+  const failed = (LAST_SNAPSHOT.failedFacilities || []).includes(name);
+  const ageMs = Date.now() - new Date(entry.syncedAt || 0).getTime();
+  return failed || ageMs > STALE_WARNING_MS;
+}
+
+// Everything both displays need for one facility, or null if it has no
+// matches loaded. `stale` already applies spec §2.3's event-day/left conditions.
+function facilityProgressFor(name){
+  const f = MATCHES_BY_FACILITY.find(x => x.name === name);
+  if(!f) return null;
+  const nowMin = eventDayNowMinutes();
+  const isEventDay = isEventDayActive(nowMin);
+  const p = computeFacilityProgress(f.matches, isEventDay, nowMin);
+  const entry = LAST_SNAPSHOT ? (LAST_SNAPSHOT.facilities || []).find(x => x.name === name) : null;
+  return {
+    p, isEventDay,
+    stale: isEventDay && p.left > 0 && facilityDataIsStale(name),
+    syncedAt: entry ? entry.syncedAt || null : null
+  };
+}
+
+// The finish line (spec §2.1 line 4), shared by the card and Mission Control.
+// scheduledEnd is the clock label for the card's extra line, or null.
+function facilityFinishParts(p, isEventDay){
+  const round5 = x => Math.round(x / 5) * 5;
+  if(p.left === 0) return { finish: 'All matches done', scheduledEnd: null };
+  if(p.plannedEnd === null) return { finish: 'No scheduled times yet', scheduledEnd: null };
+  if(isEventDay && p.eta !== null){
+    const diff = round5(p.eta - p.plannedEnd);
+    const etaText = `Est. finish <b>${eventClock(round5(p.eta))}</b>`;
+    const finish = diff > 0 ? `${etaText} &middot; <span class="fp-behind">${formatGap(diff)} behind</span>`
+      : diff < 0 ? `${etaText} &middot; ${formatGap(-diff)} ahead`
+      : `${etaText} &middot; on schedule`;
+    return { finish, scheduledEnd: diff !== 0 ? eventClock(p.plannedEnd) : null };
+  }
+  return { finish: `Scheduled end <b>${eventClock(p.plannedEnd)}</b>`, scheduledEnd: null };
+}
+
+function facilityProgressCardHTML(name, info){
+  const { p, isEventDay, stale, syncedAt } = info;
+  const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+  const { finish, scheduledEnd } = facilityFinishParts(p, isEventDay);
+  const subs = [];
+  if(scheduledEnd) subs.push(`Scheduled end ${scheduledEnd}`);
+  if(stale) subs.push(`<span class="fp-behind">Data from ${relativeTimeFromNow(syncedAt)} &mdash; estimate reads late until this sheet syncs again</span>`);
+  if(p.left > 0 && p.unscheduledLeft > 0){
+    subs.push(`${p.unscheduledLeft} match${p.unscheduledLeft === 1 ? '' : 'es'} without a court/time &mdash; counted as work left, not on the schedule`);
+  }
+  return `<div class="fp-card">
+    <div class="fp-name">${escapeHtml(name)}</div>
+    <div class="fp-bar-row">
+      <div class="fp-bar"><span style="width:${pct}%"></span></div>
+      <span class="fp-frac">${p.done} / ${p.total}</span>
+    </div>
+    <div class="fp-line">Done <b>${p.done}</b> &middot; Left <b>${p.left}</b> &middot; In play <b>${p.inPlay}</b></div>
+    <div class="fp-line">${finish}</div>
+    ${subs.map(s => `<div class="fp-sub">${s}</div>`).join('')}
+  </div>`;
+}
+
+function renderFacilityProgress(){
+  if(!facilityProgressEl) return;
+  facilityProgressEl.innerHTML = MATCHES_BY_FACILITY
+    .map(({ name }) => facilityProgressCardHTML(name, facilityProgressFor(name)))
+    .join('');
+}
+
+// Mission Control: the second line inside a facility's sync-status row, or ''
+// when there's nothing to show (spec §2.2).
+function facilityStatusProgressHTML(name){
+  const info = facilityProgressFor(name);
+  if(!info || info.p.total === 0) return '';
+  const { finish } = facilityFinishParts(info.p, info.isEventDay);
+  const staleText = info.stale ? ' &middot; <span class="fp-behind">stale &mdash; may read late</span>' : '';
+  return `<span class="org-status-progress">${info.p.done} / ${info.p.total} done &middot; ${finish}${staleText}</span>`;
+}
+
 function renderLiveMatches(){
   const boardEl = liveBoardEl;
   const metaEl = liveBoardMetaEl;
@@ -4052,6 +4295,7 @@ function renderLiveMatches(){
   const scrollPositions = captureScrollPositions(boardEl);
   boardEl.innerHTML = Array.from(groups.entries()).map(([facility, rows]) => facilityTableHTML(facility, rows)).join('');
   restoreScrollPositions(boardEl, scrollPositions);
+  renderFacilityProgress();
 }
 
 function resolveTeam(raw){
@@ -5127,11 +5371,13 @@ function renderOrganizerStatus(){
     const detail = failedLastAttempt
       ? `Last attempt failed \u2014 showing data from ${relativeTimeFromNow(entry.syncedAt)}`
       : `Synced ${relativeTimeFromNow(entry.syncedAt)}`;
-    return `<div class="org-status-row ${isWarn ? 'org-status-warn' : 'org-status-ok'}">
+    const progressHTML = facilityStatusProgressHTML(name);
+    return `<div class="org-status-row ${isWarn ? 'org-status-warn' : 'org-status-ok'}${progressHTML ? ' has-progress' : ''}">
       <span class="org-status-dot"></span>
       <span class="org-status-name">${escapeHtml(name)}</span>
       <span class="org-status-detail">${detail}</span>
       ${sheetLinkHTML(name)}
+      ${progressHTML}
     </div>`;
   }).join('');
 }
