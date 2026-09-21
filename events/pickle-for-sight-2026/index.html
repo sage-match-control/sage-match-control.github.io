@@ -851,6 +851,33 @@
   .br-table td.br-badge{
     text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
   }
+  /* A division split into multiple Round Robin brackets gets one mini table
+     per bracket instead of one flat table with a Br column, laid out here
+     so pools read side by side rather than stacking indefinitely down the
+     category column. */
+  .rr-bracket-grid{
+    display:grid;
+    /* Capped at 2 columns: each track must be at least half the row (minus
+       half the gap), so a 3rd+ bracket wraps to a new row instead of the
+       row just squeezing in more, ever-narrower columns. A single bracket
+       still gets the full width — auto-fit collapses the empty track. */
+    grid-template-columns:repeat(auto-fit, minmax(calc(50% - 5px), 1fr));
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .rr-bracket-grid .br-table{ margin-bottom:0; }
+  .rr-bracket-label{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-weight:700;
+    text-align:center;
+    padding:4px 6px;
+    border-radius:8px 8px 0 0;
+    color:#fff;
+  }
+  .rr-bracket-label + .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
   /* Badge text follows its own fill, not one blanket colour: white reads on
      the navy and purple badges, navy on the green one (white on --green is
      ~2.6:1). */
@@ -963,6 +990,14 @@
       max-width:360px;
       max-height:92vh;
       overflow-y:auto;
+    }
+    /* A category with a 2-column Round Robin bracket grid (see
+       .rr-bracket-grid) spans a whole column's width plus the gap between
+       columns, so it resizes to exactly two normal columns' worth of space
+       instead of cramming two mini tables into one 360px card. */
+    .standings-board-desktop .standings-col.standings-col--wide{
+      flex:0 0 740px;
+      max-width:740px;
     }
     .standings-board-desktop .standings-col::-webkit-scrollbar{width:5px;}
     .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
@@ -1936,33 +1971,46 @@ function renderStageTables(rows){
     });
   });
 
-  if(rrGroups.size === 0 && stages.size === 0) return '';
+  if(rrGroups.size === 0 && stages.size === 0) return { html: '', hasMultiBracket: false };
 
   let html = '';
+  let hasMultiBracket = false;
 
-  // Round Robin block (if any)
+  // Round Robin block (if any). Multiple sub-brackets (e.g. "1"/"2") each get
+  // their own mini table laid out in a grid, so a big division reads as
+  // parallel pools instead of one long flat table with a Br column.
   if(rrGroups.size > 0){
-    const showBracketColumn = Array.from(rrGroups.keys()).some(k => k !== '');
-    html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>
-      <table class="br-table"><thead><tr>
-        ${showBracketColumn ? '<th class="br-badge">Br</th>' : ''}<th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
-      </tr></thead><tbody>`;
+    const bracketLabels = Array.from(rrGroups.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+    const hasBrackets = bracketLabels.some(k => k !== '');
+    hasMultiBracket = hasBrackets && bracketLabels.length >= 2;
     let badgeIdx = 0;
     const badgeMap = new Map();
-    Array.from(rrGroups.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true})).forEach(brNum => {
-      if(showBracketColumn && brNum !== '' && !badgeMap.has(brNum)){ badgeMap.set(brNum, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
-      const badgeClass = badgeMap.get(brNum);
-      rrGroups.get(brNum).forEach(s => {
-        html += `<tr class="${standingRowClass(s)}">
-          ${showBracketColumn ? `<td class="br-badge ${badgeClass || ''}">${escapeHtml(brNum)}</td>` : ''}
+    bracketLabels.forEach(brLabel => {
+      if(brLabel !== '' && !badgeMap.has(brLabel)){ badgeMap.set(brLabel, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
+    });
+    const rrTable = rows => `<table class="br-table"><thead><tr>
+        <th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
+      </tr></thead><tbody>${rows.map(s => `<tr class="${standingRowClass(s)}">
           ${pairCell(s)}
           <td class="num">${s.wins}</td>
           <td class="num">${s.loss}</td>
           <td class="quo">${fmtQ(s.quotient)}</td>
-        </tr>`;
+        </tr>`).join('')}</tbody></table>`;
+    html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>`;
+    if(hasBrackets){
+      html += `<div class="rr-bracket-grid">`;
+      bracketLabels.forEach(brLabel => {
+        const badgeClass = brLabel === '' ? 'badge-x' : badgeMap.get(brLabel);
+        html += `<div class="rr-bracket">
+          <div class="rr-bracket-label ${badgeClass}">Bracket ${brLabel ? escapeHtml(brLabel) : '—'}</div>
+          ${rrTable(rrGroups.get(brLabel))}
+        </div>`;
       });
-    });
-    html += `</tbody></table></div>`;
+      html += `</div>`;
+    } else {
+      html += rrTable(rrGroups.get(''));
+    }
+    html += `</div>`;
   }
 
   // Playoff-style stages, in a sensible order, unknown stages appended at the end
@@ -1987,7 +2035,7 @@ function renderStageTables(rows){
     html += `</div>`;
   });
 
-  return html;
+  return { html, hasMultiBracket };
 }
 
 // Groups a playoff stage's rows into head-to-head matchups so it's obvious
@@ -2083,9 +2131,9 @@ function renderMatchup(pair){
 }
 
 function renderCategoryCard(cat, rows){
-  const stageHtml = renderStageTables(rows);
+  const { html: stageHtml, hasMultiBracket } = renderStageTables(rows);
   if(!stageHtml) return '';
-  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}">
+  return `<div class="standings-col${hasMultiBracket ? ' standings-col--wide' : ''}" data-cat-key="${escapeHtml(cat)}">
     <div class="standings-col-head">
       <span class="cat-title">${escapeHtml(cat)}</span>
     </div>
