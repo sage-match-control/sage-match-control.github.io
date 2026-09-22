@@ -658,7 +658,7 @@
     font-size:15px;
     font-weight:600;
     letter-spacing:.01em;
-    padding:12px 14px;
+    padding:12px 38px 12px 14px;
     border-radius:10px;
     border:2px solid rgba(20,27,44,.18);
     background:var(--white);
@@ -1379,7 +1379,10 @@
     <div class="category-filter" id="categoryFilterWrap">
       <label class="search-label" for="catFilterInput">Search a category</label>
       <div class="search-row autocomplete">
-        <input id="catFilterInput" type="text" class="cat-filter-input" placeholder="e.g. Beginner 18+ Men's Doubles" autocomplete="off" inputmode="latin" />
+        <div class="input-wrap">
+          <input id="catFilterInput" type="text" class="cat-filter-input" placeholder="e.g. Beginner 18+ Men's Doubles" autocomplete="off" inputmode="latin" />
+          <button type="button" id="clearCatBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+        </div>
         <div id="catAcList" class="ac-list"></div>
       </div>
     </div>
@@ -2252,6 +2255,7 @@ function renderStandings(){
   if(selectedStandingsCategory && !categories.has(selectedStandingsCategory)){
     selectedStandingsCategory = null;
     if(catInput) catInput.value = '';
+    if(typeof updateClearCatBtn === 'function') updateClearCatBtn();
   }
 
   renderStandingsBody();
@@ -2472,6 +2476,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   selectedStandingsCategory = null;
   hiddenCategories = new Set();
   if(catInput) catInput.value = '';
+  if(typeof updateClearCatBtn === 'function') updateClearCatBtn();
 
   saveDayIndex(idx);
   // A manually-chosen day drops any search saved for a different day, same
@@ -2618,11 +2623,28 @@ function selectCategory(cat){
   if(!CATEGORIES_MAP.has(cat)) return;
   selectedStandingsCategory = cat;
   if(catInput) catInput.value = cat;
+  updateClearCatBtn();
   renderStandingsBody();
 }
 
+const clearCatBtn = document.getElementById('clearCatBtn');
+function updateClearCatBtn(){
+  if(clearCatBtn) clearCatBtn.classList.toggle('show', !!(catInput && catInput.value.length > 0));
+}
+if(clearCatBtn){
+  clearCatBtn.addEventListener('click', () => {
+    catInput.value = '';
+    selectedStandingsCategory = null;
+    catAcList.classList.remove('show');
+    catAcList.innerHTML = '';
+    updateClearCatBtn();
+    renderStandingsBody();
+    catInput.focus();
+  });
+}
+
 if(catInput){
-  catInput.addEventListener('input', () => renderCatAutocomplete(catInput.value));
+  catInput.addEventListener('input', () => { renderCatAutocomplete(catInput.value); updateClearCatBtn(); });
   catInput.addEventListener('focus', () => renderCatAutocomplete(catInput.value));
   document.addEventListener('click', (e) => {
     if(!e.target.closest('#categoryFilterWrap')) catAcList.classList.remove('show');
