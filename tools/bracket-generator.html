@@ -917,6 +917,14 @@ function loadEventName(){ try{ return localStorage.getItem(STORAGE_EVENT_KEY) ||
 })();
 eventNameInput.addEventListener('change', () => saveEventName(eventNameInput.value.trim()));
 
+// ?category= prefill, from the workbook's SAGE -> Open Bracket Generator.
+// Never persisted, unlike the event name above: a category resurrected on a
+// later visit is how someone draws the wrong one.
+(function initCategoryFromQuery(){
+  const fromQuery = new URLSearchParams(location.search).get('category');
+  if(fromQuery !== null) categoryInput.value = fromQuery.trim();
+})();
+
 // ==================== How it works dialog ====================
 const openHowDialog = () => howDialog.showModal();
 howItWorksLink.addEventListener('click', openHowDialog);
