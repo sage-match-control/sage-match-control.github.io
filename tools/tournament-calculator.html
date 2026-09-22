@@ -136,8 +136,9 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
 .iomsg{margin-top:8px;font-size:13px;border-radius:10px;padding:9px 13px;border:1.5px solid}
 .iomsg.good{background:#F1F8E7;border-color:#C4DFA0;color:#3F6317}
 .iomsg.bad{background:#FBEAE6;border-color:#E4B3A8;color:#7C2D1E}
-/* Sits under the export buttons once Dual meet is picked — the exported CSV
-   is the generator's input, so the handoff belongs next to the export. */
+/* Sits under the export buttons — the exported CSV is the generator's input,
+   so the handoff belongs next to the export. Which master it opens follows the
+   format (GENERATOR_MASTERS below). */
 .genbox{margin-top:14px;border:1.5px solid var(--rule);border-radius:12px;padding:13px 15px;background:#FAFBF7}
 .genbox h3{margin:0 0 4px;font-family:'Barlow Condensed';font-weight:700;letter-spacing:.06em;
   text-transform:uppercase;font-size:14px;color:var(--navy)}
@@ -248,11 +249,8 @@ table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
     <div id="iomsg" class="iomsg" hidden></div>
     <div class="genbox" id="genbox" hidden>
       <h3>Build the event workbook</h3>
-      <p>Copies this plan to your clipboard and opens the generator's copy dialog.
-        Make the copy, then in it run <strong>SAGE &rarr; Generate event tabs</strong>
-        and paste into the sidebar.</p>
-      <a class="btn primary" id="genlink" target="_blank" rel="noopener"
-         href="https://docs.google.com/spreadsheets/d/1cBvQ5r6Nm29BJ7Hpsk_gonX31hWJHOrCK1WPLgQaqtg/copy">Copy plan &amp; open generator</a>
+      <p id="genhelp"></p>
+      <a class="btn primary" id="genlink" target="_blank" rel="noopener" href="#">Copy plan &amp; open generator</a>
     </div>
   </div>
 </main>
@@ -804,12 +802,30 @@ async function load(){
 /* ---------------- form <-> state ---------------- */
 const $=id=>document.getElementById(id);
 function isDualFormat(){ const el=$('f-format'); return !!el && el.value==='dual'; }
+// One master workbook per format, each with its own bound generator. A Drive
+// file ID survives the file being moved between folders, so only replacing a
+// workbook breaks its link. /copy lands the operator in Google's "Make a copy"
+// dialog.
+const GENERATOR_MASTERS={
+  dual:{
+    id:'1cBvQ5r6Nm29BJ7Hpsk_gonX31hWJHOrCK1WPLgQaqtg',
+    help:'Copies this plan to your clipboard and opens the Dual Meet Master’s copy dialog. '+
+      'Make the copy, then in it run <strong>SAGE &rarr; Generate event tabs</strong> and paste into the sidebar.'
+  },
+  standard:{
+    id:'1hETXleQtgUkSKhzPXaf_wJfWKvcnpLC9R-nj0WlHPlQ',
+    help:'Copies this plan to your clipboard and opens the Standard Tournament Master’s copy dialog. '+
+      'Make <strong>one copy per venue per day</strong>. In each, run <strong>SAGE &rarr; Generate event tabs</strong>, '+
+      'paste into the sidebar, then tick that venue’s categories and enter its court labels.'
+  }
+};
 function toggleDualClubsVisibility(){
   const w=$('dualClubs'); if(w) w.style.display=isDualFormat()?'':'none';
-  // The workbook generator only knows the dual-meet format, so its handoff
-  // stays hidden under standard. A standard-tournament generator is planned;
-  // when it lands this becomes a swap rather than a show/hide.
-  const g=$('genbox'); if(g) g.hidden=!isDualFormat();
+  // The generator handoff swaps masters with the format.
+  const m=GENERATOR_MASTERS[isDualFormat()?'dual':'standard'];
+  const g=$('genbox'); if(g) g.hidden=false;
+  const a=$('genlink'); if(a) a.href='https://docs.google.com/spreadsheets/d/'+m.id+'/copy';
+  const h=$('genhelp'); if(h) h.innerHTML=m.help;
 }
 function clubNames(){
   const a=($('f-clubA')&&$('f-clubA').value.trim())||'Club A';
@@ -1028,9 +1044,9 @@ function ioMsg(text,cls){
   const el=$('iomsg');el.textContent=text;el.className='iomsg '+cls;el.hidden=false;
   clearTimeout(msgTimer);msgTimer=setTimeout(()=>{el.hidden=true;},5000);
 }
-// Builds the export CSV as a string. Split out from exportCSV so the dual-meet
-// generator handoff can put the exact same bytes on the clipboard instead of
-// through a downloaded file.
+// Builds the export CSV as a string. Split out from exportCSV so the generator
+// handoff can put the exact same bytes on the clipboard instead of through a
+// downloaded file.
 function buildPlanCsv(cfg,r){
   const lines=[];
   lines.push('# Tournament Time Calculator export — use Import CSV to restore this setup');
