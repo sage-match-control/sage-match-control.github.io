@@ -71,18 +71,25 @@ clubs; it is not a general multi-club template.
 
 ## 2. The steps
 
-> **Dual meets: the event workbook can be generated, not hand-copied.** These
-> steps instantiate the *site*; they assume the event's Google Sheets already
-> exist (step 8 installs the sync script into them). For a dual meet, build
-> that workbook with the Dual Meet Sheet Generator instead of duplicating the
-> previous event's and find-replacing team codes: export the plan from the
-> Tournament Time Calculator, hit **Copy plan & open generator**, make your
-> own copy of the master, and run `SAGE -> Generate event tabs`. It produces
-> every category tab plus `Variables`, `Title` and `Reference for Players`.
-> It does **not** produce `SCHEDULE`, nor resize the `CSV`/`STANDINGSCSV`/
-> `Court Control` tabs that read from it — those are still hand work, and
-> until they are done the workbook carries whatever event the master was
-> copied from. See `sage-docs/docs/specs/.../dual-meet-sheet-generator-spec.md`.
+> **The event workbook is generated, not hand-copied.** These steps
+> instantiate the *site*; they assume the event's Google Sheets already exist
+> (step 8 installs the sync script into them). Build them from the plan
+> instead of duplicating the previous event's and find-replacing team codes:
+> in the Tournament Time Calculator hit **Copy plan & open generator**, which
+> opens the master for the plan's format, make your own copy, and run
+> `SAGE -> Generate event tabs`.
+>
+> - **Dual meet** (SAGE Dual Meet Master) — every category tab, `SCHEDULE`
+>   with every match placed and numbered, and all four readout tabs. See
+>   `sage-docs/docs/specs/.../dual-meet-sheet-generator-spec.md`.
+> - **Standard tournament** (SAGE Standard Tournament Master) — one copy per
+>   facility per day. Every category tab, a `MATCHES` tab of all the
+>   matches, an empty `SCHEDULE`, and the readout tabs. `SCHEDULE` is then
+>   packed by hand from `MATCHES` and numbered with `SAGE -> Fill match
+>   numbers`. See `sage-docs/docs/specs/.../standard-tournament-master-spec.md`.
+>
+> Either way the workbook is renamed `<date> <title> - <FACILITY>` when the
+> generator finishes.
 
 1. **Copy the template folder** into `events/` under this event's key:
 
