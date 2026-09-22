@@ -2828,6 +2828,13 @@ function standingsTop3ForCategory(category){
   });
 }
 
+// True once every Round Robin match in the category has a score. Byes are
+// never played, so they don't count against it.
+function categoryRoundRobinDone(category){
+  const rr = MATCHES.filter(m => matchCategoryOf(m) === category && !matchByeSide(m) && !roundKeyword(matchRestOf(m)));
+  return rr.length > 0 && rr.every(m => m.played);
+}
+
 // -> [{ category, source: 'bracket'|'standings', gold, silver, bronze,
 //       bronzeWalkover, warning }], ordered by CATEGORY_ORDER_INDEX so the
 // Awards tab agrees with Standings' own category order.
@@ -2842,11 +2849,17 @@ function buildPodiums(){
 
     if(!finalRes.any){
       // No Final ever plays for this category — pure round robin, standings decide it.
+      // Standings only settle a podium once every Round Robin match has a
+      // score — before that, the top three are just the current leaders, so
+      // all three placings stay Pending (§2.7: never guess).
       const top3 = standingsTop3ForCategory(category);
       if(top3.length === 0) return; // nothing to show at all — omitted (§2.7)
+      const done = categoryRoundRobinDone(category);
       results.push({
         category, source: 'standings',
-        gold: top3[0] || null, silver: top3[1] || null, bronze: top3[2] || null,
+        gold: done ? top3[0] || null : null,
+        silver: done ? top3[1] || null : null,
+        bronze: done ? top3[2] || null : null,
         bronzeWalkover: false, warning: null, orderIdx
       });
       return;
