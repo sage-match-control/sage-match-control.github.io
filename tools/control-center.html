@@ -2821,12 +2821,7 @@ function categoryBronzeIsByeDecided(category){
 // §2.5 — categories with no bracket at all fall back to the top three RR
 // standings rows, same sort Standings already applies.
 function standingsTop3ForCategory(category){
-  const rows = STANDINGS.filter(s => parseCode(s.teamCode).category === category && !isEmptyStanding(s) && !isByeStandingRow(s));
-  rows.sort((a, b) => {
-    if(b.wins !== a.wins) return b.wins - a.wins;
-    const qa = a.quotient ?? -Infinity, qb = b.quotient ?? -Infinity;
-    return qb - qa;
-  });
+  const rows = rankStandings(STANDINGS.filter(s => parseCode(s.teamCode).category === category && !isEmptyStanding(s) && !isByeStandingRow(s)));
   return rows.slice(0, 3).map(s => {
     const club = CURRENT_TYPE === 'dual-meet' ? parseCode(s.teamCode).club : null;
     return { p1: s.player1, p2: s.player2, club, clubLabel: club ? clubLabel(club) : null };
@@ -2932,6 +2927,43 @@ function computeOverallChampion(){
   return { rows, champion, tied };
 }
 
+// Orders one set of Round Robin standings rows: wins, then head-to-head
+// among the pairs tied on wins, then quotient. Head-to-head is a mini-league
+// over the tied pairs' played matches against each other, so a two-way tie is
+// settled by the one match between them, and a three-way cycle (A beat B,
+// B beat C, C beat A) falls through to quotient. Rows still level after all
+// three keep their STANDINGSCSV order. This is the site's ranking only — the
+// sheet's SORTBYWINS, which picks the playoff feeders, ranks wins then
+// quotient, so the two can disagree on a head-to-head tie.
+function rankStandings(rows){
+  const byWins = rows.slice().sort((a, b) => b.wins - a.wins);
+  const out = [];
+  for(let i = 0; i < byWins.length;){
+    let j = i;
+    while(j < byWins.length && byWins[j].wins === byWins[i].wins) j++;
+    const tied = byWins.slice(i, j);
+    const h2h = headToHeadWins(tied);
+    tied.sort((a, b) =>
+      (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
+      ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
+    out.push(...tied);
+    i = j;
+  }
+  return out;
+}
+
+// teamCode -> wins in played matches between two of the given rows.
+function headToHeadWins(tied){
+  const wins = new Map(tied.map(s => [s.teamCode, 0]));
+  if(tied.length < 2) return wins;
+  MATCHES.forEach(m => {
+    if(!m.played || m.t1Score === m.t2Score || !wins.has(m.t1) || !wins.has(m.t2)) return;
+    const winner = m.t1Score > m.t2Score ? m.t1 : m.t2;
+    wins.set(winner, wins.get(winner) + 1);
+  });
+  return wins;
+}
+
 function renderStageTables(rows){
   // A bye is never a real standings row — drop it wherever standings rows
   // are consumed (awards-podium-tab-spec §2.6 rule 1).
@@ -2958,14 +2990,8 @@ function renderStageTables(rows){
       stages.get(stageKey).push(s);
     }
   });
-  // Order each bracket group by wins desc, then quotient desc
-  rrGroups.forEach(group => {
-    group.sort((a, b) => {
-      if(b.wins !== a.wins) return b.wins - a.wins;
-      const qa = a.quotient ?? -Infinity, qb = b.quotient ?? -Infinity;
-      return qb - qa;
-    });
-  });
+  // Order each bracket group by wins, head-to-head, then quotient
+  rrGroups.forEach((group, brLabel) => rrGroups.set(brLabel, rankStandings(group)));
 
   // A bye-decided Bronze has no contest to report — drop the whole block,
   // not just its BYE row (§2.6 rule 2). The medalist still shows up in

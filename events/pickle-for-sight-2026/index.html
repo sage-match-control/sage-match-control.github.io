@@ -1958,6 +1958,43 @@ function pairCell(s){
   return `<td class="pair"><span>${p1}</span><span>${p2}</span></td>`;
 }
 
+// Orders one set of Round Robin standings rows: wins, then head-to-head
+// among the pairs tied on wins, then quotient. Head-to-head is a mini-league
+// over the tied pairs' played matches against each other, so a two-way tie is
+// settled by the one match between them, and a three-way cycle (A beat B,
+// B beat C, C beat A) falls through to quotient. Rows still level after all
+// three keep their STANDINGSCSV order. This is the site's ranking only — the
+// sheet's SORTBYWINS, which picks the playoff feeders, ranks wins then
+// quotient, so the two can disagree on a head-to-head tie.
+function rankStandings(rows){
+  const byWins = rows.slice().sort((a, b) => b.wins - a.wins);
+  const out = [];
+  for(let i = 0; i < byWins.length;){
+    let j = i;
+    while(j < byWins.length && byWins[j].wins === byWins[i].wins) j++;
+    const tied = byWins.slice(i, j);
+    const h2h = headToHeadWins(tied);
+    tied.sort((a, b) =>
+      (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
+      ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
+    out.push(...tied);
+    i = j;
+  }
+  return out;
+}
+
+// teamCode -> wins in played matches between two of the given rows.
+function headToHeadWins(tied){
+  const wins = new Map(tied.map(s => [s.teamCode, 0]));
+  if(tied.length < 2) return wins;
+  MATCHES.forEach(m => {
+    if(!m.played || m.t1Score === m.t2Score || !wins.has(m.t1) || !wins.has(m.t2)) return;
+    const winner = m.t1Score > m.t2Score ? m.t1 : m.t2;
+    wins.set(winner, wins.get(winner) + 1);
+  });
+  return wins;
+}
+
 function renderStageTables(rows){
   // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
   // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2"). A blank bracket
@@ -1980,14 +2017,8 @@ function renderStageTables(rows){
       stages.get(stageKey).push(s);
     }
   });
-  // Order each bracket group by wins desc, then quotient desc
-  rrGroups.forEach(group => {
-    group.sort((a, b) => {
-      if(b.wins !== a.wins) return b.wins - a.wins;
-      const qa = a.quotient ?? -Infinity, qb = b.quotient ?? -Infinity;
-      return qb - qa;
-    });
-  });
+  // Order each bracket group by wins, head-to-head, then quotient
+  rrGroups.forEach((group, brLabel) => rrGroups.set(brLabel, rankStandings(group)));
 
   if(rrGroups.size === 0 && stages.size === 0) return { html: '', hasMultiBracket: false };
 
