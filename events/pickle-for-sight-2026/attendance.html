@@ -195,13 +195,19 @@
 // ============================================================================
 const EVENT_KEY = 'pickle-for-sight-2026';
 
-// One entry per venue workbook. `url` is that workbook's attendance web app:
-// Deploy -> Web app URL, ending in /exec. Setup is in the header of
-// sage-tools-api/scripts/attendance.gs. A venue still holding a PASTE_ value
-// shows as not connected instead of being fetched.
+// One entry per venue workbook. `sheetId` is that workbook's own file ID —
+// stable, safe to hardcode. Attendance is read straight from its ATTENDANCE
+// tab's published CSV export, by tab NAME (no gid to look up), which needs
+// the workbook shared "Anyone with the link — Viewer". `url` is the same
+// workbook's attendance web app (Deploy -> Web app URL, ending in /exec),
+// used only to mark a player in or out — reads never go through it. Setup is
+// in the header of sage-tools-api/scripts/attendance.gs. A venue still
+// holding a PASTE_ `url` shows as not connected instead of being fetched.
 const VENUES = [
-  { name: 'PCPH Main',  url: 'https://script.google.com/macros/s/AKfycbyf5H07-WMpG4YsBd0ceE7M3MpqY9YYTvIqwQhTCq1WyiWJT5zhFCkwlNcoKNz2NJG8HA/exec' },
-  { name: 'PCPH Annex', url: 'https://script.google.com/macros/s/AKfycbw_8ZUHA7kzsmzDizTUTk42PTks4Uh0iP5CZXIuXqP4hHBtSRxR3h7bKCR-Eb-SfAlM/exec' },
+  { name: 'PCPH Main',  sheetId: '1rNIlK2Zz3zTaLILlpq4rCGIQbtr0ECpG4A3OdP4v25A',
+    url: 'https://script.google.com/macros/s/AKfycbyf5H07-WMpG4YsBd0ceE7M3MpqY9YYTvIqwQhTCq1WyiWJT5zhFCkwlNcoKNz2NJG8HA/exec' },
+  { name: 'PCPH Annex', sheetId: '1ks84WK7vo5FAenpPbZocm9PLPpLoS6_SRPivVJqmS-0',
+    url: 'https://script.google.com/macros/s/AKfycbw_8ZUHA7kzsmzDizTUTk42PTks4Uh0iP5CZXIuXqP4hHBtSRxR3h7bKCR-Eb-SfAlM/exec' },
 ];
 
 // Category names, as in this event's index.html (DIVISIONS / EVENTS).
@@ -255,13 +261,61 @@ function setStatus(text, isError){
 // ============================================================================
 // NETWORK
 // ============================================================================
+// Reads go straight to the workbook's own published CSV export of the
+// ATTENDANCE tab, by tab name — not through attendance.gs at all. That keeps
+// polling off Apps Script's per-account simultaneous-execution quota, which
+// a web app GET would otherwise compete against every phone's writes for.
+function csvUrl(venue){
+  return `https://docs.google.com/spreadsheets/d/${venue.sheetId}/gviz/tq?tqx=out:csv&sheet=ATTENDANCE`;
+}
+
+// gviz quotes every cell and doubles an internal quote to escape it.
+function parseCsv(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(q){
+      if(c === '"'){ if(text[i + 1] === '"'){ cell += '"'; i++; } else q = false; }
+      else cell += c;
+    }else if(c === '"') q = true;
+    else if(c === ','){ row.push(cell); cell = ''; }
+    else if(c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if(c !== '\r') cell += c;
+  }
+  if(cell || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// The ATTENDANCE tab already lists every player (attendanceResync in
+// attendance.gs pre-fills it), so no separate roster source is needed —
+// category comes from the same teamCode prefix the sheet uses.
+async function fetchRoster(venue){
+  const res = await fetch(`${csvUrl(venue)}&_=${Date.now()}`, { cache: 'no-store' });
+  if(!res.ok) throw new Error(`The attendance sheet replied ${res.status}.`);
+  const [head, ...rows] = parseCsv(await res.text());
+  if(!head) return [];
+  const col = (name) => head.indexOf(name);
+  const byTeam = new Map();
+  rows.forEach((r) => {
+    const teamCode = r[col('teamCode')];
+    if(!teamCode) return;
+    if(!byTeam.has(teamCode)) byTeam.set(teamCode, { teamCode, category: teamCode.split('_')[0], players: [] });
+    byTeam.get(teamCode).players.push({
+      slot: Number(r[col('slot')]),
+      name: r[col('name')],
+      present: r[col('present')] === 'TRUE',
+      timeIn: r[col('timeIn')],
+    });
+  });
+  byTeam.forEach((t) => t.players.sort((a, b) => a.slot - b.slot));
+  return [...byTeam.values()];
+}
+
 // The POST body is a plain string on purpose: a string is sent as text/plain,
 // which needs no CORS preflight. Do not add a Content-Type header — Apps
 // Script cannot answer the preflight that header would trigger.
-async function call(venue, body){
-  const res = await fetch(venue.url, body === undefined
-    ? { cache: 'no-store' }
-    : { method: 'POST', body: JSON.stringify(body) });
+async function mark(venue, body){
+  const res = await fetch(venue.url, { method: 'POST', body: JSON.stringify(body) });
   if(!res.ok) throw new Error(`The attendance sheet replied ${res.status}.`);
   const data = await res.json();
   if(!data.ok) throw new Error(data.error || 'The attendance sheet refused the change.');
@@ -284,15 +338,15 @@ async function load(quiet){
   }
   if(!quiet) setStatus('Loading…');
   try{
-    const data = await call(venue);
+    const data = await fetchRoster(venue);
     if(seq !== loadSeq) return;
     // A player this phone is still saving keeps its local state: the sheet
     // may not have the change yet.
-    data.pairs.forEach((t) => t.players.forEach((p) => {
+    data.forEach((t) => t.players.forEach((p) => {
       const mine = saving.has(`${t.teamCode}|${p.slot}`) && findPlayer(t.teamCode, p.slot);
       if(mine){ p.present = mine.present; p.timeIn = mine.timeIn; }
     }));
-    pairs = data.pairs;
+    pairs = data;
     setStatus('');
     render();
   }catch(err){
@@ -312,7 +366,7 @@ async function toggle(teamCode, slot, want){
   saving.add(key);
   render();
   try{
-    const res = await call(venue, { teamCode, slot, present: want });
+    const res = await mark(venue, { teamCode, slot, present: want });
     const p = findPlayer(teamCode, slot);
     if(p){ p.present = res.present; p.timeIn = res.timeIn; }
     setStatus('');
