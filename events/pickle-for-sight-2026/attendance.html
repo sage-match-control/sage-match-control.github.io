@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pickle for Sight — Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Same tokens as schedule.html. Staff pages stay light, like the tools. */
+  :root{
+    --navy:#05133B;
+    --navy-deep:#020B29;
+    --green:#5E9106;
+    --green-dark:#3C6B02;
+    --paper:#F5F6F8;
+    --paper-dim:#E9ECF1;
+    --line:#D3D9E3;
+    --ink:#05133B;
+    --ink-soft:#4A5572;
+    --white:#FFFFFF;
+    --red:#B42318;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+
+  header.top{
+    position:sticky;top:0;z-index:2;
+    background:var(--navy);
+    color:var(--white);
+    padding:14px 0 12px;
+    box-shadow:0 6px 18px -12px rgba(2,11,41,.6);
+  }
+  .kicker{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:#9CCB4A;
+  }
+  h1{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    text-transform:uppercase;
+    font-size:26px;
+    margin:2px 0 12px;
+  }
+  .venues{display:flex;gap:8px;margin-bottom:10px;}
+  .venues button{
+    flex:1;
+    font:600 14px 'Inter',sans-serif;
+    padding:9px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.28);
+    background:transparent;
+    color:var(--white);
+    cursor:pointer;
+  }
+  .venues button[aria-pressed="true"]{background:var(--white);color:var(--navy);border-color:var(--white);}
+  .bar{display:flex;gap:8px;}
+  .bar input{
+    flex:1;min-width:0;
+    font:16px 'Inter',sans-serif;
+    padding:10px 12px;
+    border-radius:10px;
+    border:0;
+    color:var(--ink);
+  }
+  .bar button{
+    font:600 14px 'Inter',sans-serif;
+    padding:0 14px;
+    border-radius:10px;
+    border:0;
+    background:var(--green);
+    color:var(--white);
+    cursor:pointer;
+  }
+  .meta{
+    display:flex;justify-content:space-between;gap:12px;
+    margin-top:8px;
+    font-size:13px;
+    min-height:18px;
+  }
+  #count{font-weight:700;}
+  #status{color:#D6DCE8;text-align:right;}
+  #status.error{color:#FFB4AB;font-weight:600;}
+
+  main{padding-top:14px;padding-bottom:60px;}
+  .cat{margin:0 0 22px;}
+  .cat h2{
+    display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    font-size:17px;
+    margin:0 0 8px;
+  }
+  .cat h2 span{font-size:13px;color:var(--ink-soft);letter-spacing:.08em;}
+  .pair{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-left:4px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:8px;
+    overflow:hidden;
+  }
+  .pair.ready{border-left-color:var(--green);}
+  .pair-head{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:8px 14px 0;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.08em;
+    color:var(--ink-soft);
+  }
+  .badge{
+    font-size:11px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--white);
+    background:var(--green);
+    border-radius:20px;
+    padding:2px 8px;
+  }
+  .player{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 14px;
+    cursor:pointer;
+  }
+  .player + .player{border-top:1px solid var(--paper-dim);}
+  .who{min-width:0;}
+  .name{font-weight:600;overflow-wrap:anywhere;}
+  .time{display:block;font-size:12.5px;color:var(--ink-soft);}
+  .player.in .time{color:var(--green-dark);font-weight:600;}
+
+  .switch{
+    appearance:none;-webkit-appearance:none;
+    flex:none;
+    width:52px;height:30px;margin:0;
+    border-radius:30px;
+    background:var(--line);
+    position:relative;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .switch::after{
+    content:"";
+    position:absolute;top:3px;left:3px;
+    width:24px;height:24px;border-radius:50%;
+    background:var(--white);
+    box-shadow:0 1px 3px rgba(0,0,0,.25);
+    transition:transform .15s;
+  }
+  .switch:checked{background:var(--green);}
+  .switch:checked::after{transform:translateX(22px);}
+  .switch:disabled{opacity:.55;cursor:progress;}
+  .switch:focus-visible{outline:3px solid var(--green);outline-offset:2px;}
+  .empty{color:var(--ink-soft);text-align:center;padding:40px 0;}
+  @media (prefers-reduced-motion: reduce){ .switch,.switch::after{transition:none;} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">Pickle for Sight &middot; Staff</div>
+    <h1>Attendance</h1>
+    <div class="venues" id="venues"></div>
+    <div class="bar">
+      <input type="search" id="search" placeholder="Search a name or code" autocomplete="off" aria-label="Search a name or code">
+      <button type="button" id="refresh">Refresh</button>
+    </div>
+    <div class="meta"><span id="count"></span><span id="status" role="status"></span></div>
+  </div>
+</header>
+<main class="wrap" id="list"></main>
+
+<script>
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+const EVENT_KEY = 'pickle-for-sight-2026';
+
+// One entry per venue workbook. `url` is that workbook's attendance web app:
+// Deploy -> Web app URL, ending in /exec. Setup is in the header of
+// sage-tools-api/scripts/attendance.gs. A venue still holding a PASTE_ value
+// shows as not connected instead of being fetched.
+const VENUES = [
+  { name: 'PCPH Main',  url: 'PASTE_PCPH_MAIN_EXEC_URL' },
+  { name: 'PCPH Annex', url: 'PASTE_PCPH_ANNEX_EXEC_URL' },
+];
+
+// Category names, as in this event's index.html (DIVISIONS / EVENTS).
+const DIVISIONS = { N: 'Novice', LI: 'Low Intermediate', HI: 'High Intermediate' };
+const EVENTS = { MD: "Men's Doubles", WD: "Women's Doubles", XD: 'Mixed Doubles' };
+
+// Other phones' marks show up within this long.
+const POLL_MS = 30000;
+
+// ============================================================================
+// STATE
+// ============================================================================
+const STORAGE_VENUE_KEY = `${EVENT_KEY}.attendanceVenue`;
+let venueIndex = loadVenue();
+let pairs = [];
+let loadSeq = 0;             // a reply for a venue no longer shown is dropped
+const saving = new Set();    // "teamCode|slot" with a save in flight
+
+const $ = (id) => document.getElementById(id);
+
+function loadVenue(){
+  try{ const i = Number(localStorage.getItem(STORAGE_VENUE_KEY)); return VENUES[i] ? i : 0; }
+  catch(e){ return 0; }
+}
+function saveVenue(i){ try{ localStorage.setItem(STORAGE_VENUE_KEY, String(i)); }catch(e){} }
+
+function isConnected(venue){
+  return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(venue.url);
+}
+
+function categoryName(key){
+  for(const d of Object.keys(DIVISIONS).sort((a, b) => b.length - a.length)){
+    if(key.startsWith(d) && EVENTS[key.slice(d.length)]) return `${DIVISIONS[d]} ${EVENTS[key.slice(d.length)]}`;
+  }
+  return key;
+}
+function categoryRank(key){
+  const divs = Object.keys(DIVISIONS), evs = Object.keys(EVENTS);
+  for(const d of divs.slice().sort((a, b) => b.length - a.length)){
+    const e = key.slice(d.length);
+    if(key.startsWith(d) && EVENTS[e]) return divs.indexOf(d) * evs.length + evs.indexOf(e);
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+function setStatus(text, isError){
+  $('status').textContent = text || '';
+  $('status').classList.toggle('error', !!isError);
+}
+
+// ============================================================================
+// NETWORK
+// ============================================================================
+// The POST body is a plain string on purpose: a string is sent as text/plain,
+// which needs no CORS preflight. Do not add a Content-Type header — Apps
+// Script cannot answer the preflight that header would trigger.
+async function call(venue, body){
+  const res = await fetch(venue.url, body === undefined
+    ? { cache: 'no-store' }
+    : { method: 'POST', body: JSON.stringify(body) });
+  if(!res.ok) throw new Error(`The attendance sheet replied ${res.status}.`);
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || 'The attendance sheet refused the change.');
+  return data;
+}
+
+function findPlayer(teamCode, slot){
+  const team = pairs.find((t) => t.teamCode === teamCode);
+  return team && team.players.find((p) => p.slot === slot);
+}
+
+async function load(quiet){
+  const venue = VENUES[venueIndex];
+  const seq = ++loadSeq;
+  if(!isConnected(venue)){
+    pairs = [];
+    render();
+    setStatus('');
+    return;
+  }
+  if(!quiet) setStatus('Loading…');
+  try{
+    const data = await call(venue);
+    if(seq !== loadSeq) return;
+    // A player this phone is still saving keeps its local state: the sheet
+    // may not have the change yet.
+    data.pairs.forEach((t) => t.players.forEach((p) => {
+      const mine = saving.has(`${t.teamCode}|${p.slot}`) && findPlayer(t.teamCode, p.slot);
+      if(mine){ p.present = mine.present; p.timeIn = mine.timeIn; }
+    }));
+    pairs = data.pairs;
+    setStatus('');
+    render();
+  }catch(err){
+    if(seq !== loadSeq) return;
+    setStatus(`Could not load ${venue.name}: ${err.message}`, true);
+  }
+}
+
+async function toggle(teamCode, slot, want){
+  const venue = VENUES[venueIndex];
+  const key = `${teamCode}|${slot}`;
+  const player = findPlayer(teamCode, slot);
+  if(!player) return;
+  const before = { present: player.present, timeIn: player.timeIn };
+  player.present = want;
+  player.timeIn = want ? player.timeIn : '';
+  saving.add(key);
+  render();
+  try{
+    const res = await call(venue, { teamCode, slot, present: want });
+    const p = findPlayer(teamCode, slot);
+    if(p){ p.present = res.present; p.timeIn = res.timeIn; }
+    setStatus('');
+  }catch(err){
+    const p = findPlayer(teamCode, slot);
+    if(p){ p.present = before.present; p.timeIn = before.timeIn; }
+    setStatus(`Not saved (${player.name}): ${err.message}`, true);
+  }finally{
+    saving.delete(key);
+    render();
+  }
+}
+
+// ============================================================================
+// RENDER
+// ============================================================================
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(text !== undefined) e.textContent = text;
+  return e;
+}
+
+function renderVenues(){
+  const box = $('venues');
+  box.textContent = '';
+  VENUES.forEach((v, i) => {
+    const b = el('button', '', v.name);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(i === venueIndex));
+    b.addEventListener('click', () => {
+      if(i === venueIndex) return;
+      venueIndex = i;
+      saveVenue(i);
+      pairs = [];
+      render();
+      load();
+    });
+    box.append(b);
+  });
+}
+
+function playerRow(team, p){
+  const key = `${team.teamCode}|${p.slot}`;
+  const row = el('label', 'player' + (p.present ? ' in' : ''));
+  const who = el('span', 'who');
+  who.append(el('span', 'name', p.name));
+  const time = saving.has(key) ? 'Saving…' : (p.present && p.timeIn ? `In ${p.timeIn.slice(-5)}` : '');
+  if(time) who.append(el('span', 'time', time));
+  const sw = el('input', 'switch');
+  sw.type = 'checkbox';
+  sw.setAttribute('role', 'switch');
+  sw.checked = p.present;
+  sw.disabled = saving.has(key);
+  sw.setAttribute('aria-label', `${p.name} present`);
+  sw.addEventListener('change', () => toggle(team.teamCode, p.slot, sw.checked));
+  row.append(who, sw);
+  return row;
+}
+
+function render(){
+  renderVenues();
+  const venue = VENUES[venueIndex];
+  const list = $('list');
+  list.textContent = '';
+
+  let total = 0, present = 0;
+  pairs.forEach((t) => t.players.forEach((p) => { total++; if(p.present) present++; }));
+  $('count').textContent = total ? `${present} / ${total} in` : '';
+
+  if(!isConnected(venue)){
+    list.append(el('p', 'empty', `${venue.name} is not connected yet.`));
+    return;
+  }
+  const q = $('search').value.trim().toLowerCase();
+  const shown = pairs.filter((t) => !q || t.teamCode.toLowerCase().includes(q) ||
+    t.players.some((p) => p.name.toLowerCase().includes(q)));
+  if(!shown.length){
+    if(pairs.length) list.append(el('p', 'empty', 'No one matches that search.'));
+    return;
+  }
+
+  const byCat = new Map();
+  shown.forEach((t) => {
+    if(!byCat.has(t.category)) byCat.set(t.category, []);
+    byCat.get(t.category).push(t);
+  });
+  [...byCat.keys()]
+    .sort((a, b) => categoryRank(a) - categoryRank(b) || a.localeCompare(b))
+    .forEach((cat) => {
+      const teams = byCat.get(cat);
+      const players = teams.flatMap((t) => t.players);
+      const section = el('section', 'cat');
+      const h = el('h2', '', categoryName(cat));
+      h.append(el('span', '', `${players.filter((p) => p.present).length} / ${players.length}`));
+      section.append(h);
+      teams.forEach((t) => {
+        const ready = t.players.every((p) => p.present);
+        const card = el('div', 'pair' + (ready ? ' ready' : ''));
+        const head = el('div', 'pair-head', t.teamCode);
+        if(ready) head.append(el('span', 'badge', 'Ready'));
+        card.append(head);
+        t.players.forEach((p) => card.append(playerRow(t, p)));
+        section.append(card);
+      });
+      list.append(section);
+    });
+}
+
+// ============================================================================
+// START
+// ============================================================================
+$('search').addEventListener('input', render);
+$('refresh').addEventListener('click', () => load());
+document.addEventListener('visibilitychange', () => { if(!document.hidden) load(true); });
+setInterval(() => { if(!document.hidden) load(true); }, POLL_MS);
+render();
+load();
+</script>
+</body>
+</html>
