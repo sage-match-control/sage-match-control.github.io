@@ -83,12 +83,13 @@
     font-family:'Archivo Black',sans-serif;
     font-weight:400;
     text-transform:uppercase;
-    font-size:clamp(30px,6.4vw,54px);
+    font-size:clamp(24px,4.7vw,50px);
     line-height:1.04;
     letter-spacing:.005em;
     margin:0 0 16px;
-    max-width:14ch;
-    text-wrap:balance;
+    /* The tagline's own <br> does the splitting, so no balancing: text-wrap
+       balance re-breaks a sentence that already fits its line. */
+    max-width:26ch;
     position:relative;
   }
   .hero .sub{
@@ -187,6 +188,149 @@
     margin-top:12px;
   }
 
+  /* ---------- HERO META ---------- */
+  .hero .meta{
+    margin:18px 0 0;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:rgba(241,243,236,.62);
+    position:relative;
+  }
+
+  /* ---------- EVENT CHIPS ---------- */
+  .chips{ display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+  .chip{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:3px solid var(--green);
+    border-radius:8px;
+    padding:11px 16px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-size:15px;
+    color:var(--ink);
+  }
+
+  /* ---------- SCOPE TABLE ---------- */
+  .scope{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(290px, 1fr));
+    gap:16px;
+  }
+  /* Side by side, the two cards share row tracks so every divider lines up
+     across the gap, however differently a pair of entries happens to wrap.
+     Without subgrid each card simply stacks its own rows, which is the
+     single-column phone layout anyway. */
+  @supports (grid-template-rows: subgrid){
+    @media (min-width:660px){
+      .scope{
+        grid-template-columns:1fr 1fr;
+        grid-template-rows:auto repeat(6, auto);
+        row-gap:0;
+      }
+      .scope-col{
+        display:grid;
+        grid-template-rows:subgrid;
+        grid-row:span 7;
+      }
+      .scope-col ul{ display:contents; }
+    }
+  }
+  .scope-col{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px 22px 22px;
+    box-shadow:var(--shadow);
+  }
+  .scope-col h3{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-size:15.5px;
+    margin:0 0 4px;
+  }
+  .scope-col.yes h3{ color:var(--green-dark); }
+  .scope-col.no h3{ color:var(--muted); }
+  .scope-col ul{ list-style:none; margin:0; padding:0; }
+  .scope-col li{
+    display:flex;
+    gap:10px;
+    align-items:baseline;
+    padding:10px 0;
+    border-top:1px solid var(--line);
+    font-size:14.5px;
+    line-height:1.5;
+  }
+  .scope-col li .mark{ flex:none; font-weight:700; font-size:13px; }
+  .scope-col.yes li .mark{ color:var(--green-dark); }
+  .scope-col.no li .mark{ color:var(--muted); }
+  .scope-col.no li{ color:var(--muted); }
+
+  /* ---------- STAT BAND ---------- */
+  .stats{
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    border-radius:18px;
+    padding:38px clamp(20px,5vw,44px);
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    gap:28px 20px;
+    box-shadow:var(--shadow);
+  }
+  .stat .num{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:clamp(34px,5.4vw,46px);
+    line-height:1;
+    color:var(--green);
+  }
+  .stat .lab{
+    margin-top:10px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:rgba(241,243,236,.80);
+    line-height:1.45;
+  }
+
+  /* ---------- CONTACT ---------- */
+  .cta{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:30px clamp(20px,4vw,34px);
+    box-shadow:var(--shadow);
+  }
+  .cta h2{ margin-top:0; }
+  .contact{
+    list-style:none;
+    margin:22px 0 0;
+    padding:0;
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px, 1fr));
+    gap:14px 24px;
+  }
+  .contact li{ font-size:15px; }
+  .contact .k{
+    display:block;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:3px;
+  }
+  .contact a{ color:var(--green-dark); font-weight:600; text-decoration:none; }
+  .contact a:hover{ text-decoration:underline; }
+
   footer.site-foot{
     text-align:center;
     padding:34px 20px 10px;
@@ -207,14 +351,107 @@
 <div class="hero-wrap">
   <header class="hero">
     <div class="kicker">S.A.G.E. &middot; Match Control Experts</div>
-    <h1>Everything Your Tournament Needs, In One Place</h1>
-    <p class="sub">From the moment brackets are set to the second the last point is scored, S.A.G.E. keeps players and spectators looking at the same live picture &mdash; on the court, at the venue, and from the phone in your pocket.</p>
+    <h1>You control the court.<br>We control the match.</h1>
+    <p class="sub">From the bracket draw to the last point scored, we handle the competition side &mdash; the schedule, the desk, and the live scoreboard everyone is watching.</p>
+    <p class="meta">Sports &amp; Event Planning &middot; San Fernando, Philippines</p>
   </header>
   <div class="scoreboard-stand"></div>
   <div class="scoreboard-foot"></div>
 </div>
 
 <main class="wrap">
+
+  <section class="track" id="services">
+    <div class="track-head">
+      <h2>What We Do</h2>
+    </div>
+    <p class="track-sub">We run the competition side of your event, end to end &mdash; so organizers can host, and players can play.</p>
+
+    <div class="card-grid">
+      <article class="feature">
+        <h3>Bracketing &amp; Seeding</h3>
+        <p class="hook">Draws done right, in front of everyone.</p>
+        <p class="desc">Categories, brackets and pairings built from your entry list &mdash; with draws anyone in the room can watch happen and check afterwards.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Scheduling</h3>
+        <p class="hook">Every match, every court, every slot.</p>
+        <p class="desc">A full playing schedule built around your courts, your hours and your format, so the day finishes when you told the venue it would.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Match Control On The Day</h3>
+        <p class="hook">Someone watching the whole floor.</p>
+        <p class="desc">We run the desk: calling matches to courts, keeping scores current, and handling the reshuffles every tournament actually needs. When something is disputed, we advise and help arbitrate &mdash; the call stays yours.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Live Results &amp; Standings</h3>
+        <p class="hook">One source of truth, updating itself.</p>
+        <p class="desc">Scores, standings and court assignments published live to your event page, so players, spectators and the desk are never working off different numbers.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Scoresheets &amp; Printables</h3>
+        <p class="hook">Paper that matches the plan.</p>
+        <p class="desc">Match scoresheets and schedule printouts generated straight from the live schedule &mdash; already numbered, already assigned.</p>
+      </article>
+
+      <article class="feature">
+        <h3>Your Own Event Page</h3>
+        <p class="hook">A home for your tournament.</p>
+        <p class="desc">A public page for your event carrying your name, your categories and your live results, ready to share before the first serve.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="track" id="events">
+    <div class="track-head">
+      <h2>Events We Handle</h2>
+    </div>
+    <p class="track-sub">From a two-club meet to a national bracket &mdash; the format changes, the standard doesn't.</p>
+
+    <div class="chips">
+      <span class="chip">Dual Meets</span>
+      <span class="chip">Corporate Tournaments</span>
+      <span class="chip">National Level Tournaments</span>
+      <span class="chip">Invitational Tournaments</span>
+    </div>
+  </section>
+
+  <section class="track" id="scope">
+    <div class="track-head">
+      <h2>What We Do &mdash; And What We Don&rsquo;t</h2>
+    </div>
+    <p class="track-sub">We run the competition, not the whole event. Knowing the line up front is what keeps a tournament day from having gaps nobody owns.</p>
+
+    <div class="scope">
+      <div class="scope-col yes">
+        <h3>We handle</h3>
+        <ul>
+          <li><span class="mark">&#10003;</span><span>Setting up your registration form, if you want one built.</span></li>
+          <li><span class="mark">&#10003;</span><span>The bracket draw &mdash; run in the open, and re-checkable afterwards by anyone.</span></li>
+          <li><span class="mark">&#10003;</span><span>The playing schedule, built around your courts, your hours and your format.</span></li>
+          <li><span class="mark">&#10003;</span><span>Match scoresheets and schedule printouts for the desk and the noticeboard.</span></li>
+          <li><span class="mark">&#10003;</span><span>Match control on the day: calling matches to courts, keeping scores current, handling reshuffles, and helping arbitrate when something is disputed.</span></li>
+          <li><span class="mark">&#10003;</span><span>Live scores and standings as play happens, and the final podium results at the end.</span></li>
+        </ul>
+      </div>
+
+      <div class="scope-col no">
+        <h3>We don&rsquo;t</h3>
+        <ul>
+          <li><span class="mark">&#10007;</span><span>Run registration or collect entry fees. The form we can build; the sign-ups and the money stay with you.</span></li>
+          <li><span class="mark">&#10007;</span><span>Book the venue, the courts or the equipment.</span></li>
+          <li><span class="mark">&#10007;</span><span>Officiate. We record results; we don&rsquo;t referee or call lines.</span></li>
+          <li><span class="mark">&#10007;</span><span>Make the final call on a dispute. We advise and help arbitrate &mdash; the tournament director decides.</span></li>
+          <li><span class="mark">&#10007;</span><span>Supply prizes, medals, trophies or giveaways.</span></li>
+          <li><span class="mark">&#10007;</span><span>Handle food, marketing, sponsorship or the event&rsquo;s own promotion.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <section class="track" id="players">
     <div class="track-head">
@@ -268,6 +505,54 @@
         <p class="hook">Clean brackets, ready to post.</p>
         <p class="desc">Build and export playoff bracket graphics for printing or posting, without wrestling a spreadsheet into a diagram.</p>
       </article>
+    </div>
+  </section>
+
+  <section class="track" id="numbers">
+    <div class="track-head">
+      <h2>Numbers You Can Count On</h2>
+    </div>
+    <p class="track-sub">Successful engagements across clubs, communities and league events &mdash; with many more ahead.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="num">35+</div>
+        <div class="lab">Events<br>a year</div>
+      </div>
+      <div class="stat">
+        <div class="num">5,000+</div>
+        <div class="lab">Matches<br>coordinated</div>
+      </div>
+      <div class="stat">
+        <div class="num">100%</div>
+        <div class="lab">Commitment to smooth<br>scheduling and fair play</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="track" id="contact">
+    <div class="cta">
+      <h2>Level Up Your Next Tournament</h2>
+      <p class="track-sub">Message us today to find out how we can help. Tell us your format, your courts and your dates &mdash; we&rsquo;ll take it from there.</p>
+
+      <ul class="contact">
+        <li>
+          <span class="k">Email</span>
+          <a href="mailto:sagematchcontrol@gmail.com">sagematchcontrol@gmail.com</a>
+        </li>
+        <li>
+          <span class="k">Mobile</span>
+          <a href="tel:+639177180422">0917 718 0422</a>
+        </li>
+        <li>
+          <span class="k">Viber &amp; WhatsApp</span>
+          <a href="tel:+639087169590">0908 716 9590</a>
+        </li>
+        <li>
+          <span class="k">Facebook</span>
+          <a href="https://www.facebook.com/sage.match.control" target="_blank" rel="noopener">SAGE Match Control Experts</a>
+        </li>
+      </ul>
     </div>
   </section>
 
