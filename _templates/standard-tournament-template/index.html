@@ -2981,7 +2981,9 @@ function runSearch(){
 function renderIntro(){
   const teams = new Set();
   const divisions = new Set();
-  MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { teams.add(c); const p = parseCode(c); if(p.division && p.event) divisions.add(p.division+p.event); }); });
+  // Playoff slots (NWD_SF_1, HIMD_QF_3…) sit in the match list as t1/t2 too;
+  // only a code that ends in a bare number is an actual pair.
+  MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { const p = parseCode(c); if(/^\d+$/.test(p.rest)) teams.add(c); if(p.division && p.event) divisions.add(p.division+p.event); }); });
   resultsEl.innerHTML = `
     <div class="stats-row">
       <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
