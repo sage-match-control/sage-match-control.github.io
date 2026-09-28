@@ -1,0 +1,2616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PickleDrive Club One Year Celebration — Tournament Hub</title>
+<meta name="description" content="Follow every team, matchup and court at the PickleDrive Club One Year Celebration — live scores and standings.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PickleDrive Club One Year Celebration — Tournament Hub">
+<meta property="og:description" content="Follow every team, matchup and court — live scores and standings.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Satisfy&display=swap" rel="stylesheet">
+<style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect:
+       - --green is a light gold FILL (~2.35:1 on white — never text on a
+         light background). Put --navy text on it (~6.5:1), or use it as
+         text on a --navy/--navy-deep panel (~6.5 / 7.2:1).
+       - --green-dark (dark gold) is safe for text on white, --paper and
+         --paper-dim (6.5 / 5.6 / 4.9:1).
+       - Small text on paper is --ink (~13.3:1) or --ink-soft (~5.7:1).
+     PickleDrive Club: palette sampled from the event pubmat (forest
+     #092114, gold #83602A, cream #E8DED3). Fonts: Playfair Display,
+     Montserrat, Satisfy.
+     ================================================================ */
+  :root{
+    --navy:#102A1E;
+    --navy-deep:#092114;
+    --green:#C9A45C;
+    --green-dark:#7A5824;
+    --paper:#F4EEE6;
+    --paper-dim:#E8DED3;
+    --line:#D8CCBD;
+    --ink:#102A1E;
+    --ink-soft:#56605A;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px rgba(9,33,20,.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{overflow-x:hidden;}
+  /* No overflow-x here (unlike html above) — pairing overflow-x:hidden with
+     any overflow-y (even an explicit 'visible') makes the UA compute
+     overflow-y as auto too (CSS spec: a non-visible axis can't pair with a
+     literally-visible one), which would make body a second, independent
+     scroll container nested inside html's. The real page scrolling already
+     happens on html (window.scrollY tracks documentElement.scrollTop, not
+     body's), so any position:sticky element inside body would resolve
+     against body's own never-moving scroll offset instead and just scroll
+     off as if it weren't sticky at all — leaving body's overflow fully
+     unset keeps it out of the scroll-container chain so sticky elements
+     (the standings category headers) bind to html. */
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Montserrat',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px 90px;}
+
+  /* ---------- HERO ---------- */
+  header.hero{
+    padding:52px 20px 40px;
+    text-align:center;
+    color:var(--white);
+    position:relative;
+    background:var(--navy);
+    border-radius:0 0 var(--radius) var(--radius);
+    box-shadow:0 24px 60px -28px rgba(9,33,20,.45);
+    margin-bottom:28px;
+  }
+  .hero-logos{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    margin:0 auto 14px;
+  }
+  .hero-logos img{
+    width:56px; height:56px;
+    object-fit:cover;
+    border-radius:14px;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+  }
+  .hero-logos-sep{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:20px;
+    color:var(--court);
+    opacity:.85;
+  }
+  .regal-rule{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    max-width:280px;
+    margin:0 auto 30px;
+  }
+  .regal-rule::before, .regal-rule::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(201,164,92,.7));
+  }
+  .regal-rule::after{ background:linear-gradient(90deg, rgba(201,164,92,.7), transparent); }
+  .regal-rule .diamond{
+    width:7px; height:7px;
+    background:var(--amber);
+    transform:rotate(45deg);
+    flex-shrink:0;
+  }
+  .eyebrow{
+    font-family:'Montserrat',sans-serif;
+    font-weight:600;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--green);
+    margin-bottom:16px;
+  }
+  .tagline-script{
+    font-family:'Satisfy',cursive;
+    font-style:normal;
+    font-weight:400;
+    font-size:clamp(20px,5vw,28px);
+    color:var(--green);
+    letter-spacing:.01em;
+    margin:0 0 14px;
+  }
+  .domination-line{
+    font-family:'Montserrat',sans-serif;
+    font-weight:700;
+    font-size:clamp(14px,4vw,22px);
+    text-transform:uppercase;
+    letter-spacing:.3em;
+    color:var(--white);
+    margin:2px 0 12px;
+  }
+  h1.title{
+    font-family:'Playfair Display',serif;
+    font-weight:800;
+    font-size:clamp(34px,8.2vw,62px);
+    line-height:1.04;
+    letter-spacing:.005em;
+    margin:0 0 10px;
+    text-transform:uppercase;
+    color:var(--white);
+  }
+  h1.title .accent{ color:var(--green); }
+  /* Organiser name, set small above the headline (the logo tile already
+     carries it as an image; this keeps it in the page's real title text). */
+  h1.title .title-kicker{
+    display:block;
+    font-family:'Montserrat',sans-serif;
+    font-weight:700;
+    font-size:clamp(12px,3.2vw,16px);
+    letter-spacing:.3em;
+    line-height:1.4;
+    margin-bottom:6px;
+    color:var(--white);
+  }
+  .subtitle{
+    font-size:15px;
+    color:rgba(255,255,255,.75);
+    max-width:480px;
+    margin:0 auto 34px;
+    line-height:1.55;
+  }
+
+  /* ---------- HERO-SCOPED CONTROL OVERRIDES ----------
+     The day picker, view tabs and sync line are shared controls whose base
+     rules (further down) are written for the paper ground of .wrap. Inside
+     the navy bezel they'd be navy-on-navy, so they're re-stated here as
+     light-on-navy instead of being forked into two separate components.
+     Scoped to .hero so the base rules keep working anywhere else. */
+  .hero .view-tab{
+    border-color:rgba(255,255,255,.28);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.82);
+  }
+  .hero .view-tab:hover{ border-color:var(--green); color:var(--white); }
+  .hero .view-tab.active{
+    background:var(--green);
+    border-color:var(--green);
+    color:var(--navy);
+  }
+  .hero .day-picker label{ color:rgba(255,255,255,.6); }
+  /* The chevron is baked into the select's background-image, so it has to be
+     re-stated per ground — the navy one in the base rule would vanish here. */
+  .hero .day-picker select{
+    border-color:rgba(255,255,255,.28);
+    background-color:rgba(255,255,255,.06);
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+    color:var(--white);
+  }
+  .hero .day-picker select:hover,
+  .hero .day-picker select:focus{ border-color:var(--green); }
+  .hero .sync-status{ color:rgba(255,255,255,.62); }
+  .hero .sync-status.ok{ color:var(--green); }
+  .hero .sync-status.error{ color:#FFB4A2; }
+  .hero .sync-status .retry-btn{
+    border-color:rgba(255,180,162,.55);
+    color:#FFB4A2;
+  }
+  .hero .sync-status .retry-btn:hover{ background:rgba(255,180,162,.15); }
+
+  /* ---------- SEARCH ---------- */
+  .search-panel{
+    background:var(--white);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:var(--card-shadow);
+    position:relative;
+    max-width:560px;
+    margin:0 auto;
+  }
+  .search-panel::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:18px;
+    border:1px solid rgba(201,164,92,.35);
+    margin:8px;
+    pointer-events:none;
+  }
+  .search-label{
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.07em;
+    color:var(--muted);
+    display:block;
+    margin-bottom:10px;
+    text-align:left;
+  }
+  .search-row{display:flex; gap:10px;}
+  .input-wrap{
+    position:relative;
+    flex:1;
+    min-width:0;
+  }
+  input#teamInput{
+    width:100%;
+    font-family:'Montserrat',sans-serif;
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:.015em;
+    padding:14px 40px 14px 16px;
+    border-radius:10px;
+    border:2px solid rgba(20,27,44,.18);
+    background:var(--white);
+    color:var(--ink);
+    text-transform:uppercase;
+    outline:none;
+    min-width:0;
+  }
+  input#teamInput:focus{border-color:var(--green-dark);}
+  input#teamInput::placeholder{color:var(--ink-soft); font-weight:500; text-transform:none;}
+  .clear-input-btn{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    position:absolute;
+    right:6px;
+    top:50%;
+    transform:translateY(-50%);
+    width:28px;
+    height:28px;
+    border:none;
+    border-radius:50%;
+    background:rgba(20,27,44,.08);
+    color:var(--muted);
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+    transition:background .12s ease, color .12s ease;
+  }
+  .clear-input-btn.show{display:flex;}
+  .clear-input-btn:hover{background:rgba(20,27,44,.16); color:var(--ink);}
+  button#searchBtn{
+    font-family:'Montserrat',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    padding:0 22px;
+    border-radius:10px;
+    border:none;
+    background:var(--cork);
+    color:#fff;
+    cursor:pointer;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button#searchBtn:hover{background:var(--navy-deep);}
+  button#searchBtn:active{transform:scale(.97);}
+
+  .autocomplete{
+    position:relative;
+  }
+  .ac-list{
+    position:absolute;
+    left:0; right:0; top:calc(100% + 6px);
+    background:var(--white);
+    border-radius:10px;
+    box-shadow:0 14px 30px -12px rgba(0,0,0,.35);
+    max-height:220px;
+    overflow-y:auto;
+    z-index:20;
+    display:none;
+    text-align:left;
+    border:1px solid rgba(20,27,44,.08);
+    color:var(--ink);
+  }
+  .ac-list.show{display:block;}
+  .ac-item{
+    padding:10px 14px;
+    font-family:'Montserrat',sans-serif;
+    font-size:14px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    border-bottom:1px solid rgba(20,27,44,.06);
+  }
+  .ac-item:last-child{border-bottom:none;}
+  .ac-item:hover, .ac-item.active{background:var(--court); color:var(--navy);}
+  .ac-item small{font-family:'Montserrat',sans-serif; color:var(--muted); opacity:1; font-weight:500;}
+  .ac-item:hover small, .ac-item.active small{color:rgba(16,42,30,.75);}
+
+  .sync-status{
+    max-width:560px;
+    margin:14px auto 0;
+    text-align:center;
+    font-family:'Montserrat',sans-serif;
+    font-size:11.5px;
+    letter-spacing:.015em;
+    color:var(--ink-soft);
+  }
+  .sync-status.ok{color:var(--amber);}
+  .sync-status.error{color:#B3261E;}
+  .sync-status .retry-btn{
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    background:none;
+    border:1px solid rgba(179,38,30,.45);
+    color:#B3261E;
+    padding:2px 8px;
+    border-radius:100px;
+    cursor:pointer;
+    margin-left:6px;
+  }
+  .sync-status .retry-btn:hover{background:rgba(179,38,30,.10);}
+
+  /* ---------- DESKTOP QR PANEL ---------- */
+  .qr-panel{
+    display:none;
+    position:fixed;
+    top:26px;
+    right:26px;
+    z-index:60;
+    background:var(--white);
+    border-radius:16px;
+    padding:14px 14px 12px;
+    box-shadow:var(--card-shadow);
+    text-align:center;
+  }
+  .qr-panel img{
+    display:block;
+    width:180px;
+    height:180px;
+    border-radius:8px;
+  }
+  .qr-panel .qr-link-text{
+    font-family:'Montserrat',sans-serif;
+    font-size:13px;
+    font-weight: bolder;
+    max-width:180px;
+    line-height:1.4;
+    margin-top:8px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .qr-panel .qr-caption{
+    margin-top:8px;
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    color:var(--muted);
+    max-width:180px;
+    line-height:1.4;
+  }
+  @media (min-width:900px){
+    .qr-panel{ display:block; }
+  }
+
+  /* ---------- VIEW TABS ---------- */
+  .view-tabs{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:24px;
+  }
+  .view-tab{
+    font-family:'Montserrat',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    padding:9px 20px;
+    border-radius:100px;
+    border:1px solid var(--line);
+    background:var(--white);
+    color:var(--ink);
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .view-tab:hover{border-color:rgba(201,164,92,.6);}
+  .view-tab.active{
+    background:var(--court);
+    border-color:var(--court);
+    color:var(--court-dark);
+  }
+
+  /* ---------- DAY PICKER ---------- */
+  .day-picker{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .day-picker label{
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    color:var(--ink-soft);
+  }
+  .day-picker select{
+    font-family:'Montserrat',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:.015em;
+    padding:8px 34px 8px 16px;
+    border-radius:100px;
+    border:1px solid var(--line);
+    background:var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23102A1E" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+    background-size:11px;
+    color:var(--court-line);
+    cursor:pointer;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+  }
+  .day-picker select:hover, .day-picker select:focus{border-color:rgba(201,164,92,.6); outline:none;}
+  .day-picker select option{color:var(--ink);}
+
+  /* ---------- LIVE MATCHES (Court Control) ---------- */
+  .live-dot{
+    display:inline-block;
+    width:9px; height:9px;
+    border-radius:50%;
+    background:var(--green-dark);
+    margin-right:8px;
+    vertical-align:middle;
+    box-shadow:0 0 0 0 rgba(122,88,36,.5);
+    animation:live-pulse 1.8s infinite;
+  }
+  @keyframes live-pulse{
+    0%{ box-shadow:0 0 0 0 rgba(122,88,36,.45); }
+    70%{ box-shadow:0 0 0 8px rgba(122,88,36,0); }
+    100%{ box-shadow:0 0 0 0 rgba(122,88,36,0); }
+  }
+  .live-board-meta{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    margin:0 0 22px;
+  }
+  .live-board-meta .stat{
+    flex:none;
+    min-width:220px;
+  }
+  .live-board-meta .stat b{color:var(--cork);}
+
+  .facility-title{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    margin:26px 0 10px;
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:15px;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    color:var(--court-line);
+  }
+  .facility-title:first-child{margin-top:0;}
+  .facility-title .facility-count{
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    letter-spacing:.02em;
+    text-transform:none;
+    color:var(--ink-soft);
+  }
+  .live-table-wrap{
+    background:var(--white);
+    border-radius:10px;
+    overflow-x:auto;
+    box-shadow:var(--card-shadow);
+    margin-bottom:18px;
+    border:1px solid rgba(20,27,44,.08);
+  }
+  table.live-table{
+    width:100%;
+    min-width:520px;
+    border-collapse:collapse;
+  }
+  table.live-table thead th{
+    background:var(--navy);
+    color:var(--white);
+    font-family:'Montserrat',sans-serif;
+    font-weight:600;
+    font-size:9.5px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    padding:9px 10px;
+    text-align:left;
+    white-space:nowrap;
+  }
+  table.live-table td{
+    padding:9px 10px;
+    border-bottom:1px solid rgba(20,27,44,.07);
+    vertical-align:middle;
+  }
+  table.live-table tr:last-child td{border-bottom:none;}
+  td.live-court-cell{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:17px;
+    color:var(--court-dark);
+    background:rgba(201,164,92,.16);
+    white-space:nowrap;
+    width:1%;
+    text-align:center;
+    vertical-align:middle;
+  }
+  td.live-court-cell .live-dot{margin-right:6px;}
+  /* Idle court (see liveEmptyRowHTML) — same size and shape as a live one,
+     just without the "in play" highlight. */
+  td.live-court-cell.idle{
+    background:var(--paper-dim);
+    color:var(--muted);
+  }
+  td.live-team-cell{ min-width:130px; }
+  td.live-team-cell.right{ text-align:right; }
+  /* The code is a compact reference tag; the players' names are what a
+     spectator actually scans for, so they carry the visual weight. */
+  .live-team-code{
+    font-family:'Montserrat',sans-serif;
+    font-weight:600;
+    font-size:9.5px;
+    letter-spacing:.02em;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .live-team-code.tbd{color:var(--muted); font-weight:500; font-style:italic;}
+  .live-team-players{
+    font-family:'Montserrat',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    color:var(--ink);
+    line-height:1.3;
+    margin-top:2px;
+  }
+  .live-team-players .p{display:block;}
+  td.live-vs-cell{
+    text-align:center;
+    white-space:nowrap;
+    width:1%;
+  }
+  /* Match number — was its own table column; now a small pill stacked above
+     the score/VS instead, freeing that column's width for Match Details. */
+  .live-match-pill{
+    display:inline-block;
+    font-family:'Montserrat',sans-serif;
+    font-size:8.5px;
+    font-weight:700;
+    letter-spacing:.02em;
+    color:var(--muted);
+    background:rgba(20,27,44,.06);
+    border-radius:100px;
+    padding:2px 7px;
+    margin-bottom:3px;
+  }
+  .live-match-pill.placeholder{ visibility:hidden; }
+  .live-vs-score{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:13px;
+    color:var(--muted);
+  }
+  /* Qualified with table.live-table so it actually wins: the generic
+     `table.live-table td` rule above is (0,1,2) and outranks a bare
+     `td.live-cat-cell` (0,1,1), which silently swallowed this padding.
+     Kept tight — it is a label strip, and every pixel here is multiplied
+     by the court count down the board. */
+  table.live-table td.live-cat-cell{
+    border-bottom:none;
+    padding:3px 10px 1px;
+    font-family:'Montserrat',sans-serif;
+    font-size:9px;
+    line-height:1.35;
+    letter-spacing:.015em;
+    text-transform:uppercase;
+    color:var(--muted);
+    background:rgba(20,27,44,.03);
+    text-align:center;
+  }
+  td.live-cat-cell .live-round{
+    color:var(--cork);
+    font-weight:700;
+  }
+  td.live-cat-cell .live-empty-label{
+    font-style:italic;
+  }
+
+  /* ---------- TEAM FORMAT: shared bits ---------- */
+  /* Base-team letter shown beside a team name. --navy text on the --green
+     fill is ~6.5:1. */
+  .chip{
+    display:inline-block;
+    font-family:'Montserrat',sans-serif;
+    font-weight:700;
+    font-size:10px;
+    line-height:1.5;
+    letter-spacing:.02em;
+    padding:0 6px;
+    border-radius:100px;
+    background:var(--green);
+    color:var(--navy);
+    margin-left:6px;
+    vertical-align:middle;
+    white-space:nowrap;
+  }
+  .you-badge{
+    display:inline-block;
+    font-family:'Montserrat',sans-serif;
+    font-size:9.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    background:var(--cork);
+    color:#fff;
+    padding:1px 6px;
+    border-radius:4px;
+    margin-left:6px;
+    vertical-align:middle;
+  }
+  .live-pill{
+    display:inline-flex;
+    align-items:center;
+    font-family:'Montserrat',sans-serif;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--white);
+    background:var(--green-dark);
+    border:1px solid var(--green-dark);
+    border-radius:100px;
+    padding:6px 13px 6px 10px;
+  }
+  .live-pill .live-dot{margin-right:6px;}
+  .next-pill{
+    display:inline-flex;
+    align-items:center;
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--green);
+    border:1px solid var(--green);
+    border-radius:100px;
+    padding:4px 11px;
+  }
+
+  /* ---------- STANDINGS ---------- */
+  .section-title{
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:26px;
+    line-height:1.15;
+    color:var(--navy);
+    margin:34px 0 14px;
+  }
+  .section-title:first-child{margin-top:0;}
+  .section-caption{
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:18px 0 8px;
+  }
+  .group-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));
+    gap:16px;
+    align-items:start;
+  }
+  .group-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    overflow:hidden;
+  }
+  .group-title{
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:19px;
+    color:var(--navy);
+    margin:0;
+    padding:13px 14px 9px;
+  }
+  .gt-wrap{ overflow-x:auto; }
+  table.gt{ width:100%; border-collapse:collapse; }
+  table.gt th{
+    font-family:'Montserrat',sans-serif;
+    font-size:9px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    text-align:left;
+    padding:6px 8px;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    white-space:nowrap;
+  }
+  table.gt th.num, table.gt td.num{ text-align:right; }
+  table.gt td{
+    padding:9px 8px;
+    font-size:12px;
+    color:var(--ink);
+    border-bottom:1px solid rgba(16,42,30,.07);
+    vertical-align:middle;
+    font-variant-numeric:tabular-nums;
+  }
+  table.gt tr:last-child td{ border-bottom:none; }
+  table.gt td.rk{ width:24px; text-align:center; color:var(--muted); font-weight:700; padding-left:8px; padding-right:2px; }
+  table.gt td.tm{ font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+  table.gt td.q{ font-weight:800; text-align:right; white-space:nowrap; }
+  table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2px; }
+  .adv-pill{
+    display:inline-block;
+    margin-top:3px;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--green);
+    border-radius:100px;
+    padding:1px 8px;
+  }
+  .group-section{ margin-bottom:12px; }
+  .group-toggle{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:19px;
+    color:var(--navy);
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:13px 16px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .group-toggle:hover{ border-color:var(--green-dark); }
+  .group-toggle small{
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-left:8px;
+  }
+  .group-toggle .chev{ transition:transform .15s ease; flex:none; }
+  .group-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .group-body{ padding-top:12px; }
+
+  /* ---------- MATCHUP CARD ---------- */
+  .tm-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-left:6px solid var(--court);
+    border-radius:14px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:14px;
+    overflow:hidden;
+  }
+  .tm-card:last-child{ margin-bottom:0; }
+  .tm-card.is-progress{ border-left-color:var(--green-dark); }
+  .tm-card.is-final{ border-left-color:var(--navy); }
+  .tm-card.next{ border-left-color:var(--amber); box-shadow:var(--card-shadow), 0 0 0 2px var(--green); }
+  .tm-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px 10px;
+    padding:12px 16px 0;
+  }
+  .tm-when{
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    min-width:0;
+  }
+  .tm-when .tm-stage{ color:var(--green-dark); }
+  .tm-badges{ display:flex; gap:6px; align-items:center; flex:none; }
+  .tm-pill{
+    display:inline-block;
+    font-family:'Montserrat',sans-serif;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    border-radius:100px;
+    padding:3px 10px;
+  }
+  .tm-pill.progress{ background:var(--green-dark); color:var(--white); }
+  .tm-pill.final{ background:var(--navy); color:var(--white); }
+  .tm-pill.tie{ background:var(--paper-dim); color:var(--ink); border:1px solid var(--line); }
+  .tm-headline{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:8px;
+    align-items:start;
+    padding:10px 10px 14px;
+  }
+  .tm-side{ min-width:0; padding:6px 8px; border-radius:10px; }
+  .tm-side.right{ text-align:right; }
+  .tm-side.win{ background:rgba(201,164,92,.22); }
+  .tm-name{
+    font-family:'Montserrat',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    line-height:1.3;
+    color:var(--ink);
+    overflow-wrap:anywhere;
+  }
+  .tm-name.tbd{ color:var(--ink-soft); font-style:italic; font-weight:600; }
+  .tm-side.lose .tm-name{ color:var(--ink-soft); font-weight:600; }
+  .tm-tag{
+    display:block;
+    margin-top:4px;
+    font-size:9.5px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--green-dark);
+  }
+  .tm-mid{ text-align:center; padding-top:6px; }
+  .tm-score{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:24px;
+    line-height:1.1;
+    color:var(--ink);
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .tm-pairs{
+    margin-top:3px;
+    font-size:10px;
+    font-weight:600;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .tm-vs{
+    font-family:'Montserrat',sans-serif;
+    font-weight:800;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--muted);
+    padding-top:4px;
+  }
+  .tm-rows{ border-top:1px solid var(--line); background:var(--paper); }
+  .tm-row{ padding:9px 16px 10px; border-bottom:1px solid rgba(16,42,30,.07); }
+  .tm-row:last-child{ border-bottom:none; }
+  .tm-row.live{ background:rgba(201,164,92,.22); }
+  .tm-row-meta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:4px;
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .tm-row-meta .tm-plabel{
+    background:rgba(16,42,30,.08);
+    border-radius:100px;
+    padding:0 8px;
+    color:var(--ink);
+  }
+  .tm-row-meta .tm-live{ color:var(--green-dark); }
+  .tm-row-meta .live-dot{ margin-right:4px; }
+  .tm-row-body{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:8px;
+    align-items:center;
+  }
+  .tm-players{
+    font-size:12.5px;
+    font-weight:600;
+    line-height:1.35;
+    color:var(--ink);
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  .tm-players.right{ text-align:right; }
+  .tm-players.unset{ color:var(--ink-soft); font-style:italic; font-weight:500; }
+  .tm-rscore{
+    font-family:'Montserrat',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    text-align:center;
+    min-width:44px;
+    font-variant-numeric:tabular-nums;
+  }
+  .tm-rscore b{ font-weight:800; color:var(--ink); }
+  .tm-toggle{
+    display:block;
+    width:100%;
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--paper);
+    border:none;
+    border-top:1px solid var(--line);
+    padding:9px 16px;
+    cursor:pointer;
+  }
+  .tm-toggle:hover{ background:var(--paper-dim); }
+
+  /* ---------- MATCH FINDER: team chips + notes ---------- */
+  .team-groups{ max-width:560px; margin:30px auto 0; }
+  .team-groups h3{
+    font-family:'Montserrat',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:16px 0 8px;
+  }
+  .team-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .team-chip-btn{
+    font-family:'Montserrat',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink);
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:7px 14px;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .team-chip-btn:hover{ border-color:var(--green-dark); background:var(--paper-dim); }
+  .team-chip-btn .chip{ margin-left:8px; }
+  .lineup-note{
+    margin:18px 0 0;
+    font-size:12.5px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    text-align:center;
+  }
+
+  /* Running matchup score under a live match's score (Live Matches). */
+  .live-matchup{
+    font-family:'Montserrat',sans-serif;
+    font-size:9px;
+    font-weight:600;
+    color:var(--muted);
+    margin-top:2px;
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .live-team-code .chip{ margin-left:0; }
+
+
+  /* ---------- RESULTS ---------- */
+  #results{margin-top:44px;}
+
+  .results-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    color:var(--court-line);
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .results-head h2{
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:24px;
+    text-transform:uppercase;
+    margin:0;
+    letter-spacing:.03em;
+  }
+  .results-head .division-tag{
+    font-family:'Montserrat',sans-serif;
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+  .results-meta{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:-8px 0 22px;
+  }
+
+  .empty-state{
+    background:var(--white);
+    border:1px dashed var(--line);
+    border-radius:14px;
+    padding:26px;
+    color:var(--ink);
+    text-align:center;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .empty-state strong{color:var(--navy); font-family:'Montserrat',sans-serif;}
+
+  .stats-row{
+    display:flex;
+    gap:14px;
+    justify-content:center;
+    margin:34px auto 0;
+    max-width:560px;
+    flex-wrap:wrap;
+  }
+  .stat{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px 18px;
+    text-align:center;
+    color:var(--court-line);
+    min-width:110px;
+    flex:1;
+  }
+  .stat b{
+    display:block;
+    font-family:'Montserrat',sans-serif;
+    font-size:22px;
+    color:var(--amber);
+    font-weight:800;
+  }
+  .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft);}
+
+  footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    line-height:1.9;
+    margin-top:60px;
+    padding-bottom:20px;
+    font-family:'Montserrat',sans-serif;
+  }
+  footer a{ color:var(--court); text-decoration:none; }
+  footer a:hover{ text-decoration:underline; }
+
+  @media (max-width:520px){
+    .search-row{flex-direction:column;}
+    button#searchBtn{padding:13px;}
+  }
+
+  @media (max-width:480px){
+    .view-tabs{gap:6px;}
+    .view-tab{font-size:11px; padding:9px 12px;}
+    .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
+    .section-title{font-size:22px; margin-top:28px;}
+    .tm-head{padding:12px 12px 0;}
+    .tm-headline{padding:8px 4px 12px; gap:2px;}
+    .tm-name{font-size:13.5px;}
+    .tm-score{font-size:20px;}
+    .tm-row{padding:9px 12px 10px;}
+    .tm-players{font-size:12px;}
+
+    .live-table-wrap{overflow-x:visible;}
+    table.live-table{min-width:0;}
+    table.live-table th, table.live-table td{padding:6px 5px;}
+    td.live-court-cell{font-size:13px;}
+    td.live-match-cell{font-size:9.5px;}
+    td.live-team-cell{min-width:0;}
+    .live-team-code{font-size:10px;}
+    .live-team-players{font-size:10.5px;}
+    td.live-vs-cell{font-size:11px;}
+    td.live-cat-cell{font-size:8.5px; padding:6px 5px 2px;}
+  }
+
+  :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="qr-panel" aria-hidden="false">
+  <img src="assets/qr.png" alt="QR code linking to this Tournament Hub site" />
+  <div class="qr-link-text">tinyurl.com/SAGExPickleDrive2026</div>
+  <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
+</div>
+
+<header class="hero">
+  <div class="hero-logos">
+    <img src="assets/logo.png" alt="PickleDrive Club One Year Celebration logo" />
+    <span class="hero-logos-sep">&times;</span>
+    <img src="/assets/logo.png" alt="S.A.G.E." />
+  </div>
+  <div class="tagline-script">Not just a tournament, it's a celebration!</div>
+  <div class="eyebrow">October 3, 2026 &nbsp;·&nbsp; Kingcourts</div>
+  <h1 class="title"><span class="title-kicker">PickleDrive Club</span> One Year <span class="accent">Celebration</span></h1>
+  <div class="domination-line">Team Tournament</div>
+  <p class="subtitle">Follow every team, every matchup and every court — live.</p>
+
+  <div class="day-picker" id="dayPickerWrap">
+    <label for="dayPicker">Select tournament day</label>
+    <select id="dayPicker"></select>
+  </div>
+
+  <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
+    <button class="view-tab active" data-view="live" type="button">Live Matches</button>
+    <button class="view-tab" data-view="finder" type="button">Match Finder</button>
+    <button class="view-tab" data-view="standings" type="button">Standings</button>
+  </div>
+
+  <div class="regal-rule"><span class="diamond"></span></div>
+
+  <div class="search-panel" id="searchPanel" style="display:none;">
+    <label class="search-label" for="teamInput">Search a team or a player</label>
+    <div class="search-row autocomplete">
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="e.g. DinkTadors or Tristen Pamintuan" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
+  </div>
+
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
+</header>
+
+<div class="wrap">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
+    <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div id="liveBoard"></div>
+  </div>
+  <div id="results" style="display:none;"></div>
+  <div id="standingsResults" style="display:none;">
+    <div id="standingsBody"></div>
+  </div>
+</div>
+
+<footer>
+  PickleDrive Club One Year Celebration &middot; October 3, 2026 &middot; Kingcourts<br>
+  Powered by S.A.G.E. Match Control Experts
+</footer>
+
+<script>
+// ============================================================================
+// CONFIGURATION — everything a tournament organizer would need to touch
+// lives here at the top. The rest of the file below is implementation and
+// shouldn't need editing when details change (add a day, swap a
+// spreadsheet, etc.) — just update the values in this block.
+// ============================================================================
+
+// ---- Event identity ---------------------------------------------------------
+// Does triple duty: browser-storage namespace, this event's folder in the
+// shared data repo, and its folder under events/ in this repo. Keep all
+// three identical.
+const EVENT_KEY = 'pickledrive-anniversary-2026';
+
+// ---- Days -------------------------------------------------------------------
+// One entry per tournament day. Day keys must be globally unique across all
+// events in the shared data repo — prefix them with something event-specific
+// (e.g. 'pickledrive-anniversary-2026-day1'). Length drives the UI: with more than one day
+// the day picker shows and gates the tabs until a day is chosen; with
+// exactly one day the picker hides and that day auto-loads.
+//
+// isLive itself is no longer read from `date`/a config value here — it
+// comes from the published snapshot (see computeDayIsLive() below), which
+// sage-tools-api stamps with this day's current config value on every
+// sync, and immediately on a Match Control console override. So a kill
+// switch can never be silently reverted by an unrelated sheet edit, and
+// this local `date` only feeds the auto-live threshold math.
+const DAYS = [
+  { key: 'pickledrive-anniversary-2026-day1', label: 'Oct 3', date: '2026-10-03' }
+];
+
+// Auto-live threshold: GO_LIVE_LEAD_HOURS before this day's earliest
+// scheduled match time, read straight from the synced Schedule column
+// (e.g. "3:00 PM") — not a hand-set hour. This removes the old per-event
+// LIVE_GO_LIVE_HOUR_PH knob entirely: there is nothing left here to keep
+// in sync by hand for an evening-only event or any other schedule shape.
+const GO_LIVE_LEAD_HOURS = 4;
+
+function parseScheduleTimeToMinutes(raw){
+  const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if(!m) return null;
+  let h = parseInt(m[1], 10) % 12;
+  if(/pm/i.test(m[3])) h += 12;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+function earliestScheduleMinutesFrom(snapshot){
+  let earliest = null;
+  (snapshot.facilities || []).forEach(f => {
+    rowsToMatches(parseCSV(f.matchesCsv)).forEach(m => {
+      const mins = parseScheduleTimeToMinutes(m.time);
+      if(mins !== null && (earliest === null || mins < earliest)) earliest = mins;
+    });
+  });
+  return earliest;
+}
+
+// snapshot: the day's published snapshot, or null before the first fetch
+// resolves (selectDay's preliminary guess — always not-live until real
+// data says otherwise, same safe default as today's "no date configured").
+function computeDayIsLive(day, snapshot){
+  const raw = snapshot ? snapshot.isLive : undefined;
+  if(raw === true) return true;
+  if(raw === false) return false;
+  // 'auto' (or missing — an older snapshot published before this shipped):
+  // live once we're at/after GO_LIVE_LEAD_HOURS before the day's earliest
+  // scheduled match time, and permanently live after that point.
+  if(!snapshot || !day.date) return false;
+  const earliestMin = earliestScheduleMinutesFrom(snapshot);
+  if(earliestMin === null) return false; // no parseable Schedule values synced yet -> stays hidden
+  const hh = String(Math.floor(earliestMin / 60)).padStart(2, '0');
+  const mm = String(earliestMin % 60).padStart(2, '0');
+  const firstServe = new Date(`${day.date}T${hh}:${mm}:00+08:00`);
+  return Date.now() >= firstServe.getTime() - GO_LIVE_LEAD_HOURS * 60 * 60 * 1000;
+}
+
+// ---- Venues / courts ---------------------------------------------------------
+// One entry per facility/venue. `courts` is the inclusive [min, max] range
+// of court numbers at that venue — facilityForCourt() below maps a court
+// number to its facility name via this list. Length drives the UI: with a
+// single facility, the facility title row on the Live Matches board and the
+// per-facility resync row in control-center.html are both suppressed.
+const FACILITIES = [
+  { name: 'Kingcourts', courts: [1, 10] }
+];
+
+// ---- Team format --------------------------------------------------------
+// Pair number (the digit after "_" in a team code) -> label.
+const PAIRS = {
+  1: { full: "Men's Doubles",   short: 'MD' },
+  2: { full: "Women's Doubles", short: 'WD' },
+  3: { full: 'Mixed Doubles',   short: 'XD' },
+  4: { full: 'Mixed Doubles',   short: 'XD' }
+};
+// Playoff stage prefix (before "-" in a side) -> label and display order.
+// A side with no "-" is a group-stage side.
+const STAGES = {
+  SF: { label: 'Semifinal', order: 1 },
+  Br: { label: 'Bronze',    order: 2 },
+  Fi: { label: 'Final',     order: 3 }
+};
+
+// ---- Data source --------------------------------------------------------------
+// Fixed for every event — one shared repo, one folder per event, keyed by
+// EVENT_KEY above. Nothing here is filled in at instantiation; if a page
+// ever needs a different repo, that is a platform change, not an event
+// setting. GitHub Pages must be enabled on the event-data repo (Settings ->
+// Pages -> Deploy from branch -> GHPAGES_BRANCH) with a .nojekyll file at
+// its root so GitHub serves the JSON as plain static files. Pages caches
+// every response for ~10 minutes with no way to force an early refresh —
+// the cache-busting query param below is what keeps polls actually fresh
+// instead of stuck on a 10-minute-old snapshot.
+const GHPAGES_OWNER  = 'sage-match-control';
+const GHPAGES_REPO   = 'event-data';
+const GHPAGES_BRANCH = 'main'; // not part of the URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
+// Local testing only: on localhost, ?fixture=<name> loads
+// /_fixtures/<EVENT_KEY>/<name>.json instead of the published snapshot.
+// _fixtures/ is never published (Jekyll skips "_" folders), and the
+// hostname check keeps this inert on the live site.
+const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? new URLSearchParams(location.search).get('fixture')
+  : null;
+const snapshotUrlFor = dayKey => FIXTURE
+  ? `/_fixtures/${EVENT_KEY}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
+  : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${dayKey}.json?t=${Date.now()}`;
+
+// ---- Network & polling timing --------------------------------------------
+// How long to wait on the snapshot fetch before giving up (venue wifi at a
+// live event can hang rather than fail outright).
+const FETCH_TIMEOUT_MS = 8000;
+// How often to re-check GitHub Pages while a tab is open and visible.
+// Paused automatically while the tab/app is backgrounded. Apps Script's own
+// edit debounce is ~10s, so polling any faster than that wouldn't reveal
+// fresher data any sooner anyway.
+const POLL_INTERVAL_MS = 10000;
+
+// ---- Browser storage keys -------------------------------------------------
+// Namespaced off EVENT_KEY, so a new event can never read or clobber
+// another event's saved state in a shared browser. Used to remember the
+// last day picked + last search across page reloads.
+const STORAGE_DAY_KEY = `${EVENT_KEY}.dayIndex`;
+const STORAGE_SEARCH_KEY = `${EVENT_KEY}.search`;
+
+// ============================================================================
+// END CONFIGURATION — implementation follows below
+// ============================================================================
+
+let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
+let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) — set in selectDay(), re-checked on every poll
+
+let MATCHES = [];
+let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
+function buildMatchByCodeIndex(matches){
+  const idx = new Map();
+  matches.forEach(m => {
+    if(m.t1) idx.set(m.t1, m);
+    if(m.t2) idx.set(m.t2, m);
+  });
+  return idx;
+}
+let STANDINGS = [];
+let TEAM_MATCHUPS = [];  // [{ matchUp, matches:[…], side1, side2, stage, group, times:[…], courts:[…], result }]
+let TEAM_ROW_BY_CODE = new Map(); // STANDINGSCSV teamCode -> row, rebuilt on every load
+let ADVANCING = new Set();        // base team letters sitting in an SF-* slot (§4.3)
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+function rowsToMatches(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
+        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
+        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
+        iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
+        iLiveCourt = idx('court'), iMatchUp = idx('matchUp');
+
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const num = parseInt(row[iNum], 10);
+    if(!num) continue;
+    const t1 = (row[iT1]||'').trim();
+    const t2 = (row[iT2]||'').trim();
+    let t1p1 = (row[iP1a]||'').trim();
+    let t1p2 = (row[iP1b]||'').trim();
+    let t2p1 = (row[iP2a]||'').trim();
+    let t2p2 = (row[iP2b]||'').trim();
+    // Placeholder bracket slots repeat the team code as the player name
+    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
+    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
+    // Scores are optional — only present once a match has been played
+    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
+    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
+    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
+    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
+    const played = t1Score !== null && t2Score !== null;
+    const court = iCourt > -1 ? (row[iCourt]||'').trim() : '';
+    // A value here means the match is currently being played on that court —
+    // separate from CourtAssignment above, which is just the scheduled court.
+    const liveCourt = iLiveCourt > -1 ? (row[iLiveCourt]||'').trim() : '';
+    // The matchup this match belongs to ("A v B") — the only thing matches
+    // are grouped into matchups by.
+    const matchUp = iMatchUp > -1 ? (row[iMatchUp]||'').trim() : '';
+    out.push({
+      num,
+      time: (row[iSched]||'').trim(),
+      court,
+      liveCourt,
+      matchUp,
+      t1, t1p1, t1p2, t2, t2p1, t2p2,
+      t1Score, t2Score, played
+    });
+  }
+  out.sort((a,b) => a.num - b.num);
+  return out;
+}
+
+// STANDINGSCSV: teamCode, teamName, totalPoints, totalOpponentPoints,
+// quotient, bracket. quotient is "-" before any match is played, which is
+// not a number, so it comes back null.
+function rowsToStandings(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iCode = idx('teamCode'), iName = idx('teamName'), iPF = idx('totalPoints'),
+        iPA = idx('totalOpponentPoints'), iQ = idx('quotient'), iB = idx('bracket');
+
+  const num = raw => raw !== '' && !isNaN(raw) ? parseFloat(raw) : null;
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const teamCode = (row[iCode]||'').trim();
+    if(!teamCode) continue;
+    const teamName = iName > -1 ? (row[iName]||'').trim() : '';
+    const pf = iPF > -1 ? (num((row[iPF]||'').trim()) ?? 0) : 0;
+    const pa = iPA > -1 ? (num((row[iPA]||'').trim()) ?? 0) : 0;
+    const quotient = iQ > -1 ? num((row[iQ]||'').trim()) : null;
+    const bracket = iB > -1 ? (row[iB]||'').trim() : '';
+    out.push({ teamCode, teamName, pf, pa, quotient, bracket });
+  }
+  return out;
+}
+
+// jsDelivr/GitHub can hang on a bad connection (likely at a live event on
+// venue wifi) rather than failing outright — cap every request so a stalled
+// fetch degrades into the normal retry UI instead of leaving "Loading live
+// schedule..." on screen forever. (FETCH_TIMEOUT_MS is set in the
+// CONFIGURATION block at the top of this script.)
+async function fetchDaySnapshot(dayKey){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(snapshotUrlFor(dayKey), { cache: 'no-store', signal: controller.signal });
+    if(!res.ok){
+      // Cloud Run hasn't published this day yet at all shows up here as a
+      // plain 404 from jsDelivr/GitHub — carry the status through so the
+      // caller can tell "not published yet" apart from a real failure.
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } catch(err){
+    if(err.name === 'AbortError') throw new Error('timed out');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadLiveData(){
+  // Nothing to load until the person has actually picked a day.
+  if(currentDayIndex === null) return false;
+
+  // Snapshot which day this specific call is loading for. Days can switch
+  // (or a Retry can be clicked) while a fetch is still in flight — without
+  // this guard, a slow/stale response for a day the person has since
+  // navigated away from can land after a newer one and silently overwrite
+  // the correct data with the wrong day's.
+  const dayIndexAtStart = currentDayIndex;
+  const day = DAYS[dayIndexAtStart];
+  const statusEl = document.getElementById('syncStatus');
+  const tabsShowing = viewTabsWrapEl.style.display !== 'none';
+
+  if(tabsShowing){
+    statusEl.textContent = 'Loading live schedule…';
+    statusEl.className = 'sync-status loading';
+  } else {
+    dayPromptEl.textContent = `Loading ${day.label}…`;
+  }
+
+  try {
+    const snapshot = await fetchDaySnapshot(day.key);
+    if(currentDayIndex !== dayIndexAtStart) return false; // superseded by a newer day switch — discard
+
+    // Server-side (Cloud Run) already fetched each facility, so this is
+    // just re-assembling what it published — no per-facility network calls
+    // happen here anymore. matchNumber/teamCode are unique across a day's
+    // facilities, so combining is just a concatenation.
+    const matches = snapshot.facilities
+      .flatMap(f => rowsToMatches(parseCSV(f.matchesCsv)))
+      .sort((a, b) => a.num - b.num);
+    const standings = snapshot.facilities.flatMap(f => rowsToStandings(parseCSV(f.standingsCsv)));
+
+    if(matches.length === 0) throw new Error('No rows parsed from any facility');
+
+    MATCHES = matches;
+    MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
+    STANDINGS = standings;
+    rebuildTeamData();
+
+    // Re-checked every poll (not just on day-select) so a page left open
+    // across the go-live threshold flips over on its own, without needing
+    // a reload. Only re-sync tab visibility when it actually changed,
+    // though — calling this every 10s regardless would yank the person off
+    // whatever tab they're currently looking at.
+    const wasLive = dayIsLive;
+    dayIsLive = computeDayIsLive(day, snapshot);
+    if(dayIsLive !== wasLive) revealLiveTabsAfterLoad();
+
+    rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
+    if(dayIsLive){
+      renderStandings();
+      renderLiveMatches();
+    }
+
+    // "Synced" reflects when Cloud Run actually published this snapshot
+    // (i.e. when the sheet was last edited and its debounce settled), not
+    // when this browser happened to re-poll jsDelivr — that's the
+    // meaningful freshness signal now, not the poll time.
+    const syncedAt = snapshot.generatedAt ? new Date(snapshot.generatedAt) : new Date();
+    const failedFacilities = snapshot.failedFacilities || [];
+    if(failedFacilities.length){
+      statusEl.textContent = `${day.label} · Live (partial) · last synced ${syncedAt.toLocaleTimeString()} · couldn't reach: ${failedFacilities.join(', ')}`;
+      statusEl.className = 'sync-status error';
+    } else {
+      statusEl.textContent = `${day.label} · Live · last synced ` + syncedAt.toLocaleTimeString();
+      statusEl.className = 'sync-status ok';
+    }
+    return true;
+  } catch(err){
+    if(currentDayIndex !== dayIndexAtStart) return false; // superseded — let the newer call's UI stand
+
+    const notPublishedYet = err.status === 404;
+    const baseMessage = notPublishedYet
+      ? `${day.label}: schedule isn't loaded yet — check back soon.`
+      : `Couldn't load ${escapeHtml(day.label)} data (` + escapeHtml(err.message) + ').';
+    const message = notPublishedYet
+      ? baseMessage
+      : baseMessage + ' <button id="retryBtn" class="retry-btn">Retry</button>';
+
+    if(tabsShowing){
+      statusEl.innerHTML = message;
+      statusEl.className = 'sync-status error';
+    } else {
+      dayPromptEl.innerHTML = message;
+    }
+
+    const retryBtn = document.getElementById('retryBtn');
+    if(retryBtn) retryBtn.addEventListener('click', async () => {
+      const ok = await loadLiveData();
+      if(ok && typeof revealLiveTabsAfterLoad === 'function') revealLiveTabsAfterLoad();
+    });
+    return false;
+  }
+}
+
+// Shared by the day picker and the retry button: once loadLiveData resolves
+// true, reveal the tabs/status and land on Live Matches so a successful
+// retry doesn't leave the person stuck on the error prompt.
+function revealLiveTabsAfterLoad(){
+  const dayPromptEl = document.getElementById('dayPrompt');
+  const viewTabsWrapEl = document.getElementById('viewTabsWrap');
+  const syncStatusEl = document.getElementById('syncStatus');
+  const liveResultsEl = document.getElementById('liveResults');
+  if(dayPromptEl) dayPromptEl.style.display = 'none';
+  if(viewTabsWrapEl) viewTabsWrapEl.style.display = '';
+  if(syncStatusEl) syncStatusEl.style.display = '';
+
+  const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
+  const standingsTabBtn = document.querySelector('.view-tab[data-view="standings"]');
+  const finderTabBtn = document.querySelector('.view-tab[data-view="finder"]');
+  if(liveTabBtn) liveTabBtn.style.display = dayIsLive ? '' : 'none';
+  if(standingsTabBtn) standingsTabBtn.style.display = dayIsLive ? '' : 'none';
+
+  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  if(dayIsLive){
+    if(liveTabBtn) liveTabBtn.classList.add('active');
+    if(liveResultsEl) liveResultsEl.style.display = '';
+  } else {
+    if(finderTabBtn) finderTabBtn.classList.add('active');
+    if(searchPanelEl) searchPanelEl.style.display = '';
+    if(resultsEl) resultsEl.style.display = '';
+  }
+}
+
+// ---------- Team codes (spec §3.4, §4.1, §5.5) ----------
+// A code is "<SIDE>_<PAIR>": A_3, SF-1_2, SF-A_2, Br-F_4, Fi-A_1. The pure
+// string parsing below is cached (these run for every row on every 10s
+// render); anything that depends on the loaded STANDINGS is not, because a
+// playoff slot changes mid-event when the organiser types a team's letter in.
+const sideCodeCache = new Map();
+function parseSideCode(code){
+  let cached = sideCodeCache.get(code);
+  if(cached) return cached;
+  const i = code.indexOf('_');
+  const side = i < 0 ? code : code.slice(0, i);
+  const pairNum = i < 0 ? NaN : parseInt(code.slice(i + 1), 10);
+  const d = side.indexOf('-');
+  cached = {
+    side,
+    pair: isNaN(pairNum) ? null : pairNum,
+    stage: d < 0 ? null : side.slice(0, d),
+    slot: d < 0 ? side : side.slice(d + 1)
+  };
+  sideCodeCache.set(code, cached);
+  return cached;
+}
+
+function sideOf(code){ return parseSideCode(code).side; }          // "SF-A_2" -> "SF-A"
+function pairOf(code){ return parseSideCode(code).pair; }          // "SF-A_2" -> 2
+function stageOf(side){ return parseSideCode(side).stage; }        // "SF-A" -> "SF"; "A" -> null
+function slotOf(side){ return parseSideCode(side).slot; }          // "SF-A" -> "A"; "SF-1" -> "1"; "A" -> "A"
+
+// A group-stage team row in STANDINGSCSV has a plain code (A–O); the playoff
+// rows all carry a "-".
+function isGroupTeamCode(code){ return stageOf(code) === null; }
+
+// The group-stage team a side belongs to. A group side is its own base team;
+// a playoff side's base team is its slot once the organiser has typed a team
+// letter there. A numeric seed has none yet.
+function baseTeamOf(side){
+  if(stageOf(side) === null) return side;
+  const slot = slotOf(side);
+  return TEAM_ROW_BY_CODE.has(slot) && isGroupTeamCode(slot) ? slot : null;
+}
+
+function teamNameOf(side){
+  const row = TEAM_ROW_BY_CODE.get(side);
+  if(row && row.teamName) return row.teamName;
+  const base = baseTeamOf(side);
+  if(base){
+    const baseRow = TEAM_ROW_BY_CODE.get(base);
+    if(baseRow && baseRow.teamName) return baseRow.teamName;
+  }
+  return null;
+}
+
+function sideLabel(side){
+  return teamNameOf(side) ?? (stageOf(side) !== null ? `Seed ${slotOf(side)} · TBD` : side);
+}
+
+function groupOf(side){
+  const base = baseTeamOf(side);
+  const row = base ? TEAM_ROW_BY_CODE.get(base) : null;
+  const n = row ? parseInt(row.bracket, 10) : NaN;
+  return isNaN(n) ? null : n;
+}
+
+function stageLabel(side){
+  const stage = stageOf(side);
+  if(stage === null){
+    const g = groupOf(side);
+    return g === null ? 'Group' : `Group ${g}`;
+  }
+  return STAGES[stage] ? STAGES[stage].label : stage;
+}
+
+function pairLabel(code, short){
+  const p = PAIRS[pairOf(code)];
+  return p ? (short ? p.short : p.full) : '';
+}
+
+// ---------- Matchups (spec §4.4) ----------
+// ms = the matchup's matches (same matchUp). A matchup is won on total
+// points across its matches — pair wins never decide it, and equal total
+// points is a tie. Unplayed matches count 0.
+// state: 'not-started' | 'in-progress' | 'final' | 'tie'; winner: 1 | 2 | null
+function teamMatchupResult(ms){
+  const side1 = sideOf(ms[0].t1), side2 = sideOf(ms[0].t2);
+  let pts1 = 0, pts2 = 0, pairs1 = 0, pairs2 = 0, played = 0;
+  ms.forEach(m => {
+    if(!m.played) return;
+    played++;
+    pts1 += m.t1Score;
+    pts2 += m.t2Score;
+    if(m.t1Score > m.t2Score) pairs1++;
+    else if(m.t2Score > m.t1Score) pairs2++;
+  });
+  const total = ms.length;
+  let state, winner = null;
+  if(played === 0) state = 'not-started';
+  else if(played < total) state = 'in-progress';
+  else if(pts1 === pts2) state = 'tie';
+  else { state = 'final'; winner = pts1 > pts2 ? 1 : 2; }
+  return { side1, side2, pts1, pts2, pairs1, pairs2, played, total, state, winner };
+}
+
+// Everything derived from MATCHES + STANDINGS, rebuilt after each load.
+function rebuildTeamData(){
+  TEAM_ROW_BY_CODE = new Map(STANDINGS.map(s => [s.teamCode, s]));
+
+  const byMatchUp = new Map(); // insertion order = lowest match number first (MATCHES is sorted)
+  MATCHES.forEach(m => {
+    if(!m.matchUp) return;
+    if(!byMatchUp.has(m.matchUp)) byMatchUp.set(m.matchUp, []);
+    byMatchUp.get(m.matchUp).push(m);
+  });
+  const distinct = list => Array.from(new Set(list.filter(Boolean)));
+  TEAM_MATCHUPS = Array.from(byMatchUp.entries()).map(([matchUp, matches]) => {
+    const side1 = sideOf(matches[0].t1), side2 = sideOf(matches[0].t2);
+    return {
+      matchUp, matches, side1, side2,
+      stage: stageOf(side1),
+      group: groupOf(side1) ?? groupOf(side2),
+      times: distinct(matches.map(m => m.time)),
+      courts: distinct(matches.map(m => m.court)),
+      result: teamMatchupResult(matches)
+    };
+  });
+
+  // §4.3: a team advances when its letter is the slot of any SF-* side.
+  ADVANCING = new Set();
+  MATCHES.forEach(m => [m.t1, m.t2].forEach(code => {
+    const side = sideOf(code);
+    if(stageOf(side) === 'SF'){
+      const base = baseTeamOf(side);
+      if(base) ADVANCING.add(base);
+    }
+  }));
+}
+
+const TEAM_EXPANDED = new Set();     // matchUp keys whose compact card shows its matches
+const TEAM_OPEN_GROUPS = new Set();  // group numbers whose "Group matchups" section is open
+
+// "9:00 AM & 9:25 AM" -> "9:00 & 9:25 AM" when the whole matchup shares a meridiem.
+function teamTimesLabel(times){
+  const parts = times.map(t => /^(.*?)\s*(AM|PM)$/i.exec(t));
+  if(!parts.length || parts.some(p => !p)) return times.join(' & ');
+  const suffixes = new Set(parts.map(p => p[2].toUpperCase()));
+  if(suffixes.size !== 1) return times.join(' & ');
+  return parts.map((p, i) => i === parts.length - 1 ? `${p[1]} ${p[2]}` : p[1]).join(' & ');
+}
+
+// Consecutive courts as a range ("Courts 1–2"), otherwise a list.
+function teamCourtsLabel(courts){
+  const nums = courts.map(c => { const m = /(\d+)\s*$/.exec(c); return m ? parseInt(m[1], 10) : null; });
+  if(!nums.length) return '';
+  if(nums.some(n => n === null)) return courts.join(', ');
+  const sorted = Array.from(new Set(nums)).sort((a, b) => a - b);
+  if(sorted.length === 1) return `Court ${sorted[0]}`;
+  const consecutive = sorted.every((n, i) => i === 0 || n === sorted[i - 1] + 1);
+  return consecutive
+    ? `Courts ${sorted[0]}–${sorted[sorted.length - 1]}`
+    : `Courts ${sorted.join(', ')}`;
+}
+
+function sideChipHTML(side){
+  const base = baseTeamOf(side);
+  return base ? `<span class="chip">${escapeHtml(base)}</span>` : '';
+}
+
+function teamMatchupRowHTML(m, swap){
+  const a = swap ? { code: m.t2, p1: m.t2p1, p2: m.t2p2, score: m.t2Score }
+                 : { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score };
+  const b = swap ? { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score }
+                 : { code: m.t2, p1: m.t2p1, p2: m.t2p2, score: m.t2Score };
+  const live = dayIsLive && !!m.liveCourt;
+  const played = dayIsLive && m.played;
+  const players = (s, right) => s.p1 === 'TBD'
+    ? `<div class="tm-players unset${right ? ' right' : ''}">Lineup not set</div>`
+    : `<div class="tm-players${right ? ' right' : ''}">${escapeHtml(s.p1)} / ${escapeHtml(s.p2)}</div>`;
+  const score = played
+    ? `<span class="tm-rscore">${a.score > b.score ? `<b>${a.score}</b>` : a.score}–${b.score > a.score ? `<b>${b.score}</b>` : b.score}</span>`
+    : `<span class="tm-rscore">–</span>`;
+  const plabel = pairLabel(m.t1, true);
+  return `<div class="tm-row${live ? ' live' : ''}">
+    <div class="tm-row-meta">
+      <span>#${m.num}</span>${plabel ? `<span class="tm-plabel">${escapeHtml(plabel)}</span>` : ''}
+      ${live ? `<span class="tm-live"><span class="live-dot" aria-hidden="true"></span>Court ${escapeHtml(m.liveCourt)}</span>` : ''}
+    </div>
+    <div class="tm-row-body">${players(a, false)}${score}${players(b, true)}</div>
+  </div>`;
+}
+
+// The one matchup component — Standings, Match Finder and the Control Center
+// all render it. focusBase: put that base team on the left (display only).
+// compact: headline only, matches behind a toggle. onlyMatch: show just the
+// row for that match number (a player's result). isNext: flag "Next up".
+function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch = null, isNext = false } = {}){
+  const r = mu.result;
+  const swap = focusBase !== null && baseTeamOf(mu.side1) !== focusBase && baseTeamOf(mu.side2) === focusBase;
+  const L = swap ? 2 : 1, R = swap ? 1 : 2;
+  const sideOfN = n => n === 1 ? mu.side1 : mu.side2;
+  const ptsOf = n => n === 1 ? r.pts1 : r.pts2;
+  const started = dayIsLive && r.played > 0;
+  const settled = dayIsLive && (r.state === 'final' || r.state === 'tie');
+
+  const pill = !dayIsLive ? ''
+    : r.state === 'in-progress' ? '<span class="tm-pill progress">In progress</span>'
+    : r.state === 'final' ? '<span class="tm-pill final">Final</span>'
+    : r.state === 'tie' ? '<span class="tm-pill tie">Tie</span>' : '';
+  const nextPill = dayIsLive && isNext ? '<span class="next-pill">Next up</span>' : '';
+
+  const when = [
+    `<span class="tm-stage">${escapeHtml(stageLabel(mu.side1))}</span>`,
+    escapeHtml(teamTimesLabel(mu.times)),
+    escapeHtml(teamCourtsLabel(mu.courts))
+  ].filter(s => s && s.trim()).join(' &middot; ');
+
+  const sideHTML = (n, right) => {
+    const side = sideOfN(n);
+    const won = settled && r.winner === n, lost = settled && r.winner !== null && r.winner !== n;
+    const base = baseTeamOf(side);
+    const name = teamNameOf(side);
+    return `<div class="tm-side${right ? ' right' : ''}${won ? ' win' : ''}${lost ? ' lose' : ''}">
+      <div class="tm-name${name ? '' : ' tbd'}">${escapeHtml(sideLabel(side))}${sideChipHTML(side)}${focusBase && base === focusBase ? '<span class="you-badge">You</span>' : ''}</div>
+      ${won ? '<span class="tm-tag">Winner</span>' : ''}
+    </div>`;
+  };
+
+  const middle = started
+    ? `<div class="tm-mid"><div class="tm-score">${ptsOf(L)} – ${ptsOf(R)}</div><div class="tm-pairs">pairs ${L === 1 ? r.pairs1 : r.pairs2}–${R === 1 ? r.pairs1 : r.pairs2}</div></div>`
+    : `<div class="tm-mid"><div class="tm-vs">VS</div></div>`;
+
+  const expanded = !compact || TEAM_EXPANDED.has(mu.matchUp);
+  const rowMatches = onlyMatch === null ? mu.matches : mu.matches.filter(m => m.num === onlyMatch);
+  const rows = expanded
+    ? `<div class="tm-rows">${rowMatches.map(m => teamMatchupRowHTML(m, swap)).join('')}</div>`
+    : '';
+  const toggle = compact
+    ? `<button type="button" class="tm-toggle" data-tm-toggle="${escapeHtml(mu.matchUp)}" aria-expanded="${expanded}">${expanded ? 'Hide matches' : 'Show matches'}</button>`
+    : '';
+  const stateClass = !dayIsLive ? '' : r.state === 'in-progress' ? ' is-progress' : settled ? ' is-final' : '';
+
+  return `<div class="tm-card${stateClass}${nextPill ? ' next' : ''}">
+    <div class="tm-head">
+      <div class="tm-when">${when}</div>
+      <div class="tm-badges">${nextPill}${pill}</div>
+    </div>
+    <div class="tm-headline">${sideHTML(L, false)}${middle}${sideHTML(R, true)}</div>
+    ${rows}${toggle}
+  </div>`;
+}
+
+function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
+
+// Capture/restore scroll positions of any scrolled-down elements inside a
+// container. Used so re-rendering standings (which rebuilds the whole
+// innerHTML on every live-data sync) doesn't snap the view back to the top.
+// Scoped to the actual scrollable containers (each group table, and each
+// Live Matches facility table) rather than every descendant node.
+// Both boards fully rebuild their HTML on every refresh, so without this
+// their scroll position would silently reset every 10 seconds.
+const SCROLLABLE_SELECTOR = '.gt-wrap, .live-table-wrap';
+
+// Stable identity for a scrollable node, preferred over raw className/
+// tagName matching — a group table or facility can render in a different
+// slot after a reload, and position-based matching would hand its scroll
+// offset to whatever unrelated element now occupies that slot instead.
+function scrollNodeIdentity(node){
+  const key = node.dataset && (node.dataset.groupKey || node.dataset.facilityKey);
+  return key ? `id:${key}` : (node.className || node.tagName);
+}
+
+function captureScrollPositions(root){
+  const positions = [];
+  const counts = {};
+  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
+    if(node.scrollTop > 0 || node.scrollLeft > 0){
+      const key = scrollNodeIdentity(node);
+      counts[key] = (counts[key] || 0) + 1;
+      positions.push({ key, occurrence: counts[key], top: node.scrollTop, left: node.scrollLeft });
+    }
+  });
+  return positions;
+}
+function restoreScrollPositions(root, positions){
+  if(!positions.length) return;
+  const counts = {};
+  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
+    const key = scrollNodeIdentity(node);
+    counts[key] = (counts[key] || 0) + 1;
+    const match = positions.find(p => p.key === key && p.occurrence === counts[key]);
+    if(match){
+      node.scrollTop = match.top;
+      node.scrollLeft = match.left;
+    }
+  });
+}
+
+// ---------- Standings (spec §4.2, §4.3, §5.7) ----------
+// Group ranking is quotient only, highest first; rows level on quotient keep
+// their STANDINGSCSV order (Array.prototype.sort is stable).
+function groupTableHTML(group, rows){
+  const anyQuotient = rows.some(s => s.quotient !== null);
+  const ranked = anyQuotient
+    ? rows.slice().sort((a, b) => (b.quotient ?? -Infinity) - (a.quotient ?? -Infinity))
+    : rows;
+  const label = group === '' ? 'Ungrouped' : `Group ${group}`;
+  return `<div class="group-card">
+    <h3 class="group-title">${escapeHtml(label)}</h3>
+    <div class="gt-wrap" data-group-key="${escapeHtml(group)}">
+      <table class="gt">
+        <thead><tr><th class="rk">${anyQuotient ? '#' : ''}</th><th>Team</th><th class="num">PF</th><th class="num">PA</th><th class="num">Quotient</th></tr></thead>
+        <tbody>${ranked.map((s, i) => `<tr>
+          <td class="rk">${anyQuotient ? i + 1 : ''}</td>
+          <td class="tm">${escapeHtml(s.teamName || s.teamCode)}<span class="chip">${escapeHtml(s.teamCode)}</span>${ADVANCING.has(s.teamCode) ? '<br><span class="adv-pill">Advances</span>' : ''}</td>
+          <td class="num">${s.pf}</td>
+          <td class="num">${s.pa}</td>
+          <td class="q">${s.quotient === null ? '—' : fmtQ(s.quotient)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderStandings(){
+  const bodyEl = standingsBodyEl;
+  if(!bodyEl) return;
+  const scrollPositions = captureScrollPositions(bodyEl);
+
+  if(STANDINGS.length === 0){
+    bodyEl.innerHTML = `<div class="empty-state">No standings yet.</div>`;
+    return;
+  }
+
+  // One table per group, from the group-stage rows (A–O) only.
+  const groups = new Map();
+  STANDINGS.filter(s => isGroupTeamCode(s.teamCode)).forEach(s => {
+    if(!groups.has(s.bracket)) groups.set(s.bracket, []);
+    groups.get(s.bracket).push(s);
+  });
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  let html = `<h2 class="section-title">Groups</h2><div class="group-grid">${groupKeys.map(g => groupTableHTML(g, groups.get(g))).join('')}</div>`;
+
+  // Playoffs: Semifinals, then Final, then Bronze. The matches are always in
+  // the CSV, so these show as seeds before the qualifiers are entered.
+  html += `<h2 class="section-title">Playoffs</h2>`;
+  [['SF', 'Semifinals'], ['Fi', 'Final'], ['Br', 'Bronze']].forEach(([stage, title]) => {
+    const list = TEAM_MATCHUPS.filter(mu => mu.stage === stage);
+    if(!list.length) return;
+    html += `<div class="section-caption">${title}</div>${list.map(mu => teamMatchupCardHTML(mu)).join('')}`;
+  });
+
+  // Group matchups: one collapsible section per group, closed by default.
+  const groupNumbers = Array.from(new Set(TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group !== null).map(mu => mu.group)))
+    .sort((a, b) => a - b);
+  if(groupNumbers.length){
+    html += `<h2 class="section-title">Group matchups</h2>`;
+    groupNumbers.forEach(g => {
+      const list = TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group === g);
+      const open = TEAM_OPEN_GROUPS.has(g);
+      html += `<section class="group-section">
+        <button type="button" class="group-toggle" data-tm-group="${g}" aria-expanded="${open}">
+          <span>Group ${g}<small>${list.length} matchups</small></span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        ${open ? `<div class="group-body">${list.map(mu => teamMatchupCardHTML(mu, { compact: true })).join('')}</div>` : ''}
+      </section>`;
+    });
+  }
+
+  bodyEl.innerHTML = html;
+  restoreScrollPositions(bodyEl, scrollPositions);
+}
+
+// ---------- Match Finder index (spec §5.8) ----------
+// One entry per team (STANDINGSCSV rows A–O, in sheet order) and one per
+// distinct player name, matched case-insensitively.
+let TEAM_INDEX = [];   // [{ kind:'team', base, label, labelLower, group } | { kind:'player', name, nameLower, teams:[…], matchNums:[…] }]
+function rebuildTeamIndex(){
+  const teams = STANDINGS.filter(s => isGroupTeamCode(s.teamCode)).map(s => ({
+    kind: 'team',
+    base: s.teamCode,
+    label: s.teamName || s.teamCode,
+    labelLower: (s.teamName || s.teamCode).toLowerCase(),
+    group: parseInt(s.bracket, 10) || null
+  }));
+
+  const byName = new Map();
+  MATCHES.forEach(m => {
+    [[m.t1, m.t1p1, m.t1p2], [m.t2, m.t2p1, m.t2p2]].forEach(([code, p1, p2]) => {
+      const side = sideOf(code);
+      [p1, p2].forEach(name => {
+        if(!name || name === 'TBD') return;
+        const key = name.toLowerCase();
+        if(!byName.has(key)) byName.set(key, { kind: 'player', name, nameLower: key, teams: [], matchNums: [] });
+        const entry = byName.get(key);
+        const teamName = teamNameOf(side);
+        if(teamName && !entry.teams.includes(teamName)) entry.teams.push(teamName);
+        if(!entry.matchNums.includes(m.num)) entry.matchNums.push(m.num);
+      });
+    });
+  });
+  const players = Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+  TEAM_INDEX = [...teams, ...players];
+
+  // The entry the person picked was built from the previous load; point it at
+  // the fresh one so a search keeps working as lineups and slots change.
+  if(selectedEntry){
+    selectedEntry = TEAM_INDEX.find(e => e.kind === selectedEntry.kind &&
+      (e.kind === 'team' ? e.base === selectedEntry.base : e.nameLower === selectedEntry.nameLower)) || null;
+  }
+  // Re-run current search/intro against the freshly loaded data
+  if(input.value.trim()) runSearch(); else renderIntro();
+}
+
+const input = document.getElementById('teamInput');
+const acList = document.getElementById('acList');
+const resultsEl = document.getElementById('results');
+let acIndex = -1;
+let selectedEntry = null; // holds the chosen entry from TEAM_INDEX
+
+const viewTabs = document.querySelectorAll('.view-tab');
+const searchPanelEl = document.getElementById('searchPanel');
+const standingsResultsEl = document.getElementById('standingsResults');
+const liveResultsEl = document.getElementById('liveResults');
+const standingsBodyEl = document.getElementById('standingsBody');
+// Matchup-card "Show matches" toggles and the Group matchups sections keep
+// their open state in TEAM_EXPANDED / TEAM_OPEN_GROUPS, so the full rebuild
+// on every poll doesn't fold them shut.
+standingsBodyEl.addEventListener('click', (e) => {
+  const cardToggle = e.target.closest('[data-tm-toggle]');
+  if(cardToggle){
+    const key = cardToggle.dataset.tmToggle;
+    if(TEAM_EXPANDED.has(key)) TEAM_EXPANDED.delete(key); else TEAM_EXPANDED.add(key);
+    renderStandings();
+    return;
+  }
+  const groupToggle = e.target.closest('[data-tm-group]');
+  if(groupToggle){
+    const g = parseInt(groupToggle.dataset.tmGroup, 10);
+    if(TEAM_OPEN_GROUPS.has(g)) TEAM_OPEN_GROUPS.delete(g); else TEAM_OPEN_GROUPS.add(g);
+    renderStandings();
+  }
+});
+const liveBoardEl = document.getElementById('liveBoard');
+const liveBoardMetaEl = document.getElementById('liveBoardMeta');
+viewTabs.forEach(btn => {
+  btn.addEventListener('click', () => {
+    viewTabs.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const view = btn.dataset.view;
+    liveResultsEl.style.display = view === 'live' ? '' : 'none';
+    searchPanelEl.style.display = view === 'finder' ? '' : 'none';
+    resultsEl.style.display = view === 'finder' ? '' : 'none';
+    standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
+    if(view === 'standings') renderStandings();
+    if(view === 'live') renderLiveMatches();
+  });
+});
+
+// ---------- Persistence: remember the last day + search across reloads ----------
+// Wrapped in try/catch since localStorage can throw in some private-browsing
+// or embedded contexts — this is a nice-to-have, never worth breaking the
+// app over. (STORAGE_DAY_KEY/STORAGE_SEARCH_KEY are set in the
+// CONFIGURATION block at the top of this script.)
+function saveDayIndex(idx){ try{ localStorage.setItem(STORAGE_DAY_KEY, String(idx)); } catch(e){} }
+function loadSavedDayIndex(){
+  try{
+    const v = localStorage.getItem(STORAGE_DAY_KEY);
+    const idx = v === null ? NaN : parseInt(v, 10);
+    return (!isNaN(idx) && idx >= 0 && idx < DAYS.length) ? idx : null;
+  } catch(e){ return null; }
+}
+function saveSearchState(raw){ try{ localStorage.setItem(STORAGE_SEARCH_KEY, raw); } catch(e){} }
+function loadSavedSearch(){ try{ return localStorage.getItem(STORAGE_SEARCH_KEY) || ''; } catch(e){ return ''; } }
+function clearSavedSearch(){ try{ localStorage.removeItem(STORAGE_SEARCH_KEY); } catch(e){} }
+
+// A search is saved as "team:<letter>" or "player:<name>" — never a playoff
+// code, which changes mid-event when the organiser fills a slot in.
+function searchKeyFor(entry){
+  return entry.kind === 'team' ? `team:${entry.base}` : `player:${entry.name}`;
+}
+function entryForSearchKey(key){
+  const m = /^(team|player):(.*)$/.exec(key);
+  if(!m) return null;
+  return TEAM_INDEX.find(e => m[1] === 'team'
+    ? e.kind === 'team' && e.base === m[2]
+    : e.kind === 'player' && e.nameLower === m[2].toLowerCase()) || null;
+}
+
+// ---------- Day picker: gates the tabs until a day is actually chosen ----------
+const dayPickerEl = document.getElementById('dayPicker');
+const viewTabsWrapEl = document.getElementById('viewTabsWrap');
+const dayPromptEl = document.getElementById('dayPrompt');
+const syncStatusEl = document.getElementById('syncStatus');
+
+// Shared by the change listener below and the initial-load hydration at the
+// bottom of the script, so a page reload can silently re-run the exact same
+// flow as picking the day by hand. isInitialLoad only affects whether a
+// previously-saved search is brought back afterwards.
+async function selectDay(idx, { isInitialLoad = false } = {}){
+  currentDayIndex = idx;
+  if(dayPickerEl) dayPickerEl.value = String(idx);
+  const day = DAYS[idx];
+  dayIsLive = computeDayIsLive(day, null); // preliminary guess — loadLiveData() below re-checks against the real snapshot
+
+  // Switching days always drops back to the same "first screen" shown on
+  // initial page load — tabs/status hidden, just the centered prompt —
+  // so nothing from the previous day (tabs, search results, standings)
+  // stays on screen while the new day's data is loading. Whether this day
+  // is actually ready is discovered by loadLiveData() itself (a 404 from
+  // jsDelivr means Cloud Run hasn't published it yet), not known upfront.
+  viewTabsWrapEl.style.display = 'none';
+  syncStatusEl.style.display = 'none';
+  liveResultsEl.style.display = 'none';
+  searchPanelEl.style.display = 'none';
+  resultsEl.style.display = 'none';
+  standingsResultsEl.style.display = 'none';
+  dayPromptEl.textContent = `Loading ${day.label}…`;
+  dayPromptEl.style.display = '';
+
+  // Reset per-day UI state so nothing carries over from a previous day.
+  selectedEntry = null;
+  input.value = '';
+  if(typeof updateClearBtn === 'function') updateClearBtn();
+  TEAM_EXPANDED.clear();
+  TEAM_OPEN_GROUPS.clear();
+
+  saveDayIndex(idx);
+  // A manually-chosen day drops any search saved for a different day, same
+  // as clearing the input above — the initial-load hydration path re-adds
+  // it right back below if there is one.
+  if(!isInitialLoad) clearSavedSearch();
+
+  const loaded = await loadLiveData();
+
+  if(loaded){
+    revealLiveTabsAfterLoad();
+
+    if(isInitialLoad){
+      const saved = entryForSearchKey(loadSavedSearch());
+      if(saved){
+        selectedEntry = saved;
+        input.value = saved.kind === 'team' ? saved.label : saved.name;
+        if(typeof updateClearBtn === 'function') updateClearBtn();
+        runSearch();
+        // Land on Match Finder so the restored search is visible right
+        // away, instead of sitting hidden behind the default Live tab.
+        viewTabs.forEach(b => b.classList.remove('active'));
+        const finderTabBtn = document.querySelector('.view-tab[data-view="finder"]');
+        if(finderTabBtn) finderTabBtn.classList.add('active');
+        liveResultsEl.style.display = 'none';
+        searchPanelEl.style.display = '';
+        resultsEl.style.display = '';
+      }
+    }
+  }
+  // If not loaded, loadLiveData() has already written the right message
+  // (either "not published yet", or an error + Retry button) into
+  // dayPromptEl, which is still visible — nothing else to do here.
+}
+
+if(dayPickerEl){
+  dayPickerEl.innerHTML = '<option value="" selected disabled hidden>Choose a day…</option>' +
+    DAYS.map((d, i) => `<option value="${i}">${escapeHtml(d.label)}</option>`).join('');
+
+  dayPickerEl.addEventListener('change', async () => {
+    const idx = parseInt(dayPickerEl.value, 10);
+    if(isNaN(idx)) return;
+    await selectDay(idx);
+  });
+}
+
+// A single-day event has nothing to pick between, so the picker itself
+// (and the need to ever gate on a choice) is just friction — see the
+// DAYS.length === 1 branch of the initial-load hydration below, which
+// auto-selects the one day instead of waiting for a click here.
+const dayPickerWrapEl = document.getElementById('dayPickerWrap');
+if(DAYS.length <= 1 && dayPickerWrapEl) dayPickerWrapEl.style.display = 'none';
+
+// Up to 8 suggestions, teams first (in sheet order), then players (A–Z).
+function autocompleteMatches(q){
+  return [
+    ...TEAM_INDEX.filter(e => e.kind === 'team' && e.labelLower.includes(q)),
+    ...TEAM_INDEX.filter(e => e.kind === 'player' && e.nameLower.includes(q))
+  ].slice(0, 8);
+}
+
+function renderAutocomplete(query){
+  const q = query.trim().toLowerCase();
+  if(!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  const matches = autocompleteMatches(q);
+  if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  acList.innerHTML = matches.map((e, i) => e.kind === 'team'
+    ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}<span class="chip">${escapeHtml(e.base)}</span></span>${e.group ? `<small>Group ${e.group}</small>` : ''}</div>`
+    : `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${e.teams.length ? `<small>${escapeHtml(e.teams.join(', '))}</small>` : ''}</div>`
+  ).join('');
+  acList.classList.add('show');
+  acIndex = -1;
+}
+
+function selectAcItem(el){
+  const entry = autocompleteMatches(input.value.trim().toLowerCase())[parseInt(el.dataset.i, 10)]
+    || (selectedEntry && input.value === (selectedEntry.label || selectedEntry.name) ? selectedEntry : null);
+  if(!entry) return;
+  input.value = entry.kind === 'team' ? entry.label : entry.name;
+  selectedEntry = entry;
+  updateClearBtn();
+}
+
+const clearInputBtn = document.getElementById('clearInputBtn');
+function updateClearBtn(){
+  if(clearInputBtn) clearInputBtn.classList.toggle('show', input.value.length > 0);
+}
+if(clearInputBtn){
+  clearInputBtn.addEventListener('click', () => {
+    input.value = '';
+    selectedEntry = null;
+    acList.classList.remove('show');
+    acList.innerHTML = '';
+    updateClearBtn();
+    runSearch();
+    clearSavedSearch();
+    input.focus();
+  });
+}
+
+input.addEventListener('input', () => { selectedEntry = null; renderAutocomplete(input.value); updateClearBtn(); });
+input.addEventListener('focus', () => renderAutocomplete(input.value));
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.autocomplete')) acList.classList.remove('show');
+});
+acList.addEventListener('click', (e) => {
+  const item = e.target.closest('.ac-item');
+  if(!item) return;
+  selectAcItem(item);
+  acList.classList.remove('show');
+  runSearch();
+});
+input.addEventListener('keydown', (e) => {
+  const items = Array.from(acList.querySelectorAll('.ac-item'));
+  if(e.key === 'ArrowDown' && items.length){
+    e.preventDefault();
+    acIndex = Math.min(acIndex+1, items.length-1);
+    items.forEach(it=>it.classList.remove('active'));
+    items[acIndex].classList.add('active');
+    selectAcItem(items[acIndex]);
+  } else if(e.key === 'ArrowUp' && items.length){
+    e.preventDefault();
+    acIndex = Math.max(acIndex-1, 0);
+    items.forEach(it=>it.classList.remove('active'));
+    items[acIndex].classList.add('active');
+    selectAcItem(items[acIndex]);
+  } else if(e.key === 'Enter'){
+    acList.classList.remove('show');
+    runSearch();
+  } else if(e.key === 'Escape'){
+    acList.classList.remove('show');
+  }
+});
+document.getElementById('searchBtn').addEventListener('click', runSearch);
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- Live Matches (Court Control) ----------
+// One card per court — whatever match currently has a value in the
+// 'court' column is the match being played there right now.
+// Every configured court (from FACILITIES), mapped to its current live
+// match or null — always the same set of keys regardless of how many
+// matches actually happen to be live right now. Deliberately NOT just the
+// live ones: a table whose row count changes on every refresh (as matches
+// start/finish on different courts) jumps around the page and scrolls the
+// user's view out from under them, which is what liveTableRowsHTML's empty
+// branch and this full-court enumeration exist to prevent.
+function buildLiveCourts(){
+  const byCourt = new Map();
+  FACILITIES.forEach(f => {
+    for(let n = f.courts[0]; n <= f.courts[1]; n++) byCourt.set(String(n), null);
+  });
+  MATCHES.forEach(m => {
+    if(!m.liveCourt) return;
+    // MATCHES is already sorted by matchNumber ascending, so the last
+    // match written to a given court wins — that's the current one.
+    byCourt.set(m.liveCourt, m);
+  });
+  return byCourt;
+}
+
+function courtSortKey(court){
+  const m = court.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+// Maps a court number to its facility name via the FACILITIES list in the
+// CONFIGURATION block above.
+function facilityForCourt(court){
+  if(!court) return '';
+  const m = court.match(/(\d+)/);
+  if(!m) return '';
+  const n = parseInt(m[1], 10);
+  const facility = FACILITIES.find(f => n >= f.courts[0] && n <= f.courts[1]);
+  return facility ? facility.name : '';
+}
+
+// Buckets every court (live or idle) by facility (in ascending court-number
+// order, so each
+// FACILITIES entry falls out naturally since their court ranges don't
+// overlap) with anything unmapped collected into a trailing 'Other Courts'
+// group instead of getting silently dropped.
+function groupLiveCourtsByFacility(liveCourts){
+  const sortedCourts = Array.from(liveCourts.keys()).sort((a,b) => courtSortKey(a) - courtSortKey(b));
+  const groups = new Map();
+  sortedCourts.forEach(court => {
+    const facility = facilityForCourt(court) || 'Other Courts';
+    if(!groups.has(facility)) groups.set(facility, []);
+    groups.get(facility).push([court, liveCourts.get(court)]);
+  });
+  return groups;
+}
+
+// Placeholder row for a court with nothing live on it right now. Mirrors
+// liveTableRowsHTML's real-match row exactly — same cells, same rowspans,
+// same number of code/name lines — so the row's height doesn't change the
+// instant a match actually starts on this court.
+function liveEmptyRowHTML(court){
+  const blankTeamCell = `<div class="live-team-code">&nbsp;</div>
+    <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>`;
+  return `<tr>
+    <td class="live-court-cell idle" rowspan="2">${escapeHtml(court)}</td>
+    <td class="live-cat-cell" colspan="3"><span class="live-empty-label">No match playing</span></td>
+  </tr>
+  <tr class="live-match-row">
+    <td class="live-team-cell">${blankTeamCell}</td>
+    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div><div class="live-matchup">&nbsp;</div></td>
+    <td class="live-team-cell right">${blankTeamCell}</td>
+  </tr>`;
+}
+
+function liveTableRowsHTML(court, m){
+  if(!m) return liveEmptyRowHTML(court);
+  const side1 = sideOf(m.t1), side2 = sideOf(m.t2);
+  const t1TBD = m.t1p1 === 'TBD';
+  const t2TBD = m.t2p1 === 'TBD';
+  const matchupText = `${sideLabel(side1)} vs ${sideLabel(side2)}`;
+  const detailText = [stageLabel(side1), pairLabel(m.t1, false)].filter(Boolean).join(' · ');
+  const scoreHTML = m.played
+    ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
+    : 'VS';
+  const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
+  const matchupHTML = mu
+    ? `Matchup ${mu.result.pts1} – ${mu.result.pts2}`
+    : '&nbsp;';
+
+  const teamCellHTML = (side, tbd, p1, p2) => `
+    <div class="live-team-code${tbd ? ' tbd':''}">${sideChipHTML(side) || '&nbsp;'}</div>
+    <div class="live-team-players">${tbd ? 'Lineup not set' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>`;
+
+  return `<tr>
+    <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
+    <td class="live-cat-cell" colspan="3">${escapeHtml(matchupText)} &middot; <span class="live-round">${escapeHtml(detailText)}</span></td>
+  </tr>
+  <tr class="live-match-row">
+    <td class="live-team-cell">${teamCellHTML(side1, t1TBD, m.t1p1, m.t1p2)}</td>
+    <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div><div class="live-matchup">${matchupHTML}</div></td>
+    <td class="live-team-cell right">${teamCellHTML(side2, t2TBD, m.t2p1, m.t2p2)}</td>
+  </tr>`;
+}
+
+function facilityTableHTML(facility, rows){
+  // A single-facility event has nothing to distinguish, so the venue name
+  // above the table would just be redundant.
+  const liveCount = rows.filter(([, m]) => m).length;
+  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${liveCount} court${liveCount===1?'':'s'} in play</span></div>`;
+  return `
+  ${titleHTML}
+  <div class="live-table-wrap" data-facility-key="${escapeHtml(facility)}">
+    <table class="live-table">
+      <thead><tr>
+        <th>Court</th><th colspan="3">Match Details</th>
+      </tr></thead>
+      <tbody>${rows.map(([c, m]) => liveTableRowsHTML(c, m)).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderLiveMatches(){
+  const boardEl = liveBoardEl;
+  const metaEl = liveBoardMetaEl;
+  if(!boardEl) return;
+
+  const liveCourts = buildLiveCourts();
+  // The board always shows every configured court (see buildLiveCourts), so
+  // this count is just the ones actually in play right now, not the total.
+  const totalCourts = Array.from(liveCourts.values()).filter(Boolean).length;
+  metaEl.innerHTML = totalCourts > 0
+    ? `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`
+    : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
+  const groups = groupLiveCourtsByFacility(liveCourts);
+
+  // Full rebuild on every 10s refresh, same as Standings — capture/restore
+  // keeps a scrolled-right facility table (mobile) from snapping back to
+  // the left edge every time.
+  const scrollPositions = captureScrollPositions(boardEl);
+  boardEl.innerHTML = Array.from(groups.entries()).map(([facility, rows]) => facilityTableHTML(facility, rows)).join('');
+  restoreScrollPositions(boardEl, scrollPositions);
+}
+
+// ---------- Match Finder (spec §5.8) ----------
+function resolveTeam(raw){
+  if(selectedEntry) return { entry: selectedEntry, ambiguous: null };
+  const q = raw.trim().toLowerCase();
+  if(!q) return { entry: null, ambiguous: null };
+  const nameOf = e => e.kind === 'team' ? e.labelLower : e.nameLower;
+  // exact match on a team name or a player's name
+  const exact = TEAM_INDEX.filter(e => nameOf(e) === q);
+  if(exact.length === 1) return { entry: exact[0], ambiguous: null };
+  if(exact.length > 1) return { entry: null, ambiguous: exact };
+  // partial match
+  const partial = TEAM_INDEX.filter(e => nameOf(e).includes(q));
+  if(partial.length === 1) return { entry: partial[0], ambiguous: null };
+  if(partial.length > 1) return { entry: null, ambiguous: partial };
+  return { entry: null, ambiguous: null };
+}
+
+const LINEUP_NOTE = `<p class="lineup-note">Some lineups aren't in yet. Matches appear here once the team captain enters them.</p>`;
+const matchLineupUnset = m => m.t1p1 === 'TBD' || m.t2p1 === 'TBD';
+
+function teamResultHTML(entry){
+  const base = entry.base;
+  const list = TEAM_MATCHUPS.filter(mu => baseTeamOf(mu.side1) === base || baseTeamOf(mu.side2) === base);
+  // "Next up" = the first matchup in schedule order that hasn't started and
+  // has nothing live on a court (a live match is already flagged on its row).
+  const nextIdx = list.findIndex(mu => mu.result.state === 'not-started' && !mu.matches.some(m => m.liveCourt));
+  const unset = list.some(mu => mu.matches.some(matchLineupUnset));
+  return `
+    <div class="results-head">
+      <h2>${escapeHtml(entry.label)}<span class="chip">${escapeHtml(base)}</span></h2>
+      ${entry.group ? `<span class="division-tag">Group ${entry.group}</span>` : ''}
+    </div>
+    <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
+    ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
+    ${unset ? LINEUP_NOTE : ''}`;
+}
+
+function playerResultHTML(entry){
+  const matches = entry.matchNums
+    .map(n => MATCHES.find(m => m.num === n))
+    .filter(Boolean)
+    .sort((a, b) => a.num - b.num);
+  const cards = matches.map(m => {
+    const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
+    return mu ? teamMatchupCardHTML(mu, { onlyMatch: m.num }) : '';
+  }).join('');
+  const teamNames = entry.teams.length ? entry.teams.join(', ') + ' · ' : '';
+  const unset = MATCHES.some(matchLineupUnset);
+  return `
+    <div class="results-head">
+      <h2>${escapeHtml(entry.name)}</h2>
+    </div>
+    <div class="results-meta">${escapeHtml(teamNames)}${matches.length} match${matches.length===1?'':'es'}</div>
+    ${cards}
+    ${unset ? LINEUP_NOTE : ''}`;
+}
+
+function runSearch(){
+  const raw = input.value.trim();
+  if(!raw){
+    renderIntro();
+    return;
+  }
+
+  const { entry, ambiguous } = resolveTeam(raw);
+
+  if(ambiguous && ambiguous.length){
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        Several teams or players match <strong>${escapeHtml(raw)}</strong> — pick one:<br><br>
+        ${ambiguous.slice(0,8).map(e => `<strong>${escapeHtml(e.kind === 'team' ? e.label : e.name)}</strong>`).join('<br>')}
+      </div>`;
+    return;
+  }
+
+  if(!entry){
+    // suggest close matches by the first word typed
+    const firstWord = raw.toLowerCase().split(' ')[0];
+    const suggestions = TEAM_INDEX.filter(e => (e.kind === 'team' ? e.labelLower : e.nameLower).startsWith(firstWord)).slice(0, 6);
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        No matches found for <strong>${escapeHtml(raw)}</strong>.<br>
+        Double-check the spelling, or start typing a name to see suggestions.
+        ${suggestions.length ? `<br><br>Did you mean: ${suggestions.map(s=>`<strong>${escapeHtml(s.kind === 'team' ? s.label : s.name)}</strong>`).join(', ')}?` : ''}
+      </div>`;
+    return;
+  }
+
+  selectedEntry = entry;
+  resultsEl.innerHTML = entry.kind === 'team' ? teamResultHTML(entry) : playerResultHTML(entry);
+  saveSearchState(searchKeyFor(entry));
+}
+
+function renderIntro(){
+  const teams = TEAM_INDEX.filter(e => e.kind === 'team');
+  const groups = new Map();
+  teams.forEach(t => {
+    const g = t.group === null ? 0 : t.group;
+    if(!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(t);
+  });
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => a - b);
+  resultsEl.innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
+      <div class="stat"><b>${TEAM_MATCHUPS.length || '—'}</b><span>Matchups</span></div>
+      <div class="stat"><b>${teams.length || '—'}</b><span>Teams</span></div>
+    </div>
+    ${teams.length ? `<div class="team-groups">${groupKeys.map(g => `
+      <h3>${g === 0 ? 'Teams' : `Group ${g}`}</h3>
+      <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}<span class="chip">${escapeHtml(t.base)}</span></button>`).join('')}</div>`).join('')}
+    </div>` : ''}`;
+}
+
+// Tapping a team chip on the intro runs that team's search.
+resultsEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.team-chip-btn');
+  if(!btn) return;
+  const entry = TEAM_INDEX.find(t => t.kind === 'team' && t.base === btn.dataset.team);
+  if(!entry) return;
+  selectedEntry = entry;
+  input.value = entry.label;
+  updateClearBtn();
+  runSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+renderIntro();
+
+// If a previous visit picked a day, silently re-run that same selection on
+// load (tabs/status stay hidden behind the loading prompt until it
+// resolves) instead of leaving the person to re-pick it from scratch every
+// time they reopen the site during the tournament. A single-day event has
+// no picker to have chosen from (see dayPickerWrapEl above), so it always
+// auto-loads its one day instead.
+const savedDayIdx = loadSavedDayIndex();
+if(savedDayIdx !== null){
+  selectDay(savedDayIdx, { isInitialLoad: true });
+} else if(DAYS.length === 1){
+  selectDay(0, { isInitialLoad: true });
+}
+// Otherwise nothing to load yet — currentDayIndex stays null until the
+// person picks a day, and loadLiveData() no-ops until then anyway.
+
+// Pause the 10s poll while the tab/app is backgrounded — no point spending
+// battery and mobile data re-fetching a snapshot nobody's looking at —
+// and catch up with an immediate refresh as soon as it's visible again.
+let pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    clearInterval(pollTimer);
+  } else {
+    loadLiveData();
+    pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "defaults": {
+    "matchesSheetName": "CSV",
+    "standingsSheetName": "STANDINGSCSV"
+  },
+  "events": {
+    "pickledrive-anniversary-2026": {
+      "type": "team",
+      "title": "PickleDrive Club One Year Celebration",
+      "days": {
+        "pickledrive-anniversary-2026-day1": {
+          "label": "Oct 3",
+          "date": "2026-10-03",
+          "isLive": "auto",
+          "facilities": [
+            { "name": "Kingcourts", "sheetId": "1Bk3iAqB6Fdt6t-EiI8MrU0Or8UZc4MAZcnWcMUOCkOA" }
+          ]
+        }
+      }
+    }
+  }
+}

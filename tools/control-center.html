@@ -2015,6 +2015,358 @@
   }
   .awards-export-btn:hover{border-color:var(--cork); color:var(--cork);}
   .awards-export-btn:disabled{opacity:.5; cursor:not-allowed;}
+
+  /* ---------- TEAM TYPE (sage-docs/docs/specs/.../team-tournament-spec.md) ----------
+     Matchup cards, group tables and the Match Finder additions used only when
+     an event's type is "team". Same markup as the public event page, in the
+     console's own palette and fonts. */
+  /* ---------- TEAM FORMAT: shared bits ---------- */
+  /* Base-team letter shown beside a team name. --navy text on the --green
+     fill is ~6.5:1. */
+  .chip{
+    display:inline-block;
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:10px;
+    line-height:1.5;
+    letter-spacing:.02em;
+    padding:0 6px;
+    border-radius:100px;
+    background:var(--green);
+    color:var(--navy);
+    margin-left:6px;
+    vertical-align:middle;
+    white-space:nowrap;
+  }
+
+  /* ---------- STANDINGS ---------- */
+  .section-title{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:26px;
+    line-height:1.15;
+    color:var(--navy);
+    margin:34px 0 14px;
+  }
+  .section-title:first-child{margin-top:0;}
+  .section-caption{
+    font-family:'Inter',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:18px 0 8px;
+  }
+  .group-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));
+    gap:16px;
+    align-items:start;
+  }
+  .group-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    overflow:hidden;
+  }
+  .group-title{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:19px;
+    color:var(--navy);
+    margin:0;
+    padding:13px 14px 9px;
+  }
+  .gt-wrap{ overflow-x:auto; }
+  table.gt{ width:100%; border-collapse:collapse; }
+  table.gt th{
+    font-family:'Inter',sans-serif;
+    font-size:9px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--muted);
+    text-align:left;
+    padding:6px 8px;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    white-space:nowrap;
+  }
+  table.gt th.num, table.gt td.num{ text-align:right; }
+  table.gt td{
+    padding:9px 8px;
+    font-size:12px;
+    color:var(--ink);
+    border-bottom:1px solid rgba(20,38,60,.07);
+    vertical-align:middle;
+    font-variant-numeric:tabular-nums;
+  }
+  table.gt tr:last-child td{ border-bottom:none; }
+  table.gt td.rk{ width:24px; text-align:center; color:var(--muted); font-weight:700; padding-left:8px; padding-right:2px; }
+  table.gt td.tm{ font-weight:600; line-height:1.3; overflow-wrap:anywhere; }
+  table.gt td.q{ font-weight:800; text-align:right; white-space:nowrap; }
+  table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2px; }
+  .adv-pill{
+    display:inline-block;
+    margin-top:3px;
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--green);
+    border-radius:100px;
+    padding:1px 8px;
+  }
+  .group-section{ margin-bottom:12px; }
+  .group-toggle{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    font-size:19px;
+    color:var(--navy);
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:13px 16px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .group-toggle:hover{ border-color:var(--green-dark); }
+  .group-toggle small{
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin-left:8px;
+  }
+  .group-toggle .chev{ transition:transform .15s ease; flex:none; }
+  .group-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .group-body{ padding-top:12px; }
+
+  /* ---------- MATCHUP CARD ---------- */
+  .tm-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-left:6px solid var(--court);
+    border-radius:14px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:14px;
+    overflow:hidden;
+  }
+  .tm-card:last-child{ margin-bottom:0; }
+  .tm-card.is-progress{ border-left-color:var(--green-dark); }
+  .tm-card.is-final{ border-left-color:var(--navy); }
+  .tm-card.next{ border-left-color:var(--amber); box-shadow:var(--card-shadow), 0 0 0 2px var(--green); }
+  .tm-head{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px 10px;
+    padding:12px 16px 0;
+  }
+  .tm-when{
+    font-family:'Inter',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    min-width:0;
+  }
+  .tm-when .tm-stage{ color:var(--green-dark); }
+  .tm-badges{ display:flex; gap:6px; align-items:center; flex:none; }
+  .tm-pill{
+    display:inline-block;
+    font-family:'Inter',sans-serif;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    border-radius:100px;
+    padding:3px 10px;
+  }
+  .tm-pill.progress{ background:var(--green-dark); color:var(--white); }
+  .tm-pill.final{ background:var(--navy); color:var(--white); }
+  .tm-pill.tie{ background:var(--paper-dim); color:var(--ink); border:1px solid var(--line); }
+  .tm-headline{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:8px;
+    align-items:start;
+    padding:10px 10px 14px;
+  }
+  .tm-side{ min-width:0; padding:6px 8px; border-radius:10px; }
+  .tm-side.right{ text-align:right; }
+  .tm-side.win{ background:rgba(124,185,44,.22); }
+  .tm-name{
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    font-weight:700;
+    line-height:1.3;
+    color:var(--ink);
+    overflow-wrap:anywhere;
+  }
+  .tm-name.tbd{ color:var(--ink-soft); font-style:italic; font-weight:600; }
+  .tm-side.lose .tm-name{ color:var(--ink-soft); font-weight:600; }
+  .tm-tag{
+    display:block;
+    margin-top:4px;
+    font-size:9.5px;
+    font-weight:800;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--green-dark);
+  }
+  .tm-mid{ text-align:center; padding-top:6px; }
+  .tm-score{
+    font-family:'Inter',sans-serif;
+    font-weight:800;
+    font-size:24px;
+    line-height:1.1;
+    color:var(--ink);
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .tm-pairs{
+    margin-top:3px;
+    font-size:10px;
+    font-weight:600;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .tm-vs{
+    font-family:'Inter',sans-serif;
+    font-weight:800;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--muted);
+    padding-top:4px;
+  }
+  .tm-rows{ border-top:1px solid var(--line); background:var(--paper); }
+  .tm-row{ padding:9px 16px 10px; border-bottom:1px solid rgba(20,38,60,.07); }
+  .tm-row:last-child{ border-bottom:none; }
+  .tm-row.live{ background:rgba(124,185,44,.22); }
+  .tm-row-meta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:4px;
+    font-family:'Inter',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .tm-row-meta .tm-plabel{
+    background:rgba(20,38,60,.08);
+    border-radius:100px;
+    padding:0 8px;
+    color:var(--ink);
+  }
+  .tm-row-meta .tm-live{ color:var(--green-dark); }
+  .tm-row-meta .live-dot{ margin-right:4px; }
+  .tm-row-body{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    gap:8px;
+    align-items:center;
+  }
+  .tm-players{
+    font-size:12.5px;
+    font-weight:600;
+    line-height:1.35;
+    color:var(--ink);
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  .tm-players.right{ text-align:right; }
+  .tm-players.unset{ color:var(--ink-soft); font-style:italic; font-weight:500; }
+  .tm-rscore{
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    font-weight:500;
+    color:var(--ink-soft);
+    white-space:nowrap;
+    text-align:center;
+    min-width:44px;
+    font-variant-numeric:tabular-nums;
+  }
+  .tm-rscore b{ font-weight:800; color:var(--ink); }
+  .tm-toggle{
+    display:block;
+    width:100%;
+    font-family:'Inter',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--paper);
+    border:none;
+    border-top:1px solid var(--line);
+    padding:9px 16px;
+    cursor:pointer;
+  }
+  .tm-toggle:hover{ background:var(--paper-dim); }
+
+  /* ---------- MATCH FINDER: team chips + notes ---------- */
+  .team-groups{ max-width:560px; margin:30px auto 0; }
+  .team-groups h3{
+    font-family:'Inter',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+    margin:16px 0 8px;
+  }
+  .team-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .team-chip-btn{
+    font-family:'Inter',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    color:var(--ink);
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:7px 14px;
+    cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .team-chip-btn:hover{ border-color:var(--green-dark); background:var(--paper-dim); }
+  .team-chip-btn .chip{ margin-left:8px; }
+  .lineup-note{
+    margin:18px 0 0;
+    font-size:12.5px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    text-align:center;
+  }
+
+  /* Running matchup score under a live match's score (Live Matches). */
+  .live-matchup{
+    font-family:'Inter',sans-serif;
+    font-size:9px;
+    font-weight:600;
+    color:var(--muted);
+    margin-top:2px;
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .live-team-code .chip{ margin-left:0; }
+
+  .award-names strong{ display:block; font-weight:700; }
+  .award-roster{ display:block; margin-top:2px; font-family:'Inter',sans-serif; font-size:11px; font-weight:500; line-height:1.4; color:var(--ink-soft); }
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
@@ -2224,10 +2576,19 @@ const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
 const GHPAGES_OWNER  = 'sage-match-control';
 const GHPAGES_REPO   = 'event-data';
 const GHPAGES_BRANCH = 'main'; // not part of any URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
-const configUrlFor = () =>
-  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
-const snapshotUrlFor = (eventKey, dayKey) =>
-  `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${eventKey}/data/${dayKey}.json?t=${Date.now()}`;
+// Local testing only: on localhost, ?fixture=<name> loads /_fixtures/config.json
+// as the registry and /_fixtures/<eventKey>/<name>.json as the snapshot.
+// _fixtures/ is never published (Jekyll skips "_" folders), and the hostname
+// check keeps this inert on the live site.
+const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? new URLSearchParams(location.search).get('fixture')
+  : null;
+const configUrlFor = () => FIXTURE
+  ? `/_fixtures/config.json?t=${Date.now()}`
+  : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
+const snapshotUrlFor = (eventKey, dayKey) => FIXTURE
+  ? `/_fixtures/${eventKey}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
+  : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${eventKey}/data/${dayKey}.json?t=${Date.now()}`;
 
 // ---- Network & polling timing --------------------------------------------
 // How long to wait on a fetch before giving up (venue wifi at a live event
@@ -2257,7 +2618,7 @@ const AUTH_TOKEN_STORAGE_KEY = 'sage.authToken';
 // FACILITIES/DIVISIONS/EVENTS/CLUBS constants entirely.
 let EVENTS_REGISTRY = new Map(); // eventKey -> raw event entry from events.json (archived ones excluded)
 let CURRENT_EVENT_KEY = null;
-let CURRENT_TYPE = null;         // 'dual-meet' | 'standard' | null (unresolved/unknown — shown as an error, never guessed)
+let CURRENT_TYPE = null;         // 'dual-meet' | 'standard' | 'team' | null (unresolved/unknown — shown as an error, never guessed)
 let DISPLAY = {};                // { divisions?, events?, clubs? } for the selected event
 let DAYS = [];                   // this event's days, sorted by date: [{key,label,date}]
 let FACILITIES = [];             // this day's facilities: [{name}] — resolved in selectDay(), courts derived from data (see buildFacilityCourtGroups)
@@ -2313,7 +2674,7 @@ function rowsToMatches(rows){
         iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
         iP2b = idx('team2Player2'), iSched = idx('Schedule'),
         iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
-        iLiveCourt = idx('court');
+        iLiveCourt = idx('court'), iMatchUp = idx('matchUp');
 
   const out = [];
   for(let r = 1; r < rows.length; r++){
@@ -2345,6 +2706,7 @@ function rowsToMatches(rows){
       time: (row[iSched]||'').trim(),
       court,
       liveCourt,
+      matchUp: iMatchUp > -1 ? (row[iMatchUp]||'').trim() : '', // team type only; '' elsewhere
       t1, t1p1, t1p2, t2, t2p1, t2p2,
       t1Score, t2Score, played
     });
@@ -2358,7 +2720,8 @@ function rowsToStandings(rows){
   const header = rows[0].map(h => h.trim());
   const idx = name => header.indexOf(name);
   const iCode = idx('teamCode'), iP1 = idx('player1'), iP2 = idx('player2'),
-        iW = idx('wins'), iL = idx('loss'), iQ = idx('quotient'), iB = idx('bracket');
+        iW = idx('wins'), iL = idx('loss'), iQ = idx('quotient'), iB = idx('bracket'),
+        iName = idx('teamName'), iPF = idx('totalPoints'), iPA = idx('totalOpponentPoints');
 
   const out = [];
   for(let r = 1; r < rows.length; r++){
@@ -2375,7 +2738,13 @@ function rowsToStandings(rows){
     const loss = rawL !== '' && !isNaN(rawL) ? parseInt(rawL, 10) : 0;
     const quotient = rawQ !== '' && !isNaN(rawQ) ? parseFloat(rawQ) : null;
     const bracket = iB > -1 ? (row[iB]||'').trim() : '';
-    out.push({ teamCode, player1, player2, wins, loss, quotient, bracket });
+    // team type only — existing events have no such columns, so these stay empty
+    const teamName = iName > -1 ? (row[iName]||'').trim() : '';
+    const rawPF = iPF > -1 ? (row[iPF]||'').trim() : '';
+    const rawPA = iPA > -1 ? (row[iPA]||'').trim() : '';
+    const pf = rawPF !== '' && !isNaN(rawPF) ? parseFloat(rawPF) : 0;
+    const pa = rawPA !== '' && !isNaN(rawPA) ? parseFloat(rawPA) : 0;
+    out.push({ teamCode, player1, player2, wins, loss, quotient, bracket, teamName, pf, pa });
   }
   return out;
 }
@@ -2455,6 +2824,7 @@ async function loadLiveData(){
     MATCHES_BY_FACILITY = matchesByFacility;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
+    if(CURRENT_TYPE === 'team') rebuildTeamData();
     LAST_SNAPSHOT = snapshot;
     if(typeof renderOrganizerStatus === 'function') renderOrganizerStatus();
 
@@ -2564,6 +2934,11 @@ function parseCode(code){
   if(CURRENT_TYPE === 'dual-meet'){
     const [club, category, ...rest] = parts;
     result = { club: club || null, category: category || null, rest: rest.join('_') };
+  } else if(CURRENT_TYPE === 'team'){
+    // Team views use the helpers in the team block below, not this — this
+    // only keeps any shared caller from breaking.
+    const [, ...rest] = parts;
+    result = { club: null, category: null, rest: rest.join('_') };
   } else {
     const [category, ...rest] = parts;
     result = { club: null, category: category || null, rest: rest.join('_') };
@@ -2597,6 +2972,7 @@ function splitCategory(category){
 let UNRESOLVED_CATEGORIES = new Set();
 
 function categoryLabel(category){
+  if(category === '__team__') return 'Team Championship';
   if(!category) return 'Other';
   const split = splitCategory(category);
   if(!split){
@@ -2748,6 +3124,630 @@ function pairCell(s){
   const p2 = s.player2 ? escapeHtml(s.player2) : '';
   return `<td class="pair"><span>${p1}</span><span>${p2}</span></td>`;
 }
+
+// ---- team type (sage-docs/docs/specs/.../team-tournament-spec.md) ----
+// A team event's teams have names (STANDINGSCSV), each team meets another in a
+// "matchup" of four matches, and a matchup is won on total points. This block
+// ports the rules from events/pickledrive-anniversary-2026/index.html (spec
+// §4, §5.5-§5.9) so the console and the public site agree. Everything here
+// runs only when CURRENT_TYPE === 'team'; the dual-meet and standard paths
+// never call into it. Kept together, with its wiring further down, on purpose.
+
+// Pair number (the digit after "_" in a team code) -> label.
+const PAIRS = {
+  1: { full: "Men's Doubles",   short: 'MD' },
+  2: { full: "Women's Doubles", short: 'WD' },
+  3: { full: 'Mixed Doubles',   short: 'XD' },
+  4: { full: 'Mixed Doubles',   short: 'XD' }
+};
+// Playoff stage prefix (before "-" in a side) -> label and display order.
+// A side with no "-" is a group-stage side.
+const STAGES = {
+  SF: { label: 'Semifinal', order: 1 },
+  Br: { label: 'Bronze',    order: 2 },
+  Fi: { label: 'Final',     order: 3 }
+};
+
+let TEAM_MATCHUPS = [];           // [{ matchUp, matches, side1, side2, stage, group, times, courts, result }]
+let TEAM_ROW_BY_CODE = new Map(); // STANDINGSCSV teamCode -> row
+let ADVANCING = new Set();        // base team letters sitting in an SF-* slot
+let TEAM_INDEX = [];              // Match Finder entries: teams, then players
+let selectedEntry = null;         // the chosen entry from TEAM_INDEX
+const TEAM_EXPANDED = new Set();     // matchUp keys whose compact card shows its matches
+const TEAM_OPEN_GROUPS = new Set();  // group numbers whose "Group matchups" section is open
+
+// "<SIDE>_<PAIR>": A_3, SF-1_2, SF-A_2, Br-F_4, Fi-A_1. Cached — the string
+// parsing runs for every row on every render. Anything depending on the
+// loaded STANDINGS is not, because a playoff slot changes mid-event.
+const sideCodeCache = new Map();
+function parseSideCode(code){
+  let cached = sideCodeCache.get(code);
+  if(cached) return cached;
+  const i = code.indexOf('_');
+  const side = i < 0 ? code : code.slice(0, i);
+  const pairNum = i < 0 ? NaN : parseInt(code.slice(i + 1), 10);
+  const d = side.indexOf('-');
+  cached = {
+    side,
+    pair: isNaN(pairNum) ? null : pairNum,
+    stage: d < 0 ? null : side.slice(0, d),
+    slot: d < 0 ? side : side.slice(d + 1)
+  };
+  sideCodeCache.set(code, cached);
+  return cached;
+}
+function sideOf(code){ return parseSideCode(code).side; }
+function pairOf(code){ return parseSideCode(code).pair; }
+function stageOf(side){ return parseSideCode(side).stage; }
+function slotOf(side){ return parseSideCode(side).slot; }
+function isGroupTeamCode(code){ return stageOf(code) === null; }
+
+// The group-stage team a side belongs to: a group side is its own base team;
+// a playoff side's is its slot once the organiser has typed a team letter.
+function baseTeamOf(side){
+  if(stageOf(side) === null) return side;
+  const slot = slotOf(side);
+  return TEAM_ROW_BY_CODE.has(slot) && isGroupTeamCode(slot) ? slot : null;
+}
+function teamNameOf(side){
+  const row = TEAM_ROW_BY_CODE.get(side);
+  if(row && row.teamName) return row.teamName;
+  const base = baseTeamOf(side);
+  if(base){
+    const baseRow = TEAM_ROW_BY_CODE.get(base);
+    if(baseRow && baseRow.teamName) return baseRow.teamName;
+  }
+  return null;
+}
+function sideLabel(side){
+  return teamNameOf(side) ?? (stageOf(side) !== null ? `Seed ${slotOf(side)} · TBD` : side);
+}
+function groupOf(side){
+  const base = baseTeamOf(side);
+  const row = base ? TEAM_ROW_BY_CODE.get(base) : null;
+  const n = row ? parseInt(row.bracket, 10) : NaN;
+  return isNaN(n) ? null : n;
+}
+function stageLabel(side){
+  const stage = stageOf(side);
+  if(stage === null){
+    const g = groupOf(side);
+    return g === null ? 'Group' : `Group ${g}`;
+  }
+  return STAGES[stage] ? STAGES[stage].label : stage;
+}
+function pairLabel(code, short){
+  const p = PAIRS[pairOf(code)];
+  return p ? (short ? p.short : p.full) : '';
+}
+
+// ms = the matchup's matches (same matchUp). Won on total points across its
+// matches — pair wins never decide it, and equal total points is a tie.
+// state: 'not-started' | 'in-progress' | 'final' | 'tie'; winner: 1 | 2 | null
+function teamMatchupResult(ms){
+  const side1 = sideOf(ms[0].t1), side2 = sideOf(ms[0].t2);
+  let pts1 = 0, pts2 = 0, pairs1 = 0, pairs2 = 0, played = 0;
+  ms.forEach(m => {
+    if(!m.played) return;
+    played++;
+    pts1 += m.t1Score;
+    pts2 += m.t2Score;
+    if(m.t1Score > m.t2Score) pairs1++;
+    else if(m.t2Score > m.t1Score) pairs2++;
+  });
+  const total = ms.length;
+  let state, winner = null;
+  if(played === 0) state = 'not-started';
+  else if(played < total) state = 'in-progress';
+  else if(pts1 === pts2) state = 'tie';
+  else { state = 'final'; winner = pts1 > pts2 ? 1 : 2; }
+  return { side1, side2, pts1, pts2, pairs1, pairs2, played, total, state, winner };
+}
+
+// Everything derived from MATCHES + STANDINGS, rebuilt after each load.
+function rebuildTeamData(){
+  TEAM_ROW_BY_CODE = new Map(STANDINGS.map(s => [s.teamCode, s]));
+
+  const byMatchUp = new Map(); // insertion order = lowest match number first (MATCHES is sorted)
+  MATCHES.forEach(m => {
+    if(!m.matchUp) return;
+    if(!byMatchUp.has(m.matchUp)) byMatchUp.set(m.matchUp, []);
+    byMatchUp.get(m.matchUp).push(m);
+  });
+  const distinct = list => Array.from(new Set(list.filter(Boolean)));
+  TEAM_MATCHUPS = Array.from(byMatchUp.entries()).map(([matchUp, matches]) => {
+    const side1 = sideOf(matches[0].t1), side2 = sideOf(matches[0].t2);
+    return {
+      matchUp, matches, side1, side2,
+      stage: stageOf(side1),
+      group: groupOf(side1) ?? groupOf(side2),
+      times: distinct(matches.map(m => m.time)),
+      courts: distinct(matches.map(m => m.court)),
+      result: teamMatchupResult(matches)
+    };
+  });
+
+  // A team advances when its letter is the slot of any SF-* side (spec §4.3).
+  ADVANCING = new Set();
+  MATCHES.forEach(m => [m.t1, m.t2].forEach(code => {
+    const side = sideOf(code);
+    if(stageOf(side) === 'SF'){
+      const base = baseTeamOf(side);
+      if(base) ADVANCING.add(base);
+    }
+  }));
+}
+
+function teamResetState(){
+  TEAM_MATCHUPS = [];
+  TEAM_ROW_BY_CODE = new Map();
+  ADVANCING = new Set();
+  TEAM_INDEX = [];
+  selectedEntry = null;
+  TEAM_EXPANDED.clear();
+  TEAM_OPEN_GROUPS.clear();
+}
+
+// "9:00 AM & 9:25 AM" -> "9:00 & 9:25 AM" when the whole matchup shares a meridiem.
+function teamTimesLabel(times){
+  const parts = times.map(t => /^(.*?)\s*(AM|PM)$/i.exec(t));
+  if(!parts.length || parts.some(p => !p)) return times.join(' & ');
+  const suffixes = new Set(parts.map(p => p[2].toUpperCase()));
+  if(suffixes.size !== 1) return times.join(' & ');
+  return parts.map((p, i) => i === parts.length - 1 ? `${p[1]} ${p[2]}` : p[1]).join(' & ');
+}
+
+// Consecutive courts as a range ("Courts 1–2"), otherwise a list.
+function teamCourtsLabel(courts){
+  const nums = courts.map(c => { const m = /(\d+)\s*$/.exec(c); return m ? parseInt(m[1], 10) : null; });
+  if(!nums.length) return '';
+  if(nums.some(n => n === null)) return courts.join(', ');
+  const sorted = Array.from(new Set(nums)).sort((a, b) => a - b);
+  if(sorted.length === 1) return `Court ${sorted[0]}`;
+  const consecutive = sorted.every((n, i) => i === 0 || n === sorted[i - 1] + 1);
+  return consecutive
+    ? `Courts ${sorted[0]}–${sorted[sorted.length - 1]}`
+    : `Courts ${sorted.join(', ')}`;
+}
+
+function sideChipHTML(side){
+  const base = baseTeamOf(side);
+  return base ? `<span class="chip">${escapeHtml(base)}</span>` : '';
+}
+
+function teamMatchupRowHTML(m, swap){
+  const a = swap ? { code: m.t2, p1: m.t2p1, p2: m.t2p2, score: m.t2Score }
+                 : { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score };
+  const b = swap ? { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score }
+                 : { code: m.t2, p1: m.t2p1, p2: m.t2p2, score: m.t2Score };
+  const live = dayIsLive && !!m.liveCourt;
+  const played = dayIsLive && m.played;
+  const players = (s, right) => s.p1 === 'TBD'
+    ? `<div class="tm-players unset${right ? ' right' : ''}">Lineup not set</div>`
+    : `<div class="tm-players${right ? ' right' : ''}">${escapeHtml(s.p1)} / ${escapeHtml(s.p2)}</div>`;
+  const score = played
+    ? `<span class="tm-rscore">${a.score > b.score ? `<b>${a.score}</b>` : a.score}–${b.score > a.score ? `<b>${b.score}</b>` : b.score}</span>`
+    : `<span class="tm-rscore">–</span>`;
+  const plabel = pairLabel(m.t1, true);
+  return `<div class="tm-row${live ? ' live' : ''}">
+    <div class="tm-row-meta">
+      <span>#${m.num}</span>${plabel ? `<span class="tm-plabel">${escapeHtml(plabel)}</span>` : ''}
+      ${live ? `<span class="tm-live"><span class="live-dot" aria-hidden="true"></span>Court ${escapeHtml(m.liveCourt)}</span>` : ''}
+    </div>
+    <div class="tm-row-body">${players(a, false)}${score}${players(b, true)}</div>
+  </div>`;
+}
+
+// The one matchup component. focusBase: put that base team on the left
+// (display only). compact: headline only, matches behind a toggle. onlyMatch:
+// show just the row for that match number (a player's result). isNext: flag
+// "Next up".
+function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch = null, isNext = false } = {}){
+  const r = mu.result;
+  const swap = focusBase !== null && baseTeamOf(mu.side1) !== focusBase && baseTeamOf(mu.side2) === focusBase;
+  const L = swap ? 2 : 1, R = swap ? 1 : 2;
+  const sideOfN = n => n === 1 ? mu.side1 : mu.side2;
+  const ptsOf = n => n === 1 ? r.pts1 : r.pts2;
+  const started = dayIsLive && r.played > 0;
+  const settled = dayIsLive && (r.state === 'final' || r.state === 'tie');
+
+  const pill = !dayIsLive ? ''
+    : r.state === 'in-progress' ? '<span class="tm-pill progress">In progress</span>'
+    : r.state === 'final' ? '<span class="tm-pill final">Final</span>'
+    : r.state === 'tie' ? '<span class="tm-pill tie">Tie</span>' : '';
+  const nextPill = dayIsLive && isNext ? '<span class="next-pill">Next up</span>' : '';
+
+  const when = [
+    `<span class="tm-stage">${escapeHtml(stageLabel(mu.side1))}</span>`,
+    escapeHtml(teamTimesLabel(mu.times)),
+    escapeHtml(teamCourtsLabel(mu.courts))
+  ].filter(s => s && s.trim()).join(' &middot; ');
+
+  const sideHTML = (n, right) => {
+    const side = sideOfN(n);
+    const won = settled && r.winner === n, lost = settled && r.winner !== null && r.winner !== n;
+    const base = baseTeamOf(side);
+    const name = teamNameOf(side);
+    return `<div class="tm-side${right ? ' right' : ''}${won ? ' win' : ''}${lost ? ' lose' : ''}">
+      <div class="tm-name${name ? '' : ' tbd'}">${escapeHtml(sideLabel(side))}${sideChipHTML(side)}${focusBase && base === focusBase ? '<span class="you-badge">You</span>' : ''}</div>
+      ${won ? '<span class="tm-tag">Winner</span>' : ''}
+    </div>`;
+  };
+
+  const middle = started
+    ? `<div class="tm-mid"><div class="tm-score">${ptsOf(L)} – ${ptsOf(R)}</div><div class="tm-pairs">pairs ${L === 1 ? r.pairs1 : r.pairs2}–${R === 1 ? r.pairs1 : r.pairs2}</div></div>`
+    : `<div class="tm-mid"><div class="tm-vs">VS</div></div>`;
+
+  const expanded = !compact || TEAM_EXPANDED.has(mu.matchUp);
+  const rowMatches = onlyMatch === null ? mu.matches : mu.matches.filter(m => m.num === onlyMatch);
+  const rows = expanded
+    ? `<div class="tm-rows">${rowMatches.map(m => teamMatchupRowHTML(m, swap)).join('')}</div>`
+    : '';
+  const toggle = compact
+    ? `<button type="button" class="tm-toggle" data-tm-toggle="${escapeHtml(mu.matchUp)}" aria-expanded="${expanded}">${expanded ? 'Hide matches' : 'Show matches'}</button>`
+    : '';
+  const stateClass = !dayIsLive ? '' : r.state === 'in-progress' ? ' is-progress' : settled ? ' is-final' : '';
+
+  return `<div class="tm-card${stateClass}${nextPill ? ' next' : ''}">
+    <div class="tm-head">
+      <div class="tm-when">${when}</div>
+      <div class="tm-badges">${nextPill}${pill}</div>
+    </div>
+    <div class="tm-headline">${sideHTML(L, false)}${middle}${sideHTML(R, true)}</div>
+    ${rows}${toggle}
+  </div>`;
+}
+
+// ---- Standings (spec §4.2, §4.3, §5.7) ----
+// Ranked by quotient only, highest first; rows level on quotient keep their
+// STANDINGSCSV order (Array.prototype.sort is stable).
+function teamGroupTableHTML(group, rows){
+  const anyQuotient = rows.some(s => s.quotient !== null);
+  const ranked = anyQuotient
+    ? rows.slice().sort((a, b) => (b.quotient ?? -Infinity) - (a.quotient ?? -Infinity))
+    : rows;
+  const label = group === '' ? 'Ungrouped' : `Group ${group}`;
+  return `<div class="group-card">
+    <h3 class="group-title">${escapeHtml(label)}</h3>
+    <div class="gt-wrap" data-group-key="${escapeHtml(group)}">
+      <table class="gt">
+        <thead><tr><th class="rk">${anyQuotient ? '#' : ''}</th><th>Team</th><th class="num">PF</th><th class="num">PA</th><th class="num">Quotient</th></tr></thead>
+        <tbody>${ranked.map((s, i) => `<tr>
+          <td class="rk">${anyQuotient ? i + 1 : ''}</td>
+          <td class="tm">${escapeHtml(s.teamName || s.teamCode)}<span class="chip">${escapeHtml(s.teamCode)}</span>${ADVANCING.has(s.teamCode) ? '<br><span class="adv-pill">Advances</span>' : ''}</td>
+          <td class="num">${s.pf}</td>
+          <td class="num">${s.pa}</td>
+          <td class="q">${s.quotient === null ? '—' : fmtQ(s.quotient)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function renderTeamStandings(){
+  const bodyEl = standingsBodyEl;
+  const scrollPositions = captureScrollPositions(bodyEl);
+
+  if(STANDINGS.length === 0){
+    bodyEl.innerHTML = `<div class="empty-state">No standings yet.</div>`;
+    return;
+  }
+
+  const groups = new Map();
+  STANDINGS.filter(s => isGroupTeamCode(s.teamCode)).forEach(s => {
+    if(!groups.has(s.bracket)) groups.set(s.bracket, []);
+    groups.get(s.bracket).push(s);
+  });
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  let html = `<h2 class="section-title">Groups</h2><div class="group-grid">${groupKeys.map(g => teamGroupTableHTML(g, groups.get(g))).join('')}</div>`;
+
+  html += `<h2 class="section-title">Playoffs</h2>`;
+  [['SF', 'Semifinals'], ['Fi', 'Final'], ['Br', 'Bronze']].forEach(([stage, title]) => {
+    const list = TEAM_MATCHUPS.filter(mu => mu.stage === stage);
+    if(!list.length) return;
+    html += `<div class="section-caption">${title}</div>${list.map(mu => teamMatchupCardHTML(mu)).join('')}`;
+  });
+
+  const groupNumbers = Array.from(new Set(TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group !== null).map(mu => mu.group)))
+    .sort((a, b) => a - b);
+  if(groupNumbers.length){
+    html += `<h2 class="section-title">Group matchups</h2>`;
+    groupNumbers.forEach(g => {
+      const list = TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group === g);
+      const open = TEAM_OPEN_GROUPS.has(g);
+      html += `<section class="group-section">
+        <button type="button" class="group-toggle" data-tm-group="${g}" aria-expanded="${open}">
+          <span>Group ${g}<small>${list.length} matchups</small></span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        ${open ? `<div class="group-body">${list.map(mu => teamMatchupCardHTML(mu, { compact: true })).join('')}</div>` : ''}
+      </section>`;
+    });
+  }
+
+  bodyEl.innerHTML = html;
+  restoreScrollPositions(bodyEl, scrollPositions);
+}
+
+// ---- Live Matches (spec §5.9) ----
+function teamLiveTableRowsHTML(court, m){
+  const side1 = sideOf(m.t1), side2 = sideOf(m.t2);
+  const t1TBD = m.t1p1 === 'TBD';
+  const t2TBD = m.t2p1 === 'TBD';
+  const matchupText = `${sideLabel(side1)} vs ${sideLabel(side2)}`;
+  const detailText = [stageLabel(side1), pairLabel(m.t1, false)].filter(Boolean).join(' · ');
+  const scoreHTML = m.played
+    ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
+    : 'VS';
+  const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
+  const matchupHTML = mu ? `Matchup ${mu.result.pts1} – ${mu.result.pts2}` : '&nbsp;';
+
+  const teamCellHTML = (side, tbd, p1, p2) => `<div class="live-team-cell-inner"><div class="live-team-text">
+      <div class="live-team-code${tbd ? ' tbd':''}">${sideChipHTML(side) || '&nbsp;'}</div>
+      <div class="live-team-players">${tbd ? 'Lineup not set' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>
+    </div></div>`;
+
+  return `<tr>
+    <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
+    <td class="live-cat-cell" colspan="3">${escapeHtml(matchupText)} &middot; <span class="live-round">${escapeHtml(detailText)}</span></td>
+  </tr>
+  <tr class="live-match-row">
+    <td class="live-team-cell">${teamCellHTML(side1, t1TBD, m.t1p1, m.t1p2)}</td>
+    <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div><div class="live-matchup">${matchupHTML}</div></td>
+    <td class="live-team-cell right">${teamCellHTML(side2, t2TBD, m.t2p1, m.t2p2)}</td>
+  </tr>`;
+}
+
+// ---- Match Finder (spec §5.8) ----
+function teamRebuildIndex(){
+  const teams = STANDINGS.filter(s => isGroupTeamCode(s.teamCode)).map(s => ({
+    kind: 'team',
+    base: s.teamCode,
+    label: s.teamName || s.teamCode,
+    labelLower: (s.teamName || s.teamCode).toLowerCase(),
+    group: parseInt(s.bracket, 10) || null
+  }));
+
+  const byName = new Map();
+  MATCHES.forEach(m => {
+    [[m.t1, m.t1p1, m.t1p2], [m.t2, m.t2p1, m.t2p2]].forEach(([code, p1, p2]) => {
+      const side = sideOf(code);
+      [p1, p2].forEach(name => {
+        if(!name || name === 'TBD') return;
+        const key = name.toLowerCase();
+        if(!byName.has(key)) byName.set(key, { kind: 'player', name, nameLower: key, teams: [], matchNums: [] });
+        const entry = byName.get(key);
+        const teamName = teamNameOf(side);
+        if(teamName && !entry.teams.includes(teamName)) entry.teams.push(teamName);
+        if(!entry.matchNums.includes(m.num)) entry.matchNums.push(m.num);
+      });
+    });
+  });
+  const players = Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+  TEAM_INDEX = [...teams, ...players];
+
+  // The entry the operator picked was built from the previous load; point it
+  // at the fresh one so a search keeps working as lineups and slots change.
+  if(selectedEntry){
+    selectedEntry = TEAM_INDEX.find(e => e.kind === selectedEntry.kind &&
+      (e.kind === 'team' ? e.base === selectedEntry.base : e.nameLower === selectedEntry.nameLower)) || null;
+  }
+  if(input.value.trim()) runSearch(); else renderIntro();
+}
+
+// A search is saved as "team:<letter>" or "player:<name>" — never a playoff
+// code, which changes mid-event when the organiser fills a slot in.
+function teamSearchKeyFor(entry){
+  return entry.kind === 'team' ? `team:${entry.base}` : `player:${entry.name}`;
+}
+function teamEntryForSearchKey(key){
+  const m = /^(team|player):(.*)$/.exec(key);
+  if(!m) return null;
+  return TEAM_INDEX.find(e => m[1] === 'team'
+    ? e.kind === 'team' && e.base === m[2]
+    : e.kind === 'player' && e.nameLower === m[2].toLowerCase()) || null;
+}
+
+// Up to 8 suggestions, teams first (in sheet order), then players (A–Z).
+function teamAutocompleteMatches(q){
+  return [
+    ...TEAM_INDEX.filter(e => e.kind === 'team' && e.labelLower.includes(q)),
+    ...TEAM_INDEX.filter(e => e.kind === 'player' && e.nameLower.includes(q))
+  ].slice(0, 8);
+}
+
+function teamRenderAutocomplete(query){
+  const q = query.trim().toLowerCase();
+  if(!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  const matches = teamAutocompleteMatches(q);
+  if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
+  acList.innerHTML = matches.map((e, i) => e.kind === 'team'
+    ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}<span class="chip">${escapeHtml(e.base)}</span></span>${e.group ? `<small>Group ${e.group}</small>` : ''}</div>`
+    : `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${e.teams.length ? `<small>${escapeHtml(e.teams.join(', '))}</small>` : ''}</div>`
+  ).join('');
+  acList.classList.add('show');
+  acIndex = -1;
+}
+
+function teamSelectAcItem(el){
+  const entry = teamAutocompleteMatches(input.value.trim().toLowerCase())[parseInt(el.dataset.i, 10)]
+    || (selectedEntry && input.value === (selectedEntry.label || selectedEntry.name) ? selectedEntry : null);
+  if(!entry) return;
+  input.value = entry.kind === 'team' ? entry.label : entry.name;
+  selectedEntry = entry;
+  updateClearBtn();
+}
+
+function teamResolveEntry(raw){
+  if(selectedEntry) return { entry: selectedEntry, ambiguous: null };
+  const q = raw.trim().toLowerCase();
+  if(!q) return { entry: null, ambiguous: null };
+  const nameOf = e => e.kind === 'team' ? e.labelLower : e.nameLower;
+  const exact = TEAM_INDEX.filter(e => nameOf(e) === q);
+  if(exact.length === 1) return { entry: exact[0], ambiguous: null };
+  if(exact.length > 1) return { entry: null, ambiguous: exact };
+  const partial = TEAM_INDEX.filter(e => nameOf(e).includes(q));
+  if(partial.length === 1) return { entry: partial[0], ambiguous: null };
+  if(partial.length > 1) return { entry: null, ambiguous: partial };
+  return { entry: null, ambiguous: null };
+}
+
+const TEAM_LINEUP_NOTE = `<p class="lineup-note">Some lineups aren't in yet. Matches appear here once the team captain enters them.</p>`;
+const teamMatchLineupUnset = m => m.t1p1 === 'TBD' || m.t2p1 === 'TBD';
+
+function teamResultHTML(entry){
+  const base = entry.base;
+  const list = TEAM_MATCHUPS.filter(mu => baseTeamOf(mu.side1) === base || baseTeamOf(mu.side2) === base);
+  const nextIdx = list.findIndex(mu => mu.result.state === 'not-started' && !mu.matches.some(m => m.liveCourt));
+  const unset = list.some(mu => mu.matches.some(teamMatchLineupUnset));
+  return `
+    <div class="results-head">
+      <h2>${escapeHtml(entry.label)}<span class="chip">${escapeHtml(base)}</span></h2>
+      ${entry.group ? `<span class="division-tag">Group ${entry.group}</span>` : ''}
+    </div>
+    <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
+    ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
+    ${unset ? TEAM_LINEUP_NOTE : ''}`;
+}
+
+function teamPlayerResultHTML(entry){
+  const matches = entry.matchNums
+    .map(n => MATCHES.find(m => m.num === n))
+    .filter(Boolean)
+    .sort((a, b) => a.num - b.num);
+  const cards = matches.map(m => {
+    const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
+    return mu ? teamMatchupCardHTML(mu, { onlyMatch: m.num }) : '';
+  }).join('');
+  const teamNames = entry.teams.length ? entry.teams.join(', ') + ' · ' : '';
+  const unset = MATCHES.some(teamMatchLineupUnset);
+  return `
+    <div class="results-head">
+      <h2>${escapeHtml(entry.name)}</h2>
+    </div>
+    <div class="results-meta">${escapeHtml(teamNames)}${matches.length} match${matches.length===1?'':'es'}</div>
+    ${cards}
+    ${unset ? TEAM_LINEUP_NOTE : ''}`;
+}
+
+function teamRunSearch(){
+  const raw = input.value.trim();
+  if(!raw){
+    renderIntro();
+    return;
+  }
+
+  const { entry, ambiguous } = resolveTeam(raw);
+
+  if(ambiguous && ambiguous.length){
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        Several teams or players match <strong>${escapeHtml(raw)}</strong> — pick one:<br><br>
+        ${ambiguous.slice(0,8).map(e => `<strong>${escapeHtml(e.kind === 'team' ? e.label : e.name)}</strong>`).join('<br>')}
+      </div>`;
+    return;
+  }
+
+  if(!entry){
+    const firstWord = raw.toLowerCase().split(' ')[0];
+    const suggestions = TEAM_INDEX.filter(e => (e.kind === 'team' ? e.labelLower : e.nameLower).startsWith(firstWord)).slice(0, 6);
+    resultsEl.innerHTML = `
+      <div class="empty-state">
+        No matches found for <strong>${escapeHtml(raw)}</strong>.<br>
+        Double-check the spelling, or start typing a name to see suggestions.
+        ${suggestions.length ? `<br><br>Did you mean: ${suggestions.map(s=>`<strong>${escapeHtml(s.kind === 'team' ? s.label : s.name)}</strong>`).join(', ')}?` : ''}
+      </div>`;
+    return;
+  }
+
+  selectedEntry = entry;
+  resultsEl.innerHTML = entry.kind === 'team' ? teamResultHTML(entry) : teamPlayerResultHTML(entry);
+  saveSearchState(teamSearchKeyFor(entry));
+}
+
+function teamRenderIntro(){
+  const teams = TEAM_INDEX.filter(e => e.kind === 'team');
+  const groups = new Map();
+  teams.forEach(t => {
+    const g = t.group === null ? 0 : t.group;
+    if(!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(t);
+  });
+  const groupKeys = Array.from(groups.keys()).sort((a, b) => a - b);
+  resultsEl.innerHTML = `
+    <div class="stats-row">
+      <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
+      <div class="stat"><b>${TEAM_MATCHUPS.length || '—'}</b><span>Matchups</span></div>
+      <div class="stat"><b>${teams.length || '—'}</b><span>Teams</span></div>
+    </div>
+    ${teams.length ? `<div class="team-groups">${groupKeys.map(g => `
+      <h3>${g === 0 ? 'Teams' : `Group ${g}`}</h3>
+      <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}<span class="chip">${escapeHtml(t.base)}</span></button>`).join('')}</div>`).join('')}
+    </div>` : ''}`;
+}
+
+// ---- Awards (spec §9.6) ----
+// Every distinct player who played a match for that base team, A–Z.
+function teamRosterFor(base){
+  const names = new Set();
+  MATCHES.forEach(m => {
+    [[m.t1, m.t1p1, m.t1p2], [m.t2, m.t2p1, m.t2p2]].forEach(([code, p1, p2]) => {
+      if(baseTeamOf(sideOf(code)) !== base) return;
+      [p1, p2].forEach(n => { if(n && n !== 'TBD') names.add(n); });
+    });
+  });
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+function teamMedalist(side){
+  const base = baseTeamOf(side);
+  const teamName = sideLabel(side);
+  return { teamName, base, roster: base ? teamRosterFor(base) : [], p1: teamName, p2: '', club: null, clubLabel: null };
+}
+
+// One podium in the existing shape: Gold = the Final matchup's winner,
+// Silver = its loser, Bronze = the Bronze matchup's winner, all by total
+// points. Each is null (Pending) until that matchup is final.
+function buildTeamPodium(){
+  const finalMu = TEAM_MATCHUPS.find(mu => mu.stage === 'Fi');
+  const bronzeMu = TEAM_MATCHUPS.find(mu => mu.stage === 'Br');
+  const lowestNum = mu => Math.min(...mu.matches.map(m => m.num));
+
+  const warnings = [];
+  if(finalMu && finalMu.result.state === 'tie') warnings.push(`Final is a tie on points — check match #${lowestNum(finalMu)}`);
+  if(bronzeMu && bronzeMu.result.state === 'tie') warnings.push(`Bronze is a tie on points — check match #${lowestNum(bronzeMu)}`);
+
+  let gold = null, silver = null, bronze = null;
+  if(!warnings.length){
+    const f = finalMu ? finalMu.result : null;
+    if(f && f.state === 'final'){
+      gold = teamMedalist(f.winner === 1 ? f.side1 : f.side2);
+      silver = teamMedalist(f.winner === 1 ? f.side2 : f.side1);
+    }
+    const b = bronzeMu ? bronzeMu.result : null;
+    if(b && b.state === 'final') bronze = teamMedalist(b.winner === 1 ? b.side1 : b.side2);
+  }
+  return {
+    category: '__team__', source: 'bracket',
+    gold, silver, bronze,
+    bronzeWalkover: false,
+    warning: warnings.length ? warnings.join('; ') : null,
+    orderIdx: 0
+  };
+}
+
+// A medalist's display name: the team name for a team event, otherwise the pair.
+function medalNameText(medalist){
+  return medalist.teamName ? medalist.teamName : `${medalist.p1} / ${medalist.p2}`;
+}
+// Team medalists get their roster under the name; pairs stay on one line.
+function medalNamesHTML(medalist){
+  if(!medalist.teamName) return `<span class="award-names">${escapeHtml(medalist.p1)} / ${escapeHtml(medalist.p2)}</span>`;
+  return `<span class="award-names"><strong>${escapeHtml(medalist.teamName)}</strong>${medalist.roster && medalist.roster.length
+    ? `<span class="award-roster">${escapeHtml(medalist.roster.join(', '))}</span>` : ''}</span>`;
+}
+// ---- end team type ----
 
 // ---- Awards podium derivation (awards-podium-tab-spec §2) --------------
 // Everything below is a pure function over MATCHES/STANDINGS — no fetch, no
@@ -3280,7 +4280,7 @@ function isDesktopStandings(){
 // and the Live Matches board (per-facility horizontal table scroll on
 // mobile) — both fully rebuild their HTML on every refresh, so without this
 // their scroll position would silently reset every 15 seconds.
-const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col, .category-clubs-row, .live-table-wrap, .br-table-wrap';
+const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col, .category-clubs-row, .live-table-wrap, .br-table-wrap, .gt-wrap';
 
 // Stable identity for a scrollable node, preferred over raw className/
 // tagName matching — the same category or facility can render in a
@@ -3288,7 +4288,7 @@ const SCROLLABLE_SELECTOR = '.standings-board-desktop, .standings-col, .category
 // re-sorted), and position-based matching would hand its scroll offset to
 // whatever unrelated element now occupies that slot instead.
 function scrollNodeIdentity(node){
-  const key = node.dataset && (node.dataset.catKey || node.dataset.facilityKey);
+  const key = node.dataset && (node.dataset.catKey || node.dataset.facilityKey || node.dataset.groupKey);
   return key ? `id:${key}` : (node.className || node.tagName);
 }
 
@@ -3374,6 +4374,12 @@ function renderStandings(){
   const categoryFilterWrapEl = document.getElementById('categoryFilterWrap');
   if(categoryToggleBarEl2) categoryToggleBarEl2.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
   if(categoryFilterWrapEl) categoryFilterWrapEl.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
+
+  if(CURRENT_TYPE === 'team'){
+    renderTeamStandings(); // before any category code runs (categoryTokensPresent, buildCategoryOrderIndex)
+    renderResolutionWarning();
+    return;
+  }
 
   const scrollPositions = captureScrollPositions(bodyEl);
 
@@ -3644,6 +4650,7 @@ function pairKey(code, p1, p2){
   return `${club||''}|${category||''}|${names}`;
 }
 function rebuildTeamIndex(){
+  if(CURRENT_TYPE === 'team'){ teamRebuildIndex(); return; }
   const byPair = new Map();
   const addSide = (code, p1, p2) => {
     if(p1 === 'TBD' || sideIsBye(code, p1, p2)) return;
@@ -3826,6 +4833,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
 
   // Reset per-day UI state so nothing carries over from a previous day.
   selectedTeam = null;
+  selectedEntry = null;
   input.value = '';
   if(typeof updateClearBtn === 'function') updateClearBtn();
 
@@ -3841,7 +4849,18 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
     revealLiveTabsAfterLoad();
 
     if(isInitialLoad){
-      const savedSearch = loadSavedSearch();
+      let savedSearch = loadSavedSearch();
+      // A team event saves "team:<letter>" / "player:<name>" (never a playoff
+      // code); the other types save the raw text. The key is shared across
+      // events, so each type only takes back what it wrote.
+      const isTeamKey = /^(team|player):/.test(savedSearch);
+      if(CURRENT_TYPE === 'team'){
+        const entry = isTeamKey ? teamEntryForSearchKey(savedSearch) : null;
+        if(entry){ selectedEntry = entry; savedSearch = entry.kind === 'team' ? entry.label : entry.name; }
+        else savedSearch = '';
+      } else if(isTeamKey){
+        savedSearch = '';
+      }
       if(savedSearch){
         input.value = savedSearch;
         if(typeof updateClearBtn === 'function') updateClearBtn();
@@ -3907,6 +4926,7 @@ if(jumpToTodayBtn){
 }
 
 function renderAutocomplete(query){
+  if(CURRENT_TYPE === 'team'){ teamRenderAutocomplete(query); return; }
   const q = query.trim().toLowerCase();
   if(!q){ acList.classList.remove('show'); acList.innerHTML=''; return; }
   const matches = allTeams.filter(t =>
@@ -3922,6 +4942,7 @@ function renderAutocomplete(query){
 }
 
 function selectAcItem(el){
+  if(CURRENT_TYPE === 'team'){ teamSelectAcItem(el); return; }
   const team = allTeams[parseInt(el.dataset.idx, 10)];
   if(!team) return;
   input.value = team.label;
@@ -3936,7 +4957,7 @@ function updateClearBtn(){
 if(clearInputBtn){
   clearInputBtn.addEventListener('click', () => {
     input.value = '';
-    selectedTeam = null;
+    selectedTeam = null; selectedEntry = null;
     acList.classList.remove('show');
     acList.innerHTML = '';
     updateClearBtn();
@@ -3946,7 +4967,7 @@ if(clearInputBtn){
   });
 }
 
-input.addEventListener('input', () => { selectedTeam = null; renderAutocomplete(input.value); updateClearBtn(); });
+input.addEventListener('input', () => { selectedTeam = null; selectedEntry = null; renderAutocomplete(input.value); updateClearBtn(); });
 input.addEventListener('focus', () => renderAutocomplete(input.value));
 document.addEventListener('click', (e) => {
   if(!e.target.closest('.autocomplete')) acList.classList.remove('show');
@@ -4103,6 +5124,7 @@ function buildFacilityCourtGroups(){
 // placeholder (just blank/transparent) — so the row's height doesn't change
 // the instant a match actually starts on this court.
 function liveEmptyRowHTML(court){
+  const matchupBlank = CURRENT_TYPE === 'team' ? '<div class="live-matchup">&nbsp;</div>' : '';
   const blankTeamCell = `<div class="live-team-cell-inner">
     <div class="live-team-text">
       <div class="live-team-code">&nbsp;</div>
@@ -4115,13 +5137,14 @@ function liveEmptyRowHTML(court){
   </tr>
   <tr class="live-match-row">
     <td class="live-team-cell">${blankTeamCell}</td>
-    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div></td>
+    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div>${matchupBlank}</td>
     <td class="live-team-cell right">${blankTeamCell}</td>
   </tr>`;
 }
 
 function liveTableRowsHTML(court, m){
   if(!m) return liveEmptyRowHTML(court);
+  if(CURRENT_TYPE === 'team') return teamLiveTableRowsHTML(court, m);
   // divisionEventLabel (not divisionLabel) — this cell already shows both
   // teams' clubs via their logos, so prefixing it with just one team's club
   // name (divisionLabel's normal behavior, meant for single-team contexts
@@ -4470,6 +5493,7 @@ function renderLiveMatches(){
 }
 
 function resolveTeam(raw){
+  if(CURRENT_TYPE === 'team') return teamResolveEntry(raw);
   if(selectedTeam) return { team: selectedTeam, ambiguous: null };
   const q = raw.trim().toLowerCase();
   if(!q) return { team: null, ambiguous: null };
@@ -4485,6 +5509,7 @@ function resolveTeam(raw){
 }
 
 function runSearch(){
+  if(CURRENT_TYPE === 'team'){ teamRunSearch(); return; }
   const raw = input.value.trim();
   if(!raw){
     renderIntro();
@@ -4543,6 +5568,7 @@ function runSearch(){
 }
 
 function renderIntro(){
+  if(CURRENT_TYPE === 'team'){ teamRenderIntro(); return; }
   const teams = new Set();
   const divisions = new Set();
   MATCHES.forEach(m => { [m.t1, m.t2].forEach(c => { teams.add(c); const p = parseCode(c); if(p.category) divisions.add(p.category); }); });
@@ -4555,6 +5581,40 @@ function renderIntro(){
 }
 
 renderIntro();
+
+// ---- team type: event wiring ----
+// The Standings cards' "Show matches" toggles and the Group matchups sections
+// keep their open state in TEAM_EXPANDED / TEAM_OPEN_GROUPS, so the full
+// rebuild on every poll doesn't fold them shut. A team chip on the Match
+// Finder intro runs that team's search.
+standingsBodyEl.addEventListener('click', (e) => {
+  if(CURRENT_TYPE !== 'team') return;
+  const cardToggle = e.target.closest('[data-tm-toggle]');
+  if(cardToggle){
+    const key = cardToggle.dataset.tmToggle;
+    if(TEAM_EXPANDED.has(key)) TEAM_EXPANDED.delete(key); else TEAM_EXPANDED.add(key);
+    renderStandings();
+    return;
+  }
+  const groupToggle = e.target.closest('[data-tm-group]');
+  if(groupToggle){
+    const g = parseInt(groupToggle.dataset.tmGroup, 10);
+    if(TEAM_OPEN_GROUPS.has(g)) TEAM_OPEN_GROUPS.delete(g); else TEAM_OPEN_GROUPS.add(g);
+    renderStandings();
+  }
+});
+resultsEl.addEventListener('click', (e) => {
+  if(CURRENT_TYPE !== 'team') return;
+  const btn = e.target.closest('.team-chip-btn');
+  if(!btn) return;
+  const entry = TEAM_INDEX.find(t => t.kind === 'team' && t.base === btn.dataset.team);
+  if(!entry) return;
+  selectedEntry = entry;
+  input.value = entry.label;
+  updateClearBtn();
+  runSearch();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 // ---------- Awards tab (podium finishers + image export) ----------------
 // Read-only, derived tab — no fetch, no config, no auth. See
@@ -4594,7 +5654,7 @@ function medalRowHTML(rankEmoji, rankClass, medalist){
   }
   return `<div class="award-row ${rankClass}">
     <span class="award-rank">${rankEmoji}</span>
-    <span class="award-names">${escapeHtml(medalist.p1)} / ${escapeHtml(medalist.p2)}</span>
+    ${medalNamesHTML(medalist)}
     ${medalist.clubLabel ? `<span class="award-club">${escapeHtml(medalist.clubLabel)}</span>` : ''}
   </div>`;
 }
@@ -4617,7 +5677,7 @@ function awardsCardHTML(p){
     <div class="award-row bronze">
       <span class="award-rank">\u{1F949}</span>
       ${p.bronze
-        ? `<span class="award-names">${escapeHtml(p.bronze.p1)} / ${escapeHtml(p.bronze.p2)}</span>${p.bronze.clubLabel ? `<span class="award-club">${escapeHtml(p.bronze.clubLabel)}</span>` : ''}`
+        ? `${medalNamesHTML(p.bronze)}${p.bronze.clubLabel ? `<span class="award-club">${escapeHtml(p.bronze.clubLabel)}</span>` : ''}`
         : `<span class="award-pending">Pending</span>`}
       ${p.bronzeWalkover ? '<span class="award-chip walkover">Walkover</span>' : ''}
     </div>
@@ -4627,7 +5687,7 @@ function awardsCardHTML(p){
 
 function renderAwards(){
   if(!awardsGridEl || !awardsSummaryBarEl) return;
-  const podiums = buildPodiums();
+  const podiums = CURRENT_TYPE === 'team' ? [buildTeamPodium()] : buildPodiums();
 
   if(awardsChampionBannerEl) awardsChampionBannerEl.innerHTML = overallChampionHTML(computeOverallChampion());
 
@@ -4853,7 +5913,7 @@ async function drawPodiumCard(ctx, w, h, podium){
     if(row.medal){
       ctx.fillStyle = textColor;
       ctx.font = '700 38px "Inter"';
-      const nameLine = `${row.medal.p1} / ${row.medal.p2}`;
+      const nameLine = medalNameText(row.medal);
       ctx.fillText(nameLine, textX, row.medal.clubLabel ? cy - 8 : cy + 12);
       if(row.medal.clubLabel){
         ctx.fillStyle = decided ? 'rgba(11,24,38,.7)' : c.secondary;
@@ -4977,7 +6037,7 @@ function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
     specs.forEach(spec => {
       const decided = !!spec.medal;
       ctx.font = '700 18px "Inter"';
-      const nameText = decided ? `${spec.medal.p1} / ${spec.medal.p2}` : 'Pending';
+      const nameText = decided ? medalNameText(spec.medal) : 'Pending';
       const nameLines = wrapCanvasText(ctx, nameText, contentW - 34);
       let clubLines = null;
       if(decided && spec.medal.clubLabel){
@@ -5687,7 +6747,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   const rawEvent = EVENTS_REGISTRY.get(eventKey);
   CURRENT_EVENT_KEY = eventKey;
   // type must be explicit and recognized — never inferred (spec §1/§2.1).
-  CURRENT_TYPE = rawEvent && (rawEvent.type === 'dual-meet' || rawEvent.type === 'standard') ? rawEvent.type : null;
+  CURRENT_TYPE = rawEvent && (rawEvent.type === 'dual-meet' || rawEvent.type === 'standard' || rawEvent.type === 'team') ? rawEvent.type : null;
   DISPLAY = (rawEvent && rawEvent.display) || {};
   parseCodeCache.clear();
 
@@ -5698,6 +6758,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   // Reset all per-event state so nothing from a previous event lingers.
   currentDayIndex = null;
   MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
+  teamResetState();
   FACILITIES = [];
   viewTabsWrapEl.style.display = 'none';
   syncStatusEl.style.display = 'none';
@@ -5718,7 +6779,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   if(!CURRENT_TYPE){
     DAYS = [];
     renderDayPicker();
-    dayPromptEl.innerHTML = `<strong>Configuration error:</strong> event "${escapeHtml(eventKey)}" has a missing or unrecognized <code>type</code> (must be "dual-meet" or "standard") in event-data/config/events.json — not guessing, fix the config to use this console for this event.`;
+    dayPromptEl.innerHTML = `<strong>Configuration error:</strong> event "${escapeHtml(eventKey)}" has a missing or unrecognized <code>type</code> (must be "dual-meet", "standard" or "team") in event-data/config/events.json — not guessing, fix the config to use this console for this event.`;
     dayPromptEl.style.display = '';
     return;
   }
