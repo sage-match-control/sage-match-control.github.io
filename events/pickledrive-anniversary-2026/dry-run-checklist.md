@@ -111,7 +111,7 @@ that pipeline needs a nudge:
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Live/Hide** to `false`, correct the sheet, resync, then set it back to `auto` (or `true`) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board polls on its own every ~10s — no action needed, just glance at it occasionally to confirm it's still moving
 - [ ] Use **Match Finder** on the console directly if a player asks where their match is
-- [ ] **Semifinalists and playoff teams (team events).** When the group stage ends, enter the four semifinalists' letters in
+- [ ] **Semifinalists and playoff teams (team events).** When the bracket stage ends, enter the four semifinalists' letters in
   `MatchUps` (`D604`, `D614`, `D624`, `D634`). After the semis, enter
   the Bronze and Final teams (`D644`–`D674`). The site takes the
   semifinalists from these cells — it does not pick them itself.

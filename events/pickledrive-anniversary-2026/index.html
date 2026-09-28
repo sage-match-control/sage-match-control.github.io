@@ -658,23 +658,6 @@
   }
 
   /* ---------- TEAM FORMAT: shared bits ---------- */
-  /* Base-team letter shown beside a team name. --navy text on the --green
-     fill is ~6.5:1. */
-  .chip{
-    display:inline-block;
-    font-family:'Montserrat',sans-serif;
-    font-weight:700;
-    font-size:10px;
-    line-height:1.5;
-    letter-spacing:.02em;
-    padding:0 6px;
-    border-radius:100px;
-    background:var(--green);
-    color:var(--navy);
-    margin-left:6px;
-    vertical-align:middle;
-    white-space:nowrap;
-  }
   .you-badge{
     display:inline-block;
     font-family:'Montserrat',sans-serif;
@@ -1023,7 +1006,6 @@
     transition:background .15s ease, border-color .15s ease;
   }
   .team-chip-btn:hover{ border-color:var(--green-dark); background:var(--paper-dim); }
-  .team-chip-btn .chip{ margin-left:8px; }
   .lineup-note{
     margin:18px 0 0;
     font-size:12.5px;
@@ -1033,6 +1015,15 @@
   }
 
   /* Running matchup score under a live match's score (Live Matches). */
+  /* Team name above the players in a Live Matches cell. */
+  .live-team-name{
+    font-family:'Montserrat',sans-serif;
+    font-size:11px;
+    font-weight:700;
+    line-height:1.3;
+    color:var(--navy);
+    overflow-wrap:anywhere;
+  }
   .live-matchup{
     font-family:'Montserrat',sans-serif;
     font-size:9px;
@@ -1042,7 +1033,6 @@
     white-space:nowrap;
     font-variant-numeric:tabular-nums;
   }
-  .live-team-code .chip{ margin-left:0; }
 
 
   /* ---------- RESULTS ---------- */
@@ -1715,7 +1705,7 @@ function stageLabel(side){
   const stage = stageOf(side);
   if(stage === null){
     const g = groupOf(side);
-    return g === null ? 'Group' : `Group ${g}`;
+    return g === null ? 'Bracket' : `Bracket ${g}`;
   }
   return STAGES[stage] ? STAGES[stage].label : stage;
 }
@@ -1785,7 +1775,7 @@ function rebuildTeamData(){
 }
 
 const TEAM_EXPANDED = new Set();     // matchUp keys whose compact card shows its matches
-const TEAM_OPEN_GROUPS = new Set();  // group numbers whose "Group matchups" section is open
+const TEAM_OPEN_GROUPS = new Set();  // group numbers whose "Bracket matchups" section is open
 
 // "9:00 AM & 9:25 AM" -> "9:00 & 9:25 AM" when the whole matchup shares a meridiem.
 function teamTimesLabel(times){
@@ -1807,11 +1797,6 @@ function teamCourtsLabel(courts){
   return consecutive
     ? `Courts ${sorted[0]}–${sorted[sorted.length - 1]}`
     : `Courts ${sorted.join(', ')}`;
-}
-
-function sideChipHTML(side){
-  const base = baseTeamOf(side);
-  return base ? `<span class="chip">${escapeHtml(base)}</span>` : '';
 }
 
 function teamMatchupRowHTML(m, swap){
@@ -1868,7 +1853,7 @@ function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch 
     const base = baseTeamOf(side);
     const name = teamNameOf(side);
     return `<div class="tm-side${right ? ' right' : ''}${won ? ' win' : ''}${lost ? ' lose' : ''}">
-      <div class="tm-name${name ? '' : ' tbd'}">${escapeHtml(sideLabel(side))}${sideChipHTML(side)}${focusBase && base === focusBase ? '<span class="you-badge">You</span>' : ''}</div>
+      <div class="tm-name${name ? '' : ' tbd'}">${escapeHtml(sideLabel(side))}${focusBase && base === focusBase ? '<span class="you-badge">You</span>' : ''}</div>
       ${won ? '<span class="tm-tag">Winner</span>' : ''}
     </div>`;
   };
@@ -1951,7 +1936,7 @@ function groupTableHTML(group, rows){
   const ranked = anyQuotient
     ? rows.slice().sort((a, b) => (b.quotient ?? -Infinity) - (a.quotient ?? -Infinity))
     : rows;
-  const label = group === '' ? 'Ungrouped' : `Group ${group}`;
+  const label = group === '' ? 'No bracket' : `Bracket ${group}`;
   return `<div class="group-card">
     <h3 class="group-title">${escapeHtml(label)}</h3>
     <div class="gt-wrap" data-group-key="${escapeHtml(group)}">
@@ -1959,7 +1944,7 @@ function groupTableHTML(group, rows){
         <thead><tr><th class="rk">${anyQuotient ? '#' : ''}</th><th>Team</th><th class="num">PF</th><th class="num">PA</th><th class="num">Quotient</th></tr></thead>
         <tbody>${ranked.map((s, i) => `<tr>
           <td class="rk">${anyQuotient ? i + 1 : ''}</td>
-          <td class="tm">${escapeHtml(s.teamName || s.teamCode)}<span class="chip">${escapeHtml(s.teamCode)}</span>${ADVANCING.has(s.teamCode) ? '<br><span class="adv-pill">Advances</span>' : ''}</td>
+          <td class="tm">${escapeHtml(s.teamName || s.teamCode)}${ADVANCING.has(s.teamCode) ? '<br><span class="adv-pill">Advances</span>' : ''}</td>
           <td class="num">${s.pf}</td>
           <td class="num">${s.pa}</td>
           <td class="q">${s.quotient === null ? '—' : fmtQ(s.quotient)}</td>
@@ -1987,7 +1972,7 @@ function renderStandings(){
   });
   const groupKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-  let html = `<h2 class="section-title">Groups</h2><div class="group-grid">${groupKeys.map(g => groupTableHTML(g, groups.get(g))).join('')}</div>`;
+  let html = `<h2 class="section-title">Brackets</h2><div class="group-grid">${groupKeys.map(g => groupTableHTML(g, groups.get(g))).join('')}</div>`;
 
   // Playoffs: Semifinals, then Final, then Bronze. The matches are always in
   // the CSV, so these show as seeds before the qualifiers are entered.
@@ -2002,13 +1987,13 @@ function renderStandings(){
   const groupNumbers = Array.from(new Set(TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group !== null).map(mu => mu.group)))
     .sort((a, b) => a - b);
   if(groupNumbers.length){
-    html += `<h2 class="section-title">Group matchups</h2>`;
+    html += `<h2 class="section-title">Bracket matchups</h2>`;
     groupNumbers.forEach(g => {
       const list = TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group === g);
       const open = TEAM_OPEN_GROUPS.has(g);
       html += `<section class="group-section">
         <button type="button" class="group-toggle" data-tm-group="${g}" aria-expanded="${open}">
-          <span>Group ${g}<small>${list.length} matchups</small></span>
+          <span>Bracket ${g}<small>${list.length} matchups</small></span>
           <svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         ${open ? `<div class="group-body">${list.map(mu => teamMatchupCardHTML(mu, { compact: true })).join('')}</div>` : ''}
@@ -2072,7 +2057,7 @@ const searchPanelEl = document.getElementById('searchPanel');
 const standingsResultsEl = document.getElementById('standingsResults');
 const liveResultsEl = document.getElementById('liveResults');
 const standingsBodyEl = document.getElementById('standingsBody');
-// Matchup-card "Show matches" toggles and the Group matchups sections keep
+// Matchup-card "Show matches" toggles and the Bracket matchups sections keep
 // their open state in TEAM_EXPANDED / TEAM_OPEN_GROUPS, so the full rebuild
 // on every poll doesn't fold them shut.
 standingsBodyEl.addEventListener('click', (e) => {
@@ -2240,7 +2225,7 @@ function renderAutocomplete(query){
   const matches = autocompleteMatches(q);
   if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
   acList.innerHTML = matches.map((e, i) => e.kind === 'team'
-    ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}<span class="chip">${escapeHtml(e.base)}</span></span>${e.group ? `<small>Group ${e.group}</small>` : ''}</div>`
+    ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}</span>${e.group ? `<small>Bracket ${e.group}</small>` : ''}</div>`
     : `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${e.teams.length ? `<small>${escapeHtml(e.teams.join(', '))}</small>` : ''}</div>`
   ).join('');
   acList.classList.add('show');
@@ -2373,7 +2358,7 @@ function groupLiveCourtsByFacility(liveCourts){
 // same number of code/name lines — so the row's height doesn't change the
 // instant a match actually starts on this court.
 function liveEmptyRowHTML(court){
-  const blankTeamCell = `<div class="live-team-code">&nbsp;</div>
+  const blankTeamCell = `<div class="live-team-name">&nbsp;</div>
     <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>`;
   return `<tr>
     <td class="live-court-cell idle" rowspan="2">${escapeHtml(court)}</td>
@@ -2391,7 +2376,6 @@ function liveTableRowsHTML(court, m){
   const side1 = sideOf(m.t1), side2 = sideOf(m.t2);
   const t1TBD = m.t1p1 === 'TBD';
   const t2TBD = m.t2p1 === 'TBD';
-  const matchupText = `${sideLabel(side1)} vs ${sideLabel(side2)}`;
   const detailText = [stageLabel(side1), pairLabel(m.t1, false)].filter(Boolean).join(' · ');
   const scoreHTML = m.played
     ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
@@ -2402,12 +2386,12 @@ function liveTableRowsHTML(court, m){
     : '&nbsp;';
 
   const teamCellHTML = (side, tbd, p1, p2) => `
-    <div class="live-team-code${tbd ? ' tbd':''}">${sideChipHTML(side) || '&nbsp;'}</div>
+    <div class="live-team-name">${escapeHtml(sideLabel(side))}</div>
     <div class="live-team-players">${tbd ? 'Lineup not set' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>`;
 
   return `<tr>
     <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
-    <td class="live-cat-cell" colspan="3">${escapeHtml(matchupText)} &middot; <span class="live-round">${escapeHtml(detailText)}</span></td>
+    <td class="live-cat-cell" colspan="3"><span class="live-round">${escapeHtml(detailText)}</span></td>
   </tr>
   <tr class="live-match-row">
     <td class="live-team-cell">${teamCellHTML(side1, t1TBD, m.t1p1, m.t1p2)}</td>
@@ -2484,8 +2468,8 @@ function teamResultHTML(entry){
   const unset = list.some(mu => mu.matches.some(matchLineupUnset));
   return `
     <div class="results-head">
-      <h2>${escapeHtml(entry.label)}<span class="chip">${escapeHtml(base)}</span></h2>
-      ${entry.group ? `<span class="division-tag">Group ${entry.group}</span>` : ''}
+      <h2>${escapeHtml(entry.label)}</h2>
+      ${entry.group ? `<span class="division-tag">Bracket ${entry.group}</span>` : ''}
     </div>
     <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
     ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
@@ -2564,8 +2548,8 @@ function renderIntro(){
       <div class="stat"><b>${teams.length || '—'}</b><span>Teams</span></div>
     </div>
     ${teams.length ? `<div class="team-groups">${groupKeys.map(g => `
-      <h3>${g === 0 ? 'Teams' : `Group ${g}`}</h3>
-      <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}<span class="chip">${escapeHtml(t.base)}</span></button>`).join('')}</div>`).join('')}
+      <h3>${g === 0 ? 'Teams' : `Bracket ${g}`}</h3>
+      <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}</button>`).join('')}</div>`).join('')}
     </div>` : ''}`;
 }
 

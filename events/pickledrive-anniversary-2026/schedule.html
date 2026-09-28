@@ -566,13 +566,13 @@ const FETCH_TIMEOUT_MS = 8000;
 const POLL_INTERVAL_MS = 10000;
 
 // Colour key, chosen from the event pubmat (the organiser's SCHEDULE tab is
-// uncoloured): one hue per group, and forest for every playoff match. `short`
+// uncoloured): one hue per bracket, and forest for every playoff match. `short`
 // is the chip label, `color` the hue that tints the whole cell (a 40% tint
 // over white, which keeps forest body text above ~6.9:1 on the darkest hue).
 const CAT_META = {
-  G1: { short:'GROUP 1',  color:'#4F5B24' },  // olive (trees)
-  G2: { short:'GROUP 2',  color:'#88BEE5' },  // sky
-  G3: { short:'GROUP 3',  color:'#C9A45C' },  // gold
+  G1: { short:'BR 1',  color:'#4F5B24' },  // olive (trees)
+  G2: { short:'BR 2',  color:'#88BEE5' },  // sky
+  G3: { short:'BR 3',  color:'#C9A45C' },  // gold
   PO: { short:'PLAYOFFS', color:'#102A1E' }   // forest
 };
 const FALLBACK = { short:'?', color:'#56605A' };
@@ -1059,7 +1059,7 @@ function parseFacilityCsv(text, teams){
       c1,
       c2: (row[iT2] || '').trim(),
       matchUp: iMatchUp > -1 ? (row[iMatchUp] || '').trim() : '',
-      // Colour key: the match's group, or PO for any playoff match.
+      // Colour key: the match's bracket, or PO for any playoff match.
       cat: stageOf(c1) !== 'RR' ? 'PO' : (teams.group(sideOfCode(c1)) !== null ? 'G' + teams.group(sideOfCode(c1)) : ''),
       team1: teams.label(sideOfCode(c1)),
       team2: teams.label(sideOfCode((row[iT2] || '').trim())),
