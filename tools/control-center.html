@@ -4204,6 +4204,17 @@ function eventDayNowMinutes(){
 
 // From midnight at the start of day.date until DAY_ROLLOVER_MIN the next
 // morning — so an event running late keeps its estimate past midnight.
+// A snapshot timestamp (facility syncedAt) in the same event-day minutes the
+// rest of this block works in, or null if it falls outside the event day.
+function eventDayMinutesFromISO(iso){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day || !day.date || !iso) return null;
+  const t = Date.parse(iso);
+  if(isNaN(t)) return null;
+  const mins = Math.floor((t - Date.parse(`${day.date}T00:00:00+08:00`)) / 60000);
+  return mins < 0 ? null : mins;
+}
+
 function isEventDayActive(nowMin){
   return nowMin !== null && nowMin >= 0 && nowMin < 1440 + DAY_ROLLOVER_MIN;
 }
@@ -4294,6 +4305,45 @@ function computeFacilityProgress(matches, isEventDay, nowMin){
   return { ...base, slot, courts, rows, blanks, blanksDone, plannedEnd, eta };
 }
 
+// Actual end. The snapshot answers this itself: SyncService stamps
+// facilities[].completedAt the first round a facility shows every match
+// scored and then carries it forward, so it survives a manual resync and
+// reads the same on every device — see facilityCompletion.mjs in
+// sage-tools-api. Everything below is only the fallback for snapshots
+// published before that shipped: syncedAt is the facility's last edit, so
+// the earliest one seen while complete is the best local guess. It is
+// per-device, so a phone that first opens the page after a resync will read
+// that resync instead — which is exactly why completedAt is preferred.
+const STORAGE_FACILITY_END_KEY = 'sage.facilityEnds'; // { "event|day|facility": ISO }
+
+function loadFacilityEnds(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_FACILITY_END_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function saveFacilityEnds(map){
+  try{ localStorage.setItem(STORAGE_FACILITY_END_KEY, JSON.stringify(map)); } catch(e){}
+}
+function facilityEndKey(name){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  return `${CURRENT_EVENT_KEY}|${day ? day.key : '?'}|${name}`;
+}
+function facilityActualEnd(name, p, syncedAt, completedAt){
+  if(completedAt) return completedAt;
+  const key = facilityEndKey(name);
+  const ends = loadFacilityEnds();
+  if(p.total === 0 || p.left > 0){
+    if(ends[key]){ delete ends[key]; saveFacilityEnds(ends); }
+    return null;
+  }
+  const seen = Date.parse(syncedAt || '');
+  const kept = Date.parse(ends[key] || '');
+  if(!isNaN(seen) && (isNaN(kept) || seen < kept)){
+    ends[key] = new Date(seen).toISOString();
+    saveFacilityEnds(ends);
+  }
+  return ends[key] || null;
+}
+
 // Same rule as renderOrganizerStatus's isWarn — keep the two in step.
 // STALE_WARNING_MS is declared further down the script; this only ever runs
 // from a poll or render, after the whole script has loaded.
@@ -4314,36 +4364,56 @@ function facilityProgressFor(name){
   const isEventDay = isEventDayActive(nowMin);
   const p = computeFacilityProgress(f.matches, isEventDay, nowMin);
   const entry = LAST_SNAPSHOT ? (LAST_SNAPSHOT.facilities || []).find(x => x.name === name) : null;
+  const syncedAt = entry ? entry.syncedAt || null : null;
   return {
-    p, isEventDay,
+    p, isEventDay, syncedAt,
     stale: isEventDay && p.left > 0 && facilityDataIsStale(name),
-    syncedAt: entry ? entry.syncedAt || null : null
+    actualEnd: facilityActualEnd(name, p, syncedAt, entry ? entry.completedAt || null : null)
   };
 }
 
 // The finish line (spec §2.1 line 4), shared by the card and Mission Control.
-// scheduledEnd is the clock label for the card's extra line, or null.
-function facilityFinishParts(p, isEventDay){
+// `sub` is the card's extra line (already whole), or null.
+//
+// A finished facility keeps both end times rather than collapsing to a bare
+// "All matches done": the schedule's own end, and when play actually wrapped.
+// Nothing in the feed timestamps a match, so the actual end is inferred from
+// the facility's last edit (see facilityActualEnd, which pins it to the first
+// such edit seen once the facility was complete).
+function facilityFinishParts(p, isEventDay, actualEnd){
   const round5 = x => Math.round(x / 5) * 5;
-  if(p.left === 0) return { finish: 'All matches done', scheduledEnd: null };
-  if(p.plannedEnd === null) return { finish: 'No scheduled times yet', scheduledEnd: null };
+  if(p.left === 0){
+    const endMin = eventDayMinutesFromISO(actualEnd);
+    const finish = endMin === null
+      ? 'All matches done'
+      : `All matches done &middot; Actual end <b>${eventClock(round5(endMin))}</b>`;
+    if(p.plannedEnd === null) return { finish, sub: null };
+    const scheduled = `Scheduled end ${eventClock(p.plannedEnd)}`;
+    if(endMin === null) return { finish, sub: scheduled };
+    const diff = round5(endMin - p.plannedEnd);
+    const sub = diff > 0 ? `${scheduled} &middot; <span class="fp-behind">${formatGap(diff)} over</span>`
+      : diff < 0 ? `${scheduled} &middot; ${formatGap(-diff)} under`
+      : `${scheduled} &middot; on schedule`;
+    return { finish, sub };
+  }
+  if(p.plannedEnd === null) return { finish: 'No scheduled times yet', sub: null };
   if(isEventDay && p.eta !== null){
     const diff = round5(p.eta - p.plannedEnd);
     const etaText = `Est. finish <b>${eventClock(round5(p.eta))}</b>`;
     const finish = diff > 0 ? `${etaText} &middot; <span class="fp-behind">${formatGap(diff)} behind</span>`
       : diff < 0 ? `${etaText} &middot; ${formatGap(-diff)} ahead`
       : `${etaText} &middot; on schedule`;
-    return { finish, scheduledEnd: diff !== 0 ? eventClock(p.plannedEnd) : null };
+    return { finish, sub: diff !== 0 ? `Scheduled end ${eventClock(p.plannedEnd)}` : null };
   }
-  return { finish: `Scheduled end <b>${eventClock(p.plannedEnd)}</b>`, scheduledEnd: null };
+  return { finish: `Scheduled end <b>${eventClock(p.plannedEnd)}</b>`, sub: null };
 }
 
 function facilityProgressCardHTML(name, info){
-  const { p, isEventDay, stale, syncedAt } = info;
+  const { p, isEventDay, stale, syncedAt, actualEnd } = info;
   const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
-  const { finish, scheduledEnd } = facilityFinishParts(p, isEventDay);
+  const { finish, sub } = facilityFinishParts(p, isEventDay, actualEnd);
   const subs = [];
-  if(scheduledEnd) subs.push(`Scheduled end ${scheduledEnd}`);
+  if(sub) subs.push(sub);
   if(stale) subs.push(`<span class="fp-behind">Data from ${relativeTimeFromNow(syncedAt)} &mdash; estimate reads late until this sheet syncs again</span>`);
   if(p.left > 0 && p.unscheduledLeft > 0){
     subs.push(`${p.unscheduledLeft} match${p.unscheduledLeft === 1 ? '' : 'es'} without a court/time &mdash; counted as work left, not on the schedule`);
@@ -4372,7 +4442,7 @@ function renderFacilityProgress(){
 function facilityStatusProgressHTML(name){
   const info = facilityProgressFor(name);
   if(!info || info.p.total === 0) return '';
-  const { finish } = facilityFinishParts(info.p, info.isEventDay);
+  const { finish } = facilityFinishParts(info.p, info.isEventDay, info.actualEnd);
   const staleText = info.stale ? ' &middot; <span class="fp-behind">stale &mdash; may read late</span>' : '';
   return `<span class="org-status-progress">${info.p.done} / ${info.p.total} done &middot; ${finish}${staleText}</span>`;
 }
