@@ -30,10 +30,9 @@ section can reference them without guessing at what's actually in the sheet:
   If it doesn't, check that `MatchUps` is ticked in **SAGE → Set up live
   sync**.
 
-  Then type a team letter into `MatchUps!D604` (Semifinal seed 1). The
-  site's first semifinal card should switch from *Seed 1 · TBD* to that
-  team's name, and the team should get an *Advances* label. Put the seed
-  back to `1` afterwards.
+  Then type a team letter into `MatchUps!D604` (Quarterfinal seed 3). The site's first quarterfinal card should switch from
+  *Seed 3 · TBD* to that team's name, and the team should get an
+  *Advances* label. Put the seed back to `3` afterwards.
 
 ### 1.2 Console verification (operator device only — nothing public yet)
 
@@ -111,10 +110,20 @@ that pipeline needs a nudge:
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Live/Hide** to `false`, correct the sheet, resync, then set it back to `auto` (or `true`) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board polls on its own every ~10s — no action needed, just glance at it occasionally to confirm it's still moving
 - [ ] Use **Match Finder** on the console directly if a player asks where their match is
-- [ ] **Semifinalists and playoff teams (team events).** When the bracket stage ends, enter the four semifinalists' letters in
-  `MatchUps` (`D604`, `D614`, `D624`, `D634`). After the semis, enter
-  the Bronze and Final teams (`D644`–`D674`). The site takes the
-  semifinalists from these cells — it does not pick them itself.
+- [ ] **Quarterfinalists and playoff teams (team events).** When the bracket stage ends, enter the eight
+  quarterfinalists' letters against their seeds in `MatchUps`. The
+  quarterfinals pair them 3 v 6, 1 v 8, 2 v 7 and 4 v 5:
+
+  | Round | Seed → cell |
+  | --- | --- |
+  | Quarterfinals | 3 `D604` · 6 `D614` · 1 `D624` · 8 `D634` · 2 `D644` · 7 `D654` · 4 `D664` · 5 `D674` |
+  | Semifinals | 1 `D684` · 2 `D694` · 3 `D704` · 4 `D714` |
+  | Bronze | 1 `D724` · 2 `D734` |
+  | Final | 1 `D744` · 2 `D754` |
+
+  After the quarterfinals, enter the four semifinalists; after the semis,
+  the Bronze and Final teams. The site takes every playoff team from these
+  cells — it does not pick them itself.
 
 ### 2.5 End of day
 

@@ -3152,9 +3152,10 @@ const PAIRS = {
 // Playoff stage prefix (before "-" in a side) -> label and display order.
 // A side with no "-" is a group-stage side.
 const STAGES = {
-  SF: { label: 'Semifinal', order: 1 },
-  Br: { label: 'Bronze',    order: 2 },
-  Fi: { label: 'Final',     order: 3 }
+  QF: { label: 'Quarterfinal', order: 1 },
+  SF: { label: 'Semifinal',    order: 2 },
+  Br: { label: 'Bronze',       order: 3 },
+  Fi: { label: 'Final',        order: 4 }
 };
 
 let TEAM_MATCHUPS = [];           // [{ matchUp, matches, side1, side2, stage, group, times, courts, result }]
@@ -3276,11 +3277,13 @@ function rebuildTeamData(){
     };
   });
 
-  // A team advances when its letter is the slot of any SF-* side (spec §4.3).
+  // A team advances when its letter is the slot of any playoff side — the
+  // organiser types it into the workbook (spec §4.3). With quarterfinals, that
+  // is the eight QF-* qualifiers; any later slot is one of them anyway.
   ADVANCING = new Set();
   MATCHES.forEach(m => [m.t1, m.t2].forEach(code => {
     const side = sideOf(code);
-    if(stageOf(side) === 'SF'){
+    if(stageOf(side) !== null){
       const base = baseTeamOf(side);
       if(base) ADVANCING.add(base);
     }
@@ -3408,13 +3411,50 @@ function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch 
 }
 
 // ---- Standings (spec §4.2, §4.3, §5.7) ----
-// Ranked by quotient only, highest first; rows level on quotient keep their
-// STANDINGSCSV order (Array.prototype.sort is stable).
+// Bracket ranking — the organiser's tiebreakers, in order:
+//   1. points scored (PF, from STANDINGSCSV)
+//   2. quotient (PF ÷ PA, from STANDINGSCSV)
+//   3. points scored head-to-head: among the teams still level after 1–2,
+//      the points each scored in its own played matches against the others
+//   4. pair wins: matches won in this bracket's played matches
+// Rows level on all four keep their STANDINGSCSV order (the sorts are stable).
+// Display only — the organiser decides who advances in the workbook (§4.3).
+function teamRankBracket(rows){
+  const groupMatches = MATCHES.filter(m => m.played && stageOf(sideOf(m.t1)) === null);
+  const byPfQ = rows.slice().sort((a, b) =>
+    (b.pf - a.pf) || ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
+  const out = [];
+  for(let i = 0; i < byPfQ.length;){
+    let j = i + 1;
+    while(j < byPfQ.length && byPfQ[j].pf === byPfQ[i].pf && byPfQ[j].quotient === byPfQ[i].quotient) j++;
+    const tied = byPfQ.slice(i, j);
+    if(tied.length > 1){
+      const codes = new Set(tied.map(s => s.teamCode));
+      const h2h = new Map(tied.map(s => [s.teamCode, 0]));
+      const wins = new Map(tied.map(s => [s.teamCode, 0]));
+      groupMatches.forEach(m => {
+        const s1 = sideOf(m.t1), s2 = sideOf(m.t2);
+        if(codes.has(s1) && codes.has(s2)){
+          h2h.set(s1, h2h.get(s1) + m.t1Score);
+          h2h.set(s2, h2h.get(s2) + m.t2Score);
+        }
+        if(wins.has(s1) && m.t1Score > m.t2Score) wins.set(s1, wins.get(s1) + 1);
+        if(wins.has(s2) && m.t2Score > m.t1Score) wins.set(s2, wins.get(s2) + 1);
+      });
+      tied.sort((a, b) =>
+        (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
+        (wins.get(b.teamCode) - wins.get(a.teamCode)));
+    }
+    out.push(...tied);
+    i = j;
+  }
+  return out;
+}
+
 function teamGroupTableHTML(group, rows){
+  // Rank numbers appear once any team in the bracket has a result.
   const anyQuotient = rows.some(s => s.quotient !== null);
-  const ranked = anyQuotient
-    ? rows.slice().sort((a, b) => (b.quotient ?? -Infinity) - (a.quotient ?? -Infinity))
-    : rows;
+  const ranked = anyQuotient ? teamRankBracket(rows) : rows;
   const label = group === '' ? 'No bracket' : `Bracket ${group}`;
   return `<div class="group-card">
     <h3 class="group-title">${escapeHtml(label)}</h3>
@@ -3452,7 +3492,7 @@ function renderTeamStandings(){
   let html = `<h2 class="section-title">Brackets</h2><div class="group-grid">${groupKeys.map(g => teamGroupTableHTML(g, groups.get(g))).join('')}</div>`;
 
   html += `<h2 class="section-title">Playoffs</h2>`;
-  [['SF', 'Semifinals'], ['Fi', 'Final'], ['Br', 'Bronze']].forEach(([stage, title]) => {
+  [['QF', 'Quarterfinals'], ['SF', 'Semifinals'], ['Fi', 'Final'], ['Br', 'Bronze']].forEach(([stage, title]) => {
     const list = TEAM_MATCHUPS.filter(mu => mu.stage === stage);
     if(!list.length) return;
     html += `<div class="section-caption">${title}</div>${list.map(mu => teamMatchupCardHTML(mu)).join('')}`;

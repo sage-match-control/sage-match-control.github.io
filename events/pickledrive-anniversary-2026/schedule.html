@@ -591,8 +591,8 @@ function readableOn(hex){
 }
 const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// Stage of the ladder, from the side of the team code: "SF-A_2" is a
-// Semifinal side, "Br-F_4" Bronze, "Fi-A_1" Final, and a plain letter ("A_3")
+// Stage of the ladder, from the side of the team code: "QF-3_1" is a
+// Quarterfinal side, "SF-A_2" a Semifinal side, "Br-F_4" Bronze, "Fi-A_1" Final, and a plain letter ("A_3")
 // is group play. Same reading as stageOf() in index.html (spec §3.4).
 const STAGE_META = {
   RR:  { label: 'RR',     playoff: false },
@@ -607,6 +607,7 @@ function stageOf(code){
   const side = String(code).split('_')[0];
   const dash = side.indexOf('-');
   const prefix = dash < 0 ? '' : side.slice(0, dash);
+  if(prefix === 'QF') return 'QF';
   if(prefix === 'SF') return 'SF';
   if(prefix === 'Br') return 'B';
   if(prefix === 'Fi') return 'F';
