@@ -390,9 +390,9 @@
     max-width:180px;
     line-height:1.4;
     margin-top:8px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    /* Show the whole link. Put a <wbr> after the "/" when filling in
+       {{QR_URL}} so it breaks there; otherwise it breaks wherever it runs out of room. */
+    overflow-wrap:anywhere;
   }
   .qr-panel .qr-caption{
     margin-top:8px;

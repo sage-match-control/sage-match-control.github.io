@@ -350,7 +350,7 @@ clubs; it is not a general multi-club template.
 | `{{EVENT_DATE_RANGE}}` | Hero eyebrow, footer, meta description. |
 | `{{VENUE}}` | Hero eyebrow, footer. |
 | `{{QR_IMAGE}}` | Path to the QR PNG dropped in alongside `index.html` (§2 step 2). |
-| `{{QR_URL}}` | The short link printed under the QR code. |
+| `{{QR_URL}}` | The short link printed under the QR code. Write it with a `<wbr>` after the `/` (`tinyurl.com/<wbr>SAGExEvent`), so on desktop it wraps there instead of mid-word. |
 | `{{EVENT_LOGO}}` | Path to the event's own logo dropped in alongside `index.html` (§2 step 2). Shown paired with `/assets/logo.png` at the top of the hero. |
 | `{{SCHEDULE_DAY_KEY}}` | `schedule.html` only — which day's key the wall display shows (§2 step 6). |
 

@@ -391,9 +391,9 @@
     max-width:180px;
     line-height:1.4;
     margin-top:8px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
+    /* Show the whole link: it breaks after the "/" (the <wbr> in the
+       markup), and anywhere else only if a part still won't fit. */
+    overflow-wrap:anywhere;
   }
   .qr-panel .qr-caption{
     margin-top:8px;
@@ -1324,7 +1324,7 @@
 
 <div class="qr-panel" aria-hidden="false">
   <img src="assets/qr.png" alt="QR code linking to this Tournament Hub site" />
-  <div class="qr-link-text">tinyurl.com/SAGExPickleForSight</div>
+  <div class="qr-link-text">tinyurl.com/<wbr>SAGExPickleForSight</div>
   <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
 </div>
 
