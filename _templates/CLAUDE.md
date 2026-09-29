@@ -424,8 +424,8 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | Value | Where |
 | --- | --- |
 | `EVENT_KEY` | both — and the `events/` folder name, and the `event-data` folder name |
-| `DAYS[].key` | `index.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's `DAY_KEY` in `sheets-sync.gs` |
-| `FACILITIES[].name` | `index.html`, and each spreadsheet's `FACILITY_NAME` in `sheets-sync.gs` — compared exactly, case-sensitive |
+| `DAYS[].key` | `index.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's day key, set through its **SAGE → Set up live sync** |
+| `FACILITIES[].name` | `index.html`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
 | `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
 
