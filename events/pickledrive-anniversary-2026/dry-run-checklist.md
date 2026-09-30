@@ -106,6 +106,7 @@ that pipeline needs a nudge:
 
 - [ ] Periodically glance at Mission Control's Facility Sync Status. It should read "Synced" a few seconds to a couple minutes ago, continuously
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
+- [ ] If a score or court entry hasn't appeared on the site within about **2 minutes**, click **Resync this day now**. A sync can lose a race with another venue's sync, or with another event's on the same day, and Facility Sync Status only turns amber after 5 minutes without one
 - [ ] If Sheets API trouble persists, check **Use CSV export fallback instead of Sheets API** and resync again
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Live/Hide** to `false`, correct the sheet, resync, then set it back to `auto` (or `true`) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board polls on its own every ~10s — no action needed, just glance at it occasionally to confirm it's still moving
