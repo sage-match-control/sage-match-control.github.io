@@ -930,6 +930,7 @@
     color:var(--ink-soft);
   }
   .tm-row-meta .tm-plabel{
+    white-space:nowrap;
     background:rgba(16,42,30,.08);
     border-radius:100px;
     padding:0 8px;
@@ -1306,13 +1307,27 @@ const FACILITIES = [
 ];
 
 // ---- Team format --------------------------------------------------------
-// Pair number (the digit after "_" in a team code) -> label.
-const PAIRS = {
+// Pair number (the digit after "_" in a team code) -> label. A doubles type
+// that appears more than once in a matchup is numbered in pair order
+// ("XD 1", "XD 2"); one that appears once keeps its plain label.
+const PAIRS = numberRepeatedPairs({
   1: { full: "Men's Doubles",   short: 'MD' },
   2: { full: "Women's Doubles", short: 'WD' },
   3: { full: 'Mixed Doubles',   short: 'XD' },
   4: { full: 'Mixed Doubles',   short: 'XD' }
-};
+});
+function numberRepeatedPairs(pairs){
+  const keys = Object.keys(pairs).sort((a, b) => a - b);
+  const total = {}, seen = {}, out = {};
+  keys.forEach(k => { total[pairs[k].short] = (total[pairs[k].short] || 0) + 1; });
+  keys.forEach(k => {
+    const p = pairs[k];
+    if(total[p.short] < 2){ out[k] = p; return; }
+    const n = seen[p.short] = (seen[p.short] || 0) + 1;
+    out[k] = { full: `${p.full} ${n}`, short: `${p.short} ${n}` };
+  });
+  return out;
+}
 // Playoff stage prefix (before "-" in a side) -> label and display order.
 // A side with no "-" is a group-stage side.
 const STAGES = {
