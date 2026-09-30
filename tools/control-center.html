@@ -5477,8 +5477,8 @@ function facilityFinishParts(p, isEventDay, actualEnd){
     const scheduled = `Scheduled end ${eventClock(p.plannedEnd)}`;
     if(endMin === null) return { finish, sub: scheduled };
     const diff = round5(endMin - p.plannedEnd);
-    const sub = diff > 0 ? `${scheduled} &middot; <span class="fp-behind">${formatGap(diff)} over</span>`
-      : diff < 0 ? `${scheduled} &middot; ${formatGap(-diff)} under`
+    const sub = diff > 0 ? `${scheduled} &middot; <span class="fp-behind">${formatGap(diff)} late</span>`
+      : diff < 0 ? `${scheduled} &middot; ${formatGap(-diff)} early`
       : `${scheduled} &middot; on schedule`;
     return { finish, sub };
   }
@@ -5504,13 +5504,17 @@ function facilityProgressCardHTML(name, info){
   if(p.left > 0 && p.unscheduledLeft > 0){
     subs.push(`${p.unscheduledLeft} match${p.unscheduledLeft === 1 ? '' : 'es'} without a court/time &mdash; counted as work left, not on the schedule`);
   }
+  // "Left" printed on the card is matches not yet started; the ones on court
+  // show under In play. p.left itself still includes them — the estimate,
+  // "all done" and the stale check all read it that way — so only the printed
+  // number drops them.
   return `<div class="fp-card">
     <div class="fp-name">${escapeHtml(name)}</div>
     <div class="fp-bar-row">
       <div class="fp-bar"><span style="width:${pct}%"></span></div>
       <span class="fp-frac">${p.done} / ${p.total}</span>
     </div>
-    <div class="fp-line">Done <b>${p.done}</b> &middot; Left <b>${p.left}</b> &middot; In play <b>${p.inPlay}</b></div>
+    <div class="fp-line">Done <b>${p.done}</b> &middot; Left <b>${p.left - p.inPlay}</b> &middot; In play <b>${p.inPlay}</b></div>
     <div class="fp-line">${finish}</div>
     ${subs.map(s => `<div class="fp-sub">${s}</div>`).join('')}
   </div>`;
@@ -6794,11 +6798,38 @@ if(orgResyncBtn){
 const eventPickerEl = document.getElementById('eventPicker');
 const eventTitleLineEl = document.getElementById('eventTitleLine');
 
+// The picker reads "2026-10-03 Event title": the event's first day leads, so
+// two events on different dates are told apart at a glance. An event whose days
+// carry no date just shows its title.
+function eventStartDate(ev){
+  const dates = Object.values((ev && ev.days) || {}).map(d => d && d.date).filter(Boolean).sort();
+  return dates.length ? dates[0] : null;
+}
+
+function eventPickerLabel(key){
+  const ev = EVENTS_REGISTRY.get(key) || {};
+  const start = eventStartDate(ev);
+  const title = ev.title || key;
+  return start ? `${start} ${title}` : title;
+}
+
+// Newest event first; events with no date go last. Array.sort is stable, so
+// events that share a date keep the order they have in events.json.
+function sortEventsNewestFirst(entries){
+  return entries.slice().sort(([, a], [, b]) => {
+    const da = eventStartDate(a), db = eventStartDate(b);
+    if(da === db) return 0;
+    if(!da) return 1;
+    if(!db) return -1;
+    return da < db ? 1 : -1;
+  });
+}
+
 function renderEventPicker(){
   if(!eventPickerEl) return;
   const keys = Array.from(EVENTS_REGISTRY.keys());
   eventPickerEl.innerHTML = keys.length
-    ? keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(EVENTS_REGISTRY.get(k).title || k)}</option>`).join('')
+    ? keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(eventPickerLabel(k))}</option>`).join('')
     : '<option value="">No registered events</option>';
 }
 
@@ -6900,7 +6931,11 @@ async function boot(){
   // Archived events are filtered out here, before display ever needs to
   // read them (spec decision 9.4) — dead registry entries just don't show
   // up in the picker at all.
-  EVENTS_REGISTRY = new Map(Object.entries(raw.events || {}).filter(([, e]) => !e.archived));
+  // Sorted newest first here, so the picker's order and "the first registered
+  // event" (the default below) are the same thing.
+  EVENTS_REGISTRY = new Map(sortEventsNewestFirst(
+    Object.entries(raw.events || {}).filter(([, e]) => !e.archived)
+  ));
   renderEventPicker();
 
   if(EVENTS_REGISTRY.size === 0){
@@ -6910,7 +6945,8 @@ async function boot(){
   }
 
   // Resolution order: ?event=&day= URL params, then the last localStorage
-  // selection, then just the first registered event (spec §5).
+  // selection, then just the first registered event (spec §5) — now the
+  // newest, since the registry is sorted above.
   const urlParams = new URLSearchParams(window.location.search);
   const urlEvent = urlParams.get('event');
   const saved = loadSavedSelection();
