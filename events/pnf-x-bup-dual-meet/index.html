@@ -2048,8 +2048,23 @@ function standingsStageKey(teamCode){
   return STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD[roundKeyword(rest)] || 'RR';
 }
 
+// A slot whose names aren't in yet: the sheet fills the name cells with the
+// slot's own code. A twice-to-beat game's code carries its game number
+// ("IXD_F_1_(2)", see matchInstanceOf) but its placeholder name doesn't
+// ("IXD_F_1"), so the name is also checked against the code without it.
 function isEmptyStanding(s){
-  return !s.player1 || s.player1 === s.teamCode;
+  const slotCode = s.teamCode.replace(/_?\(\d+\)\s*$/, '');
+  return !s.player1 || s.player1 === s.teamCode || s.player1 === slotCode;
+}
+
+// A Round Robin pair whose names aren't in yet: its name cells still hold its
+// own code. Shown in the RR table under that code, so standings read before
+// the rosters are pasted in. Only when the code is on the schedule, though —
+// hand-built workbooks had fixed-size rosters, and an unused slot has no
+// match, which is what isEmptyStanding() was hiding. Playoff slots are
+// excluded: they keep reading TBD until they're seeded.
+function isUnnamedScheduledPair(s){
+  return isEmptyStanding(s) && standingsStageKey(s.teamCode) === 'RR' && MATCH_BY_CODE.has(s.teamCode);
 }
 
 function standingRowClass(s){
@@ -2058,6 +2073,9 @@ function standingRowClass(s){
 }
 
 function pairCell(s){
+  if(isUnnamedScheduledPair(s)){
+    return `<td class="pair tbd"><span>${escapeHtml(s.teamCode)}</span></td>`;
+  }
   if(isEmptyStanding(s)){
     return `<td class="pair tbd"><span>TBD</span></td>`;
   }
@@ -2108,7 +2126,7 @@ function renderStageTables(rows){
   // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2"). A blank bracket
   // means every RR row for this division is one single group — no Br column
   // is shown at all in that case, rather than showing a fabricated "1" for
-  // everyone. Empty RR slots are skipped, but playoff slots are always shown
+  // everyone. Unused RR slots are skipped (see isUnnamedScheduledPair), but playoff slots are always shown
   // (as TBD if empty) so the bracket stages are visible before pairs have
   // been seeded in.
   const stages = new Map(); // stageKey -> array of rows
@@ -2116,7 +2134,7 @@ function renderStageTables(rows){
   rows.forEach(s => {
     const stageKey = standingsStageKey(s.teamCode);
     if(stageKey === 'RR'){
-      if(isEmptyStanding(s)) return;
+      if(isEmptyStanding(s) && !isUnnamedScheduledPair(s)) return;
       const brLabel = (s.bracket || '').trim(); // '' when there's no sub-bracket for this division — no longer defaulted to '1'
       if(!rrGroups.has(brLabel)) rrGroups.set(brLabel, []);
       rrGroups.get(brLabel).push(s);
