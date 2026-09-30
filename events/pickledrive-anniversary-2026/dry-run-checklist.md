@@ -74,7 +74,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Select `PickleDrive Club One Year Celebration` → today's day
 - [ ] Sign in with the operator username and password in Mission Control
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
-- [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and doubles as a check that the sheet's Apps Script wiring actually works before a single match starts
+- [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and confirms Cloud Run can read every facility's sheet. It doesn't involve the sheet's Apps Script: only the first real edit in the **Court Control** tab publishing on its own (§2.4) proves that
 - [ ] Confirm **Facility Sync Status** shows a fresh "Synced" for every venue this event uses
 
 ### 2.2 Decide on go-live timing
