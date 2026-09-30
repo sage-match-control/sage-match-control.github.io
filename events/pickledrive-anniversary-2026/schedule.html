@@ -621,8 +621,9 @@ function stageOf(code){
 const sideOfCode = code => String(code).split('_')[0];
 const pairOfCode = code => { const m = /_(\d+)/.exec(String(code)); return m ? parseInt(m[1], 10) : null; };
 // Same labels as PAIRS in index.html: a doubles type that appears more than
-// once in a matchup is numbered in pair order ("XD 1", "XD 2").
-const PAIR_SHORT = numberRepeatedPairs({ 1: 'MD', 2: 'WD', 3: 'XD', 4: 'XD' });
+// once in a matchup is numbered in pair order ("MXD 1", "MXD 2"). This event
+// abbreviates Mixed Doubles as MXD rather than XD.
+const PAIR_SHORT = numberRepeatedPairs({ 1: 'MD', 2: 'WD', 3: 'MXD', 4: 'MXD' });
 function numberRepeatedPairs(pairs){
   const keys = Object.keys(pairs).sort((a, b) => a - b);
   const total = {}, seen = {}, out = {};

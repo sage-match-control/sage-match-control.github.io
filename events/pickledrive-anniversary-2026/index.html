@@ -1309,12 +1309,13 @@ const FACILITIES = [
 // ---- Team format --------------------------------------------------------
 // Pair number (the digit after "_" in a team code) -> label. A doubles type
 // that appears more than once in a matchup is numbered in pair order
-// ("XD 1", "XD 2"); one that appears once keeps its plain label.
+// ("MXD 1", "MXD 2"); one that appears once keeps its plain label. This event
+// abbreviates Mixed Doubles as MXD, the organiser's form, rather than XD.
 const PAIRS = numberRepeatedPairs({
   1: { full: "Men's Doubles",   short: 'MD' },
   2: { full: "Women's Doubles", short: 'WD' },
-  3: { full: 'Mixed Doubles',   short: 'XD' },
-  4: { full: 'Mixed Doubles',   short: 'XD' }
+  3: { full: 'Mixed Doubles',   short: 'MXD' },
+  4: { full: 'Mixed Doubles',   short: 'MXD' }
 });
 function numberRepeatedPairs(pairs){
   const keys = Object.keys(pairs).sort((a, b) => a - b);
