@@ -705,7 +705,7 @@
 
   /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
-    display:none; /* shown below the 980px desktop-standings breakpoint */
+    display:none; /* shown below the desktop-standings breakpoint (900px wide and 600px tall) */
     background:var(--white);
     border-radius:18px;
     padding:18px 20px;
@@ -730,15 +730,15 @@
   }
   input.cat-filter-input:focus{border-color:var(--court);}
   input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
-  @media (max-width:979px){
+  @media (max-width:899px), (max-height:599px){
     .category-filter{ display:block; }
   }
 
   /* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
   .category-toggle-bar{
-    display:none; /* shown only at the 980px+ desktop-standings breakpoint */
+    display:none; /* shown only at the desktop-standings breakpoint (900px wide and 600px tall) */
   }
-  @media (min-width:980px){
+  @media (min-width:900px) and (min-height:600px){
     .category-toggle-bar{
       display:flex;
       flex-wrap:wrap;
@@ -842,7 +842,7 @@
   /* Mobile/tablet: pinned to the top of the viewport while scrolling through
      the (potentially long) list of category cards below, so the head-to-head
      win count stays visible instead of scrolling out of view. Reset to a
-     normal in-flow element on desktop (see the 980px media query) — the
+     normal in-flow element on desktop (see the desktop-standings media query) — the
      grid there is compact enough that this isn't needed. */
   .club-summary{
     display:flex;
@@ -859,7 +859,7 @@
     -webkit-backdrop-filter:blur(6px);
     border-radius:0 0 16px 16px;
   }
-  @media (min-width: 980px){
+  @media (min-width:900px) and (min-height:600px){
     .club-summary{
       position:static;
       padding:0;
@@ -964,7 +964,7 @@
     padding-bottom:5px;
     margin-bottom:8px;
   }
-  @media (min-width: 980px){
+  @media (min-width:900px) and (min-height:600px){
     .category-clubs-row{
       display:flex;
       gap:12px;
@@ -1155,7 +1155,7 @@
      renderStandings wraps those in .standings-col-overflow, spanning the
      full row-height of the columns beside it and vertically centered there
      instead of leaving a half-empty row of its own. */
-  @media (min-width: 980px){
+  @media (min-width:900px) and (min-height:600px){
     #standingsResults{
       width:100vw;
       max-width:100vw;
@@ -1168,7 +1168,11 @@
     .standings-board-desktop{
       display:grid;
       grid-template-columns:repeat(4, minmax(240px, 1fr));
-      overflow:visible;
+      /* Four 240px columns plus gaps and the 32px side padding need about
+         1084px. Narrower desktop windows scroll the board sideways inside
+         itself, the way the standard board does, instead of widening the
+         whole page. */
+      overflow-x:auto;
       max-height:none;
       max-width:2160px;
       margin:0 auto;
@@ -2451,8 +2455,13 @@ function renderCategoryColumn(cat, rows, clubOrder, styleAttr){
   </div>`;
 }
 
+// Desktop standings need room both ways: 900px wide, and 600px tall so a
+// big phone turned sideways (up to ~956px wide but under ~450px tall) keeps
+// the mobile layout. The same query is in the stylesheet's @media rules;
+// change one and change the other.
+const DESKTOP_STANDINGS_QUERY = '(min-width:900px) and (min-height:600px)';
 function isDesktopStandings(){
-  return window.innerWidth >= 980;
+  return window.matchMedia(DESKTOP_STANDINGS_QUERY).matches;
 }
 
 // Capture/restore scroll positions of any scrolled-down elements inside a

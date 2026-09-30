@@ -679,7 +679,7 @@
 
   /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
-    display:none; /* shown below the 980px desktop-standings breakpoint */
+    display:none; /* shown below the desktop-standings breakpoint (900px wide and 600px tall) */
     background:var(--white);
     border-radius:18px;
     padding:18px 20px;
@@ -704,15 +704,15 @@
   }
   input.cat-filter-input:focus{border-color:var(--court);}
   input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
-  @media (max-width:979px){
+  @media (max-width:899px), (max-height:599px){
     .category-filter{ display:block; }
   }
 
   /* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
   .category-toggle-bar{
-    display:none; /* shown only at the 980px+ desktop-standings breakpoint */
+    display:none; /* shown only at the desktop-standings breakpoint (900px wide and 600px tall) */
   }
-  @media (min-width:980px){
+  @media (min-width:900px) and (min-height:600px){
     .category-toggle-bar{
       display:flex;
       flex-wrap:wrap;
@@ -837,7 +837,7 @@
   .bracket-cols-toggle:hover{border-color:var(--navy);}
   .standings-col--stacked .rr-bracket-grid{grid-template-columns:1fr;}
   /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
-  @media (max-width:979px){
+  @media (max-width:899px), (max-height:599px){
     .standings-col-head.has-toggle{padding-left:14px; padding-right:14px;}
     .bracket-cols-toggle{display:none;}
   }
@@ -929,10 +929,10 @@
     gap:10px;
     margin-bottom:10px;
   }
-  /* Mobile (below the same 980px breakpoint as isDesktopStandings) stacks
+  /* Mobile (below the same breakpoint as isDesktopStandings) stacks
      the brackets in one column — two side by side don't fit a phone-width
      category card without squeezing every table. */
-  @media (max-width:979px){
+  @media (max-width:899px), (max-height:599px){
     .rr-bracket-grid{ grid-template-columns:1fr; }
   }
   .rr-bracket-grid .br-table{ margin-bottom:0; }
@@ -1034,7 +1034,7 @@
   /* Desktop: break the standings board out of the page's narrow .wrap
      max-width so it can actually use the screen. Each category becomes
      its own column, and the whole row of categories scrolls horizontally. */
-  @media (min-width: 980px){
+  @media (min-width:900px) and (min-height:600px){
     #standingsResults{
       width:100vw;
       max-width:100vw;
@@ -2251,8 +2251,13 @@ function renderCategoryCard(cat, rows){
   </div>`;
 }
 
+// Desktop standings need room both ways: 900px wide, and 600px tall so a
+// big phone turned sideways (up to ~956px wide but under ~450px tall) keeps
+// the mobile layout. The same query is in the stylesheet's @media rules;
+// change one and change the other.
+const DESKTOP_STANDINGS_QUERY = '(min-width:900px) and (min-height:600px)';
 function isDesktopStandings(){
-  return window.innerWidth >= 980;
+  return window.matchMedia(DESKTOP_STANDINGS_QUERY).matches;
 }
 
 // Capture/restore scroll positions of any scrolled-down elements inside a
