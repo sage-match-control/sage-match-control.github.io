@@ -6689,9 +6689,17 @@ function renderOrganizerStatus(){
     const ageMs = Date.now() - new Date(entry.syncedAt || 0).getTime();
     const failedLastAttempt = failedNow.has(name);
     const isWarn = failedLastAttempt || ageMs > STALE_WARNING_MS;
+    // Operator diagnostic: how long the edit behind the latest sync took to
+    // reach Cloud Run and be published. Only shown when it reads as a real
+    // edit-to-sync gap (a full resync restamps syncedAt but not lastEditAt).
+    let editToSync = '';
+    if(entry.syncedAt && entry.lastEditAt){
+      const n = Math.round((Date.parse(entry.syncedAt) - Date.parse(entry.lastEditAt)) / 1000);
+      if(n >= 0 && n < 600) editToSync = ` \u00b7 edit\u2192sync ${n}s`;
+    }
     const detail = failedLastAttempt
-      ? `Last attempt failed \u2014 showing data from ${relativeTimeFromNow(entry.syncedAt)}`
-      : `Synced ${relativeTimeFromNow(entry.syncedAt)}`;
+      ? `Last attempt failed \u2014 showing data from ${relativeTimeFromNow(entry.syncedAt)}${editToSync}`
+      : `Synced ${relativeTimeFromNow(entry.syncedAt)}${editToSync}`;
     const progressHTML = facilityStatusProgressHTML(name);
     return `<div class="org-status-row ${isWarn ? 'org-status-warn' : 'org-status-ok'}${progressHTML ? ' has-progress' : ''}">
       <span class="org-status-dot"></span>
