@@ -1758,7 +1758,7 @@ const STORAGE_SEARCH_KEY = `${EVENT_KEY}.search`;
 // Receives each new snapshot the moment Cloud Run publishes it, over one
 // WebSocket per page. GitHub Pages polling stays as the fallback: whenever
 // the socket isn't open, fetchDaySnapshot polls GitHub exactly as before.
-const LIVE_BASE_URL = ''; // e.g. 'wss://sage-live.<subdomain>.workers.dev'; '' disables live push
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev'; // e.g. 'wss://sage-live.<subdomain>.workers.dev'; '' disables live push
 const LIVE_PING_MS = 50000;          // under Cloudflare's idle-connection timeout
 const LIVE_PONG_TIMEOUT_MS = 10000;  // no pong by then: treat the socket as dead
 const LIVE_SAFETY_POLL_MS = 60000;   // while connected, still check GitHub this often
