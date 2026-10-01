@@ -351,8 +351,9 @@ clubs; it is not a general multi-club template.
     **Editor**, for an event with any `attendance` setting:
     `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com`. Without it
     the roster update and every mark fail with a message naming the account.
-    A workbook inside the shared Drive folder inherits this (check C5 in the
-    spec says whether a copy made into that folder does).
+    A workbook copied into a Drive folder already shared with the account is
+    expected to inherit the share, but that is not confirmed yet: check the
+    workbook's Share dialog lists the account.
 
 ## 3. Required `{{TOKEN}}` replacements
 
@@ -445,6 +446,7 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | `FACILITIES[].name` | `index.html`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
 | `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
+| `ATTENDANCE CLIENT` block | `tools/control-center.html`, `_templates/attendance/attendance.html` and every event's `attendance.html`: byte-identical (compare with `diff`) |
 | `LIVE CHANNEL` block | both, and `tools/control-center.html` and every other event's pages: byte-identical in every page that carries it (compare with `diff`) |
 
 Two constants are platform-wide rather than per-event, so each template carries

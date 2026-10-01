@@ -66,6 +66,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Select `{{EVENT_TITLE}}` → today's day
 - [ ] Sign in with the operator username and password in Mission Control
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
+- [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, press **Issue desk link** and send the link (or QR) to each desk
 - [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and confirms Cloud Run can read every facility's sheet. It doesn't involve the sheet's Apps Script: only the first real edit in the **Court Control** tab publishing on its own (§2.4) proves that
 - [ ] Confirm **Facility Sync Status** shows a fresh "Synced" for every venue this event uses
 - [ ] Confirm Mission Control reads **Live updates: push connected**
