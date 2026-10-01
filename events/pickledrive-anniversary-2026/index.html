@@ -1685,7 +1685,7 @@ async function loadLiveData(){
     // Re-checked every poll (not just on day-select) so a page left open
     // across the go-live threshold flips over on its own, without needing
     // a reload. Only re-sync tab visibility when it actually changed,
-    // though — calling this every 10s regardless would yank the person off
+    // though — calling this on every update regardless would yank the person off
     // whatever tab they're currently looking at.
     const wasLive = dayIsLive;
     dayIsLive = computeDayIsLive(day, snapshot);
@@ -1769,7 +1769,7 @@ function revealLiveTabsAfterLoad(){
 
 // ---------- Team codes (spec §3.4, §4.1, §5.5) ----------
 // A code is "<SIDE>_<PAIR>": A_3, SF-1_2, SF-A_2, Br-F_4, Fi-A_1. The pure
-// string parsing below is cached (these run for every row on every 10s
+// string parsing below is cached (these run for every row on every update
 // render); anything that depends on the loaded STANDINGS is not, because a
 // playoff slot changes mid-event when the organiser types a team's letter in.
 const sideCodeCache = new Map();
@@ -2021,7 +2021,7 @@ function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
 // Scoped to the actual scrollable containers (each group table, and each
 // Live Matches facility table) rather than every descendant node.
 // Both boards fully rebuild their HTML on every refresh, so without this
-// their scroll position would silently reset every 10 seconds.
+// their scroll position would silently reset on every update.
 const SCROLLABLE_SELECTOR = '.gt-wrap, .live-table-wrap';
 
 // Stable identity for a scrollable node, preferred over raw className/
@@ -2600,7 +2600,7 @@ function renderLiveMatches(){
     : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
   const groups = groupLiveCourtsByFacility(liveCourts);
 
-  // Full rebuild on every 10s refresh, same as Standings — capture/restore
+  // Full rebuild on every update, same as Standings — capture/restore
   // keeps a scrolled-right facility table (mobile) from snapping back to
   // the left edge every time.
   const scrollPositions = captureScrollPositions(boardEl);

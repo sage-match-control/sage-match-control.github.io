@@ -1306,7 +1306,7 @@ async function loadSchedule(isInitial){
 
     renderBoard();
     // Preserve scroll position across a poll-driven re-render — a wall
-    // display re-rendering every 10s must not visibly jump.
+    // display re-rendering on every update must not visibly jump.
     if(wrap) wrap.scrollTop = savedScroll;
   } catch(err){
     // A failed poll must leave the last good board on screen — a wall display

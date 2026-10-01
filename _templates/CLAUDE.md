@@ -176,8 +176,9 @@ clubs; it is not a general multi-club template.
    > a screenshot). **If the organiser recolours the sheet these must be
    > re-read by hand — nothing detects that drift.**
 
-   The board reads the same published snapshot the event pages do and polls
-   it on the same 10s interval, so it needs no separate data wiring. Court
+   The board reads the same published snapshot the event pages do — pushed
+   over the live channel, with the same 10s poll as the fallback — so it needs
+   no separate data wiring. Court
    count is derived from the data (the highest `CourtAssignment` seen), not
    configured — one less value to keep in sync.
 

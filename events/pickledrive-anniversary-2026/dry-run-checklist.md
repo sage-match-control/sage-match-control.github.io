@@ -111,7 +111,7 @@ watching for when that pipeline needs a nudge:
 - [ ] If a score or court entry hasn't appeared on the site within about **2 minutes**, click **Resync this day now**. A sync can lose a race with another venue's sync, or with another event's on the same day, and Facility Sync Status only turns amber after 5 minutes without one
 - [ ] If Sheets API trouble persists, check **Use CSV export fallback instead of Sheets API** and resync again
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Live/Hide** to `false`, correct the sheet, resync, then set it back to `auto` (or `true`) — remember this hides the *public* page only, the console keeps showing everything the whole time
-- [ ] The Schedule Board polls on its own every ~10s — no action needed, just glance at it occasionally to confirm it's still moving
+- [ ] The Schedule Board updates on its own (pushed within seconds, with a ~10s poll as the fallback) — no action needed, just glance at it occasionally to confirm it's still moving
 - [ ] Use **Match Finder** on the console directly if a player asks where their match is
 - [ ] **Quarterfinalists and playoff teams (team events).** When the bracket stage ends, enter the eight
   quarterfinalists' letters against their seeds in `MatchUps`. The

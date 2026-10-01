@@ -1506,7 +1506,7 @@ const EVENT_ORDER_RESOLVED    = EVENT_ORDER || Object.keys(EVENTS);
 
 // Auto-derived from DIVISIONS/EVENTS above — built once here rather than
 // recompiled on every call, since parseCode() runs for every match/standing
-// row on every render, and renders happen on every 10s live-data poll.
+// row on every render, and renders happen on every live-data update (a push, or the 10s poll).
 // Don't hand-edit this regex; add/rename entries in DIVISIONS/EVENTS instead.
 const CODE_REGEX = new RegExp(
   `^(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
@@ -1857,7 +1857,7 @@ async function loadLiveData(){
     // Re-checked every poll (not just on day-select) so a page left open
     // across the go-live threshold flips over on its own, without needing
     // a reload. Only re-sync tab visibility when it actually changed,
-    // though — calling this every 10s regardless would yank the person off
+    // though — calling this on every update regardless would yank the person off
     // whatever tab they're currently looking at.
     const wasLive = dayIsLive;
     dayIsLive = computeDayIsLive(day, snapshot);

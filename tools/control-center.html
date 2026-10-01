@@ -6595,7 +6595,9 @@ async function setGoLive(value){
       showGoLiveResult('error', `Failed: ${body?.error || `HTTP ${res.status}`}`);
     } else {
       showGoLiveResult('ok', body.republished
-        ? `${day.label} set to ${value}. The public site will reflect this within one poll (~10s).`
+        ? (body.live && body.live.published
+            ? `${day.label} set to ${value}. Pages receiving live updates show this within a few seconds.`
+            : `${day.label} set to ${value}. Published through GitHub, so the public site shows this within about a minute.`)
         : `${day.label} set to ${value}. No snapshot has been published yet for this day — this will take effect on the first sync.`);
       // Reflect the change immediately without waiting for events.json's own
       // ~10 minute Pages cache to expire — update the in-memory registry
@@ -7080,9 +7082,9 @@ async function performResync(facilityName, { onStart, onDone } = {}){
       if(failed.length && stale.length === 0) lines.push(`Failed: ${failed.join('; ')}`);
       showOrgResult(failed.length && stale.length === 0 ? 'error' : (failed.length ? 'loading' : 'ok'), lines.join('\n'));
       // Pull the fresh data in right away rather than waiting for the
-      // next poll — though GitHub Pages' own redeploy can take a few
-      // seconds, so this may still show slightly-stale data on the very
-      // first try; the next 10s poll will catch up regardless.
+      // next poll. With live push the pushed snapshot is already here; over
+      // GitHub, Pages' own redeploy can take a while, so this may still show
+      // slightly-stale data on the very first try and a later poll catches up.
       loadLiveData();
     }
   } catch(err){
