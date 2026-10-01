@@ -340,6 +340,36 @@
     text-transform:uppercase;
     color:var(--ink);
   }
+  .group-name{ flex:0 1 auto; min-width:0; display:flex; align-items:center; gap:4px; }
+  .group-name .group-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .group-edit{
+    appearance:none;
+    border:none;
+    background:none;
+    padding:4px;
+    border-radius:6px;
+    color:var(--ink-soft);
+    cursor:pointer;
+    display:inline-flex;
+    flex:0 0 auto;
+  }
+  .group-edit:hover{ color:var(--ink); background:var(--paper-dim); }
+  .group-edit:focus-visible{ outline:2px solid var(--green); outline-offset:2px; }
+  .group-edit svg{ width:14px; height:14px; display:block; }
+  .group-name-input{
+    width:100%;
+    min-width:0;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.05em;
+    padding:4px 8px;
+    border-radius:6px;
+    border:2px solid var(--navy);
+    background:var(--white);
+    color:var(--ink);
+    outline:none;
+  }
   .group-status{ flex:1; font-size:12px; line-height:1.35; color:var(--ink-soft); }
   .group-card.is-bad .group-status{ color:#B3273D; font-weight:600; }
   .group-remove{
@@ -396,11 +426,36 @@
     outline:2px solid var(--green);
     outline-offset:2px;
   }
-  #addGroupBtn{ margin-top:10px; }
-  .group-list:empty + #addGroupBtn{ margin-top:0; }
+  /* A real button, not the inline link style: it adds a card, so it should
+     read as an action. Navy text on white; green is a fill, not a text colour. */
+  .add-group-btn{
+    display:block;
+    width:100%;
+    margin-top:10px;
+    padding:11px 14px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    color:var(--navy);
+    background:var(--white);
+    border:2px dashed rgba(20,27,44,.28);
+    border-radius:10px;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .add-group-btn:hover{ border-color:var(--green); background:var(--paper); }
+  .add-group-btn:focus-visible{ outline:2px solid var(--green); outline-offset:2px; }
+  .group-list:empty + .add-group-btn{ margin-top:0; }
   /* Marks a pair that belongs to a keep-apart group on the result cards. */
   .bp-group{
-    flex:0 0 auto;
+    flex:0 1 auto;
+    min-width:0;
+    max-width:9em;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
     margin-left:auto;
     padding:2px 7px;
     border-radius:100px;
@@ -791,7 +846,7 @@
     <div class="field">
       <span class="field-label" id="keepApartLabel">Keep apart <span class="field-optional">(optional)</span></span>
       <div id="groupList" class="group-list" role="group" aria-labelledby="keepApartLabel"></div>
-      <button type="button" class="link-btn" id="addGroupBtn">+ Add a keep-apart group</button>
+      <button type="button" class="add-group-btn" id="addGroupBtn">+ Add a keep-apart group</button>
       <div class="field-meta">
         <span class="field-hint">Pairs in the same group are always dealt into different brackets. Enter the pairs above first, then pick them here.</span>
       </div>
@@ -976,6 +1031,7 @@ let currentSeedSource = '';   // 'entered' | 'auto'
 let lastAutoSeed = '';        // the last seed this page made up and wrote into the field
 let currentFingerprints = []; // [{ pair, hash, group }] in draw order; group is 1-based, 0 = not in a keep-apart group
 let currentGroups = [];       // keep-apart groups the last draw used: [[pair, ...], ...]
+let currentGroupNames = [];   // their custom names as of that draw ('' = unnamed, shown as "Group N")
 let currentGroupOf = new Map(); // pair -> 1-based group number, for the result cards
 let drawCount = 0;
 let lastDrawInputKey = '';    // drawCount resets when the category or pairs change
@@ -1115,7 +1171,18 @@ updatePairsCount();
 // the members of a group are dealt in a row and — with at most as many members
 // as brackets — land in different brackets. Spec:
 // sage-docs/docs/specs/.../bracket-generator-keep-apart-spec.md
-let keepApartGroups = []; // [{ members: [pair, ...], notice: '' }]
+let keepApartGroups = []; // [{ name: '', members: [pair, ...], notice: '' }] — name '' means "Group N"
+let editingGroup = null;  // index of the group whose name is being edited, or null
+
+// A group's name is a label for the organiser; it never reaches the hash. One
+// line, trimmed, inner whitespace collapsed, so it cannot disturb the export.
+const GROUP_NAME_MAX = 40;
+const cleanGroupName = s => String(s).replace(/\s+/g, ' ').trim().slice(0, GROUP_NAME_MAX);
+const groupTitle = gi => keepApartGroups[gi].name || `Group ${gi + 1}`;
+// How a group is named in a message: "group 2", or "group “Seeds”".
+const groupRef = gi => keepApartGroups[gi].name ? `group “${keepApartGroups[gi].name}”` : `group ${gi + 1}`;
+
+const PENCIL_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11.2 2.3a1.6 1.6 0 0 1 2.3 2.3L5.4 12.7 2 13.6l.9-3.4z"/><path d="M9.8 3.7l2.5 2.5"/></svg>';
 let groupPickList = [];   // what the per-group pickers offered at the last render, by index
 
 // How many times each pair string is entered. The draw can't tell two identical
@@ -1152,6 +1219,46 @@ function reconcileGroups(){
   });
 }
 
+// The name area of a group card: the title with a pencil, or the rename field.
+// Renaming swaps just this element rather than re-rendering the list, so a
+// click on another button in the card isn't lost when the field blurs.
+function groupNameHtml(gi){
+  const g = keepApartGroups[gi];
+  const title = groupTitle(gi);
+  return editingGroup === gi
+    ? `<span class="group-name"><input type="text" class="group-name-input" maxlength="${GROUP_NAME_MAX}" value="${escapeHtml(g.name)}" placeholder="Group ${gi + 1}" aria-label="Name for group ${gi + 1}"></span>`
+    : `<span class="group-name"><span class="group-title" title="${escapeHtml(title)}">${escapeHtml(title)}</span><button type="button" class="group-edit" data-edit-name aria-label="Rename ${escapeHtml(title)}" title="Rename group">${PENCIL_SVG}</button></span>`;
+}
+
+function refreshGroupName(gi){
+  const card = groupListEl.querySelector(`[data-group="${gi}"]`);
+  if(!card) return;
+  card.querySelector('.group-name').outerHTML = groupNameHtml(gi);
+  const rm = card.querySelector('[data-remove-group]');
+  if(rm) rm.setAttribute('aria-label', `Remove ${groupTitle(gi)}`);
+}
+
+function startRenameGroup(gi){
+  if(editingGroup !== null && editingGroup !== gi){
+    const prev = editingGroup;
+    editingGroup = null;
+    refreshGroupName(prev);
+  }
+  editingGroup = gi;
+  refreshGroupName(gi);
+  const input = groupListEl.querySelector(`[data-group="${gi}"] .group-name-input`);
+  if(input){ input.focus(); input.select(); }
+}
+
+// save: keep what was typed (blank returns to "Group N"); otherwise leave the name alone.
+function endRenameGroup(gi, save){
+  if(editingGroup !== gi) return;
+  const input = groupListEl.querySelector(`[data-group="${gi}"] .group-name-input`);
+  editingGroup = null;
+  if(save && input) keepApartGroups[gi].name = cleanGroupName(input.value);
+  refreshGroupName(gi);
+}
+
 function renderGroups(){
   const counts = pairCounts();
   const taken = new Set(keepApartGroups.flatMap(g => g.members));
@@ -1177,13 +1284,14 @@ function renderGroups(){
     const chips = g.members.map((p, mi) => `
         <span class="group-chip">${escapeHtml(p)}<button type="button" data-remove-member="${mi}" aria-label="Remove ${escapeHtml(p)} from group ${gi + 1}">&times;</button></span>`).join('');
     const options = groupPickList.map((p, pi) => `<option value="${pi}">${escapeHtml(p)}</option>`).join('');
+    const title = groupTitle(gi);
     const placeholder = groupPickList.length ? 'Add a pair…' : (noPairs ? 'Enter pairs above first' : 'No more pairs to add');
     return `
       <div class="group-card${bad ? ' is-bad' : ''}" data-group="${gi}">
         <div class="group-head">
-          <span class="group-title">Group ${gi + 1}</span>
+          ${groupNameHtml(gi)}
           <span class="group-status">${escapeHtml(status)}</span>
-          <button type="button" class="group-remove" data-remove-group aria-label="Remove group ${gi + 1}">&times;</button>
+          <button type="button" class="group-remove" data-remove-group aria-label="Remove ${escapeHtml(title)}">&times;</button>
         </div>
         <div class="group-chips">${chips}</div>
         <select class="group-add" aria-label="Add a pair to group ${gi + 1}"${groupPickList.length ? '' : ' disabled'}>
@@ -1199,7 +1307,7 @@ function focusGroupPicker(gi){
 }
 
 addGroupBtn.addEventListener('click', () => {
-  keepApartGroups.push({ members: [], notice: '' });
+  keepApartGroups.push({ name: '', members: [], notice: '' });
   renderGroups();
   focusGroupPicker(keepApartGroups.length - 1);
 });
@@ -1208,7 +1316,12 @@ groupListEl.addEventListener('click', e => {
   const card = e.target.closest('[data-group]');
   if(!card) return;
   const gi = Number(card.dataset.group);
+  if(e.target.closest('[data-edit-name]')){
+    startRenameGroup(gi);
+    return;
+  }
   if(e.target.closest('[data-remove-group]')){
+    editingGroup = null;
     keepApartGroups.splice(gi, 1);
     renderGroups();
     addGroupBtn.focus();
@@ -1221,6 +1334,25 @@ groupListEl.addEventListener('click', e => {
     renderGroups();
     focusGroupPicker(gi);
   }
+});
+
+groupListEl.addEventListener('keydown', e => {
+  const input = e.target.closest('.group-name-input');
+  const card = e.target.closest('[data-group]');
+  if(!input || !card) return;
+  if(e.key !== 'Enter' && e.key !== 'Escape') return;
+  e.preventDefault();
+  const gi = Number(card.dataset.group);
+  endRenameGroup(gi, e.key === 'Enter');
+  const pencil = groupListEl.querySelector(`[data-group="${gi}"] [data-edit-name]`);
+  if(pencil) pencil.focus();
+});
+
+// Leaving the field saves the name, like Enter.
+groupListEl.addEventListener('focusout', e => {
+  const input = e.target.closest('.group-name-input');
+  const card = e.target.closest('[data-group]');
+  if(input && card) endRenameGroup(Number(card.dataset.group), true);
 });
 
 groupListEl.addEventListener('change', e => {
@@ -1306,11 +1438,11 @@ async function generateBrackets(){
   for(let gi = 0; gi < keepApartGroups.length; gi++){
     const problem = groupProblem(keepApartGroups[gi], numBrackets);
     if(problem === 'few'){
-      showFormError(`Keep-apart group ${gi + 1} needs at least 2 pairs. Add pairs to it, or remove the group.`);
+      showFormError(`Keep-apart ${groupRef(gi)} needs at least 2 pairs. Add pairs to it, or remove the group.`);
       return;
     }
     if(problem === 'many'){
-      showFormError(`Keep-apart group ${gi + 1} has ${pluralize(groups[gi].length, 'pair')} but there ${numBrackets === 1 ? 'is' : 'are'} only ${pluralize(numBrackets, 'bracket')}, so they can't all go in different brackets. Remove a pair from the group, or add brackets.`);
+      showFormError(`Keep-apart ${groupRef(gi)} has ${pluralize(groups[gi].length, 'pair')} but there ${numBrackets === 1 ? 'is' : 'are'} only ${pluralize(numBrackets, 'bracket')}, so they can't all go in different brackets. Remove a pair from the group, or add brackets.`);
       return;
     }
   }
@@ -1373,6 +1505,7 @@ async function generateBrackets(){
 
   currentFingerprints = drawOrder.map(o => ({ pair: o.pair, hash: o.hash, group: o.group }));
   currentGroups = groups;
+  currentGroupNames = keepApartGroups.map(g => g.name);
   currentGroupOf = new Map();
   groups.forEach((g, gi) => g.forEach(p => currentGroupOf.set(p, gi + 1)));
 
@@ -1408,7 +1541,8 @@ function renderBracketGrid(isShuffling){
     const listHtml = b.pairs.length
       ? `<ol class="bracket-list">${b.pairs.map((p, idx) => {
           const g = isShuffling ? 0 : (currentGroupOf.get(p) || 0);
-          const tag = g ? `<span class="bp-group" title="Keep-apart group ${g}">G${g}</span>` : '';
+          const gname = g ? currentGroupNames[g - 1] : '';
+          const tag = g ? `<span class="bp-group" title="Keep-apart group ${g}${gname ? ': ' + escapeHtml(gname) : ''}">${gname ? escapeHtml(gname) : 'G' + g}</span>` : '';
           return `
           <li><span class="bp-num">${idx + 1}</span><span class="bp-name">${escapeHtml(p)}</span>${tag}</li>
         `;
@@ -1570,7 +1704,7 @@ function exportAsText(){
       entries.forEach(f => { out += `    ${f.hash.slice(0, 8)}...  ${f.pair}\n`; });
     };
     currentGroups.forEach((g, gi) => {
-      section(`Group ${gi + 1} (keep apart, ${pluralize(g.length, 'pair')})`,
+      section(`Group ${gi + 1}${currentGroupNames[gi] ? ` "${currentGroupNames[gi]}"` : ''} (keep apart, ${pluralize(g.length, 'pair')})`,
         currentFingerprints.filter(f => f.group === gi + 1));
     });
     const rest = currentFingerprints.filter(f => f.group === 0);
