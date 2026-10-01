@@ -657,12 +657,42 @@
   async function loadRegistry(){
     const raw = await fetchJson(configUrlFor());
     RAW_EVENTS = raw.events || {};
-    REGISTRY = new Map(Object.entries(RAW_EVENTS).filter(([, e]) => !e.archived));
+    // Newest event first, so the picker's order and "the first registered
+    // event" (the default selection) are the same thing, as in control-center.html.
+    REGISTRY = new Map(sortEventsNewestFirst(
+      Object.entries(RAW_EVENTS).filter(([, e]) => !e.archived)
+    ));
+  }
+
+  // The picker reads "2026-10-03 Event title", as in control-center.html: the
+  // event's first day leads, so two events are told apart by date at a glance.
+  // An event whose days carry no date just shows its title.
+  function eventStartDate(ev){
+    const dates = Object.values((ev && ev.days) || {}).map(d => d && d.date).filter(Boolean).sort();
+    return dates.length ? dates[0] : null;
+  }
+
+  function eventPickerLabel(key, e){
+    const start = eventStartDate(e);
+    const title = (e && e.title) || key;
+    return start ? `${start} ${title}` : title;
+  }
+
+  // Newest first; events with no date go last. Array.sort is stable, so events
+  // that share a date keep the order they have in events.json.
+  function sortEventsNewestFirst(entries){
+    return entries.slice().sort(([, a], [, b]) => {
+      const da = eventStartDate(a), db = eventStartDate(b);
+      if (da === db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da < db ? 1 : -1;
+    });
   }
 
   function populateEventSelect(){
     eventSelect.innerHTML = Array.from(REGISTRY.entries())
-      .map(([key, e]) => `<option value="${escapeHtml(key)}">${escapeHtml(e.title || key)}</option>`)
+      .map(([key, e]) => `<option value="${escapeHtml(key)}">${escapeHtml(eventPickerLabel(key, e))}</option>`)
       .join('');
   }
 
