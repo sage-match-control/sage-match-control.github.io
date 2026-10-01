@@ -338,6 +338,22 @@ clubs; it is not a general multi-club template.
     breaks without it) but cheap, and worth having before the first event
     you run through the console rather than improvising it live.
 
+11. **Add the attendance desk page, if the event uses desk links.** For an
+    event with `"attendance": "desks"` in `config/events.json`, copy
+    `_templates/attendance/attendance.html` to
+    `events/<event-key>/attendance.html` and replace its two tokens,
+    `{{EVENT_KEY}}` and `{{EVENT_TITLE}}`. For `"console"`, or no attendance,
+    skip it. The page is linked from nowhere public; Control Center's
+    **Issue desk link** produces the link to it. See
+    `sage-docs/docs/specs/.../multi-event-attendance-spec.md`.
+
+12. **Share every facility workbook with the API's service account** as
+    **Editor**, for an event with any `attendance` setting:
+    `sage-tools-api-runtime@<PROJECT_ID>.iam.gserviceaccount.com`. Without it
+    the roster update and every mark fail with a message naming the account.
+    A workbook inside the shared Drive folder inherits this (check C5 in the
+    spec says whether a copy made into that folder does).
+
 ## 3. Required `{{TOKEN}}` replacements
 
 **Both templates** (`index.html`):
