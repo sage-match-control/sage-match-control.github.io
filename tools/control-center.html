@@ -2482,6 +2482,20 @@
 
       <div class="organizer-divider"></div>
 
+      <!-- Emergency switch between "live push + GitHub archive" and "GitHub
+           only". Writes config/events.json (POST /sync/live-push), so it works
+           even when the live Worker is the thing that is broken. -->
+      <label class="search-label">Sync method</label>
+      <div class="golive-current" id="syncMethodCurrent"></div>
+      <div class="golive-buttons" id="syncMethodButtons" style="display:none;">
+        <button type="button" class="golive-btn" data-push="true">Live push + GitHub</button>
+        <button type="button" class="golive-btn golive-btn-danger" data-push="false">GitHub only</button>
+      </div>
+      <p class="organizer-hint">An emergency switch, for when live updates misbehave. <b>GitHub only</b> sends every score through GitHub, as before live push existed: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</p>
+      <div id="syncMethodResultBox" class="organizer-result" style="display:none;"></div>
+
+      <div class="organizer-divider"></div>
+
       <div id="orgLoginForm">
         <label class="search-label" for="orgUsernameInput">Sign in</label>
         <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
@@ -6681,6 +6695,122 @@ function currentAuthToken(){
   return stored.token;
 }
 
+// ---- Sync method switch ---------------------------------------------------
+// Reads GET /sync/config (operator token) for { live: { enabled, switch, active } }
+// and writes POST /sync/live-push. `enabled` is whether Cloud Run's environment
+// configures live push at all; `switch` is the operator's setting in
+// config/events.json. Only the switch is changed from here.
+const syncMethodCurrentEl = document.getElementById('syncMethodCurrent');
+const syncMethodButtonsEl = document.getElementById('syncMethodButtons');
+const syncMethodResultBoxEl = document.getElementById('syncMethodResultBox');
+let SYNC_METHOD = null;       // { enabled, switch } once read; null when unknown
+let syncMethodError = '';     // why it could not be read, if it could not
+let syncMethodReadSeq = 0;    // newest read wins
+
+function showSyncMethodResult(kind, text){
+  if(!syncMethodResultBoxEl) return;
+  syncMethodResultBoxEl.className = `organizer-result ${kind}`;
+  syncMethodResultBoxEl.textContent = text;
+  syncMethodResultBoxEl.style.display = '';
+}
+
+function renderSyncMethod(){
+  if(!syncMethodCurrentEl) return;
+  const signedIn = !!currentAuthToken();
+  let html, stateKey = 'auto', showButtons = false;
+  if(!signedIn){
+    html = 'Sign in to see or change how scores are published.';
+  } else if(syncMethodError){
+    html = `Couldn't read the current setting (${escapeHtml(syncMethodError)}).`;
+  } else if(!SYNC_METHOD){
+    html = 'Checking\u2026';
+  } else if(!SYNC_METHOD.enabled){
+    html = '<b>GitHub only</b> \u2014 Cloud Run has no live push configured, so there is nothing to switch.';
+    stateKey = 'false';
+  } else if(SYNC_METHOD.switch === 'on'){
+    html = '<b>Live push + GitHub</b> \u2014 scores reach open pages in a few seconds; GitHub keeps the archive.';
+    stateKey = 'true';
+    showButtons = true;
+  } else {
+    html = '<b>GitHub only</b> (switched off) \u2014 scores reach pages in 30\u201360 seconds, as before live push.';
+    stateKey = 'false';
+    showButtons = true;
+  }
+  syncMethodCurrentEl.className = `golive-current state-${stateKey}`;
+  syncMethodCurrentEl.innerHTML = html;
+  if(syncMethodButtonsEl){
+    syncMethodButtonsEl.style.display = showButtons ? '' : 'none';
+    syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(btn => {
+      btn.classList.toggle('active', (btn.dataset.push === 'true') === (SYNC_METHOD && SYNC_METHOD.switch === 'on'));
+    });
+  }
+}
+
+async function refreshSyncMethod(){
+  const seq = ++syncMethodReadSeq;
+  const token = currentAuthToken();
+  if(!token){
+    SYNC_METHOD = null; syncMethodError = '';
+    renderSyncMethod();
+    return;
+  }
+  try {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if(seq !== syncMethodReadSeq) return;
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const cfg = await res.json();
+    if(!cfg.live) throw new Error('Cloud Run is older than 2.5.0');
+    if(cfg.live.switch === undefined) throw new Error('Cloud Run is older than 2.5.0');
+    SYNC_METHOD = { enabled: !!cfg.live.enabled, switch: cfg.live.switch };
+    syncMethodError = '';
+  } catch(err){
+    if(seq !== syncMethodReadSeq) return;
+    SYNC_METHOD = null;
+    syncMethodError = err.message;
+  }
+  renderSyncMethod();
+}
+
+async function setSyncMethod(enabled){
+  const token = currentAuthToken();
+  if(!token){ showSyncMethodResult('error', 'Sign in above first.'); return; }
+  if(!enabled && !window.confirm('Switch to GitHub only? Scores will take 30\u201360 seconds to reach open pages instead of a few seconds, until you switch live push back on.')) return;
+
+  if(syncMethodButtonsEl) syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
+  showSyncMethodResult('loading', enabled ? 'Switching live push on\u2026' : 'Switching to GitHub only\u2026');
+  try {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/live-push`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled })
+    });
+    const body = await res.json().catch(() => null);
+    if(!res.ok){
+      showSyncMethodResult('error', `Failed: ${body?.error || `HTTP ${res.status}`}`);
+    } else {
+      SYNC_METHOD = { enabled: SYNC_METHOD ? SYNC_METHOD.enabled : !!body.available, switch: enabled ? 'on' : 'off' };
+      syncMethodError = '';
+      showSyncMethodResult('ok', enabled
+        ? (body.available
+            ? 'Live push is on again. It takes effect within about a minute; the first sync after that republishes the newest data.'
+            : 'The switch is on, but Cloud Run has no live push configured (LIVE_PUSH_URL), so syncs still go through GitHub only.')
+        : 'Switched to GitHub only. It takes effect within about a minute. Open pages fall back to polling GitHub, so scores reach them within 30\u201360 seconds.');
+      renderSyncMethod();
+    }
+  } catch(err){
+    showSyncMethodResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+  } finally {
+    if(syncMethodButtonsEl) syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = false; });
+  }
+}
+
+if(syncMethodButtonsEl){
+  syncMethodButtonsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.golive-btn');
+    if(btn) setSyncMethod(btn.dataset.push === 'true');
+  });
+}
+
 function renderAuthStatus(){
   if(!orgAuthStatusEl) return;
   const stored = currentAuthToken() ? loadAuthToken() : null;
@@ -6697,6 +6827,7 @@ function renderAuthStatus(){
     if(orgLoginFormEl) orgLoginFormEl.style.display = '';
   }
   syncActionAvailability();
+  refreshSyncMethod();
 }
 
 async function signIn(){
@@ -6832,6 +6963,25 @@ function renderOrganizerStatus(){
   }).join('') + liveUpdatesHTML;
 }
 
+// One line for Check connection: is Cloud Run's live push on? Reads
+// GET /sync/config, which reports live: { enabled, baseUrl } (never the secret)
+// from sage-tools-api 2.4.0 on; an older service has no `live` field.
+async function checkCloudRunLivePush(){
+  const token = currentAuthToken();
+  if(!token) return 'Live push: sign in to check whether Cloud Run is publishing to it.';
+  try {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if(!res.ok) return `Live push: couldn't check (HTTP ${res.status}).`;
+    const cfg = await res.json();
+    if(!cfg.live) return 'Live push: not available (Cloud Run is older than 2.4.0).';
+    if(!cfg.live.enabled) return 'Live push: off \u2014 Cloud Run publishes to GitHub only.';
+    if(cfg.live.switch === 'off') return 'Live push: switched off in Control Center \u2014 Cloud Run publishes to GitHub only.';
+    return `Live push: on \u2014 Cloud Run publishes to ${cfg.live.baseUrl}`;
+  } catch(err){
+    return `Live push: couldn't check (${err.message}).`;
+  }
+}
+
 const orgCheckConnBtn = document.getElementById('orgCheckConnBtn');
 if(orgCheckConnBtn){
   orgCheckConnBtn.addEventListener('click', async () => {
@@ -6850,7 +7000,11 @@ if(orgCheckConnBtn){
       // instead of only showing up as a mysterious sync failure later.
       const syncConfig = res.headers.get('X-Sync-Config');
       if(res.ok){
-        showOrgResult('ok', `Connected to Cloud Run \u2014 ${elapsed}ms${version ? ` \u00b7 v${version}` : ''}${syncConfig ? ` \u00b7 cfg ${syncConfig}` : ''}`);
+        // Whether Cloud Run itself is publishing to the live Worker (as opposed
+        // to the Mission Control "Live updates" line, which is about this page's
+        // own socket). /sync/config is gated, so it needs a signed-in operator.
+        const liveNote = await checkCloudRunLivePush();
+        showOrgResult('ok', `Connected to Cloud Run \u2014 ${elapsed}ms${version ? ` \u00b7 v${version}` : ''}${syncConfig ? ` \u00b7 cfg ${syncConfig}` : ''}\n${liveNote}`);
       } else {
         showOrgResult('error', `Cloud Run responded with HTTP ${res.status} (${elapsed}ms)`);
       }
