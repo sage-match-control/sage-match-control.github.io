@@ -428,6 +428,13 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | `FACILITIES[].name` | `index.html`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
 | `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
+| `LIVE CHANNEL` block | both, and `tools/control-center.html` and every other event's pages: byte-identical in every page that carries it (compare with `diff`) |
+
+Two constants are platform-wide rather than per-event, so each template carries
+them as literals, **not** `{{TOKEN}}`s: `GHPAGES_OWNER`/`GHPAGES_REPO` (the
+`event-data` Pages address) and `LIVE_BASE_URL` (the live Worker's `wss://`
+address, in the `LIVE CHANNEL` block; `''` turns push off for that page). A
+new event inherits both from its template and needs nothing set.
 
 `index.html`'s `computeDayIsLive()` derives the auto-live threshold from
 the day's own data: it goes live `GO_LIVE_LEAD_HOURS` (4) before the

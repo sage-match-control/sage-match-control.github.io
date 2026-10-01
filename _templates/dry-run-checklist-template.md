@@ -68,6 +68,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
 - [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and confirms Cloud Run can read every facility's sheet. It doesn't involve the sheet's Apps Script: only the first real edit in the **Court Control** tab publishing on its own (§2.4) proves that
 - [ ] Confirm **Facility Sync Status** shows a fresh "Synced" for every venue this event uses
+- [ ] Confirm Mission Control reads **Live updates: push connected**
 
 ### 2.2 Decide on go-live timing
 
@@ -92,10 +93,11 @@ Follow §2.3 below (screen setup), then:
    coming up)
 3. Enter the finished match's score on its own row in the matches tab
 
-Each edit triggers Apps Script's own debounced sync — you don't need to do
-anything else for it to publish. Everything below is just watching for when
-that pipeline needs a nudge:
+Each edit syncs within a few seconds and reaches open pages by push — you
+don't need to do anything else for it to publish. Everything below is just
+watching for when that pipeline needs a nudge:
 
+- [ ] If Mission Control reads *Live updates: polling GitHub (push not connected)*, updates still arrive, just 30–60s slower — keep going and tell whoever maintains the system
 - [ ] Periodically glance at Mission Control's Facility Sync Status. It should read "Synced" a few seconds to a couple minutes ago, continuously
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
 - [ ] If a score or court entry hasn't appeared on the site within about **2 minutes**, click **Resync this day now**. A sync can lose a race with another venue's sync, or with another event's on the same day, and Facility Sync Status only turns amber after 5 minutes without one
