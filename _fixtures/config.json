@@ -8,13 +8,49 @@
     "pickledrive-anniversary-2026": {
       "type": "team",
       "title": "PickleDrive Club One Year Celebration",
+      "attendance": "desks",
       "days": {
         "pickledrive-anniversary-2026-day1": {
           "label": "Oct 3",
           "date": "2026-10-03",
           "isLive": "auto",
           "facilities": [
-            { "name": "Kingcourts", "sheetId": "1Bk3iAqB6Fdt6t-EiI8MrU0Or8UZc4MAZcnWcMUOCkOA" }
+            {
+              "name": "Kingcourts",
+              "sheetId": "1Bk3iAqB6Fdt6t-EiI8MrU0Or8UZc4MAZcnWcMUOCkOA"
+            }
+          ]
+        }
+      }
+    },
+    "attendance-demo-2026": {
+      "type": "standard",
+      "title": "Attendance Demo (fixture only)",
+      "attendance": "console",
+      "display": {
+        "divisions": {
+          "N": "Novice",
+          "LI": "Low Intermediate"
+        },
+        "events": {
+          "MD": "Men's Doubles",
+          "WD": "Women's Doubles"
+        }
+      },
+      "days": {
+        "attendance-demo-2026-day1": {
+          "label": "Oct 3",
+          "date": "2026-10-03",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Main",
+              "sheetId": "FIXTUREMAINSHEETID0000000000000000"
+            },
+            {
+              "name": "Annex",
+              "sheetId": "FIXTUREANNEXSHEETID000000000000000"
+            }
           ]
         }
       }

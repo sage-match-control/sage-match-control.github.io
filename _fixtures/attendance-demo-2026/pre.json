@@ -1,0 +1,27 @@
+{
+  "day": "attendance-demo-2026-day1",
+  "label": "Oct 3",
+  "isLive": true,
+  "generatedAt": "2026-10-03T00:00:00.000Z",
+  "publishedAt": "2026-10-03T00:00:00.000Z",
+  "facilities": [
+    {
+      "name": "Main",
+      "matchesCsv": "matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score\r\n1,,9:00 AM,Court 1,NMD_1,Ben Lim ,Cy Dee ,,NMD_2,Dan Eng ,Eli Fox ,\r\n2,,9:00 AM,Court 2,NWD_1,Ana Cruz ,Gia Ho ,,LIMD_1,Ben Lim ,Fay Go ,\r\n",
+      "standingsCsv": "teamCode,player1,player2,wins,loss,quotient,bracket\r\nNMD_1,Ben Lim ,Cy Dee ,0,0,0,1\r\nNMD_2,Dan Eng ,Eli Fox ,0,0,0,1\r\nNWD_1,Ana Cruz ,Gia Ho ,0,0,0,1\r\nLIMD_1,Ben Lim ,Fay Go ,0,0,0,1\r\nLIMD_2,Hal Ivy ,Jon Kay ,0,0,0,1\r\n",
+      "syncedAt": "2026-10-03T00:00:00.000Z",
+      "completedAt": null,
+      "lastEditAt": null
+    },
+    {
+      "name": "Annex",
+      "matchesCsv": "matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score\r\n1,,9:00 AM,Court 1,NMD_1,Lou Max ,Ned Oro ,,NMD_2,Pat Quin ,Ray Sol ,\r\n",
+      "standingsCsv": "teamCode,player1,player2,wins,loss,quotient,bracket\r\nNMD_1,Lou Max ,Ned Oro ,0,0,0,1\r\nNMD_2,Pat Quin ,Ray Sol ,0,0,0,1\r\n",
+      "syncedAt": "2026-10-03T00:00:00.000Z",
+      "completedAt": null,
+      "lastEditAt": null
+    }
+  ],
+  "failedFacilities": [],
+  "staleFacilities": []
+}

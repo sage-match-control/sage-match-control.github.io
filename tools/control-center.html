@@ -902,6 +902,31 @@
     background:rgba(20,27,44,.1);
     margin:20px 0;
   }
+  /* ---------- ATTENDANCE TAB ----------
+     The list itself is styled by the ATTENDANCE CLIENT block (.att-*). These
+     are the console parts around it. */
+  .attendance-panel{
+    background:var(--white);
+    border-radius:18px;
+    padding:22px 20px;
+    box-shadow:var(--card-shadow);
+    max-width:720px;
+    margin:0 auto;
+  }
+  .attendance-panel .att-root{--att-bar-bg:var(--white);}
+  .attendance-note{font-size:13px; color:var(--muted); margin:0 0 12px;}
+  .attendance-counts{display:flex; flex-wrap:wrap; gap:4px 20px; margin:0 0 14px; font-size:14px;}
+  .attendance-actions{display:grid; gap:10px; margin:0 0 14px;}
+  .attendance-actions .organizer-secondary-btn{justify-self:start; min-height:40px;}
+  .attendance-attention{margin:0 0 16px; font-size:13.5px;}
+  .attendance-attention summary{cursor:pointer; font-weight:700;}
+  .attendance-attention ul{margin:8px 0 0; padding-left:18px;}
+  .attendance-attention li{margin:4px 0;}
+  .attendance-link-input{width:100%; margin:8px 0; padding:10px 12px; border-radius:10px; border:1px solid rgba(20,27,44,.2); font:13px/1.3 monospace; color:var(--ink); background:#fff;}
+  .attendance-link-actions{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;}
+  .attendance-link-valid{font-size:12.5px; color:var(--ink);}
+  .attendance-qr{margin-top:12px;}
+
   /* Launchers for the schedule wall display (see #orgScheduleRow). */
   .organizer-schedule-row{
     display:flex;
@@ -2461,6 +2486,7 @@
   <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
     <button class="view-tab active" data-view="organizer" type="button">Mission Control</button>
     <button class="view-tab" data-view="awards" type="button">Awards</button>
+    <button class="view-tab" data-view="attendance" type="button" hidden style="display:none;">Attendance</button>
     <button class="view-tab" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
@@ -2510,6 +2536,27 @@
     <div id="awardsChampionBanner"></div>
     <div class="awards-summary" id="awardsSummaryBar"></div>
     <div class="awards-grid" id="awardsGrid"></div>
+  </div>
+  <div id="attendanceResults" style="display:none;">
+    <div class="attendance-panel">
+      <p class="attendance-note" id="attendanceSignIn" style="display:none;"></p>
+      <div class="attendance-counts" id="attendanceCounts"></div>
+      <div class="attendance-actions">
+        <button type="button" id="attendanceRosterBtn" class="organizer-primary-btn">Update roster</button>
+        <div id="attendanceRosterResult" class="organizer-result" style="display:none;"></div>
+        <button type="button" id="attendanceDeskBtn" class="organizer-secondary-btn" style="display:none;">Issue desk link</button>
+        <div id="attendanceDeskResult" class="organizer-result" style="display:none;"></div>
+      </div>
+      <details class="attendance-attention" id="attendanceAttention">
+        <summary id="attendanceAttentionSummary">Needs attention (0)</summary>
+        <ul id="attendanceAttentionList"></ul>
+        <label class="organizer-checkbox-row">
+          <input type="checkbox" id="attendanceShowWithdrawn" />
+          <span id="attendanceShowWithdrawnLabel">Show withdrawn</span>
+        </label>
+      </details>
+      <div id="attendanceList"></div>
+    </div>
   </div>
   <div id="organizerResults" style="display:none;">
     <div class="organizer-panel">
@@ -2782,6 +2829,604 @@ function createLiveChannel({ enabled, onSnapshot }){
   };
 }
 // ==== END LIVE CHANNEL ====
+
+// ==== ATTENDANCE CLIENT — identical in control-center.html and every attendance.html; see ====
+// ==== sage-docs/docs/specs/.../multi-event-attendance-spec.md §6.1                       ====
+// Staff check-in: reads each facility workbook's ATTENDANCE tab (published CSV
+// export, polled) and marks people through sage-tools-api. One block, shared by
+// Control Center's Attendance tab and the per-event desk page. It depends on
+// nothing outside itself except what its host passes to createAttendanceView.
+// Every top-level name here starts with att / ATTENDANCE_ / attendance, or is
+// one of the names listed in the spec's table.
+const ATTENDANCE_POLL_MS = 10000;
+const ATTENDANCE_SHIRT_HEADERS = ['TShirt Size', 'T-Shirt Size', 'Shirt Size', 'tshirtSize', 'shirtSize'];
+
+function attendanceCsvUrl(sheetId){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&headers=1&sheet=ATTENDANCE`;
+}
+
+// gviz quotes every cell and doubles an internal quote to escape it.
+function attParseCsv(text){
+  const rows = []; let row = [], cell = '', q = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i];
+    if(q){
+      if(c === '"'){ if(text[i + 1] === '"'){ cell += '"'; i++; } else q = false; }
+      else cell += c;
+    }else if(c === '"') q = true;
+    else if(c === ','){ row.push(cell); cell = ''; }
+    else if(c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if(c !== '\r') cell += c;
+  }
+  if(cell || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// The tab stamps timeIn as "yyyy-MM-dd HH:mm" (Manila), but take the clock
+// part off the end and show it the way a marshal reads a wall clock, so any
+// other shape still reads sensibly. Anything unexpected falls back to the raw tail.
+function attClockTime(raw){
+  const t = String(raw || '');
+  const m = t.match(/([0-9]{1,2}):([0-9]{2})(?::[0-9]{2})?[ ]*([AaPp])?[.]?[Mm]?[.]?[ ]*$/);
+  if(!m) return t.slice(-5);
+  let h = Number(m[1]);
+  const half = m[3] && m[3].toUpperCase();
+  if(half){
+    if(h === 12) h = half === 'A' ? 0 : 12;
+    else if(half === 'P') h += 12;
+  }
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+function attSplitList(v){
+  return String(v || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// gviz CSV -> people[], one per FIRST row of each non-blank key. A text with
+// no header row (no ATTENDANCE tab yet) gives [].
+function parseAttendanceCsv(text){
+  const rows = attParseCsv(String(text || ''));
+  const head = (rows[0] || []).map(h => String(h).trim());
+  const col = name => head.indexOf(name);
+  const iKey = col('key');
+  if(iKey === -1) return [];
+  const iShirt = ATTENDANCE_SHIRT_HEADERS.map(col).find(i => i !== -1);
+  const seen = new Set();
+  const people = [];
+  rows.slice(1).forEach(r => {
+    const key = String(r[iKey] || '').trim();
+    if(!key || seen.has(key)) return;
+    seen.add(key);
+    people.push({
+      key,
+      player: String(r[col('player')] || '').trim() || key,
+      teams: attSplitList(r[col('teams')]),
+      categories: attSplitList(r[col('categories')]),
+      present: r[col('present')] === 'TRUE',
+      timeIn: String(r[col('timeIn')] || '').trim(),
+      withdrawn: r[col('withdrawn')] === 'TRUE',
+      shirt: iShirt === undefined ? '' : String(r[iShirt] || '').trim(),
+    });
+  });
+  return people;
+}
+
+// "<division label> <event label>" for a code like NMD (division N + event MD),
+// from an event's display block; otherwise the code itself.
+function defaultCategoryLabel(code, display){
+  const divisions = (display && display.divisions) || {};
+  const events = (display && display.events) || {};
+  const keys = Object.keys(divisions).sort((a, b) => b.length - a.length);
+  for(const d of keys){
+    const rest = String(code).slice(d.length);
+    if(String(code).startsWith(d) && Object.prototype.hasOwnProperty.call(events, rest)){
+      return `${divisions[d]} ${events[rest]}`.trim();
+    }
+  }
+  return code;
+}
+
+// What to list on the desk, grouped. Standard and dual meet: sections by
+// category (first-seen order), each holding a card per team code listing its
+// players; a person in two categories appears in both. Team events: a
+// section per team, one card each. Withdrawn people are left out unless
+// showWithdrawn. -> [{ id, label, cards: [{ teamCode, players: [person] }] }]
+function groupForDesk(people, { type, teamName, categoryLabel, showWithdrawn } = {}){
+  const sections = new Map();
+  const section = (id, label) => {
+    if(!sections.has(id)) sections.set(id, { id, label, cards: new Map() });
+    return sections.get(id);
+  };
+  const addTo = (sec, teamCode, person) => {
+    if(!sec.cards.has(teamCode)) sec.cards.set(teamCode, { teamCode, players: [] });
+    const card = sec.cards.get(teamCode);
+    if(!card.players.includes(person)) card.players.push(person);
+  };
+  (people || []).forEach(person => {
+    if(person.withdrawn && !showWithdrawn) return;
+    person.teams.forEach((teamCode, i) => {
+      if(type === 'team'){
+        addTo(section(teamCode, (teamName && teamName(teamCode)) || `Team ${teamCode}`), teamCode, person);
+      }else{
+        const code = person.categories[i] || String(teamCode).split('_')[0];
+        addTo(section(code, categoryLabel ? categoryLabel(code) : code), teamCode, person);
+      }
+    });
+  });
+  return [...sections.values()].map(s => ({ id: s.id, label: s.label, cards: [...s.cards.values()] }));
+}
+
+// PUT one person's check-in. Rejects with Error(body.error || "HTTP <status>")
+// and err.status; a fetch that never got an answer rejects with no status.
+async function markPerson({ apiBase, token, day, facility, key, present }){
+  const url = `${apiBase}/v1/days/${encodeURIComponent(day)}/facilities/${encodeURIComponent(facility)}/attendance/${encodeURIComponent(key)}`;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ present }),
+  });
+  let body = null;
+  try{ body = await res.json(); }catch(e){ /* not JSON */ }
+  if(!res.ok){
+    const err = new Error((body && typeof body.error === 'string' && body.error) || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return body;
+}
+
+function attLettersOnly(s){ return String(s).replace(/[^\p{L}\p{N}]/gu, ''); }
+
+// True when a and b are exactly one insertion, deletion or substitution apart.
+function attOneEditApart(a, b){
+  if(a === b || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while(i < a.length && i < b.length && a[i] === b[i]) i++;
+  if(a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
+}
+
+// Pairs of people whose keys read as one name written two ways: equal once
+// spacing and punctuation go (dela cruz / delacruz), or both 5+ characters
+// and one edit apart. Listed for a person to judge; never merged.
+function possibleDuplicates(people){
+  const live = (people || []).filter(p => !p.withdrawn);
+  const pairs = [];
+  for(let i = 0; i < live.length; i++){
+    for(let j = i + 1; j < live.length; j++){
+      const a = live[i].key, b = live[j].key;
+      const sameLetters = attLettersOnly(a) === attLettersOnly(b);
+      const oneEdit = a.length >= 5 && b.length >= 5 && attOneEditApart(a, b);
+      if(sameLetters || oneEdit) pairs.push([live[i], live[j]]);
+    }
+  }
+  return pairs;
+}
+
+// People with two team codes that share a category: one row, but the same
+// name twice in one category is worth a look.
+function sameNameSameCategory(people){
+  return (people || []).filter(p => !p.withdrawn && new Set(p.categories).size !== p.categories.length);
+}
+
+const ATTENDANCE_CSS = `
+.att-root{--att-navy:#05133B;--att-green:#5E9106;--att-green-dark:#3C6B02;--att-paper:#F5F6F8;--att-dim:#E9ECF1;--att-line:#D3D9E3;--att-ink:#05133B;--att-soft:#4A5572;--att-white:#FFFFFF;--att-red:#B42318;
+  color:var(--att-ink);font-family:inherit;line-height:1.4;box-sizing:border-box;}
+.att-root *{box-sizing:border-box;}
+.att-venues{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;}
+.att-venues button{flex:1;min-width:110px;font-weight:600;font-size:14px;font-family:inherit;padding:9px 10px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);cursor:pointer;}
+.att-venues button[aria-pressed="true"]{background:var(--att-navy);color:var(--att-white);border-color:var(--att-navy);}
+.att-bar{display:flex;gap:8px;}
+.att-bar input{flex:1;min-width:0;font-size:16px;font-family:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
+.att-bar button{font-weight:600;font-size:14px;font-family:inherit;padding:0 14px;border-radius:10px;border:0;background:var(--att-green);color:var(--att-white);cursor:pointer;}
+.att-count{margin:8px 0 0;font-weight:700;font-size:14px;min-height:20px;}
+.att-catbar{position:sticky;top:0;z-index:5;background:var(--att-bar-bg,var(--att-paper));padding:8px 0 6px;margin-top:6px;border-bottom:1px solid var(--att-line);}
+.att-catrow{display:flex;gap:8px;align-items:center;}
+.att-chips{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding-bottom:2px;}
+.att-chips::-webkit-scrollbar{display:none;}
+.att-chip{flex:0 0 auto;font-weight:600;font-size:13px;font-family:inherit;padding:6px 11px;border-radius:20px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);cursor:pointer;}
+.att-chip[aria-pressed="true"]{background:var(--att-navy);color:var(--att-white);border-color:var(--att-navy);}
+.att-chip.att-dim{opacity:.45;}
+.att-jump{flex:none;max-width:42%;font-size:14px;font-family:inherit;padding:6px 8px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
+.att-status{min-height:18px;margin-top:6px;font-size:13px;color:var(--att-soft);}
+.att-status.att-error{color:var(--att-red);font-weight:600;}
+.att-list{padding:14px 0 60px;}
+.att-sec{margin:0 0 22px;}
+.att-sec h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:16px;margin:0 0 8px;}
+.att-sec h2 span{white-space:nowrap;font-size:13px;color:var(--att-soft);letter-spacing:.08em;font-weight:600;}
+.att-pair{background:var(--att-white);border:1px solid var(--att-line);border-left:4px solid var(--att-line);border-radius:14px;margin-bottom:8px;overflow:hidden;}
+.att-pair.att-ready{border-left-color:var(--att-green);}
+.att-pair-head{display:flex;justify-content:space-between;align-items:center;padding:8px 14px 0;font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--att-soft);}
+.att-badge{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--att-white);background:var(--att-green);border-radius:20px;padding:2px 8px;margin-left:auto;}
+.att-player{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;cursor:pointer;}
+.att-player + .att-player{border-top:1px solid var(--att-dim);}
+.att-who{min-width:0;}
+.att-name{font-weight:600;overflow-wrap:anywhere;}
+.att-shirt{margin-left:7px;font-weight:700;font-size:12px;letter-spacing:.06em;white-space:nowrap;color:var(--att-soft);background:var(--att-dim);border:1px solid var(--att-line);border-radius:6px;padding:1px 6px;vertical-align:1px;}
+.att-tag{margin-left:7px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--att-red);border:1px solid var(--att-red);border-radius:6px;padding:0 5px;vertical-align:1px;}
+.att-time{display:block;font-size:12.5px;color:var(--att-soft);}
+.att-player.att-in .att-time{color:var(--att-green-dark);font-weight:600;}
+.att-switch{appearance:none;-webkit-appearance:none;flex:none;width:52px;height:30px;margin:0;border-radius:30px;background:var(--att-line);position:relative;cursor:pointer;transition:background .15s;}
+.att-switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--att-white);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s;}
+.att-switch:checked{background:var(--att-green);}
+.att-switch:checked::after{transform:translateX(22px);}
+.att-switch:disabled{opacity:.55;cursor:default;}
+.att-switch:focus-visible{outline:3px solid var(--att-green);outline-offset:2px;}
+.att-empty{color:var(--att-soft);text-align:center;padding:40px 0;}
+@media (prefers-reduced-motion: reduce){ .att-switch,.att-switch::after{transition:none;} }
+`;
+
+// The attendance UI. Renders into `root`; returns { refresh(), destroy(), setShowWithdrawn(v) }.
+//   mode        'console' (Control Center: loads every facility, so counts are complete) | 'desk'
+//   apiBase     sage-tools-api's base URL
+//   getToken    () => bearer token, or null when not signed in (switches stay disabled)
+//   event, day  the event key and the day key
+//   facilities  [{ name, sheetId }]
+//   type        'dual-meet' | 'standard' | 'team'
+//   teamName    code => string | null           (team events)
+//   categoryLabel code => string                (standard / dual meet)
+//   notify      optional (kind, text) => void   messages go here when given, else to the status line
+//   onData      optional (facilities) => void   [{ name, people, loaded }] after every load and mark
+//   showWithdrawn  optional initial value
+//   fixture     a fixture name (localhost only): read /_fixtures/<event>/attendance-<facility>-<fixture>.csv
+//               and mark in memory; add ?attfail to the page URL and the first mark fails.
+function createAttendanceView(opts){
+  const root = opts.root;
+  const facilities = (opts.facilities || []).filter(f => f && f.name && f.sheetId);
+  const isTeam = opts.type === 'team';
+  const fixture = opts.fixture || null;
+  const venueKey = `sage.attendance.venue.${opts.day}`;
+  const filterKey = `sage.attendance.filter.${opts.day}`;
+
+  const store = {
+    get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+    set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} },
+    del(k){ try{ localStorage.removeItem(k); }catch(e){} },
+  };
+
+  const st = {
+    venue: (facilities.find(f => f.name === store.get(venueKey)) || facilities[0] || {}).name || null,
+    filter: store.get(filterKey) || 'all',
+    search: '',
+    showWithdrawn: !!opts.showWithdrawn,
+    data: new Map(facilities.map(f => [f.name, { people: [], loaded: false }])),
+    saving: new Set(),
+    loadSeq: 0,
+    loadMsg: null, markMsg: null,
+    destroyed: false,
+    failOnce: !!fixture && new URLSearchParams(location.search).has('attfail'),
+    focusKey: null,
+  };
+
+  if(!document.getElementById('att-style')){
+    const style = document.createElement('style');
+    style.id = 'att-style';
+    style.textContent = ATTENDANCE_CSS;
+    document.head.appendChild(style);
+  }
+
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(text !== undefined) e.textContent = text;
+    return e;
+  };
+
+  // ---- skeleton: built once, so typing in the search box never loses focus ----
+  root.textContent = '';
+  const box = el('div', 'att-root');
+  const venuesEl = el('div', 'att-venues');
+  const bar = el('div', 'att-bar');
+  const searchEl = el('input');
+  searchEl.type = 'search';
+  searchEl.placeholder = 'Search a name, team or shirt size';
+  searchEl.autocomplete = 'off';
+  searchEl.setAttribute('aria-label', 'Search a name, team or shirt size');
+  const refreshBtn = el('button', '', 'Refresh');
+  refreshBtn.type = 'button';
+  bar.append(searchEl, refreshBtn);
+  const countEl = el('div', 'att-count');
+  const catbar = el('div', 'att-catbar');
+  const catrow = el('div', 'att-catrow');
+  const chipsEl = el('div', 'att-chips');
+  const jumpEl = el('select', 'att-jump');
+  jumpEl.setAttribute('aria-label', 'Jump to a section');
+  catrow.append(chipsEl, jumpEl);
+  const statusEl = el('div', 'att-status');
+  statusEl.setAttribute('role', 'status');
+  catbar.append(catrow, statusEl);
+  const listEl = el('div', 'att-list');
+  box.append(venuesEl, bar, countEl, catbar, listEl);
+  root.append(box);
+
+  // ---- helpers ----
+  const rec = () => st.data.get(st.venue) || { people: [], loaded: false };
+  const canMark = () => !!fixture || !!(opts.getToken && opts.getToken());
+  const findPerson = (facility, key) => (st.data.get(facility) || { people: [] }).people.find(p => p.key === key);
+  const stamp = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ` +
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+  function groups(){
+    return groupForDesk(rec().people, {
+      type: opts.type, teamName: opts.teamName, categoryLabel: opts.categoryLabel, showWithdrawn: st.showWithdrawn,
+    });
+  }
+  const tally = people => {
+    const unique = new Map();
+    people.forEach(p => unique.set(p.key, p));
+    const list = [...unique.values()];
+    return { present: list.filter(p => p.present).length, total: list.length };
+  };
+  const sectionPeople = sec => sec.cards.flatMap(c => c.players);
+
+  function matches(card){
+    const q = st.search.trim().toLowerCase();
+    if(!q) return true;
+    return String(card.teamCode).toLowerCase().includes(q) ||
+      card.players.some(p => p.player.toLowerCase().includes(q) || (p.shirt || '').toLowerCase() === q);
+  }
+
+  // ---- messages ----
+  function say(kind, text, source){
+    // A host that wants messages as toasts gets only the ones worth a toast: an
+    // in-progress "Loading…" would never be replaced, and a success says nothing.
+    if(opts.notify){ if(text && kind !== 'loading') opts.notify(kind, text); return; }
+    st[source] = text ? { kind, text } : null;
+    renderStatus();
+  }
+  function renderStatus(){
+    const m = st.markMsg || st.loadMsg;
+    statusEl.textContent = m ? m.text : '';
+    statusEl.classList.toggle('att-error', !!m && m.kind === 'error');
+  }
+
+  // ---- rendering ----
+  function renderVenues(){
+    venuesEl.textContent = '';
+    venuesEl.style.display = facilities.length > 1 ? '' : 'none';
+    facilities.forEach(f => {
+      const b = el('button', '', f.name);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(f.name === st.venue));
+      b.addEventListener('click', () => {
+        if(f.name === st.venue) return;
+        st.venue = f.name;
+        store.set(venueKey, f.name);
+        render();
+        load();
+      });
+      venuesEl.append(b);
+    });
+  }
+
+  function playerRow(facility, card, p){
+    const k = `${facility}|${p.key}`;
+    const saving = st.saving.has(k);
+    const row = el('label', 'att-player' + (p.present ? ' att-in' : ''));
+    const who = el('span', 'att-who');
+    const name = el('span', 'att-name', p.player);
+    if(p.shirt) name.append(el('span', 'att-shirt', p.shirt));
+    if(p.withdrawn) name.append(el('span', 'att-tag', 'Withdrawn'));
+    who.append(name);
+    const time = saving ? 'Saving…' : (p.present && p.timeIn ? `In ${attClockTime(p.timeIn)}` : '');
+    if(time) who.append(el('span', 'att-time', time));
+    const sw = el('input', 'att-switch');
+    sw.type = 'checkbox';
+    sw.setAttribute('role', 'switch');
+    sw.checked = p.present;
+    sw.disabled = saving || !canMark();
+    sw.dataset.k = p.key;
+    sw.setAttribute('aria-label', `${p.player} present`);
+    sw.addEventListener('change', () => { st.focusKey = p.key; toggle(facility, p.key, sw.checked); });
+    row.append(who, sw);
+    return row;
+  }
+
+  function render(){
+    renderVenues();
+    const r = rec();
+    const live = r.people.filter(p => !p.withdrawn);
+    const t = tally(live);
+    countEl.textContent = live.length ? `${t.present} / ${t.total} in` : '';
+
+    const secs = groups();
+    if(st.filter !== 'all' && !secs.some(s => s.id === st.filter)){
+      st.filter = 'all';
+      store.del(filterKey);
+    }
+    renderChips(secs);
+
+    listEl.textContent = '';
+    if(!facilities.length){
+      listEl.append(el('p', 'att-empty', 'No facility on this day has a workbook yet.'));
+    }else if(!r.loaded){
+      listEl.append(el('p', 'att-empty', 'Loading…'));
+    }else if(r.people.length === 0){
+      listEl.append(el('p', 'att-empty', 'No roster yet — the operator runs Update roster in Control Center.'));
+    }else if(secs.length === 0){
+      listEl.append(el('p', 'att-empty', 'No one to show. Everyone on this roster is withdrawn.'));
+    }else{
+      let shown = 0;
+      secs.forEach((sec, n) => {
+        if(st.filter !== 'all' && sec.id !== st.filter) return;
+        const cards = sec.cards.filter(matches);
+        if(!cards.length) return;
+        shown++;
+        const section = el('section', 'att-sec');
+        const h = el('h2', '', sec.label);
+        h.id = `att-sec-${n}`;
+        const tl = tally(sectionPeople(sec));
+        h.append(el('span', '', `${tl.present} / ${tl.total}`));
+        section.append(h);
+        cards.forEach(card => {
+          const ready = card.players.length > 0 && card.players.every(p => p.present);
+          const pair = el('div', 'att-pair' + (ready ? ' att-ready' : ''));
+          const headText = isTeam ? '' : card.teamCode;
+          if(headText || ready){
+            const head = el('div', 'att-pair-head', headText);
+            if(ready) head.append(el('span', 'att-badge', 'Ready'));
+            pair.append(head);
+          }
+          card.players.forEach(p => pair.append(playerRow(st.venue, card, p)));
+          section.append(pair);
+        });
+        listEl.append(section);
+      });
+      if(!shown) listEl.append(el('p', 'att-empty', 'No one matches that search.'));
+    }
+
+    if(st.focusKey){
+      const sw = listEl.querySelector(`.att-switch[data-k="${CSS.escape(st.focusKey)}"]:not(:disabled)`);
+      if(sw){ sw.focus({ preventScroll: true }); st.focusKey = null; }
+    }
+    renderStatus();
+    if(opts.onData){
+      opts.onData(facilities.map(f => ({ name: f.name, people: st.data.get(f.name).people, loaded: st.data.get(f.name).loaded })));
+    }
+  }
+
+  function renderChips(secs){
+    chipsEl.textContent = '';
+    const q = st.search.trim().toLowerCase();
+    const chip = (id, label, tl, dim) => {
+      const b = el('button', 'att-chip' + (dim ? ' att-dim' : ''), `${label} ${tl.present}/${tl.total}`);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(st.filter === id));
+      b.addEventListener('click', () => {
+        st.filter = id;
+        if(id === 'all') store.del(filterKey); else store.set(filterKey, id);
+        render();
+      });
+      chipsEl.append(b);
+    };
+    chip('all', 'All', tally(secs.flatMap(sectionPeople)), false);
+    secs.forEach(sec => chip(sec.id, sec.label, tally(sectionPeople(sec)), !!q && !sec.cards.some(matches)));
+
+    jumpEl.textContent = '';
+    jumpEl.style.display = st.filter === 'all' && secs.length > 1 ? '' : 'none';
+    const first = el('option', '', 'Jump to…');
+    first.value = '';
+    jumpEl.append(first);
+    secs.forEach((sec, n) => {
+      const o = el('option', '', sec.label);
+      o.value = String(n);
+      jumpEl.append(o);
+    });
+  }
+
+  // ---- loading ----
+  async function fetchFacility(f){
+    const url = fixture
+      ? `/_fixtures/${encodeURIComponent(opts.event)}/attendance-${encodeURIComponent(f.name.toLowerCase().replace(/\s+/g, '-'))}-${encodeURIComponent(fixture)}.csv`
+      : `${attendanceCsvUrl(f.sheetId)}&_=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    // No ATTENDANCE tab yet: Google answers an error page. That is "no roster", not a failure.
+    if(res.status === 400 || res.status === 404) return [];
+    if(!res.ok) throw new Error(`The attendance sheet replied ${res.status}.`);
+    return parseAttendanceCsv(await res.text());
+  }
+
+  async function load(quiet){
+    if(st.destroyed) return;
+    const seq = ++st.loadSeq;
+    const targets = opts.mode === 'console' ? facilities : facilities.filter(f => f.name === st.venue);
+    if(!targets.length){ render(); return; }
+    if(!quiet) say('loading', 'Loading…', 'loadMsg');
+    const results = await Promise.all(targets.map(f => fetchFacility(f).then(people => ({ f, people }), error => ({ f, error }))));
+    if(st.destroyed || seq !== st.loadSeq) return;       // a newer load started: drop this reply
+    const failures = [];
+    results.forEach(({ f, people, error }) => {
+      if(error){ failures.push(`Could not load ${f.name}: ${error.message}`); return; }
+      const slot = st.data.get(f.name);
+      // Someone this device is still saving keeps their local state: the sheet may not have the change yet.
+      const old = new Map(slot.people.map(p => [p.key, p]));
+      people.forEach(p => {
+        const mine = st.saving.has(`${f.name}|${p.key}`) && old.get(p.key);
+        if(mine){ p.present = mine.present; p.timeIn = mine.timeIn; }
+      });
+      slot.people = people;
+      slot.loaded = true;
+    });
+    if(failures.length) say('error', failures.join(' '), 'loadMsg');
+    else say('ok', '', 'loadMsg');
+    render();
+  }
+
+  // ---- marking ----
+  async function doMark(facility, key, present){
+    if(fixture){
+      if(st.failOnce){ st.failOnce = false; throw Object.assign(new Error('Simulated failure (fixture)'), { status: 500 }); }
+      const p = findPerson(facility, key);
+      return { key, player: p ? p.player : key, present, timeIn: present ? stamp(new Date()) : '', withdrawn: p ? p.withdrawn : false };
+    }
+    return markPerson({ apiBase: opts.apiBase, token: opts.getToken && opts.getToken(), day: opts.day, facility, key, present });
+  }
+
+  function markFailure(err, player){
+    let text;
+    if(err.status === undefined) text = "Couldn't reach the server. Check this device's connection.";
+    else text = String(err.message || '').startsWith('{') ? `HTTP ${err.status}` : err.message;
+    if(err.status === 403) text += ' Ask the operator for a new desk link.';
+    if(err.status === 401) text += opts.mode === 'console' ? ' Sign in again.' : ' This desk link has expired.';
+    return `Not saved (${player}): ${text}`;
+  }
+
+  async function toggle(facility, key, want){
+    const person = findPerson(facility, key);
+    if(!person) return;
+    const before = { present: person.present, timeIn: person.timeIn };
+    const k = `${facility}|${key}`;
+    person.present = want;
+    if(!want) person.timeIn = '';
+    st.saving.add(k);
+    render();
+    let ok = false;
+    try{
+      const res = await doMark(facility, key, want);
+      const p = findPerson(facility, key);                 // a poll may have replaced the object meanwhile
+      if(p){ p.present = !!res.present; p.timeIn = res.timeIn || ''; }
+      say('ok', '', 'markMsg');
+      ok = true;
+    }catch(err){
+      const p = findPerson(facility, key);
+      if(p){ p.present = before.present; p.timeIn = before.timeIn; }
+      say('error', markFailure(err, person.player), 'markMsg');
+    }finally{
+      st.saving.delete(k);
+      render();
+    }
+    if(ok && !fixture) load(true);                          // see the other devices' marks straight away
+  }
+
+  // ---- events ----
+  searchEl.addEventListener('input', () => { st.search = searchEl.value; render(); });
+  refreshBtn.addEventListener('click', () => { st.markMsg = null; load(); });
+  jumpEl.addEventListener('change', () => {
+    const target = document.getElementById(`att-sec-${jumpEl.value}`);
+    jumpEl.value = '';
+    if(!target) return;
+    target.style.scrollMarginTop = `${catbar.offsetHeight + 8}px`;
+    target.scrollIntoView({ block: 'start' });
+  });
+  const onVisible = () => { if(!document.hidden && !fixture) load(true); };
+  document.addEventListener('visibilitychange', onVisible);
+  const timer = fixture ? null : setInterval(() => { if(!document.hidden) load(true); }, ATTENDANCE_POLL_MS);
+
+  render();
+  load();
+
+  return {
+    refresh: () => load(),
+    setShowWithdrawn(v){ st.showWithdrawn = !!v; render(); },
+    destroy(){
+      st.destroyed = true;
+      if(timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      root.textContent = '';
+    },
+  };
+}
+// ==== END ATTENDANCE CLIENT ====
 
 const liveChannel = createLiveChannel({
   enabled: !!LIVE_BASE_URL && !(typeof FIXTURE !== 'undefined' && FIXTURE),
@@ -3099,6 +3744,7 @@ function revealLiveTabsAfterLoad(){
   const standingsTabBtn = document.querySelector('.view-tab[data-view="standings"]');
   if(liveTabBtn) liveTabBtn.style.display = dayIsLive ? '' : 'none';
   if(standingsTabBtn) standingsTabBtn.style.display = dayIsLive ? '' : 'none';
+  syncAttendanceTab();
 
   showView('organizer');
 }
@@ -5023,6 +5669,10 @@ function showView(view){
   standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
   if(awardsResultsEl) awardsResultsEl.style.display = view === 'awards' ? '' : 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
+  // Leaving the Attendance tab, for any other view, tears its list (and poll) down.
+  if(view !== 'attendance') attConsoleDestroy();
+  if(attConsoleResultsEl) attConsoleResultsEl.style.display = view === 'attendance' ? '' : 'none';
+  if(view === 'attendance' && !attConsoleView) attConsoleMount();
   if(view === 'standings') renderStandings();
   if(view === 'live') renderLiveMatches();
   if(view === 'awards') renderAwards();
@@ -5101,6 +5751,8 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   standingsResultsEl.style.display = 'none';
   if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
+  attConsoleDestroy();
+  if(attConsoleResultsEl) attConsoleResultsEl.style.display = 'none';
   dayPromptEl.textContent = `Loading ${day.label}\u2026`;
   dayPromptEl.style.display = '';
 
@@ -7247,6 +7899,339 @@ function friendlyApiMessage(raw){
   return bare ? `Cloud Run ${s}` : s;
 }
 
+// ============================================================================
+// ATTENDANCE TAB — staff check-in for an event whose events.json entry carries
+// "attendance": "console" | "desks". The shared ATTENDANCE CLIENT block above
+// renders the list; this section is the console around it: counts, Update
+// roster, desk links, and the things that need a look. See
+// sage-docs/docs/specs/.../multi-event-attendance-spec.md §6.2-6.3.
+// ============================================================================
+const attConsoleResultsEl = document.getElementById('attendanceResults');
+const attConsoleTabBtn = document.querySelector('.view-tab[data-view="attendance"]');
+const attConsoleListEl = document.getElementById('attendanceList');
+const attConsoleSignInEl = document.getElementById('attendanceSignIn');
+const attConsoleCountsEl = document.getElementById('attendanceCounts');
+const attConsoleRosterBtn = document.getElementById('attendanceRosterBtn');
+const attConsoleRosterBox = document.getElementById('attendanceRosterResult');
+const attConsoleDeskBtn = document.getElementById('attendanceDeskBtn');
+const attConsoleDeskBox = document.getElementById('attendanceDeskResult');
+const attConsoleAttentionEl = document.getElementById('attendanceAttention');
+const attConsoleAttentionSummaryEl = document.getElementById('attendanceAttentionSummary');
+const attConsoleAttentionListEl = document.getElementById('attendanceAttentionList');
+const attConsoleWithdrawnToggleEl = document.getElementById('attendanceShowWithdrawn');
+const attConsoleWithdrawnLabelEl = document.getElementById('attendanceShowWithdrawnLabel');
+const ATT_CONSOLE_FIX_HINT = 'Fix the spelling in the category tab; the roster follows on the next sync.';
+let attConsoleView = null;
+let attConsoleData = [];            // [{ name, people, loaded }] — the view's latest, every facility
+let attConsoleAttentionCount = -1;  // so the section opens only when the count changes
+let attConsoleQrLoad = null;
+
+// "console" | "desks" for the selected event, else null.
+function attConsoleSetting(){
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  return ev && (ev.attendance === 'console' || ev.attendance === 'desks') ? ev.attendance : null;
+}
+function attConsoleDay(){
+  return currentDayIndex !== null ? (DAYS[currentDayIndex] || null) : null;
+}
+
+// The tab shows only for an event with attendance, once a day is selected.
+// Called wherever the event, the day or the tab row changes.
+function syncAttendanceTab(){
+  if(!attConsoleTabBtn) return;
+  const on = !!attConsoleSetting() && !!attConsoleDay();
+  attConsoleTabBtn.hidden = !on;
+  attConsoleTabBtn.style.display = on ? '' : 'none';
+  if(!on) attConsoleDestroy();
+  if(typeof syncViewTabsScroll === 'function') syncViewTabsScroll();
+}
+
+function attConsoleDestroy(){
+  if(attConsoleView){ attConsoleView.destroy(); attConsoleView = null; }
+  attConsoleData = [];
+  attConsoleAttentionCount = -1;
+}
+
+function attConsoleSignedIn(){
+  return !!FIXTURE || !!currentAuthToken();
+}
+
+function attConsoleMount(){
+  attConsoleDestroy();
+  const day = attConsoleDay();
+  if(!day || !attConsoleSetting()) return;
+  attConsoleWithdrawnToggleEl.checked = false;
+  attConsoleRenderChrome();
+  attConsoleView = createAttendanceView({
+    root: attConsoleListEl,
+    mode: 'console',
+    apiBase: CLOUD_RUN_BASE_URL,
+    getToken: currentAuthToken,
+    event: CURRENT_EVENT_KEY,
+    day: day.key,
+    facilities: FACILITIES,
+    type: CURRENT_TYPE,
+    teamName: code => (CURRENT_TYPE === 'team' ? teamNameOf(code) : null),
+    categoryLabel: code => categoryLabel(code),
+    notify: (kind, text) => showToast(kind, text, 'attendance'),
+    onData: attConsoleOnData,
+    showWithdrawn: false,
+    fixture: FIXTURE,
+  });
+}
+
+// What depends on who is signed in and on the event's setting.
+function attConsoleRenderChrome(){
+  const signedIn = attConsoleSignedIn();
+  const desks = attConsoleSetting() === 'desks';
+  attConsoleSignInEl.textContent = signedIn ? '' : 'Sign in at the top of Mission Control to mark attendance.';
+  attConsoleSignInEl.style.display = signedIn ? 'none' : '';
+  attConsoleRosterBtn.style.display = signedIn ? '' : 'none';
+  attConsoleDeskBtn.style.display = signedIn && desks ? '' : 'none';
+}
+
+function attConsoleOnData(data){
+  attConsoleData = data;
+  attConsoleRenderExtras();
+}
+
+function attConsoleRenderExtras(){
+  // counts per facility
+  attConsoleCountsEl.textContent = '';
+  attConsoleData.forEach(f => {
+    const live = f.people.filter(p => !p.withdrawn);
+    const line = document.createElement('div');
+    const name = document.createElement('b');
+    name.textContent = f.name;
+    const text = !f.loaded ? 'Loading…' : (f.people.length === 0 ? 'No roster yet' : `${live.filter(p => p.present).length} / ${live.length}`);
+    line.append(name, `: ${text}`);
+    attConsoleCountsEl.append(line);
+  });
+
+  // needs attention
+  const multi = attConsoleData.length > 1;
+  const items = [];
+  let withdrawn = 0;
+  attConsoleData.forEach(f => {
+    const where = multi ? ` (${f.name})` : '';
+    possibleDuplicates(f.people).forEach(([a, b]) => {
+      items.push(`${a.player} and ${b.player} may be the same person${where}. ${ATT_CONSOLE_FIX_HINT}`);
+    });
+    sameNameSameCategory(f.people).forEach(p => {
+      const repeated = p.categories.find((c, i) => p.categories.indexOf(c) !== i);
+      const label = CURRENT_TYPE === 'team' ? repeated : categoryLabel(repeated);
+      items.push(`${p.player} is listed twice in ${label}${where}: ${p.teams.join(', ')}. ${ATT_CONSOLE_FIX_HINT}`);
+    });
+    withdrawn += f.people.filter(p => p.withdrawn).length;
+  });
+  attConsoleAttentionListEl.textContent = '';
+  items.forEach(t => { const li = document.createElement('li'); li.textContent = t; attConsoleAttentionListEl.append(li); });
+  attConsoleAttentionSummaryEl.textContent = `Needs attention (${items.length})`;
+  if(items.length !== attConsoleAttentionCount){
+    attConsoleAttentionEl.open = items.length > 0;
+    attConsoleAttentionCount = items.length;
+  }
+  attConsoleWithdrawnLabelEl.textContent = withdrawn ? `Show withdrawn (${withdrawn})` : 'Show withdrawn';
+}
+
+// ---- Update roster ----
+function attConsoleRosterSummary(f){
+  const parts = [];
+  if(f.added) parts.push(`${f.added} added`);
+  if(f.updated) parts.push(`${f.updated} updated`);
+  if(f.withdrawn) parts.push(`${f.withdrawn} withdrawn`);
+  if(f.restored) parts.push(`${f.restored} restored`);
+  if(f.duplicatesCleared) parts.push(`${f.duplicatesCleared} duplicate${f.duplicatesCleared === 1 ? '' : 's'} cleared`);
+  return parts.length ? parts.join(' · ') : 'No changes';
+}
+
+function attConsoleNameOf(facility, key){
+  const f = attConsoleData.find(x => x.name === facility);
+  const p = f && f.people.find(x => x.key === key);
+  return p ? p.player : key;
+}
+
+async function attConsoleUpdateRoster(){
+  const day = attConsoleDay();
+  if(!day) return;
+  const token = currentAuthToken();
+  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return; }
+  attConsoleRosterBtn.disabled = true;
+  showResultText(attConsoleRosterBox, 'loading', 'Updating the roster…');
+  try{
+    let body;
+    if(FIXTURE){
+      // Local fixtures have no API: show what a result looks like.
+      body = { day: day.key, facilities: FACILITIES.map((f, i) => ({
+        name: f.name, ok: true, skipped: false, added: i === 0 ? 2 : 0, updated: 0, withdrawn: i === 0 ? 1 : 0, restored: 0, duplicatesCleared: 0, warnings: [],
+      })) };
+    }else{
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/attendance/reconciliations`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+      });
+      body = await res.json().catch(() => null);
+      if(!res.ok){
+        attConsoleRosterBox.style.display = 'none';
+        attConsoleRosterBox.textContent = '';
+        let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
+        if(res.status === 401) msg += ' Sign in again.';
+        showToast('error', `Couldn't update the roster: ${msg}`, 'attendance');
+        return;
+      }
+    }
+    const results = body.facilities || [];
+    const failed = results.filter(f => !f.ok).length;
+    const kind = failed === 0 ? 'ok' : (failed === results.length ? 'error' : 'warn');
+    const rows = results.map(f => f.ok
+      ? { label: f.name, value: attConsoleRosterSummary(f), kind: 'ok' }
+      : { label: f.name, value: friendlyApiMessage(f.error), kind: 'error' });
+    results.forEach(f => (f.warnings || []).forEach(w => {
+      rows.push({ label: f.name, value: `${attConsoleNameOf(f.name, w.key)} is listed twice in one category: ${(w.teams || []).join(', ')}. ${ATT_CONSOLE_FIX_HINT}`, kind: 'warn' });
+    }));
+    showResultRows(attConsoleRosterBox, kind, kind === 'ok' ? 'Roster updated' : (kind === 'warn' ? 'Roster updated, with problems' : 'Roster update failed'), rows);
+    if(attConsoleView) attConsoleView.refresh();
+  }catch(err){
+    attConsoleRosterBox.style.display = 'none';
+    attConsoleRosterBox.textContent = '';
+    showToast('error', unreachableMessage(err), 'attendance');
+  }finally{
+    attConsoleRosterBtn.disabled = false;
+  }
+}
+
+// ---- Desk link ----
+function attConsoleLoadQr(){
+  if(window.qrcode) return Promise.resolve();
+  if(attConsoleQrLoad) return attConsoleQrLoad;
+  attConsoleQrLoad = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    s.integrity = 'sha384-mZT2gIty7ZDdOGkxfP6joZcYdMW1Jvj9dRlfpTmaJAKKXTqzygtB22k7FLe+KZC1';
+    s.crossOrigin = 'anonymous';
+    s.onload = () => resolve();
+    s.onerror = () => { attConsoleQrLoad = null; reject(new Error('Could not load the QR code library.')); };
+    document.head.appendChild(s);
+  });
+  return attConsoleQrLoad;
+}
+
+// Draws the link into a canvas in the browser; the token never leaves the page.
+async function attConsoleShowQr(url, holder, btn){
+  if(holder.firstChild){ holder.textContent = ''; btn.textContent = 'Show QR'; return; }
+  btn.disabled = true;
+  try{
+    await attConsoleLoadQr();
+    const qr = window.qrcode(0, 'M');
+    qr.addData(url);
+    qr.make();
+    const n = qr.getModuleCount(), scale = 6, margin = 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = (n + margin * 2) * scale;
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', 'QR code for the desk link');
+    canvas.style.maxWidth = '100%';
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#05133B';
+    for(let r = 0; r < n; r++) for(let c = 0; c < n; c++) if(qr.isDark(r, c)) ctx.fillRect((c + margin) * scale, (r + margin) * scale, scale, scale);
+    holder.append(canvas);
+    btn.textContent = 'Hide QR';
+  }catch(err){
+    showToast('error', err.message, 'attendance');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function attConsoleRenderDeskLink(day, issued){
+  const url = `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/attendance?desk=${issued.token}`;
+  const box = attConsoleDeskBox;
+  box.className = 'organizer-result ok rich';
+  box.textContent = '';
+  const title = document.createElement('div');
+  title.className = 'result-title';
+  title.textContent = `Desk link for ${day.label}`;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.readOnly = true;
+  input.value = url;
+  input.className = 'attendance-link-input';
+  input.setAttribute('aria-label', 'Desk link');
+  input.addEventListener('focus', () => input.select());
+  const actions = document.createElement('div');
+  actions.className = 'attendance-link-actions';
+  const button = (text, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'organizer-secondary-btn';
+    b.textContent = text;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  actions.append(button('Copy', async () => {
+    try{ await navigator.clipboard.writeText(url); showToast('ok', 'Link copied.', 'attendance'); }
+    catch(e){ input.focus(); showToast('warn', 'Could not copy automatically. The link is selected: copy it by hand.', 'attendance'); }
+  }));
+  if(navigator.share){
+    actions.append(button('Share', () => { navigator.share({ title: `Attendance · ${day.label}`, url }).catch(() => {}); }));
+  }
+  const holder = document.createElement('div');
+  holder.className = 'attendance-qr';
+  const qrBtn = button('Show QR', () => attConsoleShowQr(url, holder, qrBtn));
+  actions.append(qrBtn);
+  const when = new Date(issued.expiresAt).toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' });
+  const valid = document.createElement('div');
+  valid.className = 'attendance-link-valid';
+  valid.textContent = `Valid until ${when} 11:59 PM`;
+  box.append(title, input, actions, valid, holder);
+  box.style.display = '';
+  addResultClose(box);
+  revealResultBox(box);
+}
+
+async function attConsoleIssueDeskLink(){
+  const day = attConsoleDay();
+  if(!day) return;
+  const token = currentAuthToken();
+  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return; }
+  const epoch = resultEpoch;
+  attConsoleDeskBtn.disabled = true;
+  try{
+    let issued;
+    if(FIXTURE){
+      issued = { token: 'fixture.desk-token', expiresAt: Date.parse(`${day.date || '2026-10-03'}T23:59:59.999+08:00`), day: day.key };
+    }else{
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/attendance/desk-links`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => null);
+      if(!res.ok){
+        let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
+        if(res.status === 401) msg += ' Sign in again.';
+        showToast('error', `Couldn't issue a desk link: ${msg}`, 'attendance');
+        return;
+      }
+      issued = body;
+    }
+    if(resultEpoch !== epoch){
+      showToast('warn', `A desk link for ${day.label} was issued, but you've moved on. Issue it again from that day's Attendance tab.`, 'attendance');
+      return;
+    }
+    attConsoleRenderDeskLink(day, issued);
+  }catch(err){
+    showToast('error', unreachableMessage(err), 'attendance');
+  }finally{
+    attConsoleDeskBtn.disabled = false;
+  }
+}
+
+attConsoleRosterBtn.addEventListener('click', attConsoleUpdateRoster);
+attConsoleDeskBtn.addEventListener('click', attConsoleIssueDeskLink);
+attConsoleWithdrawnToggleEl.addEventListener('change', () => {
+  if(attConsoleView) attConsoleView.setShowWithdrawn(attConsoleWithdrawnToggleEl.checked);
+});
+
 // "Could not sync <day>: a; b" (every facility failed) -> ["a", "b"].
 function splitSyncReasons(message){
   const m = /^Could not sync [^:]+:\s*([\s\S]*)$/.exec(message);
@@ -7443,6 +8428,8 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   standingsResultsEl.style.display = 'none';
   if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
+  if(attConsoleResultsEl) attConsoleResultsEl.style.display = 'none';
+  syncAttendanceTab();
 
   if(!rawEvent){
     DAYS = [];

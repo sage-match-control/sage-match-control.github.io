@@ -1,0 +1,8 @@
+"key","player","teams","categories","present","timeIn","withdrawn","TShirt Size"
+"ana cruz","Ana Cruz","A, B","","FALSE","","FALSE","M"
+"ben lim","Ben Lim","A","","TRUE","2026-10-03 08:30","FALSE","L"
+"cy dee","Cy Dee","B","","FALSE","","FALSE","S"
+"dan eng","Dan Eng","C","","FALSE","","TRUE",""
+"eli fox","Eli Fox","C","","FALSE","","FALSE",""
+"gia ho","Gia Ho","D","","FALSE","","FALSE",""
+"ben lim","Ben Lim (duplicate row, ignored)","A","","FALSE","","FALSE",""
