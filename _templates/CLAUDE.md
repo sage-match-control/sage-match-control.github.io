@@ -349,7 +349,7 @@ clubs; it is not a general multi-club template.
 
 12. **Share every facility workbook with the API's service account** as
     **Editor**, for an event with any `attendance` setting:
-    `sage-tools-api-runtime@<PROJECT_ID>.iam.gserviceaccount.com`. Without it
+    `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com`. Without it
     the roster update and every mark fail with a message naming the account.
     A workbook inside the shared Drive folder inherits this (check C5 in the
     spec says whether a copy made into that folder does).
