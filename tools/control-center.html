@@ -816,7 +816,7 @@
     font-style:italic;
     padding:6px 2px;
   }
-  .organizer-check-conn-btn{width:100%;}
+  .organizer-check-conn-btn{width:100%; margin-top:14px;}
   .organizer-secret-row{display:flex; gap:8px;}
   .organizer-text-input{
     flex:1;
@@ -869,7 +869,7 @@
     display:flex;
     align-items:center;
     gap:8px;
-    margin-bottom:14px;
+    margin:14px 0;
     cursor:pointer;
     font-size:12.5px;
     color:var(--ink);
@@ -971,6 +971,52 @@
   .organizer-result.ok{background:rgba(52,199,120,.12); border:1px solid rgba(52,199,120,.4); color:#0F5C2E;}
   .organizer-result.error{background:rgba(255,90,110,.1); border:1px solid rgba(255,90,110,.4); color:#9A2A3A;}
   .organizer-result.loading{background:rgba(20,27,44,.06); border:1px solid rgba(20,27,44,.12); color:var(--muted);}
+  .organizer-result.warn{background:rgba(240,170,40,.12); border:1px solid rgba(240,170,40,.45); color:#7A4B00;}
+  /* A result rendered as labelled rows (resync, Check connection) rather than
+     a line of text — see resultRowsHTML(). */
+  .organizer-result.rich{white-space:normal;}
+  .organizer-result .result-title{font-weight:700; font-size:13.5px; letter-spacing:.02em; margin-bottom:8px;}
+  .organizer-result .result-rows{margin:0; display:grid; gap:6px;}
+  .organizer-result .result-row{display:grid; grid-template-columns:minmax(90px, 32%) 1fr; gap:10px; align-items:baseline;}
+  .organizer-result .result-row dt{font-weight:600; opacity:.85;}
+  .organizer-result .result-row dd{margin:0; color:var(--ink);}
+  .organizer-result .result-row.ok dd::before{content:"\2713\00a0"; color:#0F5C2E; font-weight:700;}
+  .organizer-result .result-row.warn dd::before{content:"!\00a0"; color:#7A4B00; font-weight:700;}
+  .organizer-result .result-row.error dd::before{content:"\2715\00a0"; color:#9A2A3A; font-weight:700;}
+  .organizer-result .result-list{margin:6px 0 0; padding-left:18px;}
+  .organizer-result .result-list li{margin:2px 0;}
+
+  /* ---------- TOASTS (short outcomes; see showToast) ---------- */
+  .toast-stack{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:max(16px, env(safe-area-inset-bottom));
+    width:min(92vw, 440px);
+    display:flex; flex-direction:column; gap:8px;
+    z-index:1000;
+    pointer-events:none;
+  }
+  .toast{
+    pointer-events:auto;
+    display:flex; align-items:flex-start; gap:10px;
+    padding:12px 12px 12px 16px;
+    border-radius:12px;
+    font-family:'Inter',sans-serif; font-size:14px; line-height:1.45;
+    box-shadow:var(--card-shadow);
+    background:var(--white); border:1px solid var(--line); color:var(--ink);
+    opacity:0; transform:translateY(8px);
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .toast.show{opacity:1; transform:none;}
+  .toast.ok{background:#EAF7EF; border-color:rgba(52,199,120,.5); color:#0F5C2E;}
+  .toast.error{background:#FDEDEF; border-color:rgba(255,90,110,.5); color:#9A2A3A;}
+  .toast.loading{color:var(--muted);}
+  .toast-text{flex:1; white-space:pre-wrap; word-break:break-word;}
+  .toast-close{
+    flex:0 0 auto; border:0; background:transparent; color:inherit;
+    font-size:20px; line-height:1; padding:0 4px; cursor:pointer; opacity:.7;
+    min-width:32px; min-height:32px; margin:-6px -4px -6px 0;
+  }
+  .toast-close:hover{opacity:1;}
 
   /* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
   .category-toggle-bar{
@@ -2404,11 +2450,11 @@
   </div>
 
   <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
-    <button class="view-tab active" data-view="live" type="button">Live Matches</button>
+    <button class="view-tab active" data-view="organizer" type="button">Mission Control</button>
+    <button class="view-tab" data-view="awards" type="button">Awards</button>
+    <button class="view-tab" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
-    <button class="view-tab" data-view="awards" type="button">Awards</button>
-    <button class="view-tab" data-view="organizer" type="button">Mission Control</button>
   </div>
 
   <div class="regal-rule"><span class="diamond"></span></div>
@@ -2460,6 +2506,43 @@
     <div class="organizer-panel">
       <div class="organizer-day-label" id="organizerDayLabel"></div>
 
+      <div id="orgLoginForm">
+        <label class="search-label" for="orgUsernameInput">Sign in</label>
+        <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
+        <div class="organizer-secret-row" style="margin-top:8px;">
+          <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
+          <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
+        </div>
+      </div>
+      <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
+      <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
+      <p class="organizer-hint" id="orgAuthHint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
+
+      <div class="organizer-divider"></div>
+
+      <label class="search-label">Facility sync status</label>
+      <div id="orgStatusBox" class="organizer-status-box"></div>
+
+      <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
+
+      <label class="organizer-checkbox-row">
+        <input type="checkbox" id="orgUseCsvMethod" />
+        <span>Use CSV export fallback instead of Sheets API</span>
+      </label>
+
+
+      <div id="orgFacilityResyncGroup">
+        <label class="search-label">Or resync just one facility</label>
+        <div class="organizer-facility-row" id="orgFacilityRow"></div>
+      </div>
+
+      <div id="orgResultBox" class="organizer-result" style="display:none;"></div>
+
+      <button type="button" id="orgCheckConnBtn" class="organizer-secondary-btn organizer-check-conn-btn">Check connection</button>
+      <div id="orgConnResultBox" class="organizer-result" style="display:none;"></div>
+
+      <div class="organizer-divider"></div>
+
       <!-- Go-live override (spec §4.1): a kill switch as a button, not a
            config edit + redeploy. Affects the PUBLIC index.html only — this
            console's own tabs always stay live, for preview (spec §3). -->
@@ -2471,14 +2554,6 @@
         <button type="button" class="golive-btn golive-btn-danger" data-live="false">Force hidden</button>
       </div>
       <p class="organizer-hint">Controls the public event page's Live Matches/Standings tabs — this console's own tabs above are unaffected and always show live data, for preview.</p>
-      <div id="goLiveResultBox" class="organizer-result" style="display:none;"></div>
-
-      <div class="organizer-divider"></div>
-
-      <label class="search-label">Facility sync status</label>
-      <div id="orgStatusBox" class="organizer-status-box"></div>
-
-      <button type="button" id="orgCheckConnBtn" class="organizer-secondary-btn organizer-check-conn-btn">Check connection</button>
 
       <div class="organizer-divider"></div>
 
@@ -2492,37 +2567,6 @@
         <button type="button" class="golive-btn golive-btn-danger" data-push="false">GitHub only</button>
       </div>
       <p class="organizer-hint">An emergency switch, for when live updates misbehave. <b>GitHub only</b> sends every score through GitHub, as before live push existed: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</p>
-      <div id="syncMethodResultBox" class="organizer-result" style="display:none;"></div>
-
-      <div class="organizer-divider"></div>
-
-      <div id="orgLoginForm">
-        <label class="search-label" for="orgUsernameInput">Sign in</label>
-        <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
-        <div class="organizer-secret-row" style="margin-top:8px;">
-          <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
-          <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
-        </div>
-      </div>
-      <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
-      <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
-      <p class="organizer-hint" id="orgAuthHint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
-
-      <label class="organizer-checkbox-row">
-        <input type="checkbox" id="orgUseCsvMethod" />
-        <span>Use CSV export fallback instead of Sheets API</span>
-      </label>
-
-      <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
-
-      <div class="organizer-divider"></div>
-
-      <div id="orgFacilityResyncGroup">
-        <label class="search-label">Or resync just one facility</label>
-        <div class="organizer-facility-row" id="orgFacilityRow"></div>
-      </div>
-
-      <div id="orgResultBox" class="organizer-result" style="display:none;"></div>
 
       <div class="organizer-divider"></div>
 
@@ -2547,6 +2591,11 @@
   S.A.G.E. Match Control<br>
   One console, every registered event.
 </footer>
+
+<!-- Short outcomes (go-live, sync method, sign-in, "pick a day first") show
+     here, pinned to the bottom of the screen so they are seen wherever the
+     button that caused them sits. See showToast(). -->
+<div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
 <script>
 // ============================================================================
@@ -3022,13 +3071,13 @@ async function loadLiveData(){
 }
 
 // Shared by the day picker and the retry button: once loadLiveData resolves
-// true, reveal the tabs/status and land on Live Matches so a successful
-// retry doesn't leave the person stuck on the error prompt.
+// true, reveal the tabs/status and land on Mission Control, the operator's
+// starting point, so a successful retry doesn't leave the person stuck on the
+// error prompt.
 function revealLiveTabsAfterLoad(){
   const dayPromptEl = document.getElementById('dayPrompt');
   const viewTabsWrapEl = document.getElementById('viewTabsWrap');
   const syncStatusEl = document.getElementById('syncStatus');
-  const liveResultsEl = document.getElementById('liveResults');
   if(dayPromptEl) dayPromptEl.style.display = 'none';
   if(viewTabsWrapEl) viewTabsWrapEl.style.display = '';
   if(syncStatusEl) syncStatusEl.style.display = '';
@@ -3039,19 +3088,10 @@ function revealLiveTabsAfterLoad(){
 
   const liveTabBtn = document.querySelector('.view-tab[data-view="live"]');
   const standingsTabBtn = document.querySelector('.view-tab[data-view="standings"]');
-  const finderTabBtn = document.querySelector('.view-tab[data-view="finder"]');
   if(liveTabBtn) liveTabBtn.style.display = dayIsLive ? '' : 'none';
   if(standingsTabBtn) standingsTabBtn.style.display = dayIsLive ? '' : 'none';
 
-  document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
-  if(dayIsLive){
-    if(liveTabBtn) liveTabBtn.classList.add('active');
-    if(liveResultsEl) liveResultsEl.style.display = '';
-  } else {
-    if(finderTabBtn) finderTabBtn.classList.add('active');
-    if(searchPanelEl) searchPanelEl.style.display = '';
-    if(resultsEl) resultsEl.style.display = '';
-  }
+  showView('organizer');
 }
 
 // ---- Generic code parsing (position-based, not a regex built from known
@@ -4955,26 +4995,33 @@ function revealActiveTab(btn){
   window.addEventListener('resize', syncViewTabsScroll);
 })();
 
-viewTabs.forEach(btn => {
-  btn.addEventListener('click', () => {
-    viewTabs.forEach(b => b.classList.remove('active'));
+// Switches to one view: marks its tab active, shows its panel, hides the
+// rest and renders it. Used by the tab buttons and by revealLiveTabsAfterLoad
+// (which lands on Mission Control after a day loads).
+function showView(view){
+  const btn = document.querySelector(`.view-tab[data-view="${view}"]`);
+  viewTabs.forEach(b => b.classList.remove('active'));
+  if(btn){
     btn.classList.add('active');
     revealActiveTab(btn);
-    const view = btn.dataset.view;
-    liveResultsEl.style.display = view === 'live' ? '' : 'none';
-    searchPanelEl.style.display = view === 'finder' ? '' : 'none';
-    resultsEl.style.display = view === 'finder' ? '' : 'none';
-    standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
-    if(awardsResultsEl) awardsResultsEl.style.display = view === 'awards' ? '' : 'none';
-    if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
-    if(view === 'standings') renderStandings();
-    if(view === 'live') renderLiveMatches();
-    if(view === 'awards') renderAwards();
-    if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function'){
-      updateOrganizerDayLabel();
-      renderOrganizerStatus();
-    }
-  });
+  }
+  liveResultsEl.style.display = view === 'live' ? '' : 'none';
+  searchPanelEl.style.display = view === 'finder' ? '' : 'none';
+  resultsEl.style.display = view === 'finder' ? '' : 'none';
+  standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
+  if(awardsResultsEl) awardsResultsEl.style.display = view === 'awards' ? '' : 'none';
+  if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
+  if(view === 'standings') renderStandings();
+  if(view === 'live') renderLiveMatches();
+  if(view === 'awards') renderAwards();
+  if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function'){
+    updateOrganizerDayLabel();
+    renderOrganizerStatus();
+  }
+}
+
+viewTabs.forEach(btn => {
+  btn.addEventListener('click', () => showView(btn.dataset.view));
 });
 
 // ---------- Persistence: remember the last event+day + search across reloads ----------
@@ -6534,7 +6581,6 @@ function describeAutoGoLive(){
 
 const goLiveCurrentEl = document.getElementById('goLiveCurrent');
 const goLiveButtonsEl = document.querySelector('.golive-buttons');
-const goLiveResultBoxEl = document.getElementById('goLiveResultBox');
 
 // Reads the value straight from the fetched event registry (not the
 // snapshot) — the console is what authors this value, so it always shows
@@ -6565,11 +6611,10 @@ function renderGoLiveControl(){
   }
 }
 
+// The current state is already on screen (goLiveCurrent), so the outcome is a
+// toast; a newer one replaces the last.
 function showGoLiveResult(kind, text){
-  if(!goLiveResultBoxEl) return;
-  goLiveResultBoxEl.className = `organizer-result ${kind}`;
-  goLiveResultBoxEl.textContent = text;
-  goLiveResultBoxEl.style.display = '';
+  showToast(kind, text, 'golive');
 }
 
 async function setGoLive(value){
@@ -6579,7 +6624,7 @@ async function setGoLive(value){
     return;
   }
   const token = currentAuthToken();
-  if(!token){ showGoLiveResult('error', 'Sign in above first.'); return; }
+  if(!token){ showGoLiveResult('error', 'Sign in at the top of Mission Control first.'); return; }
 
   if(goLiveButtonsEl) goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
   showGoLiveResult('loading', `Setting ${day.label} to ${value}…`);
@@ -6592,7 +6637,7 @@ async function setGoLive(value){
     });
     const body = await res.json().catch(() => null);
     if(!res.ok){
-      showGoLiveResult('error', `Failed: ${body?.error || `HTTP ${res.status}`}`);
+      showGoLiveResult('error', `Couldn't change it: ${friendlyApiMessage(body?.error || `HTTP ${res.status}`)}`);
     } else {
       showGoLiveResult('ok', body.republished
         ? (body.live && body.live.published
@@ -6607,7 +6652,7 @@ async function setGoLive(value){
       renderGoLiveControl();
     }
   } catch(err){
-    showGoLiveResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+    showGoLiveResult('error', unreachableMessage(err));
   } finally {
     if(goLiveButtonsEl) goLiveButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = false; });
   }
@@ -6704,16 +6749,13 @@ function currentAuthToken(){
 // config/events.json. Only the switch is changed from here.
 const syncMethodCurrentEl = document.getElementById('syncMethodCurrent');
 const syncMethodButtonsEl = document.getElementById('syncMethodButtons');
-const syncMethodResultBoxEl = document.getElementById('syncMethodResultBox');
 let SYNC_METHOD = null;       // { enabled, switch } once read; null when unknown
 let syncMethodError = '';     // why it could not be read, if it could not
 let syncMethodReadSeq = 0;    // newest read wins
 
+// As with go-live: the current setting is on screen, so the outcome is a toast.
 function showSyncMethodResult(kind, text){
-  if(!syncMethodResultBoxEl) return;
-  syncMethodResultBoxEl.className = `organizer-result ${kind}`;
-  syncMethodResultBoxEl.textContent = text;
-  syncMethodResultBoxEl.style.display = '';
+  showToast(kind, text, 'syncmethod');
 }
 
 function renderSyncMethod(){
@@ -6775,7 +6817,7 @@ async function refreshSyncMethod(){
 
 async function setSyncMethod(enabled){
   const token = currentAuthToken();
-  if(!token){ showSyncMethodResult('error', 'Sign in above first.'); return; }
+  if(!token){ showSyncMethodResult('error', 'Sign in at the top of Mission Control first.'); return; }
   if(!enabled && !window.confirm('Switch to GitHub only? Scores will take 30\u201360 seconds to reach open pages instead of a few seconds, until you switch live push back on.')) return;
 
   if(syncMethodButtonsEl) syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
@@ -6788,7 +6830,7 @@ async function setSyncMethod(enabled){
     });
     const body = await res.json().catch(() => null);
     if(!res.ok){
-      showSyncMethodResult('error', `Failed: ${body?.error || `HTTP ${res.status}`}`);
+      showSyncMethodResult('error', `Couldn't switch: ${friendlyApiMessage(body?.error || `HTTP ${res.status}`)}`);
     } else {
       SYNC_METHOD = { enabled: SYNC_METHOD ? SYNC_METHOD.enabled : !!body.available, switch: enabled ? 'on' : 'off' };
       syncMethodError = '';
@@ -6800,7 +6842,7 @@ async function setSyncMethod(enabled){
       renderSyncMethod();
     }
   } catch(err){
-    showSyncMethodResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+    showSyncMethodResult('error', unreachableMessage(err));
   } finally {
     if(syncMethodButtonsEl) syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = false; });
   }
@@ -6835,10 +6877,9 @@ function renderAuthStatus(){
 async function signIn(){
   const username = (orgUsernameInput?.value || '').trim();
   const password = orgPasswordInput?.value || '';
-  if(!username || !password){ showOrgResult('error', 'Enter a username and password first.'); return; }
+  if(!username || !password){ showToast('error', 'Enter a username and password first.', 'auth'); return; }
 
   if(orgSignInBtn){ orgSignInBtn.disabled = true; orgSignInBtn.textContent = 'Signing in…'; }
-  showOrgResult('loading', 'Signing in…');
   try {
     const res = await fetch(`${CLOUD_RUN_BASE_URL}/auth/login`, {
       method: 'POST',
@@ -6847,15 +6888,16 @@ async function signIn(){
     });
     const body = await res.json().catch(() => null);
     if(!res.ok){
-      showOrgResult('error', `Sign-in failed: ${body?.error || `HTTP ${res.status}`}`);
+      showToast('error', res.status === 401 ? 'Sign-in failed: wrong username or password.' : `Sign-in failed: ${friendlyApiMessage(body?.error || `HTTP ${res.status}`)}`, 'auth');
       return;
     }
     saveAuthToken(body.token, body.expiresAt);
     if(orgPasswordInput) orgPasswordInput.value = '';
     renderAuthStatus();
-    showOrgResult('ok', 'Signed in.');
+    const until = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(body.expiresAt));
+    showToast('ok', `Signed in until ${until}.`, 'auth');
   } catch(err){
-    showOrgResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+    showToast('error', unreachableMessage(err), 'auth');
   } finally {
     if(orgSignInBtn){ orgSignInBtn.disabled = false; orgSignInBtn.textContent = 'Sign in'; }
   }
@@ -6867,6 +6909,7 @@ if(orgSignOutBtn){
   orgSignOutBtn.addEventListener('click', () => {
     clearAuthToken();
     renderAuthStatus();
+    showToast('ok', 'Signed out.', 'auth');
   });
 }
 renderAuthStatus();
@@ -6989,7 +7032,7 @@ if(orgCheckConnBtn){
   orgCheckConnBtn.addEventListener('click', async () => {
     orgCheckConnBtn.disabled = true;
     orgCheckConnBtn.textContent = 'Checking\u2026';
-    showOrgResult('loading', 'Checking connection to Cloud Run\u2026');
+    showResultText(orgConnResultBox, 'loading', 'Checking connection to Cloud Run\u2026');
     const started = performance.now();
     try {
       const res = await fetch(`${CLOUD_RUN_BASE_URL}/ping`);
@@ -7005,13 +7048,22 @@ if(orgCheckConnBtn){
         // Whether Cloud Run itself is publishing to the live Worker (as opposed
         // to the Mission Control "Live updates" line, which is about this page's
         // own socket). /sync/config is gated, so it needs a signed-in operator.
-        const liveNote = await checkCloudRunLivePush();
-        showOrgResult('ok', `Connected to Cloud Run \u2014 ${elapsed}ms${version ? ` \u00b7 v${version}` : ''}${syncConfig ? ` \u00b7 cfg ${syncConfig}` : ''}\n${liveNote}`);
+        const liveNote = (await checkCloudRunLivePush()).replace(/^Live push:\s*/, '');
+        const liveKind = /^on\b/.test(liveNote) ? 'ok' : (/^(off|switched off)\b/.test(liveNote) ? 'warn' : '');
+        showResultRows(orgConnResultBox, 'ok', 'Connected to Cloud Run', [
+          { label: 'Response time', value: `${elapsed} ms`, kind: elapsed > 3000 ? 'warn' : 'ok' },
+          { label: 'Version', value: version ? `v${version}` : 'not reported' },
+          { label: 'Event registry', value: describeSyncConfig(syncConfig), kind: syncConfig && syncConfig.startsWith('seed') ? 'warn' : (syncConfig ? 'ok' : '') },
+          { label: 'Live push', value: liveNote, kind: liveKind }
+        ]);
       } else {
-        showOrgResult('error', `Cloud Run responded with HTTP ${res.status} (${elapsed}ms)`);
+        showResultRows(orgConnResultBox, 'error', 'Cloud Run answered with an error', [
+          { label: 'Response', value: friendlyApiMessage(`HTTP ${res.status}`), kind: 'error' },
+          { label: 'Response time', value: `${elapsed} ms` }
+        ]);
       }
     } catch(err){
-      showOrgResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+      showResultText(orgConnResultBox, 'error', unreachableMessage(err));
     } finally {
       orgCheckConnBtn.disabled = false;
       orgCheckConnBtn.textContent = 'Check connection';
@@ -7019,11 +7071,168 @@ if(orgCheckConnBtn){
   });
 }
 
+// ---- Showing outcomes ------------------------------------------------------
+// Short outcomes (a switch flipped, signed in, "pick a day first") are toasts,
+// pinned to the bottom of the screen so they are seen wherever the button
+// sits. Results worth reading (Check connection, a resync's per-facility
+// report) go in a box right under their button, as labelled rows, and the box
+// is scrolled into view.
+
+const toastStackEl = document.getElementById('toastStack');
+const orgConnResultBox = document.getElementById('orgConnResultBox');
+const TOAST_MS = { ok: 4500, warn: 7000, error: 9000 }; // 'loading' stays until replaced
+
+// kind: 'ok' | 'warn' | 'error' | 'loading'. key: a later toast with the same
+// key replaces this one (so "Setting…" is replaced by its outcome).
+function showToast(kind, text, key){
+  if(!toastStackEl) return;
+  if(key){
+    toastStackEl.querySelectorAll('.toast').forEach(t => { if(t.dataset.key === key) t.remove(); });
+  }
+  const toast = document.createElement('div');
+  toast.className = `toast ${kind}`;
+  toast.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  if(key) toast.dataset.key = key;
+  const msg = document.createElement('span');
+  msg.className = 'toast-text';
+  msg.textContent = text;
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'toast-close';
+  close.setAttribute('aria-label', 'Dismiss');
+  close.textContent = '×';
+  close.addEventListener('click', () => toast.remove());
+  toast.append(msg, close);
+  toastStackEl.append(toast);
+  while(toastStackEl.children.length > 3) toastStackEl.firstElementChild.remove();
+  requestAnimationFrame(() => toast.classList.add('show'));
+  if(TOAST_MS[kind]) setTimeout(() => toast.remove(), TOAST_MS[kind]);
+}
+
+function revealResultBox(box){
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try{ box.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); } catch(e){ box.scrollIntoView(false); }
+}
+
+function showResultText(box, kind, text){
+  if(!box) return;
+  box.className = `organizer-result ${kind}`;
+  box.textContent = text;
+  box.style.display = '';
+  if(kind !== 'loading') revealResultBox(box);
+}
+
+// rows: [{ label, value, kind?: 'ok' | 'warn' | 'error', list?: string[] }]
+function resultRowsHTML(title, rows){
+  return `<div class="result-title">${escapeHtml(title)}</div><dl class="result-rows">` +
+    rows.map(r => `<div class="result-row ${r.kind || ''}"><dt>${escapeHtml(r.label)}</dt><dd>${escapeHtml(r.value)}` +
+      (r.list && r.list.length ? `<ul class="result-list">${r.list.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '') +
+      `</dd></div>`).join('') +
+    `</dl>`;
+}
+
+function showResultRows(box, kind, title, rows){
+  if(!box) return;
+  box.className = `organizer-result ${kind} rich`;
+  box.innerHTML = resultRowsHTML(title, rows);
+  box.style.display = '';
+  revealResultBox(box);
+}
+
+// ---- Readable API messages -------------------------------------------------
+// sage-tools-api's errors carry the upstream service's raw reply, e.g.
+//   Main: HTTP 403 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+//   GitHub commit failed: HTTP 409 {"message":"is at abc but expected def","documentation_url":"…"}
+//   live Worker publish failed: HTTP 401 {"error":"unauthorized"}
+// These turn each "HTTP <status> <json>" into words plus the JSON's own message.
+const HTTP_WORDS = {
+  400: 'rejected the request', 401: 'refused the credentials', 403: 'refused access',
+  404: 'was not found', 409: 'reported a conflict', 422: 'rejected the data',
+  429: 'is rate-limiting requests'
+};
+function httpWords(status){
+  return HTTP_WORDS[status] || (status >= 500 ? 'had a server error' : 'answered with an error');
+}
+
+// The human part of a JSON error body: Google's { error: { message } },
+// GitHub's { message }, the Worker's and this API's { error }. Null if none.
+function messageFromJson(text){
+  try{
+    const o = JSON.parse(text);
+    if(o && typeof o === 'object'){
+      if(o.error && typeof o.error === 'object' && typeof o.error.message === 'string') return o.error.message;
+      if(typeof o.message === 'string') return o.message;
+      if(typeof o.error === 'string') return o.error;
+    }
+  } catch(e){}
+  return null;
+}
+
+function friendlyApiMessage(raw){
+  let s = String(raw || '').trim();
+  if(s.startsWith('{')){
+    const whole = messageFromJson(s);
+    if(whole) s = whole;
+  }
+  // "HTTP 403 {…}" up to the end of that reason (the next "; " or the end).
+  s = s.replace(/HTTP (\d{3})\s*(\{[\s\S]*?\})(?=\s*(?:;\s|$))/g, (m, status, json) => {
+    const inner = messageFromJson(json);
+    return `${httpWords(+status)} (${status})` + (inner ? ` — ${inner}` : '');
+  });
+  // A bare "HTTP 500" (no message from the server) needs a subject.
+  const bare = /^HTTP \d{3}$/.test(s);
+  s = s.replace(/\bHTTP (\d{3})\b/g, (m, status) => `${httpWords(+status)} (${status})`);
+  s = s.replace(/timed out after (\d+)ms/g, (m, ms) => `timed out after ${Math.round(ms / 100) / 10} s`);
+  return bare ? `Cloud Run ${s}` : s;
+}
+
+// "Could not sync <day>: a; b" (every facility failed) -> ["a", "b"].
+function splitSyncReasons(message){
+  const m = /^Could not sync [^:]+:\s*([\s\S]*)$/.exec(message);
+  return m ? m[1].split(/;\s+/).filter(Boolean) : null;
+}
+
+function unreachableMessage(err){
+  return `Couldn't reach Cloud Run. Check this device's connection and try again. (${err && err.message ? err.message : err})`;
+}
+
+// X-Sync-Config: "<7-char sha>/remote" or "seed/fallback".
+function describeSyncConfig(value){
+  if(!value) return 'not loaded yet (it loads on the first sync)';
+  const [sha, source] = value.split('/');
+  if(sha === 'seed' || source === 'fallback') return 'using the bundled fallback copy: events.json could not be read';
+  return `events.json, version ${sha}`;
+}
+
+// A sync response -> rows: one per facility it targeted, then how it was published.
+function resyncResultRows(body){
+  const failed = body.facilitiesFailed || [];
+  const stale = new Set(body.facilitiesStale || []);
+  const rows = [];
+  (body.facilitiesSynced || []).forEach(name => rows.push({ label: name, value: 'Synced', kind: 'ok' }));
+  failed.forEach(name => rows.push(stale.has(name)
+    ? { label: name, value: 'This attempt failed. Still showing its previous data.', kind: 'warn' }
+    : { label: name, value: 'Failed. Nothing published for it yet.', kind: 'error' }));
+  if(body.live){
+    rows.push(body.live.published
+      ? { label: 'Live push', value: `Pushed to open pages (version ${body.live.version})`, kind: 'ok' }
+      : { label: 'Live push', value: `Didn't go through, so it was published through GitHub instead: ${friendlyApiMessage(body.live.error)}`, kind: 'warn' });
+  } else {
+    rows.push({ label: 'Published', value: 'Through GitHub. Open pages catch up within about a minute.' });
+  }
+  if(body.archive && !body.archive.committed){
+    rows.push({ label: 'GitHub archive', value: `Didn't save (the live copy is fine; the next sync retries): ${friendlyApiMessage(body.archive.error)}`, kind: 'warn' });
+  }
+  if(body.method === 'csv') rows.push({ label: 'Method', value: 'CSV export fallback' });
+  const t = body.timing;
+  if(t && Number.isFinite(t.fetchMs) && Number.isFinite(t.publishMs)){
+    rows.push({ label: 'Took', value: `${((t.fetchMs + t.publishMs) / 1000).toFixed(1)} s` });
+  }
+  return rows;
+}
+
 function showOrgResult(kind, text){
-  if(!orgResultBox) return;
-  orgResultBox.className = `organizer-result ${kind}`;
-  orgResultBox.textContent = text;
-  orgResultBox.style.display = '';
+  showResultText(orgResultBox, kind, text);
 }
 
 // All resync-triggering buttons — disabled together while any one request
@@ -7042,12 +7251,12 @@ function setResyncButtonsDisabled(disabled){
 async function performResync(facilityName, { onStart, onDone } = {}){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day){
-    showOrgResult('error', 'Pick a tournament day first.');
+    showToast('error', 'Pick a tournament day first.', 'resync');
     return;
   }
   const token = currentAuthToken();
   if(!token){
-    showOrgResult('error', 'Sign in above first.');
+    showToast('error', 'Sign in at the top of Mission Control first.', 'resync');
     return;
   }
   const useCsvMethod = !!(orgUseCsvMethodEl && orgUseCsvMethodEl.checked);
@@ -7070,17 +7279,18 @@ async function performResync(facilityName, { onStart, onDone } = {}){
     const body = await res.json().catch(() => null);
 
     if(!res.ok){
-      const msg = body?.error || `HTTP ${res.status}`;
-      showOrgResult('error', `Resync failed: ${msg}`);
+      const msg = friendlyApiMessage(body?.error || `HTTP ${res.status}`);
+      const reasons = splitSyncReasons(msg);
+      showResultRows(orgResultBox, 'error', `${scopeLabel}: resync failed`, reasons
+        ? [{ label: 'Every facility failed', value: 'Nothing was published.', kind: 'error', list: reasons }]
+        : [{ label: 'Reason', value: msg, kind: 'error' }]);
     } else {
-      const synced = (body.facilitiesSynced || []).join(', ') || 'none';
       const failed = body.facilitiesFailed || [];
-      const stale = body.facilitiesStale || [];
-      const methodNote = body.method === 'csv' ? ' \u2014 via CSV export fallback' : '';
-      const lines = [`${scopeLabel} resynced${methodNote}.`, `Synced: ${synced}`];
-      if(stale.length) lines.push(`Kept previous data for (this attempt failed): ${stale.join(', ')}`);
-      if(failed.length && stale.length === 0) lines.push(`Failed: ${failed.join('; ')}`);
-      showOrgResult(failed.length && stale.length === 0 ? 'error' : (failed.length ? 'loading' : 'ok'), lines.join('\n'));
+      const stale = new Set(body.facilitiesStale || []);
+      const hardFail = failed.some(name => !stale.has(name));
+      showResultRows(orgResultBox, hardFail ? 'error' : (failed.length ? 'warn' : 'ok'),
+        failed.length ? `${scopeLabel} resynced, with problems` : `${scopeLabel} resynced`,
+        resyncResultRows(body));
       // Pull the fresh data in right away rather than waiting for the
       // next poll. With live push the pushed snapshot is already here; over
       // GitHub, Pages' own redeploy can take a while, so this may still show
@@ -7088,7 +7298,7 @@ async function performResync(facilityName, { onStart, onDone } = {}){
       loadLiveData();
     }
   } catch(err){
-    showOrgResult('error', `Couldn't reach Cloud Run: ${err.message}`);
+    showOrgResult('error', unreachableMessage(err));
   } finally {
     setResyncButtonsDisabled(false);
     if(onDone) onDone();
