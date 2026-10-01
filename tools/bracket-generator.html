@@ -318,6 +318,101 @@
     color:var(--muted);
     line-height:1.4;
   }
+  /* Keep-apart groups: sets of pairs the draw must put in different brackets.
+     Members are picked from the entered pairs rather than retyped, so a name
+     can never fail to match what the draw hashes. */
+  .group-list{ display:flex; flex-direction:column; gap:10px; }
+  .group-list:empty{ display:none; }
+  .group-card{
+    border:2px solid rgba(20,27,44,.18);
+    border-radius:10px;
+    background:var(--white);
+    padding:10px 12px 12px;
+  }
+  .group-card.is-bad{ border-color:rgba(255,90,110,.6); }
+  .group-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .group-title{
+    flex:0 0 auto;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink);
+  }
+  .group-status{ flex:1; font-size:12px; line-height:1.35; color:var(--ink-soft); }
+  .group-card.is-bad .group-status{ color:#B3273D; font-weight:600; }
+  .group-remove{
+    appearance:none;
+    border:none;
+    background:none;
+    font-size:22px;
+    line-height:1;
+    color:var(--ink-soft);
+    cursor:pointer;
+    padding:0 4px;
+  }
+  .group-remove:hover{ color:var(--ink); }
+  .group-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .group-chips:empty{ display:none; }
+  .group-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:4px 6px 4px 11px;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .group-chip button{
+    appearance:none;
+    border:none;
+    background:rgba(20,27,44,.1);
+    color:var(--ink);
+    width:18px; height:18px;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:13px;
+    line-height:1;
+    padding:0;
+  }
+  .group-chip button:hover{ background:rgba(20,27,44,.2); }
+  .group-add{
+    width:100%;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    font-weight:600;
+    padding:9px 10px;
+    border-radius:8px;
+    border:2px solid rgba(20,27,44,.18);
+    background:var(--white);
+    color:var(--ink);
+  }
+  .group-add:disabled{ background:var(--paper-dim); color:var(--ink-soft); cursor:not-allowed; }
+  .group-add:focus-visible, .group-remove:focus-visible, .group-chip button:focus-visible{
+    outline:2px solid var(--green);
+    outline-offset:2px;
+  }
+  #addGroupBtn{ margin-top:10px; }
+  .group-list:empty + #addGroupBtn{ margin-top:0; }
+  /* Marks a pair that belongs to a keep-apart group on the result cards. */
+  .bp-group{
+    flex:0 0 auto;
+    margin-left:auto;
+    padding:2px 7px;
+    border-radius:100px;
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.06em;
+    color:var(--ink-soft);
+  }
+
   .form-error{
     display:none;
     margin-top:14px;
@@ -693,6 +788,14 @@
         <span class="bracket-count-hint">Pairs are shuffled, then dealt evenly across every bracket.</span>
       </div>
     </div>
+    <div class="field">
+      <span class="field-label" id="keepApartLabel">Keep apart <span class="field-optional">(optional)</span></span>
+      <div id="groupList" class="group-list" role="group" aria-labelledby="keepApartLabel"></div>
+      <button type="button" class="link-btn" id="addGroupBtn">+ Add a keep-apart group</button>
+      <div class="field-meta">
+        <span class="field-hint">Pairs in the same group are always dealt into different brackets. Enter the pairs above first, then pick them here.</span>
+      </div>
+    </div>
     <div id="formError" class="form-error"></div>
     <button type="button" class="btn-primary" id="generateBtn">Randomize Brackets</button>
   </div>
@@ -742,6 +845,10 @@
     <p><strong>4. Pairs are sorted by fingerprint, then dealt out.</strong> Lowest fingerprint first, the way you would sort a list alphabetically. Then they are dealt around the brackets one at a time &mdash; first pair to Bracket A, second to Bracket B, and so on &mdash; so every bracket ends up the same size, or within one.</p>
 
     <p><strong>5. That is the whole draw.</strong> Because the fingerprints come from the seed, the result was already settled the moment the seed was set. Pressing the button does not roll anything &mdash; it just shows what the seed had already decided. The few seconds of shuffling on screen are there to make the reveal watchable, not to pick the winner.</p>
+
+    <h3>Keeping certain pairs apart</h3>
+    <p>Sometimes a few pairs shouldn&rsquo;t meet in the round robin &mdash; say four strong pairs in a category with four brackets. Add them as a <strong>keep-apart group</strong> and the draw puts every pair of that group in a different bracket. A group can&rsquo;t be bigger than the number of brackets.</p>
+    <p>It is still the same fingerprint draw. Each group&rsquo;s pairs are sorted by fingerprint, then the groups are dealt first, one after another in the order shown, and everyone else after them &mdash; still one at a time around the brackets. Because the pairs of a group are dealt in a row, no two can land in the same bracket. Which bracket each one gets is still decided by the seed. The exported file lists each group, so the draw can still be checked.</p>
 
     <h3>Where did this seed come from?</h3>
     <p>Look at the sheet. Next to the seed it says one of two things.</p>
@@ -867,7 +974,9 @@ let currentBrackets = []; // [{ label, pairs: [] }]
 let currentSeed = '';
 let currentSeedSource = '';   // 'entered' | 'auto'
 let lastAutoSeed = '';        // the last seed this page made up and wrote into the field
-let currentFingerprints = []; // [{ pair, hash }] in draw order
+let currentFingerprints = []; // [{ pair, hash, group }] in draw order; group is 1-based, 0 = not in a keep-apart group
+let currentGroups = [];       // keep-apart groups the last draw used: [[pair, ...], ...]
+let currentGroupOf = new Map(); // pair -> 1-based group number, for the result cards
 let drawCount = 0;
 let lastDrawInputKey = '';    // drawCount resets when the category or pairs change
 
@@ -885,6 +994,8 @@ const pairsCountNumEl = document.getElementById('pairsCountNum');
 const pairsCountLabelEl = document.getElementById('pairsCountLabel');
 const formErrorEl = document.getElementById('formError');
 const generateBtn = document.getElementById('generateBtn');
+const groupListEl = document.getElementById('groupList');
+const addGroupBtn = document.getElementById('addGroupBtn');
 
 const resultsSection = document.getElementById('resultsSection');
 const resultEventEl = document.getElementById('resultEvent');
@@ -993,8 +1104,141 @@ function updatePairsCount(){
     lastPairsCount = n;
   }
 }
-pairsInput.addEventListener('input', updatePairsCount);
+pairsInput.addEventListener('input', () => { updatePairsCount(); reconcileGroups(); renderGroups(); });
 updatePairsCount();
+
+// ==================== Keep-apart groups ====================
+// A group is a list of pairs the draw must put in different brackets. Members
+// are picked from the entered pairs rather than retyped, so a name can never
+// fail to match the string the draw hashes. The draw deals groups first, in
+// order, each sorted by fingerprint, then everyone else (see orderForDraw), so
+// the members of a group are dealt in a row and — with at most as many members
+// as brackets — land in different brackets. Spec:
+// sage-docs/docs/specs/.../bracket-generator-keep-apart-spec.md
+let keepApartGroups = []; // [{ members: [pair, ...], notice: '' }]
+let groupPickList = [];   // what the per-group pickers offered at the last render, by index
+
+// How many times each pair string is entered. The draw can't tell two identical
+// lines apart, so only a pair entered exactly once can join a group.
+function pairCounts(){
+  const counts = new Map();
+  parsePairs().forEach(p => counts.set(p, (counts.get(p) || 0) + 1));
+  return counts;
+}
+
+// The bracket count the draw will use: the field, capped at the pair count.
+function effectiveBracketCount(){
+  let requested = parseInt(bracketCountInput.value, 10);
+  if(isNaN(requested) || requested < 1) requested = 1;
+  return Math.min(requested, Math.max(parsePairs().length, 1));
+}
+
+// 'few' (under 2 members), 'many' (more members than brackets), or '' (fine).
+function groupProblem(group, numBrackets){
+  if(group.members.length < 2) return 'few';
+  if(group.members.length > numBrackets) return 'many';
+  return '';
+}
+
+// Drops members that are no longer in the list exactly once (a line was edited
+// or removed, or a duplicate was added), and says so on the group.
+function reconcileGroups(){
+  const counts = pairCounts();
+  keepApartGroups.forEach(g => {
+    const kept = g.members.filter(p => counts.get(p) === 1);
+    const dropped = g.members.length - kept.length;
+    if(dropped > 0) g.notice = `${pluralize(dropped, 'pair')} removed: no longer in the list exactly once.`;
+    g.members = kept;
+  });
+}
+
+function renderGroups(){
+  const counts = pairCounts();
+  const taken = new Set(keepApartGroups.flatMap(g => g.members));
+  const seen = new Set();
+  groupPickList = parsePairs().filter(p => {
+    if(counts.get(p) !== 1 || taken.has(p) || seen.has(p)) return false;
+    seen.add(p);
+    return true;
+  });
+  const numBrackets = effectiveBracketCount();
+  const noPairs = parsePairs().length === 0;
+
+  groupListEl.innerHTML = keepApartGroups.map((g, gi) => {
+    const n = g.members.length;
+    const problem = groupProblem(g, numBrackets);
+    const bad = problem === 'many';
+    let status = problem === 'few'
+      ? `Add at least 2 pairs.`
+      : bad
+        ? `${pluralize(n, 'pair')}, but only ${pluralize(numBrackets, 'bracket')}. Remove a pair or add brackets.`
+        : `${pluralize(n, 'pair')} · each in a different bracket`;
+    if(g.notice) status += ` — ${g.notice}`;
+    const chips = g.members.map((p, mi) => `
+        <span class="group-chip">${escapeHtml(p)}<button type="button" data-remove-member="${mi}" aria-label="Remove ${escapeHtml(p)} from group ${gi + 1}">&times;</button></span>`).join('');
+    const options = groupPickList.map((p, pi) => `<option value="${pi}">${escapeHtml(p)}</option>`).join('');
+    const placeholder = groupPickList.length ? 'Add a pair…' : (noPairs ? 'Enter pairs above first' : 'No more pairs to add');
+    return `
+      <div class="group-card${bad ? ' is-bad' : ''}" data-group="${gi}">
+        <div class="group-head">
+          <span class="group-title">Group ${gi + 1}</span>
+          <span class="group-status">${escapeHtml(status)}</span>
+          <button type="button" class="group-remove" data-remove-group aria-label="Remove group ${gi + 1}">&times;</button>
+        </div>
+        <div class="group-chips">${chips}</div>
+        <select class="group-add" aria-label="Add a pair to group ${gi + 1}"${groupPickList.length ? '' : ' disabled'}>
+          <option value="">${placeholder}</option>${options}
+        </select>
+      </div>`;
+  }).join('');
+}
+
+function focusGroupPicker(gi){
+  const sel = groupListEl.querySelector(`[data-group="${gi}"] .group-add`);
+  if(sel && !sel.disabled) sel.focus();
+}
+
+addGroupBtn.addEventListener('click', () => {
+  keepApartGroups.push({ members: [], notice: '' });
+  renderGroups();
+  focusGroupPicker(keepApartGroups.length - 1);
+});
+
+groupListEl.addEventListener('click', e => {
+  const card = e.target.closest('[data-group]');
+  if(!card) return;
+  const gi = Number(card.dataset.group);
+  if(e.target.closest('[data-remove-group]')){
+    keepApartGroups.splice(gi, 1);
+    renderGroups();
+    addGroupBtn.focus();
+    return;
+  }
+  const rm = e.target.closest('[data-remove-member]');
+  if(rm){
+    keepApartGroups[gi].members.splice(Number(rm.dataset.removeMember), 1);
+    keepApartGroups[gi].notice = '';
+    renderGroups();
+    focusGroupPicker(gi);
+  }
+});
+
+groupListEl.addEventListener('change', e => {
+  const sel = e.target.closest('.group-add');
+  const card = e.target.closest('[data-group]');
+  if(!sel || !card || sel.value === '') return;
+  const gi = Number(card.dataset.group);
+  const pair = groupPickList[Number(sel.value)];
+  if(pair !== undefined){
+    keepApartGroups[gi].members.push(pair);
+    keepApartGroups[gi].notice = '';
+  }
+  renderGroups();
+  focusGroupPicker(gi);
+});
+
+bracketCountInput.addEventListener('input', renderGroups);
+renderGroups();
 
 function showFormError(msg){
   formErrorEl.textContent = msg;
@@ -1014,6 +1258,33 @@ function dealBrackets(orderedPairs, numBrackets){
   return buckets.map((list, i) => ({ label: bracketLabel(i), pairs: list }));
 }
 
+// Turns the fingerprint-sorted list into the order the deal runs on: each
+// keep-apart group first (in the order given), its members still sorted by
+// fingerprint, then everyone not in a group, also sorted. Dealing that list
+// round-robin puts any run of up to N consecutive pairs in N different
+// brackets, so a group no bigger than the bracket count is always split up.
+// `group` on each entry is the 1-based group number, 0 for everyone else.
+// With no groups this returns the list unchanged, so the draw is exactly the
+// one it was before keep-apart groups existed.
+function orderForDraw(sorted, groups){
+  const groupOf = new Map();
+  groups.forEach((g, gi) => g.forEach(p => groupOf.set(p, gi + 1)));
+  const out = [];
+  groups.forEach((_, gi) => {
+    sorted.forEach(o => { if(groupOf.get(o.pair) === gi + 1) out.push({ ...o, group: gi + 1 }); });
+  });
+  sorted.forEach(o => { if(!groupOf.has(o.pair)) out.push({ ...o, group: 0 }); });
+  return out;
+}
+
+// The constraint, checked on the finished deal. Cheap insurance: if the
+// ordering or the deal is ever changed in a way that breaks it, the draw is
+// refused rather than published with a group sitting in one bracket.
+function groupsApart(brackets, groups){
+  return groups.every(g =>
+    brackets.every(b => b.pairs.filter(p => g.includes(p)).length <= 1));
+}
+
 async function generateBrackets(){
   const pairs = parsePairs();
   clearFormError();
@@ -1026,6 +1297,24 @@ async function generateBrackets(){
   let requested = parseInt(bracketCountInput.value, 10);
   if(isNaN(requested) || requested < 1) requested = 1;
   const numBrackets = Math.min(requested, pairs.length);
+
+  // Keep-apart groups are checked before anything else changes (no seed is
+  // generated, no draw is counted) so a refused draw leaves no trace.
+  reconcileGroups();
+  renderGroups();
+  const groups = keepApartGroups.map(g => g.members.slice());
+  for(let gi = 0; gi < keepApartGroups.length; gi++){
+    const problem = groupProblem(keepApartGroups[gi], numBrackets);
+    if(problem === 'few'){
+      showFormError(`Keep-apart group ${gi + 1} needs at least 2 pairs. Add pairs to it, or remove the group.`);
+      return;
+    }
+    if(problem === 'many'){
+      showFormError(`Keep-apart group ${gi + 1} has ${pluralize(groups[gi].length, 'pair')} but there ${numBrackets === 1 ? 'is' : 'are'} only ${pluralize(numBrackets, 'bracket')}, so they can't all go in different brackets. Remove a pair from the group, or add brackets.`);
+      return;
+    }
+  }
+
   if(numBrackets !== requested){
     bracketCountInput.value = numBrackets;
     showFormError(`Only ${pluralize(pairs.length, 'pair')} entered, so the bracket count was capped at ${numBrackets}.`);
@@ -1054,7 +1343,9 @@ async function generateBrackets(){
   // only advances meaningfully when the seed changed too.
   // JSON.stringify rather than a delimiter: no separator can collide with a
   // category name or a pair, so the key is unambiguous by construction.
-  const inputKey = JSON.stringify([currentCategory, pairs]);
+  // The groups are part of the input — they change the result — so changing
+  // them starts the count over, like changing the pair list does.
+  const inputKey = JSON.stringify([currentCategory, pairs, groups]);
   if(inputKey !== lastDrawInputKey){ drawCount = 0; lastDrawInputKey = inputKey; }
   drawCount += 1;
 
@@ -1069,11 +1360,21 @@ async function generateBrackets(){
     showFormError('Could not compute the draw fingerprints. Reload the page and try again.');
     return;
   }
-  currentFingerprints = ordered.map(o => ({ pair: o.pair, hash: o.hash }));
+  const drawOrder = orderForDraw(ordered, groups);
 
   // Lock in the real result up front so the animation is purely cosmetic —
   // what the user sees settle on is exactly what gets rendered/exported.
-  const finalDeal = dealBrackets(ordered.map(o => o.pair), numBrackets);
+  const finalDeal = dealBrackets(drawOrder.map(o => o.pair), numBrackets);
+  if(!groupsApart(finalDeal, groups)){
+    generateBtn.disabled = false;
+    showFormError('Could not keep the groups apart. Reload the page and try again.');
+    return;
+  }
+
+  currentFingerprints = drawOrder.map(o => ({ pair: o.pair, hash: o.hash, group: o.group }));
+  currentGroups = groups;
+  currentGroupOf = new Map();
+  groups.forEach((g, gi) => g.forEach(p => currentGroupOf.set(p, gi + 1)));
 
   runShuffleAnimation(pairs, finalDeal);
 }
@@ -1091,7 +1392,9 @@ function renderResultsHeader(){
   resultTitleEl.textContent = currentCategory || 'Untitled Category';
   const totalPairs = currentBrackets.reduce((sum, b) => sum + b.pairs.length, 0);
   resultMetaEl.textContent =
-    `${pluralize(currentBrackets.length, 'bracket')} \u00b7 ${pluralize(totalPairs, 'pair')} \u00b7 Drawn ${new Date().toLocaleString()}`;
+    `${pluralize(currentBrackets.length, 'bracket')} \u00b7 ${pluralize(totalPairs, 'pair')} \u00b7 ` +
+    (currentGroups.length ? `${pluralize(currentGroups.length, 'keep-apart group')} \u00b7 ` : '') +
+    `Drawn ${new Date().toLocaleString()}`;
 }
 
 function renderBracketGrid(isShuffling){
@@ -1103,9 +1406,13 @@ function renderBracketGrid(isShuffling){
 
   bracketGridEl.innerHTML = currentBrackets.map((b, i) => {
     const listHtml = b.pairs.length
-      ? `<ol class="bracket-list">${b.pairs.map((p, idx) => `
-          <li><span class="bp-num">${idx + 1}</span><span class="bp-name">${escapeHtml(p)}</span></li>
-        `).join('')}</ol>`
+      ? `<ol class="bracket-list">${b.pairs.map((p, idx) => {
+          const g = isShuffling ? 0 : (currentGroupOf.get(p) || 0);
+          const tag = g ? `<span class="bp-group" title="Keep-apart group ${g}">G${g}</span>` : '';
+          return `
+          <li><span class="bp-num">${idx + 1}</span><span class="bp-name">${escapeHtml(p)}</span>${tag}</li>
+        `;
+        }).join('')}</ol>`
       : `<div class="bracket-empty">No pairs assigned</div>`;
     const countLabel = isShuffling ? 'Shuffling\u2026' : pluralize(b.pairs.length, 'pair');
     return `
@@ -1246,16 +1553,46 @@ function exportAsText(){
   out += `${'-'.repeat(24)}\n`;
   out += `Seed:   ${currentSeed}  (${currentSeedSource})\n`;
   out += `Draw:   #${drawCount}\n`;
-  out += 'Method: SHA-256(seed + "|" + pair), sorted ascending, dealt round-robin\n\n';
+  // Keep-apart groups change the draw order (groups first, then everyone else),
+  // so they have to be in the audit trail. They go here, in the verification
+  // block, and never on the BRACKET lines above: the workbook's draw import
+  // reads those lines as pair names. With no groups every line below is exactly
+  // what this export said before groups existed.
+  const grouped = currentGroups.length > 0;
+  out += grouped
+    ? 'Method: SHA-256(seed + "|" + pair); keep-apart groups first, in order, then everyone else;\n' +
+      '        each part sorted ascending; dealt round-robin\n\n'
+    : 'Method: SHA-256(seed + "|" + pair), sorted ascending, dealt round-robin\n\n';
   out += 'Fingerprints, in draw order:\n';
-  currentFingerprints.forEach(f => { out += `  ${f.hash.slice(0, 8)}...  ${f.pair}\n`; });
+  if(grouped){
+    const section = (heading, entries) => {
+      out += `  ${heading}\n`;
+      entries.forEach(f => { out += `    ${f.hash.slice(0, 8)}...  ${f.pair}\n`; });
+    };
+    currentGroups.forEach((g, gi) => {
+      section(`Group ${gi + 1} (keep apart, ${pluralize(g.length, 'pair')})`,
+        currentFingerprints.filter(f => f.group === gi + 1));
+    });
+    const rest = currentFingerprints.filter(f => f.group === 0);
+    if(rest.length) section(`Everyone else (${pluralize(rest.length, 'pair')})`, rest);
+  } else {
+    currentFingerprints.forEach(f => { out += `  ${f.hash.slice(0, 8)}...  ${f.pair}\n`; });
+  }
   out += '\n';
   out += 'TO CHECK THIS DRAW YOURSELF\n';
   out += 'Search the web for "SHA-256 calculator" and paste in exactly:\n';
   if(currentFingerprints.length) out += `  ${currentSeed}|${currentFingerprints[0].pair}\n`;
-  out += 'The result should start with the fingerprint above. Pairs are sorted\n';
-  out += 'from lowest fingerprint to highest, then dealt one at a time around\n';
-  out += 'the brackets: 1st to Bracket A, 2nd to Bracket B, and so on.\n\n';
+  if(grouped){
+    out += 'The result should start with the fingerprint above. Within each part\n';
+    out += 'above, pairs are sorted from lowest fingerprint to highest. Read the\n';
+    out += 'list top to bottom, group by group, then everyone else, and deal it one\n';
+    out += 'pair at a time around the brackets: 1st to Bracket A, 2nd to Bracket B,\n';
+    out += 'and so on. A group is dealt in a row, so no two of its pairs share a bracket.\n\n';
+  } else {
+    out += 'The result should start with the fingerprint above. Pairs are sorted\n';
+    out += 'from lowest fingerprint to highest, then dealt one at a time around\n';
+    out += 'the brackets: 1st to Bracket A, 2nd to Bracket B, and so on.\n\n';
+  }
   out += 'If two fingerprints match on the digits shown, compare more of them \u2014\n';
   out += 'the order is decided by the full code, not the first eight characters.\n\n';
 
@@ -1568,6 +1905,7 @@ async function exportAsImage(){
   ctx.font = '500 10.5px "Barlow Condensed", sans-serif';
   const verifyText =
     `Seed: ${currentSeed} (${currentSeedSource}) · Draw #${drawCount} · ` +
+    (currentGroups.length ? `${pluralize(currentGroups.length, 'keep-apart group')} · ` : '') +
     'SHA-256 verifiable — see the text export to check';
   ctx.fillText(truncateToWidth(ctx, verifyText, width - 80), width / 2, height - 42);
 
