@@ -975,6 +975,14 @@
   /* A result rendered as labelled rows (resync, Check connection) rather than
      a line of text — see resultRowsHTML(). */
   .organizer-result.rich{white-space:normal;}
+  .organizer-result.closable{position:relative; padding-right:48px;}
+  .organizer-result .result-close{
+    position:absolute; top:6px; right:6px;
+    min-width:36px; min-height:36px; padding:0;
+    border:0; border-radius:8px; background:transparent; color:inherit;
+    font-size:20px; line-height:1; cursor:pointer; opacity:.7;
+  }
+  .organizer-result .result-close:hover{opacity:1; background:rgba(20,38,60,.06);}
   .organizer-result .result-title{font-weight:700; font-size:13.5px; letter-spacing:.02em; margin-bottom:8px;}
   .organizer-result .result-rows{margin:0; display:grid; gap:6px;}
   .organizer-result .result-row{display:grid; grid-template-columns:minmax(90px, 32%) 1fr; gap:10px; align-items:baseline;}
@@ -989,7 +997,7 @@
   /* ---------- TOASTS (short outcomes; see showToast) ---------- */
   .toast-stack{
     position:fixed; left:50%; transform:translateX(-50%);
-    bottom:max(16px, env(safe-area-inset-bottom));
+    top:max(16px, env(safe-area-inset-top));
     width:min(92vw, 440px);
     display:flex; flex-direction:column; gap:8px;
     z-index:1000;
@@ -1003,12 +1011,13 @@
     font-family:'Inter',sans-serif; font-size:14px; line-height:1.45;
     box-shadow:var(--card-shadow);
     background:var(--white); border:1px solid var(--line); color:var(--ink);
-    opacity:0; transform:translateY(8px);
+    opacity:0; transform:translateY(-8px);
     transition:opacity .18s ease, transform .18s ease;
   }
   .toast.show{opacity:1; transform:none;}
   .toast.ok{background:#EAF7EF; border-color:rgba(52,199,120,.5); color:#0F5C2E;}
   .toast.error{background:#FDEDEF; border-color:rgba(255,90,110,.5); color:#9A2A3A;}
+  .toast.warn{background:#FFF4E0; border-color:rgba(240,170,40,.55); color:#7A4B00;}
   .toast.loading{color:var(--muted);}
   .toast-text{flex:1; white-space:pre-wrap; word-break:break-word;}
   .toast-close{
@@ -2593,7 +2602,7 @@
 </footer>
 
 <!-- Short outcomes (go-live, sync method, sign-in, "pick a day first") show
-     here, pinned to the bottom of the screen so they are seen wherever the
+     here, pinned to the top of the screen so they are seen wherever the
      button that caused them sits. See showToast(). -->
 <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
@@ -4998,7 +5007,10 @@ function revealActiveTab(btn){
 // Switches to one view: marks its tab active, shows its panel, hides the
 // rest and renders it. Used by the tab buttons and by revealLiveTabsAfterLoad
 // (which lands on Mission Control after a day loads).
+let CURRENT_VIEW = null;
 function showView(view){
+  if(view !== CURRENT_VIEW) clearResultBoxes();
+  CURRENT_VIEW = view;
   const btn = document.querySelector(`.view-tab[data-view="${view}"]`);
   viewTabs.forEach(b => b.classList.remove('active'));
   if(btn){
@@ -5057,6 +5069,7 @@ const syncStatusEl = document.getElementById('syncStatus');
 // flow as picking the day by hand. isInitialLoad only affects whether a
 // previously-saved search is brought back afterwards.
 async function selectDay(idx, { isInitialLoad = false } = {}){
+  clearResultBoxes();
   currentDayIndex = idx;
   liveChannel.follow(CURRENT_EVENT_KEY, DAYS[idx].key);
   if(dayPickerEl) dayPickerEl.value = String(idx);
@@ -7073,7 +7086,7 @@ if(orgCheckConnBtn){
 
 // ---- Showing outcomes ------------------------------------------------------
 // Short outcomes (a switch flipped, signed in, "pick a day first") are toasts,
-// pinned to the bottom of the screen so they are seen wherever the button
+// pinned to the top of the screen so they are seen wherever the button
 // sits. Results worth reading (Check connection, a resync's per-facility
 // report) go in a box right under their button, as labelled rows, and the box
 // is scrolled into view.
@@ -7103,9 +7116,13 @@ function showToast(kind, text, key){
   close.textContent = '×';
   close.addEventListener('click', () => toast.remove());
   toast.append(msg, close);
-  toastStackEl.append(toast);
-  while(toastStackEl.children.length > 3) toastStackEl.firstElementChild.remove();
-  requestAnimationFrame(() => toast.classList.add('show'));
+  toastStackEl.prepend(toast); // newest first, at the top
+  while(toastStackEl.children.length > 3) toastStackEl.lastElementChild.remove();
+  // Flush styles so the fade-in transition runs. Not requestAnimationFrame:
+  // it never fires while the page is not painting (a backgrounded tab), which
+  // would leave the toast invisible.
+  void toast.offsetWidth;
+  toast.classList.add('show');
   if(TOAST_MS[kind]) setTimeout(() => toast.remove(), TOAST_MS[kind]);
 }
 
@@ -7114,12 +7131,54 @@ function revealResultBox(box){
   try{ box.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); } catch(e){ box.scrollIntoView(false); }
 }
 
+// Result boxes belong to the event, day and tab they were shown on.
+// clearResultBoxes() hides them when any of those changes, and bumps
+// resultEpoch. A box records the epoch its operation started under (on its
+// "loading" message); a result that arrives after the epoch moved on, a
+// resync still running when the operator switched day, say, shows as a
+// toast instead, so it's neither lost nor shown under the wrong day.
+let resultEpoch = 0;
+function clearResultBoxes(){
+  resultEpoch++;
+  document.querySelectorAll('.organizer-result').forEach(box => {
+    box.style.display = 'none';
+    box.textContent = '';
+  });
+}
+
+// True (and the outcome toasted) when this box's operation started before
+// the last clearResultBoxes().
+function resultArrivedLate(box, kind, text){
+  const started = box.dataset.epoch;
+  delete box.dataset.epoch;
+  if(started === undefined || Number(started) === resultEpoch) return false;
+  showToast(kind, text, box.id);
+  return true;
+}
+
+// A finished result can be closed; one still in progress ("Resyncing…") can't.
+function addResultClose(box){
+  box.classList.add('closable');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'result-close';
+  close.setAttribute('aria-label', 'Close');
+  close.textContent = '\u00d7';
+  close.addEventListener('click', () => { box.style.display = 'none'; });
+  box.append(close);
+}
+
 function showResultText(box, kind, text){
   if(!box) return;
+  if(kind === 'loading') box.dataset.epoch = String(resultEpoch);
+  else if(resultArrivedLate(box, kind, text)) return;
   box.className = `organizer-result ${kind}`;
   box.textContent = text;
   box.style.display = '';
-  if(kind !== 'loading') revealResultBox(box);
+  if(kind !== 'loading'){
+    addResultClose(box);
+    revealResultBox(box);
+  }
 }
 
 // rows: [{ label, value, kind?: 'ok' | 'warn' | 'error', list?: string[] }]
@@ -7133,9 +7192,11 @@ function resultRowsHTML(title, rows){
 
 function showResultRows(box, kind, title, rows){
   if(!box) return;
+  if(resultArrivedLate(box, kind, title)) return;
   box.className = `organizer-result ${kind} rich`;
   box.innerHTML = resultRowsHTML(title, rows);
   box.style.display = '';
+  addResultClose(box);
   revealResultBox(box);
 }
 
@@ -7356,6 +7417,7 @@ function renderEventPicker(){
 // is brought back afterwards (see selectDay) — a manual event switch drops
 // it, same as a manual day switch always has.
 async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = null } = {}){
+  clearResultBoxes();
   const rawEvent = EVENTS_REGISTRY.get(eventKey);
   CURRENT_EVENT_KEY = eventKey;
   // type must be explicit and recognized — never inferred (spec §1/§2.1).
