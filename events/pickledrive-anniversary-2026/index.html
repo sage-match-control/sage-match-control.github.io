@@ -2572,10 +2572,7 @@ function renderAutocomplete(query){
   if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
   acList.innerHTML = matches.map((e, i) => e.kind === 'team'
     ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}</span>${e.group ? `<small>Bracket ${e.group}</small>` : ''}</div>`
-    : (() => {
-        const meta = [e.teams.join(', '), e.level ? levelLabel(e.level) : '', e.gender || ''].filter(Boolean).join(' · ');
-        return `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${meta ? `<small>${escapeHtml(meta)}</small>` : ''}</div>`;
-      })()
+    : `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${e.teams.length ? `<small>${escapeHtml(e.teams.join(', '))}</small>` : ''}</div>`
   ).join('');
   acList.classList.add('show');
   acIndex = -1;
