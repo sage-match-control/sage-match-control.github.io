@@ -2374,7 +2374,7 @@ function rosterListHTML(teamCode, highlight){
 function rosterCardHTML(teamCode, { open = false, toggle = true, highlight = null } = {}){
   const name = teamNameOf(teamCode) || `Team ${teamCode}`;
   const count = (ROSTER_BY_TEAM.get(teamCode) || []).length;
-  const meta = `Team ${escapeHtml(teamCode)} · ${count} player${count === 1 ? '' : 's'}`;
+  const meta = `${count} player${count === 1 ? '' : 's'}`;
   if(!toggle){
     return `<div class="roster-card"><div class="roster-head"><span class="rt-name">${escapeHtml(name)}</span><small>${meta}</small></div>${rosterListHTML(teamCode, highlight)}</div>`;
   }
