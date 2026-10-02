@@ -2202,6 +2202,43 @@
     padding:1px 8px;
   }
   .group-section{ margin-bottom:12px; }
+  /* Teams tab: every team's roster (team events only). */
+  .roster-actions{ display:flex; justify-content:flex-end; margin:0 0 10px; }
+  .roster-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));
+    gap:12px;
+    align-items:start;
+  }
+  .roster-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    overflow:hidden;
+  }
+  .roster-toggle{
+    width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:13px 14px; background:none; border:0; cursor:pointer; text-align:left;
+    font:inherit; color:var(--ink);
+  }
+  .roster-toggle .rt-name, .roster-head .rt-name{ font-weight:700; font-size:16px; color:var(--ink); display:block; }
+  .roster-toggle small, .roster-head small{ display:block; font-size:12px; color:var(--muted); margin-top:2px; }
+  .roster-toggle .chev{ transition:transform .15s ease; flex:none; }
+  .roster-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .roster-head{ padding:13px 14px 6px; }
+  .roster-list{ list-style:none; margin:0; padding:0 14px 10px; }
+  .roster-list li{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:8px 0; border-top:1px solid var(--line); font-size:14px;
+  }
+  .roster-list li.me{ font-weight:700; }
+  .roster-tags{ display:flex; gap:6px; flex:none; }
+  .roster-tag{
+    font-size:11px; font-weight:600; padding:2px 7px; border-radius:6px;
+    background:var(--paper); border:1px solid var(--line); color:var(--muted); white-space:nowrap;
+  }
+  @media (prefers-reduced-motion: reduce){ .roster-toggle .chev{ transition:none; } }
   .group-toggle{
     width:100%;
     display:flex;
@@ -2490,6 +2527,7 @@
     <button class="view-tab" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
+    <button class="view-tab" data-view="teams" type="button" hidden style="display:none;">Teams</button>
   </div>
 
   <div class="regal-rule"><span class="diamond"></span></div>
@@ -2536,6 +2574,9 @@
     <div id="awardsChampionBanner"></div>
     <div class="awards-summary" id="awardsSummaryBar"></div>
     <div class="awards-grid" id="awardsGrid"></div>
+  </div>
+  <div id="teamsResults" style="display:none;">
+    <div id="teamsBody"></div>
   </div>
   <div id="attendanceResults" style="display:none;">
     <div class="attendance-panel">
@@ -3663,7 +3704,12 @@ async function loadLiveData(){
     MATCHES_BY_FACILITY = matchesByFacility;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
-    if(CURRENT_TYPE === 'team') rebuildTeamData();
+    if(CURRENT_TYPE === 'team'){
+      teamSetRoster(snapshot);
+      rebuildTeamData();
+    }
+    syncTeamsTab();
+    if(CURRENT_VIEW === 'teams') renderTeamRosters();
     LAST_SNAPSHOT = snapshot;
     if(typeof renderOrganizerStatus === 'function') renderOrganizerStatus();
 
@@ -4144,7 +4190,98 @@ function rebuildTeamData(){
   }));
 }
 
+// ---- team rosters (the snapshot's facilities[].rosterCsv: teamCode, player,
+// level, gender). The same parsing and order as the event page's Teams tab.
+let TEAM_ROSTER = [];
+let TEAM_ROSTER_BY_CODE = new Map(); // teamCode -> rows in sheet order
+const TEAM_ROSTER_OPEN = new Set();  // cards left open across the poll's re-render
+const TEAM_CHEV_SVG = '<svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function teamRowsToRoster(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iCode = idx('teamCode'), iPlayer = idx('player'), iLevel = idx('level'), iGender = idx('gender');
+  if(iCode < 0 || iPlayer < 0) return [];
+  const cell = (row, i) => i > -1 ? (row[i] || '').trim() : '';
+  return rows.slice(1)
+    .map(row => ({ teamCode: cell(row, iCode), player: cell(row, iPlayer), level: cell(row, iLevel), gender: cell(row, iGender) }))
+    .filter(r => r.teamCode && r.player);
+}
+function teamSetRoster(snapshot){
+  TEAM_ROSTER = (snapshot.facilities || []).flatMap(f => teamRowsToRoster(parseCSV(f.rosterCsv || '')));
+  TEAM_ROSTER_BY_CODE = new Map();
+  TEAM_ROSTER.forEach(r => {
+    if(!TEAM_ROSTER_BY_CODE.has(r.teamCode)) TEAM_ROSTER_BY_CODE.set(r.teamCode, []);
+    TEAM_ROSTER_BY_CODE.get(r.teamCode).push(r);
+  });
+}
+// A team's players, lowest level first (sheet order within a level).
+function teamRosterOf(teamCode){
+  const list = TEAM_ROSTER_BY_CODE.get(teamCode) || [];
+  const rank = r => { const n = parseFloat(r.level); return isNaN(n) ? Infinity : n; };
+  return list.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
+}
+const teamLevelLabel = v => /^\d+(\.\d+)?$/.test(v) ? `Level ${v}` : v;
+
+function teamRosterListHTML(teamCode, highlight){
+  return `<ul class="roster-list">${teamRosterOf(teamCode).map(r => `
+    <li class="${highlight && r.player.toLowerCase() === highlight ? 'me' : ''}"><span>${escapeHtml(r.player)}</span>
+      <span class="roster-tags">${r.level ? `<span class="roster-tag">${escapeHtml(teamLevelLabel(r.level))}</span>` : ''}${r.gender ? `<span class="roster-tag">${escapeHtml(r.gender)}</span>` : ''}</span></li>`).join('')}</ul>`;
+}
+function teamRosterCardHTML(teamCode, { open = false, toggle = true, highlight = null } = {}){
+  const name = teamNameOf(teamCode) || `Team ${teamCode}`;
+  const count = (TEAM_ROSTER_BY_CODE.get(teamCode) || []).length;
+  const meta = `Team ${escapeHtml(teamCode)} · ${count} player${count === 1 ? '' : 's'}`;
+  if(!toggle){
+    return `<div class="roster-card"><div class="roster-head"><span class="rt-name">${escapeHtml(name)}</span><small>${meta}</small></div>${teamRosterListHTML(teamCode, highlight)}</div>`;
+  }
+  return `<div class="roster-card">
+    <button type="button" class="roster-toggle" data-roster-team="${escapeHtml(teamCode)}" aria-expanded="${open}">
+      <span><span class="rt-name">${escapeHtml(name)}</span><small>${meta}</small></span>${TEAM_CHEV_SVG}
+    </button>
+    ${open ? teamRosterListHTML(teamCode, highlight) : ''}
+  </div>`;
+}
+
+// The Teams tab shows for a team event whose snapshot carries a roster.
+function syncTeamsTab(){
+  const btn = document.querySelector('.view-tab[data-view="teams"]');
+  if(!btn) return;
+  const on = CURRENT_TYPE === 'team' && TEAM_ROSTER.length > 0;
+  btn.hidden = !on;
+  btn.style.display = on ? '' : 'none';
+  if(typeof syncViewTabsScroll === 'function') syncViewTabsScroll();
+}
+
+function renderTeamRosters(){
+  const body = document.getElementById('teamsBody');
+  if(!body) return;
+  if(!TEAM_ROSTER.length){
+    body.innerHTML = `<div class="empty-state">Team rosters aren't published yet. They come from the workbook's Teams tab on the next sync.</div>`;
+    return;
+  }
+  const groups = new Map();
+  const seen = new Set();
+  STANDINGS.filter(st => isGroupTeamCode(st.teamCode) && TEAM_ROSTER_BY_CODE.has(st.teamCode)).forEach(st => {
+    const g = st.bracket || '';
+    if(!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(st.teamCode);
+    seen.add(st.teamCode);
+  });
+  const others = Array.from(TEAM_ROSTER_BY_CODE.keys()).filter(c => !seen.has(c));
+  if(others.length) groups.set('__other__', others);
+  const keys = Array.from(groups.keys()).sort((a, b) => a === '__other__' ? 1 : b === '__other__' ? -1 : a.localeCompare(b, undefined, { numeric: true }));
+  const allOpen = Array.from(TEAM_ROSTER_BY_CODE.keys()).every(c => TEAM_ROSTER_OPEN.has(c));
+  body.innerHTML = `<div class="roster-actions"><button type="button" class="organizer-secondary-btn" data-roster-all="${allOpen ? 'close' : 'open'}">${allOpen ? 'Collapse all' : 'Expand all'}</button></div>` +
+    keys.map(g => `<h2 class="section-title">${g === '__other__' ? 'Other teams' : (g ? `Bracket ${escapeHtml(g)}` : 'Teams')}</h2>
+      <div class="roster-grid">${groups.get(g).map(code => teamRosterCardHTML(code, { open: TEAM_ROSTER_OPEN.has(code) })).join('')}</div>`).join('');
+}
+
 function teamResetState(){
+  TEAM_ROSTER = [];
+  TEAM_ROSTER_BY_CODE = new Map();
+  TEAM_ROSTER_OPEN.clear();
   TEAM_MATCHUPS = [];
   TEAM_ROW_BY_CODE = new Map();
   ADVANCING = new Set();
@@ -4426,6 +4563,15 @@ function teamRebuildIndex(){
       });
     });
   });
+  // Roster players too, so a player is findable before any lineup names them.
+  TEAM_ROSTER.forEach(r => {
+    const key = r.player.toLowerCase();
+    if(!byName.has(key)) byName.set(key, { kind: 'player', name: r.player, nameLower: key, teams: [], matchNums: [] });
+    const entry = byName.get(key);
+    if(!entry.rosterTeam) entry.rosterTeam = r.teamCode;
+    const teamName = teamNameOf(r.teamCode);
+    if(teamName && !entry.teams.includes(teamName)) entry.teams.push(teamName);
+  });
   const players = Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
   TEAM_INDEX = [...teams, ...players];
 
@@ -4509,6 +4655,7 @@ function teamResultHTML(entry){
       ${entry.group ? `<span class="division-tag">Bracket ${entry.group}</span>` : ''}
     </div>
     <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
+    ${TEAM_ROSTER_BY_CODE.has(base) ? `<div style="margin:0 0 14px">${teamRosterCardHTML(base, { toggle: false })}</div>` : ''}
     ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
     ${unset ? TEAM_LINEUP_NOTE : ''}`;
 }
@@ -4529,6 +4676,7 @@ function teamPlayerResultHTML(entry){
       <h2>${escapeHtml(entry.name)}</h2>
     </div>
     <div class="results-meta">${escapeHtml(teamNames)}${matches.length} match${matches.length===1?'':'es'}</div>
+    ${entry.rosterTeam && TEAM_ROSTER_BY_CODE.has(entry.rosterTeam) ? `<div style="margin:0 0 14px">${teamRosterCardHTML(entry.rosterTeam, { toggle: false, highlight: entry.nameLower })}</div>` : ''}
     ${cards}
     ${unset ? TEAM_LINEUP_NOTE : ''}`;
 }
@@ -5667,6 +5815,9 @@ function showView(view){
   searchPanelEl.style.display = view === 'finder' ? '' : 'none';
   resultsEl.style.display = view === 'finder' ? '' : 'none';
   standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
+  const teamsResults = document.getElementById('teamsResults');
+  if(teamsResults) teamsResults.style.display = view === 'teams' ? '' : 'none';
+  if(view === 'teams') renderTeamRosters();
   if(awardsResultsEl) awardsResultsEl.style.display = view === 'awards' ? '' : 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = view === 'organizer' ? '' : 'none';
   // Leaving the Attendance tab, for any other view, tears its list (and poll) down.
@@ -5749,6 +5900,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
+  { const tr = document.getElementById('teamsResults'); if(tr) tr.style.display = 'none'; }
   if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
   attConsoleDestroy();
@@ -6531,6 +6683,20 @@ standingsBodyEl.addEventListener('click', (e) => {
     if(TEAM_OPEN_GROUPS.has(g)) TEAM_OPEN_GROUPS.delete(g); else TEAM_OPEN_GROUPS.add(g);
     renderStandings();
   }
+});
+document.getElementById('teamsBody').addEventListener('click', (e) => {
+  const all = e.target.closest('[data-roster-all]');
+  if(all){
+    if(all.dataset.rosterAll === 'open') TEAM_ROSTER_BY_CODE.forEach((_, c) => TEAM_ROSTER_OPEN.add(c));
+    else TEAM_ROSTER_OPEN.clear();
+    renderTeamRosters();
+    return;
+  }
+  const btn = e.target.closest('[data-roster-team]');
+  if(!btn) return;
+  const code = btn.dataset.rosterTeam;
+  if(TEAM_ROSTER_OPEN.has(code)) TEAM_ROSTER_OPEN.delete(code); else TEAM_ROSTER_OPEN.add(code);
+  renderTeamRosters();
 });
 resultsEl.addEventListener('click', (e) => {
   if(CURRENT_TYPE !== 'team') return;
@@ -8426,10 +8592,12 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
+  { const tr = document.getElementById('teamsResults'); if(tr) tr.style.display = 'none'; }
   if(awardsResultsEl) awardsResultsEl.style.display = 'none';
   if(organizerResultsEl) organizerResultsEl.style.display = 'none';
   if(attConsoleResultsEl) attConsoleResultsEl.style.display = 'none';
   syncAttendanceTab();
+  syncTeamsTab();
 
   if(!rawEvent){
     DAYS = [];

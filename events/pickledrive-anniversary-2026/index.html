@@ -784,6 +784,49 @@
     padding:1px 8px;
   }
   .group-section{ margin-bottom:12px; }
+  /* ---------- TEAMS (rosters) ---------- */
+  .roster-actions{ display:flex; justify-content:flex-end; margin:0 0 10px; }
+  .roster-actions button{
+    font-family:'Montserrat',sans-serif; font-size:12px; font-weight:600;
+    padding:7px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--white); color:var(--ink); cursor:pointer;
+  }
+  .roster-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(270px, 1fr));
+    gap:12px;
+    align-items:start;
+  }
+  .roster-card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--card-shadow);
+    overflow:hidden;
+  }
+  .roster-toggle{
+    width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:13px 14px; background:none; border:0; cursor:pointer; text-align:left;
+    font:inherit; color:var(--ink);
+  }
+  .roster-toggle .rt-name, .roster-head .rt-name{ font-family:'Playfair Display',serif; font-weight:700; font-size:18px; color:var(--navy); display:block; }
+  .roster-toggle small, .roster-head small{ display:block; font-family:'Montserrat',sans-serif; font-size:12px; color:var(--muted); margin-top:2px; }
+  .roster-toggle .chev{ transition:transform .15s ease; flex:none; }
+  .roster-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .roster-head{ padding:13px 14px 6px; }
+  .roster-list{ list-style:none; margin:0; padding:0 14px 10px; }
+  .roster-list li{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:8px 0; border-top:1px solid var(--line); font-size:14px;
+  }
+  .roster-list li.me{ font-weight:700; }
+  .roster-tags{ display:flex; gap:6px; flex:none; }
+  .roster-tag{
+    font-family:'Montserrat',sans-serif; font-size:11px; font-weight:600;
+    padding:2px 7px; border-radius:6px; background:var(--paper);
+    border:1px solid var(--line); color:var(--muted); white-space:nowrap;
+  }
+  @media (prefers-reduced-motion: reduce){ .roster-toggle .chev{ transition:none; } }
   .group-toggle{
     width:100%;
     display:flex;
@@ -1184,6 +1227,7 @@
     <button class="view-tab active" data-view="live" type="button">Live Matches</button>
     <button class="view-tab" data-view="finder" type="button">Match Finder</button>
     <button class="view-tab" data-view="standings" type="button">Standings</button>
+    <button class="view-tab" data-view="teams" type="button" style="display:none;">Teams</button>
   </div>
 
   <div class="regal-rule"><span class="diamond"></span></div>
@@ -1212,6 +1256,9 @@
   <div id="results" style="display:none;"></div>
   <div id="standingsResults" style="display:none;">
     <div id="standingsBody"></div>
+  </div>
+  <div id="teamsResults" style="display:none;">
+    <div id="teamsBody"></div>
   </div>
 </div>
 
@@ -1568,6 +1615,30 @@ function rowsToMatches(rows){
   return out;
 }
 
+// The team roster, published by the sync from the workbook's Teams tab as
+// facilities[].rosterCsv: teamCode, player, level, gender. One row per player.
+// Empty for a snapshot from before rosters were published.
+let ROSTER = [];
+let ROSTER_BY_TEAM = new Map(); // teamCode -> [{ teamCode, player, level, gender }] in sheet order
+function rowsToRoster(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iCode = idx('teamCode'), iPlayer = idx('player'), iLevel = idx('level'), iGender = idx('gender');
+  if(iCode < 0 || iPlayer < 0) return [];
+  const cell = (row, i) => i > -1 ? (row[i] || '').trim() : '';
+  return rows.slice(1)
+    .map(row => ({ teamCode: cell(row, iCode), player: cell(row, iPlayer), level: cell(row, iLevel), gender: cell(row, iGender) }))
+    .filter(r => r.teamCode && r.player);
+}
+// A team's players, lowest level first (sheet order within a level).
+function rosterOf(teamCode){
+  const list = ROSTER_BY_TEAM.get(teamCode) || [];
+  const rank = r => { const n = parseFloat(r.level); return isNaN(n) ? Infinity : n; };
+  return list.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
+}
+const levelLabel = v => /^\d+(\.\d+)?$/.test(v) ? `Level ${v}` : v;
+
 // STANDINGSCSV: teamCode, teamName, totalPoints, totalOpponentPoints,
 // quotient, bracket. quotient is "-" before any match is played, which is
 // not a number, so it comes back null.
@@ -1680,7 +1751,14 @@ async function loadLiveData(){
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
     STANDINGS = standings;
+    ROSTER = snapshot.facilities.flatMap(f => rowsToRoster(parseCSV(f.rosterCsv || '')));
+    ROSTER_BY_TEAM = new Map();
+    ROSTER.forEach(r => {
+      if(!ROSTER_BY_TEAM.has(r.teamCode)) ROSTER_BY_TEAM.set(r.teamCode, []);
+      ROSTER_BY_TEAM.get(r.teamCode).push(r);
+    });
     rebuildTeamData();
+    syncTeamsTab();
 
     // Re-checked every poll (not just on day-select) so a page left open
     // across the go-live threshold flips over on its own, without needing
@@ -1696,6 +1774,7 @@ async function loadLiveData(){
       renderStandings();
       renderLiveMatches();
     }
+    if(teamsResultsEl.style.display !== 'none') renderTeams();
 
     // "Synced" reflects when Cloud Run actually published this snapshot
     // (i.e. when the sheet was last edited and Apps Script synced it), not
@@ -1757,6 +1836,8 @@ function revealLiveTabsAfterLoad(){
   if(standingsTabBtn) standingsTabBtn.style.display = dayIsLive ? '' : 'none';
 
   document.querySelectorAll('.view-tab').forEach(b => b.classList.remove('active'));
+  const teamsPanel = document.getElementById('teamsResults');
+  if(teamsPanel) teamsPanel.style.display = 'none';
   if(dayIsLive){
     if(liveTabBtn) liveTabBtn.classList.add('active');
     if(liveResultsEl) liveResultsEl.style.display = '';
@@ -2201,6 +2282,15 @@ function rebuildTeamIndex(){
       });
     });
   });
+  // Roster players too, so a player is findable before any lineup names them.
+  ROSTER.forEach(r => {
+    const key = r.player.toLowerCase();
+    if(!byName.has(key)) byName.set(key, { kind: 'player', name: r.player, nameLower: key, teams: [], matchNums: [] });
+    const entry = byName.get(key);
+    if(!entry.rosterTeam) entry.rosterTeam = r.teamCode;
+    const teamName = teamNameOf(r.teamCode);
+    if(teamName && !entry.teams.includes(teamName)) entry.teams.push(teamName);
+  });
   const players = Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
   TEAM_INDEX = [...teams, ...players];
 
@@ -2254,9 +2344,85 @@ viewTabs.forEach(btn => {
     searchPanelEl.style.display = view === 'finder' ? '' : 'none';
     resultsEl.style.display = view === 'finder' ? '' : 'none';
     standingsResultsEl.style.display = view === 'standings' ? '' : 'none';
+    teamsResultsEl.style.display = view === 'teams' ? '' : 'none';
     if(view === 'standings') renderStandings();
     if(view === 'live') renderLiveMatches();
+    if(view === 'teams') renderTeams();
   });
+});
+
+// ---------- Teams: every team's roster ----------
+// Shown before the day goes live too (rosters give nothing away), whenever the
+// snapshot carries a roster. Cards start collapsed; ROSTER_OPEN keeps the open
+// ones open across the poll's re-render.
+const teamsResultsEl = document.getElementById('teamsResults');
+const teamsBodyEl = document.getElementById('teamsBody');
+const ROSTER_OPEN = new Set();
+const CHEV_SVG = '<svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function syncTeamsTab(){
+  const btn = document.querySelector('.view-tab[data-view="teams"]');
+  if(btn) btn.style.display = ROSTER.length ? '' : 'none';
+}
+
+function rosterListHTML(teamCode, highlight){
+  return `<ul class="roster-list">${rosterOf(teamCode).map(r => `
+    <li class="${highlight && r.player.toLowerCase() === highlight ? 'me' : ''}"><span>${escapeHtml(r.player)}</span>
+      <span class="roster-tags">${r.level ? `<span class="roster-tag">${escapeHtml(levelLabel(r.level))}</span>` : ''}${r.gender ? `<span class="roster-tag">${escapeHtml(r.gender)}</span>` : ''}</span></li>`).join('')}</ul>`;
+}
+
+function rosterCardHTML(teamCode, { open = false, toggle = true, highlight = null } = {}){
+  const name = teamNameOf(teamCode) || `Team ${teamCode}`;
+  const count = (ROSTER_BY_TEAM.get(teamCode) || []).length;
+  const meta = `Team ${escapeHtml(teamCode)} · ${count} player${count === 1 ? '' : 's'}`;
+  if(!toggle){
+    return `<div class="roster-card"><div class="roster-head"><span class="rt-name">${escapeHtml(name)}</span><small>${meta}</small></div>${rosterListHTML(teamCode, highlight)}</div>`;
+  }
+  return `<div class="roster-card">
+    <button type="button" class="roster-toggle" data-roster-team="${escapeHtml(teamCode)}" aria-expanded="${open}">
+      <span><span class="rt-name">${escapeHtml(name)}</span><small>${meta}</small></span>${CHEV_SVG}
+    </button>
+    ${open ? rosterListHTML(teamCode, highlight) : ''}
+  </div>`;
+}
+
+function renderTeams(){
+  if(!teamsBodyEl) return;
+  if(!ROSTER.length){
+    teamsBodyEl.innerHTML = `<div class="empty-state">Team rosters aren't published yet.</div>`;
+    return;
+  }
+  // Grouped by bracket, in standings order; a roster team with no standings row goes last.
+  const groups = new Map();
+  const seen = new Set();
+  STANDINGS.filter(st => isGroupTeamCode(st.teamCode) && ROSTER_BY_TEAM.has(st.teamCode)).forEach(st => {
+    const g = st.bracket || '';
+    if(!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(st.teamCode);
+    seen.add(st.teamCode);
+  });
+  const others = Array.from(ROSTER_BY_TEAM.keys()).filter(c => !seen.has(c));
+  if(others.length) groups.set('__other__', others);
+  const keys = Array.from(groups.keys()).sort((a, b) => a === '__other__' ? 1 : b === '__other__' ? -1 : a.localeCompare(b, undefined, { numeric: true }));
+  const allOpen = ROSTER_BY_TEAM.size > 0 && Array.from(ROSTER_BY_TEAM.keys()).every(c => ROSTER_OPEN.has(c));
+  teamsBodyEl.innerHTML = `<div class="roster-actions"><button type="button" data-roster-all="${allOpen ? 'close' : 'open'}">${allOpen ? 'Collapse all' : 'Expand all'}</button></div>` +
+    keys.map(g => `<h2 class="section-title">${g === '__other__' ? 'Other teams' : (g ? `Bracket ${escapeHtml(g)}` : 'Teams')}</h2>
+      <div class="roster-grid">${groups.get(g).map(code => rosterCardHTML(code, { open: ROSTER_OPEN.has(code) })).join('')}</div>`).join('');
+}
+
+teamsBodyEl.addEventListener('click', (e) => {
+  const all = e.target.closest('[data-roster-all]');
+  if(all){
+    if(all.dataset.rosterAll === 'open') ROSTER_BY_TEAM.forEach((_, c) => ROSTER_OPEN.add(c));
+    else ROSTER_OPEN.clear();
+    renderTeams();
+    return;
+  }
+  const btn = e.target.closest('[data-roster-team]');
+  if(!btn) return;
+  const code = btn.dataset.rosterTeam;
+  if(ROSTER_OPEN.has(code)) ROSTER_OPEN.delete(code); else ROSTER_OPEN.add(code);
+  renderTeams();
 });
 
 // ---------- Persistence: remember the last day + search across reloads ----------
@@ -2318,6 +2484,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   searchPanelEl.style.display = 'none';
   resultsEl.style.display = 'none';
   standingsResultsEl.style.display = 'none';
+  teamsResultsEl.style.display = 'none';
   dayPromptEl.textContent = `Loading ${day.label}…`;
   dayPromptEl.style.display = '';
 
@@ -2641,6 +2808,7 @@ function teamResultHTML(entry){
       ${entry.group ? `<span class="division-tag">Bracket ${entry.group}</span>` : ''}
     </div>
     <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
+    ${ROSTER_BY_TEAM.has(base) ? `<div style="margin:0 0 14px">${rosterCardHTML(base, { toggle: false })}</div>` : ''}
     ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
     ${unset ? LINEUP_NOTE : ''}`;
 }
@@ -2661,6 +2829,7 @@ function playerResultHTML(entry){
       <h2>${escapeHtml(entry.name)}</h2>
     </div>
     <div class="results-meta">${escapeHtml(teamNames)}${matches.length} match${matches.length===1?'':'es'}</div>
+    ${entry.rosterTeam && ROSTER_BY_TEAM.has(entry.rosterTeam) ? `<div style="margin:0 0 14px">${rosterCardHTML(entry.rosterTeam, { toggle: false, highlight: entry.nameLower })}</div>` : ''}
     ${cards}
     ${unset ? LINEUP_NOTE : ''}`;
 }
