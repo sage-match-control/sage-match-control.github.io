@@ -1091,6 +1091,7 @@
     flex-wrap:wrap;
     gap:8px;
   }
+  .results-head .player-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .results-head h2{
     font-family:'Playfair Display',serif;
     font-weight:700;
@@ -1638,6 +1639,11 @@ function rosterOf(teamCode){
   return list.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
 }
 const levelLabel = v => /^\d+(\.\d+)?$/.test(v) ? `Level ${v}` : v;
+// A Match Finder player's level and gender from the roster, as tags ('' when unknown).
+function playerTagsHTML(entry){
+  const tags = [entry.level ? levelLabel(entry.level) : '', entry.gender || ''].filter(Boolean);
+  return tags.length ? `<span class="roster-tags">${tags.map(t => `<span class="roster-tag">${escapeHtml(t)}</span>`).join('')}</span>` : '';
+}
 
 // STANDINGSCSV: teamCode, teamName, totalPoints, totalOpponentPoints,
 // quotient, bracket. quotient is "-" before any match is played, which is
@@ -2287,7 +2293,11 @@ function rebuildTeamIndex(){
     const key = r.player.toLowerCase();
     if(!byName.has(key)) byName.set(key, { kind: 'player', name: r.player, nameLower: key, teams: [], matchNums: [] });
     const entry = byName.get(key);
-    if(!entry.rosterTeam) entry.rosterTeam = r.teamCode;
+    if(!entry.rosterTeam){
+      entry.rosterTeam = r.teamCode;
+      entry.level = r.level;
+      entry.gender = r.gender;
+    }
     const teamName = teamNameOf(r.teamCode);
     if(teamName && !entry.teams.includes(teamName)) entry.teams.push(teamName);
   });
@@ -2562,7 +2572,10 @@ function renderAutocomplete(query){
   if(matches.length === 0){ acList.classList.remove('show'); acList.innerHTML=''; return; }
   acList.innerHTML = matches.map((e, i) => e.kind === 'team'
     ? `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.label)}</span>${e.group ? `<small>Bracket ${e.group}</small>` : ''}</div>`
-    : `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${e.teams.length ? `<small>${escapeHtml(e.teams.join(', '))}</small>` : ''}</div>`
+    : (() => {
+        const meta = [e.teams.join(', '), e.level ? levelLabel(e.level) : '', e.gender || ''].filter(Boolean).join(' · ');
+        return `<div class="ac-item" data-i="${i}"><span>${escapeHtml(e.name)}</span>${meta ? `<small>${escapeHtml(meta)}</small>` : ''}</div>`;
+      })()
   ).join('');
   acList.classList.add('show');
   acIndex = -1;
@@ -2826,7 +2839,7 @@ function playerResultHTML(entry){
   const unset = MATCHES.some(matchLineupUnset);
   return `
     <div class="results-head">
-      <h2>${escapeHtml(entry.name)}</h2>
+      <span class="player-head"><h2>${escapeHtml(entry.name)}</h2>${playerTagsHTML(entry)}</span>
     </div>
     <div class="results-meta">${escapeHtml(teamNames)}${matches.length} match${matches.length===1?'':'es'}</div>
     ${entry.rosterTeam && ROSTER_BY_TEAM.has(entry.rosterTeam) ? `<div style="margin:0 0 14px">${rosterCardHTML(entry.rosterTeam, { toggle: false, highlight: entry.nameLower })}</div>` : ''}
