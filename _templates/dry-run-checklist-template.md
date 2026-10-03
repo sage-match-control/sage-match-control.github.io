@@ -81,6 +81,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Click **Open match finder**, load that same URL on Screen 2, click its **Live Matches** tab
 - [ ] Load the same public URL again on Screen 3, click its **Standings** tab
 - [ ] On a phone (not the console — the console always shows live data regardless of the switch above), open the public page and confirm it looks like what a player would actually see
+- [ ] The hub board is up with **this** event's QR panel on it, and scanning it with a phone opens `{{EVENT_TITLE}}`'s Tournament Hub
 
 ### 2.4 During play
 

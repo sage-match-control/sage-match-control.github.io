@@ -355,6 +355,23 @@ clubs; it is not a general multi-club template.
     expected to inherit the share, but that is not confirmed yet: check the
     workbook's Share dialog lists the account.
 
+13. **Make the hub board's QR panel.** The venue's Tournament Hub board is a
+    24 × 36 in sintra print, `_templates/hub-pubmat/`, that's the same for
+    every event except its QR panel. Once step 3 is done, run
+
+    ```
+    node _templates/hub-pubmat/render.mjs <event-key>
+    ```
+
+    It reads the panel's event name, date/venue line, QR image and short
+    link from `events/<event-key>/index.html` (`<title>`, `.eyebrow`,
+    `{{QR_IMAGE}}`, `{{QR_URL}}`), so there's nothing to fill in; fix a wrong
+    line on the page and re-run. It writes `qr-panel.pdf` (an 8 × 8.75 in
+    sticker for the board's slot) and `board.pdf` (the whole board, for a
+    reprint) to `_templates/hub-pubmat/out/<event-key>/`, which is
+    git-ignored. Scan the printed panel before mounting it. See that
+    folder's `README.md`.
+
 ## 3. Required `{{TOKEN}}` replacements
 
 **Both templates** (`index.html`):
