@@ -6894,6 +6894,48 @@ function wrapCanvasText(ctx, text, maxWidth){
   return lines;
 }
 
+// Wraps a list of names (a team's roster) onto lines, breaking only between
+// names so no one's name is split across two lines.
+function wrapCanvasList(ctx, items, maxWidth){
+  const lines = [];
+  let line = '';
+  items.forEach((item, i) => {
+    const piece = i < items.length - 1 ? `${item},` : item;
+    const test = line ? `${line} ${piece}` : piece;
+    if(line && ctx.measureText(test).width > maxWidth){
+      lines.push(line);
+      line = piece;
+    } else {
+      line = test;
+    }
+  });
+  if(line) lines.push(line);
+  return lines;
+}
+
+// Fits a team's roster into one podium-card row under the team name: the
+// largest size whose wrapped lines fit, else the smallest with whole names
+// dropped from the end for a "+N more" — the row's height is fixed.
+const ROSTER_EXPORT_SIZES = [
+  { size: 24, lineH: 31, maxLines: 4 },
+  { size: 20, lineH: 26, maxLines: 5 },
+  { size: 17, lineH: 22, maxLines: 6 }
+];
+function fitRosterLines(ctx, roster, maxWidth){
+  for(const s of ROSTER_EXPORT_SIZES){
+    ctx.font = `400 ${s.size}px "Inter"`;
+    const lines = wrapCanvasList(ctx, roster, maxWidth);
+    if(lines.length <= s.maxLines) return { ...s, lines };
+  }
+  const s = ROSTER_EXPORT_SIZES[ROSTER_EXPORT_SIZES.length - 1];
+  ctx.font = `400 ${s.size}px "Inter"`;
+  for(let shown = roster.length - 1; shown > 0; shown--){
+    const lines = wrapCanvasList(ctx, [...roster.slice(0, shown), `+${roster.length - shown} more`], maxWidth);
+    if(lines.length <= s.maxLines) return { ...s, lines };
+  }
+  return { ...s, lines: [`${roster.length} players`] };
+}
+
 function exportEventTitle(){
   const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
   return (rawEvent && rawEvent.title) || CURRENT_EVENT_KEY || '';
@@ -7005,7 +7047,20 @@ async function drawPodiumCard(ctx, w, h, podium){
 
     ctx.textAlign = 'left';
     const textX = rowX + 170;
-    if(row.medal){
+    if(row.medal && row.medal.roster && row.medal.roster.length){
+      // A team: its name, then its roster, the pair centred on the row.
+      const fit = fitRosterLines(ctx, row.medal.roster, rowW - (textX - rowX) - 32);
+      const nameH = 38, gap = 14;
+      const top = cy - (nameH + gap + fit.lines.length * fit.lineH) / 2;
+      ctx.fillStyle = textColor;
+      ctx.font = '700 38px "Inter"';
+      ctx.fillText(medalNameText(row.medal), textX, top + 30);
+      ctx.fillStyle = 'rgba(11,24,38,.75)';
+      ctx.font = `400 ${fit.size}px "Inter"`;
+      fit.lines.forEach((line, i) => {
+        ctx.fillText(line, textX, top + nameH + gap + i * fit.lineH + Math.round(fit.size * 0.8));
+      });
+    } else if(row.medal){
       ctx.fillStyle = textColor;
       ctx.font = '700 38px "Inter"';
       const nameLine = medalNameText(row.medal);
@@ -7138,6 +7193,10 @@ function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
       if(decided && spec.medal.clubLabel){
         ctx.font = '400 14px "Inter"';
         clubLines = wrapCanvasText(ctx, spec.medal.clubLabel, contentW - 34);
+      } else if(decided && spec.medal.roster && spec.medal.roster.length){
+        // A team's roster takes the club line's place under its name.
+        ctx.font = '400 14px "Inter"';
+        clubLines = wrapCanvasList(ctx, spec.medal.roster, contentW - 34);
       }
       const boxH = 20 + nameLines.length * 23 + (clubLines ? clubLines.length * 17 : 0);
       const boxY = cy;
