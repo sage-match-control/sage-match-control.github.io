@@ -1405,7 +1405,7 @@
      .br-table-wrap's overflow-x:auto turns that into a horizontal scroll
      scoped to this card. */
   .br-table td.pair span{display:block; white-space:nowrap;}
-  .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em;}
+  .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em; line-height:2.3;} /* the two lines a pair's names take */
   .br-table td.num{text-align:center; width:26px;}
   .br-table td.quo{text-align:center; width:54px;}
   .br-table td.br-badge{
@@ -1507,7 +1507,11 @@
     line-height:1.25;
     color:var(--ink);
   }
-  .matchup-side .mu-pair .p{display:block;}
+  /* Every slot keeps the two lines a pair's names take, and each name keeps to
+     one line (… when too long, full names on hover), so a card is the same
+     height before and after its names are filled in. */
+  .matchup-side .mu-pair{flex:1 1 auto; min-width:0; min-height:2.5em; display:flex; flex-direction:column; justify-content:center;}
+  .matchup-side .mu-pair .p{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .matchup-side .mu-pair.tbd{color:var(--muted); font-style:italic; font-weight:600; letter-spacing:.04em;}
   .matchup-center{
     flex:none;
@@ -5272,7 +5276,7 @@ function matchupSideHtml(s, side){
     return `<div class="matchup-side${sideClass}"><span class="mu-pair tbd">TBD</span></div>`;
   }
   return `<div class="matchup-side${sideClass} ${standingRowClass(s)}">
-    <span class="mu-pair"><span class="p">${escapeHtml(s.player1)}</span><span class="p">${escapeHtml(s.player2)}</span></span>
+    <span class="mu-pair" title="${escapeHtml(s.player1 + ' / ' + s.player2)}"><span class="p">${escapeHtml(s.player1)}</span><span class="p">${escapeHtml(s.player2)}</span></span>
   </div>`;
 }
 
