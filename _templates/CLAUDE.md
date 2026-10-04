@@ -464,7 +464,7 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
 | `ATTENDANCE CLIENT` block | `tools/control-center.html`, `_templates/attendance/attendance.html` and every event's `attendance.html`: byte-identical (compare with `diff`) |
-| `LIVE CHANNEL` block | both, and `tools/control-center.html` and every other event's pages: byte-identical in every page that carries it (compare with `diff`) |
+| `LIVE CHANNEL` block | both, and `tools/control-center.html` and every unfinished event's pages: byte-identical (compare with `diff`). A finished event's pages keep it with `LIVE_BASE_URL = ''` (§7) |
 
 Two constants are platform-wide rather than per-event, so each template carries
 them as literals, **not** `{{TOKEN}}`s: `GHPAGES_OWNER`/`GHPAGES_REPO` (the
@@ -497,9 +497,21 @@ relative paths, or archiving this event later (§7) will break its icons.
 `/<repo>/` prefix, every template's root-absolute paths would need an
 added prefix. Not a concern today.)
 
-## 7. Archiving, later
+## 7. After the event: live push off, then archiving
 
-When the event is over, move its folder into `events/archives/`:
+Once the event's last day is over, turn live push off for its pages: set
+`LIVE_BASE_URL = ''` in the `LIVE CHANNEL` block of its `index.html` and
+`schedule.html`, and leave the rest of the block alone. Nothing is published
+for the event any more, so a socket would only hold a Worker connection open
+(and ping it every 50 s) for every visitor, against the Worker's daily
+request cap. With the constant empty the page never connects and reads its
+snapshot from GitHub instead, so the final results still show. That one line
+is the only place a finished event's block differs from the live copies; it
+no longer has to be kept byte-identical with them.
+
+The folder stays where it is, at the URL the venue's QR code points to.
+Archiving is a separate, later step. When you do it, move the folder into
+`events/archives/`:
 
 ```
 mv events/<event-key> events/archives/<event-key>
