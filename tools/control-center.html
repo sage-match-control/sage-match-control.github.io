@@ -213,7 +213,12 @@
     box-shadow:var(--card-shadow);
     position:relative;
     max-width:560px;
-    margin:0 auto;
+    margin:0 auto 22px;
+  }
+  /* On a phone the search stays in reach while scrolling a long match list:
+     it sticks to the top of the screen. */
+  @media (max-width:899px){
+    .search-panel{ position:sticky; top:8px; z-index:30; }
   }
   .search-panel::before{
     content:"";
@@ -2537,18 +2542,6 @@
 
   <div class="regal-rule"><span class="diamond"></span></div>
 
-  <div class="search-panel" id="searchPanel" style="display:none;">
-    <label class="search-label" for="teamInput">Enter your pair's names</label>
-    <div class="search-row autocomplete">
-      <div class="input-wrap">
-        <input id="teamInput" type="text" placeholder="A name, or a match number like 42" autocomplete="off" inputmode="latin" />
-        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
-      </div>
-      <div id="acList" class="ac-list"></div>
-      <button id="searchBtn">Find matches</button>
-    </div>
-  </div>
-
   <div id="syncStatus" class="sync-status" style="display:none;"></div>
 </header>
 
@@ -2558,6 +2551,17 @@
     <div class="live-board-meta" id="liveBoardMeta"></div>
     <div class="facility-progress" id="facilityProgress"></div>
     <div id="liveBoard"></div>
+  </div>
+  <div class="search-panel" id="searchPanel" style="display:none;">
+    <label class="search-label" for="teamInput">Enter your pair's names</label>
+    <div class="search-row autocomplete">
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="Name or match number" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
   </div>
   <div id="results" style="display:none;"></div>
   <div id="standingsResults" style="display:none;">

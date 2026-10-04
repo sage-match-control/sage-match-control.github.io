@@ -239,7 +239,12 @@
     box-shadow:var(--card-shadow);
     position:relative;
     max-width:560px;
-    margin:0 auto;
+    margin:0 auto 22px;
+  }
+  /* On a phone the search stays in reach while scrolling a long match list:
+     it sticks to the top of the screen. */
+  @media (max-width:899px){
+    .search-panel{ position:sticky; top:8px; z-index:30; }
   }
   .search-panel::before{
     content:"";
@@ -1234,6 +1239,15 @@
 
   <div class="regal-rule"><span class="diamond"></span></div>
 
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
+</header>
+
+<div class="wrap">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
+    <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div id="liveBoard"></div>
+  </div>
   <div class="search-panel" id="searchPanel" style="display:none;">
     <label class="search-label" for="teamInput">Search a team or a player</label>
     <div class="search-row autocomplete">
@@ -1244,16 +1258,6 @@
       <div id="acList" class="ac-list"></div>
       <button id="searchBtn">Find matches</button>
     </div>
-  </div>
-
-  <div id="syncStatus" class="sync-status" style="display:none;"></div>
-</header>
-
-<div class="wrap">
-  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
-  <div id="liveResults" style="display:none;">
-    <div class="live-board-meta" id="liveBoardMeta"></div>
-    <div id="liveBoard"></div>
   </div>
   <div id="results" style="display:none;"></div>
   <div id="standingsResults" style="display:none;">
