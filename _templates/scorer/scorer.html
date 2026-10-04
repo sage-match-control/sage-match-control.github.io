@@ -210,6 +210,9 @@
   .score-input:focus{outline:none; border-color:var(--green);}
   .score-winner{font-size:22px; font-weight:800; line-height:1.25; margin:4px 0 10px;}
   .score-winner-players{font-size:15px; font-weight:400; color:var(--ink-soft);}
+  /* A team's win: the team name a notch smaller, the players on their own line beneath, larger. */
+  .score-winner.team{font-size:18px; font-weight:700; margin-bottom:2px;}
+  .score-winner-names{font-size:22px; font-weight:800; line-height:1.25; margin:0 0 10px; overflow-wrap:anywhere;}
   .score-big{font-size:44px; font-weight:800; line-height:1.1; text-align:center; font-variant-numeric:tabular-nums;}
   .score-big-names{display:flex; justify-content:space-around; gap:12px; margin:2px 0 10px; font-size:13px; color:var(--ink-soft); text-align:center;}
   .score-big-names span{flex:1 1 0; min-width:0; overflow-wrap:anywhere;}
@@ -663,13 +666,26 @@ function createScoreDialog(opts){
 
   // ---- drawing ----
 
+  // A side with no name of its own (a pair, whose "name" is just its code) is led by
+  // its players: they are what a scorer recognises, and the code is only a small chip.
+  // A side with a real name (a team) keeps the name as its headline.
+  const byPlayers = side => !!side.players && side.name === side.code;
+  const sideLabel = side => byPlayers(side) ? side.players[0] + ' / ' + side.players[1] : side.name;
+
   function sideHTML(side, input){
-    const showCode = side.code && side.code !== side.name;
-    const players = side.players
-      ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
-      : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    const showCode = side.code && (side.code !== side.name || byPlayers(side));
+    let head, players;
+    if(byPlayers(side)){
+      head = `<div class="score-side-name">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`;
+      players = '';
+    } else {
+      head = `<div class="score-side-name">${esc(side.name)}</div>`;
+      players = side.players
+        ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
+        : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    }
     return `<div class="score-side">
-      <div class="score-side-name">${esc(side.name)}</div>
+      ${head}
       ${showCode ? `<span class="score-chip">${esc(side.code)}</span>` : ''}
       ${players}
       ${input || ''}
@@ -678,7 +694,7 @@ function createScoreDialog(opts){
 
   function inputHTML(n, side){
     return `<input class="score-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off"` +
-           ` data-score-side="${n}" aria-label="Score for ${esc(side.name)}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
+           ` data-score-side="${n}" aria-label="Score for ${esc(sideLabel(side))}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
   }
 
   function button(label, cls, onClick, extra){
@@ -751,14 +767,23 @@ function createScoreDialog(opts){
         html = `<div class="score-winner">Clear the score of match #${esc(s.num)}</div>
           <div class="score-was">Now ${esc(was)}</div>`;
       } else {
-        const players = side => side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
+        const extra = side => byPlayers(side) ? `<span class="score-winner-players"> · ${esc(side.code)}</span>`
+          : side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
         const headline = a === b
           ? `<div class="score-winner">Tied — neither side wins this match</div>`
-          : `<div class="score-winner">Winner: ${esc((a > b ? side1 : side2).name)}${players(a > b ? side1 : side2)}</div>`;
+          : (() => {
+            const w = a > b ? side1 : side2;
+            // a team: its name, then its players on their own line; a pair is led by its players
+            if(!byPlayers(w) && w.players){
+              return `<div class="score-winner team">Winner: ${esc(w.name)}</div>
+              <div class="score-winner-names">${esc(w.players[0])} / ${esc(w.players[1])}</div>`;
+            }
+            return `<div class="score-winner">Winner: ${esc(sideLabel(w))}${extra(w)}</div>`;
+          })();
         const warnings = scoreBasicWarnings(a, b).concat(opts.extraWarnings(s.m) || []);
         html = `${headline}
           <div class="score-big">${esc(a)} – ${esc(b)}</div>
-          <div class="score-big-names"><span>${esc(side1.name)}</span><span>${esc(side2.name)}</span></div>
+          <div class="score-big-names"><span>${esc(sideLabel(side1))}</span><span>${esc(sideLabel(side2))}</span></div>
           ${s.m.played ? `<div class="score-was">Was ${esc(s.m.t1Score)} – ${esc(s.m.t2Score)}</div>` : ''}
           ${warnings.length ? `<ul class="score-warn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}`;
       }

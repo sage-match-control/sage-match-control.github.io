@@ -767,6 +767,26 @@
   .golive-btn.active{background:var(--court); border-color:var(--court); color:var(--court-dark);}
   .golive-btn-danger.active{background:#B3261E; border-color:#B3261E; color:#fff;}
   .golive-btn:disabled{opacity:.55; cursor:not-allowed;}
+  .organizer-secondary-btn:disabled{opacity:.55; cursor:not-allowed;}
+  /* On/off switches in Mission Control (role="switch" buttons). Neutral grey when off;
+     .switch-stop turns the off state red, for a switch whose off position stops something. */
+  .switch-row{display:flex; align-items:center; gap:12px; margin:0 0 10px;}
+  .switch{
+    position:relative; flex:0 0 auto; width:52px; height:30px; padding:0;
+    border:2px solid #9AA5AB; border-radius:999px; background:#9AA5AB; cursor:pointer;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .switch.switch-stop{border-color:#B3261E; background:#B3261E;}
+  .switch[aria-checked="true"]{background:var(--court); border-color:var(--court);}
+  .switch-thumb{
+    position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(11,24,38,.35); transition:transform .15s ease;
+  }
+  .switch[aria-checked="true"] .switch-thumb{transform:translateX(22px);}
+  .switch:focus-visible{outline:2px solid var(--navy); outline-offset:2px;}
+  .switch:disabled{opacity:.55; cursor:not-allowed;}
+  .switch-label{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:.04em; text-transform:uppercase;}
+  .switch-label.plain{font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:0; text-transform:none; cursor:pointer;}
   .organizer-status-box{margin-bottom:14px;}
   .org-status-row{
     display:flex;
@@ -1103,6 +1123,9 @@
   .score-input:focus{outline:none; border-color:var(--green);}
   .score-winner{font-size:22px; font-weight:800; line-height:1.25; margin:4px 0 10px;}
   .score-winner-players{font-size:15px; font-weight:400; color:var(--ink-soft);}
+  /* A team's win: the team name a notch smaller, the players on their own line beneath, larger. */
+  .score-winner.team{font-size:18px; font-weight:700; margin-bottom:2px;}
+  .score-winner-names{font-size:22px; font-weight:800; line-height:1.25; margin:0 0 10px; overflow-wrap:anywhere;}
   .score-big{font-size:44px; font-weight:800; line-height:1.1; text-align:center; font-variant-numeric:tabular-nums;}
   .score-big-names{display:flex; justify-content:space-around; gap:12px; margin:2px 0 10px; font-size:13px; color:var(--ink-soft); text-align:center;}
   .score-big-names span{flex:1 1 0; min-width:0; overflow-wrap:anywhere;}
@@ -2755,10 +2778,10 @@
 
       <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
 
-      <label class="organizer-checkbox-row">
-        <input type="checkbox" id="orgUseCsvMethod" />
-        <span>Use CSV export fallback instead of Sheets API</span>
-      </label>
+      <div class="switch-row" style="margin:14px 0;">
+        <button type="button" class="switch" id="orgUseCsvMethod" role="switch" aria-checked="false" aria-labelledby="orgUseCsvMethodLabel"><span class="switch-thumb"></span></button>
+        <span class="switch-label plain" id="orgUseCsvMethodLabel">Use CSV export fallback instead of Sheets API</span>
+      </div>
 
 
       <div id="orgFacilityResyncGroup">
@@ -2806,9 +2829,9 @@
       <div id="scorerLinksSection" style="display:none;">
         <label class="search-label">Scorer links</label>
         <div class="golive-current" id="scorerLinksCurrent"></div>
-        <div class="golive-buttons" id="scorerLinksButtons" style="display:none;">
-          <button type="button" class="golive-btn" data-scorer="links">Accepting</button>
-          <button type="button" class="golive-btn golive-btn-danger" data-scorer="console">Stopped</button>
+        <div class="switch-row" id="scorerSwitchRow" style="display:none;">
+          <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
+          <span class="switch-label" id="scorerSwitchLabel">Accepting</span>
         </div>
         <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
         <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
@@ -6526,13 +6549,26 @@ function createScoreDialog(opts){
 
   // ---- drawing ----
 
+  // A side with no name of its own (a pair, whose "name" is just its code) is led by
+  // its players: they are what a scorer recognises, and the code is only a small chip.
+  // A side with a real name (a team) keeps the name as its headline.
+  const byPlayers = side => !!side.players && side.name === side.code;
+  const sideLabel = side => byPlayers(side) ? side.players[0] + ' / ' + side.players[1] : side.name;
+
   function sideHTML(side, input){
-    const showCode = side.code && side.code !== side.name;
-    const players = side.players
-      ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
-      : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    const showCode = side.code && (side.code !== side.name || byPlayers(side));
+    let head, players;
+    if(byPlayers(side)){
+      head = `<div class="score-side-name">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`;
+      players = '';
+    } else {
+      head = `<div class="score-side-name">${esc(side.name)}</div>`;
+      players = side.players
+        ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
+        : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    }
     return `<div class="score-side">
-      <div class="score-side-name">${esc(side.name)}</div>
+      ${head}
       ${showCode ? `<span class="score-chip">${esc(side.code)}</span>` : ''}
       ${players}
       ${input || ''}
@@ -6541,7 +6577,7 @@ function createScoreDialog(opts){
 
   function inputHTML(n, side){
     return `<input class="score-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off"` +
-           ` data-score-side="${n}" aria-label="Score for ${esc(side.name)}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
+           ` data-score-side="${n}" aria-label="Score for ${esc(sideLabel(side))}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
   }
 
   function button(label, cls, onClick, extra){
@@ -6614,14 +6650,23 @@ function createScoreDialog(opts){
         html = `<div class="score-winner">Clear the score of match #${esc(s.num)}</div>
           <div class="score-was">Now ${esc(was)}</div>`;
       } else {
-        const players = side => side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
+        const extra = side => byPlayers(side) ? `<span class="score-winner-players"> · ${esc(side.code)}</span>`
+          : side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
         const headline = a === b
           ? `<div class="score-winner">Tied — neither side wins this match</div>`
-          : `<div class="score-winner">Winner: ${esc((a > b ? side1 : side2).name)}${players(a > b ? side1 : side2)}</div>`;
+          : (() => {
+            const w = a > b ? side1 : side2;
+            // a team: its name, then its players on their own line; a pair is led by its players
+            if(!byPlayers(w) && w.players){
+              return `<div class="score-winner team">Winner: ${esc(w.name)}</div>
+              <div class="score-winner-names">${esc(w.players[0])} / ${esc(w.players[1])}</div>`;
+            }
+            return `<div class="score-winner">Winner: ${esc(sideLabel(w))}${extra(w)}</div>`;
+          })();
         const warnings = scoreBasicWarnings(a, b).concat(opts.extraWarnings(s.m) || []);
         html = `${headline}
           <div class="score-big">${esc(a)} – ${esc(b)}</div>
-          <div class="score-big-names"><span>${esc(side1.name)}</span><span>${esc(side2.name)}</span></div>
+          <div class="score-big-names"><span>${esc(sideLabel(side1))}</span><span>${esc(sideLabel(side2))}</span></div>
           ${s.m.played ? `<div class="score-was">Was ${esc(s.m.t1Score)} – ${esc(s.m.t2Score)}</div>` : ''}
           ${warnings.length ? `<ul class="score-warn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}`;
       }
@@ -8164,6 +8209,13 @@ const orgSignInBtn = document.getElementById('orgSignInBtn');
 const orgSignOutBtn = document.getElementById('orgSignOutBtn');
 const orgAuthStatusEl = document.getElementById('orgAuthStatus');
 const orgUseCsvMethodEl = document.getElementById('orgUseCsvMethod');
+// The switch is a button, so it flips its own state; the label beside it does the same.
+if(orgUseCsvMethodEl){
+  const flipCsvMethod = () => orgUseCsvMethodEl.setAttribute('aria-checked', orgUseCsvMethodEl.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+  orgUseCsvMethodEl.addEventListener('click', flipCsvMethod);
+  const csvLabel = document.getElementById('orgUseCsvMethodLabel');
+  if(csvLabel) csvLabel.addEventListener('click', flipCsvMethod);
+}
 const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgResultBox = document.getElementById('orgResultBox');
 const organizerDayLabelEl = document.getElementById('organizerDayLabel');
@@ -8515,6 +8567,41 @@ if(syncMethodButtonsEl){
 // the page's own copy of the registry is updated to match, since it would
 // otherwise stay stale until a reload. Rendered from the registry alone, so
 // it is safe to call before anything has loaded.
+// Whether the event has a scorer page to send a link to: events/<key>/scorer.html
+// on the site this console is served from. Without it a scorer link is a dead
+// end, so the switch and Issue scorer link stay off. Checked with a HEAD request
+// (same origin, so no CORS), remembered per event and re-checked after a minute
+// so a page deployed meanwhile is noticed. A failed check counts as "not there".
+// On localhost a fixture also accepts scorer-beta.html, the git-ignored test copy.
+const SCORER_PAGE = new Map();   // eventKey -> { ok: boolean | null (checking), at }
+const SCORER_PAGE_TTL_MS = 60000;
+let scorerLinksBusy = false;
+
+async function scorerPageExists(eventKey){
+  const names = FIXTURE ? ['scorer.html', 'scorer-beta.html'] : ['scorer.html'];
+  for(const name of names){
+    try{
+      const res = await fetch(`/events/${encodeURIComponent(eventKey)}/${name}`, { method: 'HEAD', cache: 'no-store' });
+      if(res.ok) return true;
+    }catch(e){ /* try the next, then give up */ }
+  }
+  return false;
+}
+
+function scorerPageKnown(eventKey){
+  const entry = SCORER_PAGE.get(eventKey);
+  if(!entry || (!entry.checking && entry.ok !== null && Date.now() - entry.at > SCORER_PAGE_TTL_MS)){
+    const previous = entry ? entry.ok : null;
+    SCORER_PAGE.set(eventKey, { ok: previous, at: entry ? entry.at : 0, checking: true });
+    scorerPageExists(eventKey).then(ok => {
+      SCORER_PAGE.set(eventKey, { ok, at: Date.now(), checking: false });
+      if(eventKey === CURRENT_EVENT_KEY) renderScorerLinks();
+    });
+  }
+  const now = SCORER_PAGE.get(eventKey);
+  return now.ok;   // true | false | null (first check still running)
+}
+
 function renderScorerLinks(){
   const section = document.getElementById('scorerLinksSection');
   if(!section) return;
@@ -8523,27 +8610,43 @@ function renderScorerLinks(){
   if(mode !== 'console' && mode !== 'links'){ section.style.display = 'none'; return; }
   section.style.display = '';
   const canAct = FIXTURE ? true : !!currentAuthToken();
+  const pageOk = scorerPageKnown(CURRENT_EVENT_KEY);   // true | false | null
   const current = document.getElementById('scorerLinksCurrent');
   let html = mode === 'links'
     ? '<b>Accepting</b>: anyone with a scorer link for the day can enter scores.'
-    : '<b>Stopped</b>: scorer links can’t save scores or be issued. Operators still can, in Match Finder.';
+    : '<b>Stopped</b>: scorer links can\u2019t save scores or be issued. Operators still can, in Match Finder.';
+  if(pageOk === false){
+    html += ` <b>This event has no scorer page</b> (<code>events/${escapeHtml(CURRENT_EVENT_KEY)}/scorer.html</code> isn\u2019t on the site), so the switch and links are off. Add the page first (see Adding a new event).`;
+  } else if(pageOk === null){
+    html += ' Checking for the scorer page\u2026';
+  }
   if(!canAct) html += ' Sign in to change this or issue a link.';
   current.className = `golive-current state-${mode === 'links' ? 'true' : 'false'}`;
   current.innerHTML = html;
-  const buttons = document.getElementById('scorerLinksButtons');
-  buttons.style.display = canAct ? '' : 'none';
-  buttons.querySelectorAll('[data-scorer]').forEach(btn => btn.classList.toggle('active', btn.dataset.scorer === mode));
+  const row = document.getElementById('scorerSwitchRow');
+  row.style.display = canAct ? '' : 'none';
+  const toggle = document.getElementById('scorerSwitch');
+  toggle.setAttribute('aria-checked', mode === 'links' ? 'true' : 'false');
+  toggle.disabled = pageOk !== true || scorerLinksBusy;
+  toggle.title = pageOk === false ? 'This event has no scorer page' : '';
+  document.getElementById('scorerSwitchLabel').textContent = mode === 'links' ? 'Accepting' : 'Stopped';
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   const issueBtn = document.getElementById('scorerLinkBtn');
   issueBtn.style.display = canAct && mode === 'links' && day ? '' : 'none';
+  issueBtn.disabled = pageOk !== true;
+  issueBtn.title = pageOk === false ? 'This event has no scorer page' : '';
   if(day) issueBtn.textContent = `Issue scorer link for ${day.label}`;
 }
 
 async function setScorerLinksMode(mode){
   const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
   if(!ev) return;
-  const buttons = [...document.querySelectorAll('#scorerLinksButtons [data-scorer]')];
-  buttons.forEach(b => { b.disabled = true; });
+  if(scorerPageKnown(CURRENT_EVENT_KEY) !== true){
+    showToast('error', 'This event has no scorer page, so scorer links can\u2019t be switched.', 'scorerlinks');
+    return;
+  }
+  scorerLinksBusy = true;
+  renderScorerLinks();
   try {
     if(FIXTURE){
       ev.scoreEntry = mode;
@@ -8569,14 +8672,14 @@ async function setScorerLinksMode(mode){
       box.style.display = 'none';
       box.textContent = '';
     }
-    renderScorerLinks();
     showToast('ok', FIXTURE ? 'Fixture: not sent.'
       : mode === 'links' ? 'Scorer links accepted again. Takes effect within about a minute.'
       : 'Scorer links stopped. Takes effect within about a minute.', 'scorerlinks');
   } catch(err){
     showToast('error', unreachableMessage(err), 'scorerlinks');
   } finally {
-    buttons.forEach(b => { b.disabled = false; });
+    scorerLinksBusy = false;
+    renderScorerLinks();
   }
 }
 
@@ -8633,6 +8736,10 @@ function renderScorerLink(day, issued){
 async function issueScorerLink(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day) return;
+  if(scorerPageKnown(CURRENT_EVENT_KEY) !== true){
+    showToast('error', 'This event has no scorer page, so there is nothing for a scorer link to open.', 'scorerlinks');
+    return;
+  }
   const token = currentAuthToken();
   if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
   const epoch = resultEpoch;
@@ -8670,9 +8777,9 @@ async function issueScorerLink(){
   }
 }
 
-document.getElementById('scorerLinksButtons').addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-scorer]');
-  if(btn) setScorerLinksMode(btn.dataset.scorer);
+document.getElementById('scorerSwitch').addEventListener('click', (e) => {
+  const on = e.currentTarget.getAttribute('aria-checked') === 'true';
+  setScorerLinksMode(on ? 'console' : 'links');
 });
 document.getElementById('scorerLinkBtn').addEventListener('click', issueScorerLink);
 
@@ -9465,7 +9572,7 @@ async function performResync(facilityName, { onStart, onDone } = {}){
     showToast('error', 'Sign in at the top of Mission Control first.', 'resync');
     return;
   }
-  const useCsvMethod = !!(orgUseCsvMethodEl && orgUseCsvMethodEl.checked);
+  const useCsvMethod = !!(orgUseCsvMethodEl && orgUseCsvMethodEl.getAttribute('aria-checked') === 'true');
 
   const scopeLabel = facilityName ? `${day.label} / ${facilityName}` : day.label;
   setResyncButtonsDisabled(true);
