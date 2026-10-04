@@ -2155,12 +2155,20 @@
   .section-title:first-child{margin-top:0;}
   .section-caption{
     font-family:'Inter',sans-serif;
-    font-size:10.5px;
+    font-size:16px;
     font-weight:700;
     text-transform:uppercase;
     letter-spacing:.06em;
     color:var(--ink-soft);
-    margin:18px 0 8px;
+    margin:26px 0 10px;
+  }
+  /* Playoffs on a wide screen: each stage a two-column grid (quarterfinals
+     2×2, semifinals on one row); a lone matchup (Bronze, Final) takes its
+     own full row. A phone keeps one column. */
+  .playoff-cards{ display:grid; grid-template-columns:minmax(0,1fr); column-gap:14px; }
+  @media (min-width:900px){
+    .playoff-cards{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .playoff-cards > :only-child{ grid-column:1 / -1; }
   }
   .group-grid{
     display:grid;
@@ -4567,11 +4575,12 @@ function renderTeamStandings(){
   let html = `<h2 class="section-title">Brackets</h2><div class="group-grid">${groupKeys.map(g => teamGroupTableHTML(g, groups.get(g))).join('')}</div>`;
 
   html += `<h2 class="section-title">Playoffs</h2>`;
-  [['QF', 'Quarterfinals'], ['SF', 'Semifinals'], ['Fi', 'Final'], ['Br', 'Bronze']].forEach(([stage, title]) => {
+  const stageHTML = (stage, title) => {
     const list = TEAM_MATCHUPS.filter(mu => mu.stage === stage);
-    if(!list.length) return;
-    html += `<div class="section-caption">${title}</div>${list.map(mu => teamMatchupCardHTML(mu)).join('')}`;
-  });
+    if(!list.length) return '';
+    return `<div class="playoff-stage"><div class="section-caption">${title}</div><div class="playoff-cards">${list.map(mu => teamMatchupCardHTML(mu)).join('')}</div></div>`;
+  };
+  html += stageHTML('QF', 'Quarterfinals') + stageHTML('SF', 'Semifinals') + stageHTML('Br', 'Bronze') + stageHTML('Fi', 'Final');
 
   const groupNumbers = Array.from(new Set(TEAM_MATCHUPS.filter(mu => mu.stage === null && mu.group !== null).map(mu => mu.group)))
     .sort((a, b) => a - b);
