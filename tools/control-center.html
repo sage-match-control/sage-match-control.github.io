@@ -2030,7 +2030,6 @@
     border-radius:100px;
   }
   .award-chip.by-standings{background:rgba(20,27,44,.08); color:var(--ink-soft);}
-  .award-chip.walkover{background:rgba(124,185,44,.18); color:var(--green-dark);}
   .award-row{
     display:flex;
     align-items:center;
@@ -3930,6 +3929,55 @@ function isByeStandingRow(s){
   return BYE_RE.test((s.teamCode || '').trim()) || BYE_RE.test((s.player1 || '').trim());
 }
 
+// ---- Series finals (twice-to-beat, best-of-3) ----
+// A final played as a series of games carries its seat and game in each team
+// code: "<prefix>_F_<seat>_(<game>)", e.g. IXD_F_1_(2). Two games is
+// twice-to-beat: seat 1 (the round robin's #1) needs one win, seat 2 two.
+// Three is best-of-3: two wins each. The game where a seat reaches its wins
+// decides the series, and every game after it is never played. A tied game
+// counts for neither seat. Mirrors sage-tools-api's facilityCompletion.mjs
+// (seriesGameOf, unneededSeriesGames): change both, or "matches left" here
+// and the published completedAt disagree about when the day ended.
+const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
+function seriesGameOf(code){
+  const m = SERIES_GAME_RE.exec((code || '').trim());
+  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
+}
+// -> Map(series -> [{ m, game, seat1, seat2 }] in game order)
+function seriesGroups(matches){
+  const groups = new Map();
+  matches.forEach(m => {
+    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
+    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
+    if(!groups.has(a.series)) groups.set(a.series, []);
+    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
+  });
+  groups.forEach(list => list.sort((x, y) => x.game - y.game));
+  return groups;
+}
+// One series, in game order -> { decidedBy, tie, unneeded }
+function walkSeries(list){
+  const games = list[list.length - 1].game;
+  const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
+  const wins = { 1: 0, 2: 0 };
+  let decidedBy = null, tie = null;
+  const unneeded = [];
+  list.forEach(g => {
+    if(decidedBy){ unneeded.push(g.m); return; }
+    if(!g.m.played) return;
+    if(g.m.t1Score === g.m.t2Score){ tie = tie || g.m; return; }
+    const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
+    wins[seat] = (wins[seat] || 0) + 1;
+    if(wins[seat] >= (need[seat] ?? Infinity)) decidedBy = g.m;
+  });
+  return { decidedBy, tie, unneeded };
+}
+function unneededSeriesGames(matches){
+  const out = new Set();
+  seriesGroups(matches).forEach(list => walkSeries(list).unneeded.forEach(m => out.add(m)));
+  return out;
+}
+
 function divisionLabel(code){
   const p = parseCode(code);
   if(!p.category) return null;
@@ -4781,7 +4829,6 @@ function buildTeamPodium(){
   return {
     category: '__team__', source: 'bracket',
     gold, silver, bronze,
-    bronzeWalkover: false,
     warning: warnings.length ? warnings.join('; ') : null,
     orderIdx: 0
   };
@@ -4822,6 +4869,19 @@ function matchRestOf(m){ return parseCode(nonByeCode(m)).rest; }
 function resolveDecisiveMatch(category, keyword){
   const candidates = MATCHES.filter(m => matchCategoryOf(m) === category && roundKeyword(matchRestOf(m)) === keyword);
   if(candidates.length === 0) return { any: false, match: null, error: null };
+  // A series final (twice-to-beat, best-of-3) is decided by the game where a
+  // seat reaches its wins, not by the last game played: a challenger who wins
+  // twice-to-beat's game 1 has forced game 2, not won the final.
+  const series = seriesGroups(candidates);
+  if(series.size === 1){
+    const list = series.values().next().value;
+    if(list.length === candidates.length){
+      const { decidedBy, tie } = walkSeries(list);
+      if(decidedBy) return { any: true, match: decidedBy, error: null };
+      if(tie) return { any: true, match: tie, error: 'tie' };
+      return { any: true, match: null, error: null };
+    }
+  }
   const byInstanceDesc = candidates.slice().sort((a, b) =>
     (matchInstanceOf(matchRestOf(b)) || 0) - (matchInstanceOf(matchRestOf(a)) || 0));
   for(const m of byInstanceDesc){
@@ -4865,7 +4925,19 @@ function medalistFromTeam(team){
 // BYE row, since a one-sided "Bronze Battle" block is worse than none.
 function categoryBronzeIsByeDecided(category){
   const res = resolveDecisiveMatch(category, 'B');
-  return !!(res.match && !res.error && matchByeSide(res.match));
+  return !!(res.match && !res.error && matchByeSide(res.match)) || standingsBronzeWalkover(category).walkover;
+}
+
+// A bronze decided in the standings alone: its two slots are one real pair
+// and a BYE, and no Bronze match is scheduled (a twice-to-beat category's
+// round-robin #3 takes bronze without playing). `pair` is that row once its
+// names are in, else null (still pending).
+function standingsBronzeWalkover(category){
+  const rows = STANDINGS.filter(s => parseCode(s.teamCode).category === category && standingsStageKey(s.teamCode) === 'BRONZE');
+  const byes = rows.filter(isByeStandingRow);
+  const real = rows.filter(s => !isByeStandingRow(s));
+  if(byes.length !== 1 || real.length !== 1) return { walkover: false, pair: null };
+  return { walkover: true, pair: isEmptyStanding(real[0]) ? null : real[0] };
 }
 
 // §2.5 — categories with no bracket at all fall back to the top three RR
@@ -4886,7 +4958,7 @@ function categoryRoundRobinDone(category){
 }
 
 // -> [{ category, source: 'bracket'|'standings', gold, silver, bronze,
-//       bronzeWalkover, warning }], ordered by CATEGORY_ORDER_INDEX so the
+//       warning }], ordered by CATEGORY_ORDER_INDEX so the
 // Awards tab agrees with Standings' own category order.
 function buildPodiums(){
   const categoryTokens = Array.from(new Set(MATCHES.map(m => matchCategoryOf(m)).filter(Boolean)));
@@ -4910,7 +4982,7 @@ function buildPodiums(){
         gold: done ? top3[0] || null : null,
         silver: done ? top3[1] || null : null,
         bronze: done ? top3[2] || null : null,
-        bronzeWalkover: false, warning: null, orderIdx
+        warning: null, orderIdx
       });
       return;
     }
@@ -4918,7 +4990,7 @@ function buildPodiums(){
     if(finalRes.error){
       results.push({
         category, source: 'bracket',
-        gold: null, silver: null, bronze: null, bronzeWalkover: false,
+        gold: null, silver: null, bronze: null,
         warning: `Check the score for match #${finalRes.match.num}`, orderIdx
       });
       return;
@@ -4928,18 +5000,26 @@ function buildPodiums(){
     if(bronzeRes.error){
       results.push({
         category, source: 'bracket',
-        gold: null, silver: null, bronze: null, bronzeWalkover: false,
+        gold: null, silver: null, bronze: null,
         warning: `Check the score for match #${bronzeRes.match.num}`, orderIdx
       });
       return;
+    }
+
+    // No Bronze match at all: a walkover set up in the standings alone
+    // (standingsBronzeWalkover) still awards it.
+    const standingsBronze = bronzeRes.any ? null : standingsBronzeWalkover(category);
+    let bronze = medalistFromTeam(bronzeRes.match ? winnerOfMatch(bronzeRes.match) : null);
+    if(standingsBronze && standingsBronze.pair){
+      const s = standingsBronze.pair;
+      bronze = medalistFromTeam({ p1: s.player1, p2: s.player2, code: s.teamCode });
     }
 
     results.push({
       category, source: 'bracket',
       gold: medalistFromTeam(finalRes.match ? winnerOfMatch(finalRes.match) : null),
       silver: medalistFromTeam(finalRes.match ? loserOfMatch(finalRes.match) : null),
-      bronze: medalistFromTeam(bronzeRes.match ? winnerOfMatch(bronzeRes.match) : null),
-      bronzeWalkover: !!(bronzeRes.match && matchByeSide(bronzeRes.match)),
+      bronze,
       warning: null, orderIdx
     });
   });
@@ -6336,7 +6416,9 @@ function formatGap(mins){
 }
 
 function computeFacilityProgress(matches, isEventDay, nowMin){
-  const real = matches.filter(m => matchByeSide(m) === null);
+  // A series final's games after the decider are never played (seriesGameOf).
+  const unneeded = unneededSeriesGames(matches);
+  const real = matches.filter(m => matchByeSide(m) === null && !unneeded.has(m));
   const total = real.length;
   const done = real.filter(m => m.played).length;
   const left = total - done;
@@ -6769,13 +6851,7 @@ function awardsCardHTML(p){
     </div>
     ${medalRowHTML('\u{1F947}', 'gold', p.gold)}
     ${medalRowHTML('\u{1F948}', 'silver', p.silver)}
-    <div class="award-row bronze">
-      <span class="award-rank">\u{1F949}</span>
-      ${p.bronze
-        ? `${medalNamesHTML(p.bronze)}${p.bronze.clubLabel ? `<span class="award-club">${escapeHtml(p.bronze.clubLabel)}</span>` : ''}`
-        : `<span class="award-pending">Pending</span>`}
-      ${p.bronzeWalkover ? '<span class="award-chip walkover">Walkover</span>' : ''}
-    </div>
+    ${medalRowHTML('\u{1F949}', 'bronze', p.bronze)}
     <button type="button" class="awards-export-btn" data-category="${escapeHtml(p.category)}">Export image</button>
   </div>`;
 }
@@ -7024,7 +7100,7 @@ async function drawPodiumCard(ctx, w, h, podium){
   const rows = [
     { initial: '\u{1F947}', tint: c.gold, medal: podium.gold },
     { initial: '\u{1F948}', tint: c.silver, medal: podium.silver },
-    { initial: '\u{1F949}', tint: c.bronze, medal: podium.bronze, walkover: podium.bronzeWalkover }
+    { initial: '\u{1F949}', tint: c.bronze, medal: podium.bronze }
   ];
   const rowH = 250, rowPad = 20, rowX = 60, rowW = w - 120;
   rows.forEach(row => {
@@ -7074,22 +7150,6 @@ async function drawPodiumCard(ctx, w, h, podium){
       ctx.fillStyle = textColor;
       ctx.font = '600 30px "Barlow Condensed"';
       ctx.fillText('PENDING', textX, cy + 10);
-    }
-    if(row.walkover){
-      // A small navy pill keeps this legible regardless of the row's own
-      // background tint.
-      const pillLabel = 'WALKOVER', pillPadX = 14, pillH = 32;
-      ctx.font = '600 18px "Barlow Condensed"';
-      const pillW = ctx.measureText(pillLabel).width + pillPadX * 2;
-      const pillX = rowX + rowW - 24 - pillW, pillY = cy - pillH / 2;
-      ctx.fillStyle = c.bg;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(pillX, pillY, pillW, pillH, pillH / 2) : ctx.rect(pillX, pillY, pillW, pillH);
-      ctx.fill();
-      ctx.fillStyle = c.accent;
-      ctx.textAlign = 'center';
-      ctx.fillText(pillLabel, pillX + pillW / 2, pillY + pillH / 2 + 6);
-      ctx.textAlign = 'left';
     }
     ctx.textAlign = 'center';
     y += rowH;
@@ -7182,7 +7242,7 @@ function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
     const specs = [
       { emoji: '\u{1F947}', tint: c.gold, medal: p.gold },
       { emoji: '\u{1F948}', tint: c.silver, medal: p.silver },
-      { emoji: '\u{1F949}', tint: c.bronze, medal: p.bronze, walkover: p.bronzeWalkover }
+      { emoji: '\u{1F949}', tint: c.bronze, medal: p.bronze }
     ];
     specs.forEach(spec => {
       const decided = !!spec.medal;
@@ -7217,13 +7277,6 @@ function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
           ctx.font = '400 14px "Inter"';
           ctx.fillStyle = decided ? 'rgba(11,24,38,.7)' : c.secondary;
           clubLines.forEach(line => { ty += 14; ctx.fillText(line, x + pad + 34, ty); ty += 3; });
-        }
-        if(spec.walkover){
-          ctx.font = '600 11px "Barlow Condensed"';
-          ctx.fillStyle = decided ? c.bg : c.accent;
-          ctx.textAlign = 'right';
-          ctx.fillText('WALKOVER', x + cellW - pad, boxY + 16);
-          ctx.textAlign = 'left';
         }
       }
       cy = boxY + boxH + 10;

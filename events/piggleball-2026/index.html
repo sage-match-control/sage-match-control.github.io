@@ -963,6 +963,8 @@
 
   /* Playoff matchups: each stage's teams grouped into explicit head-to-head
      cards (instead of a flat list) so it's obvious who's facing whom. */
+  /* A series final's game that is never played (unneededSeriesGames). */
+  .matchup.not-needed, .ticket.not-needed{ opacity:.4; filter:grayscale(1); }
   .matchup{
     display:flex;
     flex-direction:column;
@@ -1892,6 +1894,7 @@ async function loadLiveData(){
 
     MATCHES = matches;
     MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
+    UNNEEDED_GAMES = unneededSeriesGames(MATCHES);
     STANDINGS = standings;
 
     // Re-checked every poll (not just on day-select) so a page left open
@@ -2095,6 +2098,55 @@ function isEmptyStanding(s){
   return !s.player1 || s.player1 === s.teamCode || s.player1 === slotCode;
 }
 
+// A slot held by a bye: the operator types BYE into its code or first name
+// cell. Never a real pair. A bronze slot like this is a walkover — the
+// twice-to-beat round robin's #3 takes bronze without playing.
+const BYE_RE = /^bye$/i;
+function isByeStandingRow(s){
+  return BYE_RE.test((s.teamCode || '').trim()) || BYE_RE.test((s.player1 || '').trim());
+}
+
+// ---- Series finals (twice-to-beat, best-of-3) ----
+// A final played as a series of games carries its seat and game in each team
+// code: "<prefix>_F_<seat>_(<game>)", e.g. IXD_F_1_(2). Two games is
+// twice-to-beat: seat 1 (the round robin's #1) needs one win, seat 2 two.
+// Three is best-of-3: two wins each. Every game after the one where a seat
+// reaches its wins is never played. A tied game counts for neither seat. The
+// same rule as control-center.html's and sage-tools-api's
+// facilityCompletion.mjs (seriesGameOf, unneededSeriesGames).
+const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
+function seriesGameOf(code){
+  const m = SERIES_GAME_RE.exec((code || '').trim());
+  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
+}
+// matches: [{ t1, t2, t1Score, t2Score, played }] -> Set of the ones never played
+function unneededSeriesGames(matches){
+  const groups = new Map();
+  matches.forEach(m => {
+    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
+    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
+    if(!groups.has(a.series)) groups.set(a.series, []);
+    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
+  });
+  const out = new Set();
+  groups.forEach(list => {
+    list.sort((x, y) => x.game - y.game);
+    const games = list[list.length - 1].game;
+    const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
+    const wins = { 1: 0, 2: 0 };
+    let decided = false;
+    list.forEach(g => {
+      if(decided){ out.add(g.m); return; }
+      if(!g.m.played || g.m.t1Score === g.m.t2Score) return;
+      const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
+      wins[seat] = (wins[seat] || 0) + 1;
+      if(wins[seat] >= (need[seat] ?? Infinity)) decided = true;
+    });
+  });
+  return out;
+}
+let UNNEEDED_GAMES = new Set(); // rebuilt with MATCHES
+
 // A Round Robin pair whose names aren't in yet: its name cells still hold its
 // own code. Shown in the RR table under that code, so standings read before
 // the rosters are pasted in. Only when the code is on the schedule, though —
@@ -2183,6 +2235,8 @@ function renderStageTables(rows){
   });
   // Order each bracket group by wins, head-to-head, then quotient
   rrGroups.forEach((group, brLabel) => rrGroups.set(brLabel, rankStandings(group)));
+  // A bronze won by walkover (one slot is a BYE) has no matchup to show.
+  if((stages.get('BRONZE') || []).some(isByeStandingRow)) stages.delete('BRONZE');
 
   if(rrGroups.size === 0 && stages.size === 0) return { html: '', hasMultiBracket: false };
 
@@ -2329,7 +2383,9 @@ function matchupInstanceLabel(pair){
 
 function renderMatchup(pair){
   const label = matchupInstanceLabel(pair);
-  return `<div class="matchup">
+  const game = pair[0] ? MATCH_BY_CODE.get(pair[0].teamCode) : null;
+  const notNeeded = !!game && UNNEEDED_GAMES.has(game);
+  return `<div class="matchup${notNeeded ? ' not-needed' : ''}"${notNeeded ? ' title="Not needed"' : ''}>
     ${label ? `<div class="matchup-label">${escapeHtml(label)}</div>` : ''}
     <div class="matchup-row">
       ${matchupSideHtml(pair[0], 'left')}
@@ -2923,7 +2979,7 @@ function ticketHTML(m, teamCode, isNext){
     : '';
 
   return `
-  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}">
+  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}${UNNEEDED_GAMES.has(m) ? ' not-needed' : ''}"${UNNEEDED_GAMES.has(m) ? ' title="Not needed"' : ''}>
     <div class="ticket-body">
       <div class="time-row">
         <span class="center-pill">${escapeHtml(m.time)}</span>
@@ -3133,7 +3189,7 @@ function runSearch(){
                               .sort((a,b) => a.num - b.num);
   // "Next" = the first match in schedule order that hasn't been played and
   // isn't currently live (a live one is already flagged by the Live pill).
-  const nextIdx = teamMatches.findIndex(m => !m.played && !m.liveCourt);
+  const nextIdx = teamMatches.findIndex(m => !m.played && !m.liveCourt && !UNNEEDED_GAMES.has(m));
 
   // Use whichever code is relevant per match to build the ticket
   const label = divisionLabel(codes[0]);

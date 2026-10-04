@@ -326,6 +326,7 @@
   /* Dimmed enough to recede behind live/upcoming, but not so far that the
      darkest category drops under 4.5:1 for its body text. */
   .cell.done{ opacity:.84; }
+  .cell.not-needed{ opacity:.35; filter:grayscale(1); }   /* a series final's game never played */
   .cell.live{
     border-color:var(--green);
     border-left-color:var(--cat, var(--green));
@@ -734,6 +735,53 @@ const STAGE_META = {
   F:   { label: 'FINAL',  playoff: true  }
 };
 
+// ---- Series finals (twice-to-beat, best-of-3) ----
+// A final played as a series of games carries its seat and game in each team
+// code: "<prefix>_F_<seat>_(<game>)", e.g. IXD_F_1_(2). Two games is
+// twice-to-beat: seat 1 (the round robin's #1) needs one win, seat 2 two.
+// Three is best-of-3: two wins each. Every game after the one where a seat
+// reaches its wins is never played. A tied game counts for neither seat. The
+// same rule as control-center.html's and sage-tools-api's
+// facilityCompletion.mjs (seriesGameOf, unneededSeriesGames).
+const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
+function seriesGameOf(code){
+  const m = SERIES_GAME_RE.exec((code || '').trim());
+  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
+}
+// matches: [{ t1, t2, t1Score, t2Score, played }] -> Set of the ones never played
+function unneededSeriesGames(matches){
+  const groups = new Map();
+  matches.forEach(m => {
+    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
+    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
+    if(!groups.has(a.series)) groups.set(a.series, []);
+    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
+  });
+  const out = new Set();
+  groups.forEach(list => {
+    list.sort((x, y) => x.game - y.game);
+    const games = list[list.length - 1].game;
+    const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
+    const wins = { 1: 0, 2: 0 };
+    let decided = false;
+    list.forEach(g => {
+      if(decided){ out.add(g.m); return; }
+      if(!g.m.played || g.m.t1Score === g.m.t2Score) return;
+      const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
+      wins[seat] = (wins[seat] || 0) + 1;
+      if(wins[seat] >= (need[seat] ?? Infinity)) decided = true;
+    });
+  });
+  return out;
+}
+
+// Board rows carry c1/c2/s1/s2; the series rule reads t1/t2/scores.
+function markUnneededGames(rows){
+  const views = rows.map(m => ({ src: m, t1: m.c1, t2: m.c2, t1Score: m.s1, t2Score: m.s2, played: m.s1 !== null && m.s2 !== null }));
+  const skip = unneededSeriesGames(views);
+  views.forEach(v => { v.src.notNeeded = skip.has(v); });
+}
+
 function stageOf(code){
   const m = String(code).match(/^[A-Z]+_[A-Z]+_(.+)$/);
   const rest = m ? m[1] : '';
@@ -766,7 +814,7 @@ function cellHTML(m){
     : `<div class="fo-vs">VS</div>`;
 
   return `
-  <div class="cell ${live?'live':(done?'done':'')}" style="--cat:${cm.color};--cat-text:${readableOn(cm.color)}">
+  <div class="cell ${m.notNeeded?'not-needed':(live?'live':(done?'done':''))}"${m.notNeeded?' title="Not needed"':''} style="--cat:${cm.color};--cat-text:${readableOn(cm.color)}">
     <div class="cell-top">
       <span class="cell-num">#${m.num}</span>
       <span class="cell-cat">${cm.short}</span>
@@ -1197,6 +1245,7 @@ function buildScheduleData(snapshot, venueName){
   const venues = facilities.map(f => f.name).filter(Boolean);
   const chosen = venueName && venues.includes(venueName) ? venueName : null;
   const everyRow = facilities.flatMap(f => f.rows);
+  facilities.forEach(f => markUnneededGames(f.rows));
   const allRows = chosen
     ? facilities.filter(f => f.name === chosen).flatMap(f => f.rows)
     : everyRow.slice();
