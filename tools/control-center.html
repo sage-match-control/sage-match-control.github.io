@@ -1629,6 +1629,8 @@
     color:var(--ink-soft);
     margin:-8px 0 22px;
   }
+  .team-groups + .results-meta{margin-top:14px;} /* the all-matchups list under the team chips */
+  .stats-row + .results-meta{margin-top:14px;} /* the all-matches list under the stats */
 
   .empty-state{
     background:var(--white);
@@ -2539,7 +2541,7 @@
     <label class="search-label" for="teamInput">Enter your pair's names</label>
     <div class="search-row autocomplete">
       <div class="input-wrap">
-        <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+        <input id="teamInput" type="text" placeholder="A name, or a match number like 42" autocomplete="off" inputmode="latin" />
         <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
       </div>
       <div id="acList" class="ac-list"></div>
@@ -4786,7 +4788,19 @@ function teamRenderIntro(){
     ${teams.length ? `<div class="team-groups">${groupKeys.map(g => `
       <h3>${g === 0 ? 'Teams' : `Bracket ${g}`}</h3>
       <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}<span class="chip">${escapeHtml(t.base)}</span></button>`).join('')}</div>`).join('')}
-    </div>` : ''}`;
+    </div>` : ''}
+    ${allMatchupsHTML('Search a team, a player or a match number above.')}`;
+}
+
+// Before anyone searches, every matchup of the day, ordered by its lowest
+// match number (a matchup of #3, #8, #9 and #17 sorts as 3), whatever order
+// the rows came in.
+function matchupFirstNum(mu){ return Math.min(...mu.matches.map(m => m.num)); }
+function allMatchupsHTML(hint){
+  const list = TEAM_MATCHUPS.slice().sort((a, b) => matchupFirstNum(a) - matchupFirstNum(b));
+  if(!list.length) return '';
+  return `<div class="results-meta">All ${list.length} matchups, by match number. ${hint}</div>
+    ${list.map(mu => teamMatchupCardHTML(mu, {})).join('')}`;
 }
 
 // ---- Awards (spec §9.6) ----
@@ -6168,7 +6182,10 @@ function escapeHtml(s){
 }
 
 function ticketHTML(m, teamCode, isNext){
-  const isT1 = m.t1 === teamCode;
+  // No teamCode: a neutral ticket (the all-matches list), team 1 on the left
+  // and no "You" badge.
+  const neutral = !teamCode;
+  const isT1 = neutral || m.t1 === teamCode;
   const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
   const opp = isT1 ? {code:m.t2, p1:m.t2p1, p2:m.t2p2} : {code:m.t1, p1:m.t1p1, p2:m.t1p2};
   const youTBD = you.p1 === 'TBD';
@@ -6219,7 +6236,7 @@ function ticketHTML(m, teamCode, isNext){
       </div>
       <div class="names-row">
         <div class="team-block ${youTBD ? 'tbd':''}">
-          <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
+          <div class="team-name">${escapeHtml(you.code)}${neutral ? '' : '<span class="you-badge">You</span>'}</div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
         <div class="score-col">${scoreHTML}</div>
@@ -6676,6 +6693,8 @@ function resolveTeam(raw){
 }
 
 function runSearch(){
+  const byNumber = MATCH_NUMBER_SEARCH_RE.exec(input.value.trim());
+  if(byNumber){ renderMatchByNumber(parseInt(byNumber[1], 10)); return; }
   if(CURRENT_TYPE === 'team'){ teamRunSearch(); return; }
   const raw = input.value.trim();
   if(!raw){
@@ -6744,7 +6763,41 @@ function renderIntro(){
       <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
       <div class="stat"><b>${teams.size || '—'}</b><span>Teams</span></div>
       <div class="stat"><b>${divisions.size || '—'}</b><span>Divisions</span></div>
-    </div>`;
+    </div>
+    ${allMatchesHTML()}`;
+}
+
+// Before anyone searches, Match Finder lists every match of the day as a
+// ticket, in schedule order (a bye is never a real match, so it's left out).
+// No "Next Up": that only means something for one pair.
+function allMatchesHTML(){
+  const all = MATCHES.filter(m => matchByeSide(m) === null).sort((a, b) => a.num - b.num);
+  if(!all.length) return '';
+  return `<div class="results-meta">All ${all.length} matches, by match number. Search a name or a match number above.</div>
+    ${all.map(m => ticketHTML(m, null, false)).join('')}`;
+}
+
+// A search that is just a number ("42" or "#42") shows that match: the
+// ticket, or for a team event its matchup card narrowed to that match.
+const MATCH_NUMBER_SEARCH_RE = /^#?\s*(\d+)$/;
+function renderMatchByNumber(n){
+  const m = MATCHES.find(x => x.num === n);
+  if(!m){
+    resultsEl.innerHTML = `<div class="empty-state">No match <strong>#${n}</strong> on this day.</div>`;
+    return;
+  }
+  if(CURRENT_TYPE === 'team'){
+    const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
+    resultsEl.innerHTML = `<div class="results-head"><h2>Match #${n}</h2></div>
+      ${mu ? teamMatchupCardHTML(mu, { onlyMatch: n }) : ''}`;
+    return;
+  }
+  const label = divisionLabel(nonByeCode(m));
+  resultsEl.innerHTML = `<div class="results-head">
+      <h2>Match #${n}</h2>
+      ${label ? `<span class="division-tag">${label}</span>` : ''}
+    </div>
+    ${ticketHTML(m, null, false)}`;
 }
 
 renderIntro();

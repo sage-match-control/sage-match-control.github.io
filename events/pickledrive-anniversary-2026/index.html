@@ -1110,6 +1110,7 @@
     color:var(--ink-soft);
     margin:-8px 0 22px;
   }
+  .team-groups + .results-meta{margin-top:14px;} /* the all-matchups list under the team chips */
 
   .empty-state{
     background:var(--white);
@@ -2892,7 +2893,19 @@ function renderIntro(){
     ${teams.length ? `<div class="team-groups">${groupKeys.map(g => `
       <h3>${g === 0 ? 'Teams' : `Bracket ${g}`}</h3>
       <div class="team-chips">${groups.get(g).map(t => `<button type="button" class="team-chip-btn" data-team="${escapeHtml(t.base)}">${escapeHtml(t.label)}</button>`).join('')}</div>`).join('')}
-    </div>` : ''}`;
+    </div>` : ''}
+    ${allMatchupsHTML('Search a team or a player above.')}`;
+}
+
+// Before anyone searches, every matchup of the day, ordered by its lowest
+// match number (a matchup of #3, #8, #9 and #17 sorts as 3), whatever order
+// the rows came in. Control Center lists them the same way.
+function matchupFirstNum(mu){ return Math.min(...mu.matches.map(m => m.num)); }
+function allMatchupsHTML(hint){
+  const list = TEAM_MATCHUPS.slice().sort((a, b) => matchupFirstNum(a) - matchupFirstNum(b));
+  if(!list.length) return '';
+  return `<div class="results-meta">All ${list.length} matchups, by match number. ${hint}</div>
+    ${list.map(mu => teamMatchupCardHTML(mu, {})).join('')}`;
 }
 
 // Tapping a team chip on the intro runs that team's search.

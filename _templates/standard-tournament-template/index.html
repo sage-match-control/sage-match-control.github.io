@@ -1072,6 +1072,7 @@
     color:var(--ink-soft);
     margin:-8px 0 22px;
   }
+  .stats-row + .results-meta{margin-top:14px;} /* the all-matches list under the stats */
 
   .empty-state{
     background:var(--white);
@@ -2908,7 +2909,10 @@ function escapeHtml(s){
 }
 
 function ticketHTML(m, teamCode, isNext){
-  const isT1 = m.t1 === teamCode;
+  // No teamCode: a neutral ticket (the all-matches list), team 1 on the left
+  // and no "You" badge.
+  const neutral = !teamCode;
+  const isT1 = neutral || m.t1 === teamCode;
   const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
   const opp = isT1 ? {code:m.t2, p1:m.t2p1, p2:m.t2p2} : {code:m.t1, p1:m.t1p1, p2:m.t1p2};
   const youTBD = you.p1 === 'TBD';
@@ -2956,7 +2960,7 @@ function ticketHTML(m, teamCode, isNext){
       </div>
       <div class="names-row">
         <div class="team-block ${youTBD ? 'tbd':''}">
-          <div class="team-name">${escapeHtml(you.code)}<span class="you-badge">You</span></div>
+          <div class="team-name">${escapeHtml(you.code)}${neutral ? '' : '<span class="you-badge">You</span>'}</div>
           <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
         </div>
         <div class="score-col">${scoreHTML}</div>
@@ -3183,7 +3187,23 @@ function renderIntro(){
       <div class="stat"><b>${MATCHES.length || '—'}</b><span>Matches</span></div>
       <div class="stat"><b>${teams.size || '—'}</b><span>Teams</span></div>
       <div class="stat"><b>${divisions.size || '—'}</b><span>Divisions</span></div>
-    </div>`;
+    </div>
+    ${allMatchesHTML()}`;
+}
+
+// Before anyone searches, Match Finder lists every match of the day as a
+// ticket, in schedule order (a bye is never a real match, so it's left out).
+// No "Next Up": that only means something for one pair.
+function matchSideIsBye(code, p1, p2){
+  return [code, p1, p2].some(v => BYE_RE.test((v || '').trim()));
+}
+function allMatchesHTML(){
+  const all = MATCHES
+    .filter(m => !matchSideIsBye(m.t1, m.t1p1, m.t1p2) && !matchSideIsBye(m.t2, m.t2p1, m.t2p2))
+    .sort((a, b) => a.num - b.num);
+  if(!all.length) return '';
+  return `<div class="results-meta">All ${all.length} matches, by match number. Search a name above for one pair's.</div>
+    ${all.map(m => ticketHTML(m, null, false)).join('')}`;
 }
 
 renderIntro();
