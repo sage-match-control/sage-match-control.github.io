@@ -4639,7 +4639,7 @@ function teamRebuildIndex(){
     selectedEntry = TEAM_INDEX.find(e => e.kind === selectedEntry.kind &&
       (e.kind === 'team' ? e.base === selectedEntry.base : e.nameLower === selectedEntry.nameLower)) || null;
   }
-  if(input.value.trim()) runSearch(); else renderIntro();
+  refreshFinder();
 }
 
 // A search is saved as "team:<letter>" or "player:<name>" — never a playoff
@@ -5834,7 +5834,7 @@ function rebuildTeamIndex(){
       labelLower: t.label.toLowerCase()
     }));
   // Re-run current search/intro against the freshly loaded data
-  if(input.value.trim()) runSearch(); else renderIntro();
+  refreshFinder();
 }
 
 const input = document.getElementById('teamInput');
@@ -5842,6 +5842,24 @@ const acList = document.getElementById('acList');
 const resultsEl = document.getElementById('results');
 let acIndex = -1;
 let selectedTeam = null; // holds the chosen entry from allTeams (p1, p2, label, codes)
+// What the results show: the last search actually run (Find, Enter, a pick
+// from the suggestions, a team chip, a restored search), not whatever is
+// half-typed in the box. A data refresh redraws that one, so the list doesn't
+// change under someone still typing.
+let shownQuery = '';
+let shownTeam = null, shownEntry = null;
+// The entry was built from an earlier load; the same team or player in this one.
+function freshEntry(e){
+  return e ? (TEAM_INDEX.find(x => x.kind === e.kind &&
+    (x.kind === 'team' ? x.base === e.base : x.nameLower === e.nameLower)) || null) : null;
+}
+function refreshFinder(){
+  if(!shownQuery){ renderIntro(); return; }
+  const typed = input.value, pickedTeam = selectedTeam, pickedEntry = selectedEntry;
+  input.value = shownQuery; selectedTeam = shownTeam; selectedEntry = freshEntry(shownEntry);
+  runSearch();
+  input.value = typed; selectedTeam = pickedTeam; selectedEntry = pickedEntry;
+}
 
 const viewTabs = document.querySelectorAll('.view-tab');
 const searchPanelEl = document.getElementById('searchPanel');
@@ -6014,6 +6032,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   selectedTeam = null;
   selectedEntry = null;
   input.value = '';
+  shownQuery = ''; shownTeam = null; shownEntry = null;
   if(typeof updateClearBtn === 'function') updateClearBtn();
 
   saveSelection();
@@ -6697,6 +6716,7 @@ function resolveTeam(raw){
 }
 
 function runSearch(){
+  shownQuery = input.value.trim(); shownTeam = selectedTeam; shownEntry = selectedEntry;
   const byNumber = MATCH_NUMBER_SEARCH_RE.exec(input.value.trim());
   if(byNumber){ renderMatchByNumber(parseInt(byNumber[1], 10)); return; }
   if(CURRENT_TYPE === 'team'){ teamRunSearch(); return; }

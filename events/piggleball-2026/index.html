@@ -2652,7 +2652,7 @@ function rebuildTeamIndex(){
       labelLower: t.label.toLowerCase()
     }));
   // Re-run current search/intro against the freshly loaded data
-  if(input.value.trim()) runSearch(); else renderIntro();
+  refreshFinder();
 }
 
 const input = document.getElementById('teamInput');
@@ -2660,6 +2660,19 @@ const acList = document.getElementById('acList');
 const resultsEl = document.getElementById('results');
 let acIndex = -1;
 let selectedTeam = null; // holds the chosen entry from allTeams (p1, p2, label, codes)
+// What the results show: the last search actually run (Find, Enter, a pick
+// from the suggestions, a team chip, a restored search), not whatever is
+// half-typed in the box. A data refresh redraws that one, so the list doesn't
+// change under someone still typing.
+let shownQuery = '';
+let shownTeam = null;
+function refreshFinder(){
+  if(!shownQuery){ renderIntro(); return; }
+  const typed = input.value, picked = selectedTeam;
+  input.value = shownQuery; selectedTeam = shownTeam;
+  runSearch();
+  input.value = typed; selectedTeam = picked;
+}
 
 const viewTabs = document.querySelectorAll('.view-tab');
 const searchPanelEl = document.getElementById('searchPanel');
@@ -2749,6 +2762,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   // Reset per-day UI state so nothing carries over from a previous day.
   selectedTeam = null;
   input.value = '';
+  shownQuery = ''; shownTeam = null;
   if(typeof updateClearBtn === 'function') updateClearBtn();
   selectedStandingsCategory = null;
   hiddenCategories = new Set();
@@ -3164,6 +3178,7 @@ function resolveTeam(raw){
 }
 
 function runSearch(){
+  shownQuery = input.value.trim(); shownTeam = selectedTeam;
   const raw = input.value.trim();
   if(!raw){
     renderIntro();

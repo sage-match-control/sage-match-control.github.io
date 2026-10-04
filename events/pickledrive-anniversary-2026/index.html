@@ -2311,7 +2311,7 @@ function rebuildTeamIndex(){
       (e.kind === 'team' ? e.base === selectedEntry.base : e.nameLower === selectedEntry.nameLower)) || null;
   }
   // Re-run current search/intro against the freshly loaded data
-  if(input.value.trim()) runSearch(); else renderIntro();
+  refreshFinder();
 }
 
 const input = document.getElementById('teamInput');
@@ -2319,6 +2319,24 @@ const acList = document.getElementById('acList');
 const resultsEl = document.getElementById('results');
 let acIndex = -1;
 let selectedEntry = null; // holds the chosen entry from TEAM_INDEX
+// What the results show: the last search actually run (Find, Enter, a pick
+// from the suggestions, a team chip, a restored search), not whatever is
+// half-typed in the box. A data refresh redraws that one, so the list doesn't
+// change under someone still typing.
+let shownQuery = '';
+let shownEntry = null;
+// The entry was built from an earlier load; the same team or player in this one.
+function freshEntry(e){
+  return e ? (TEAM_INDEX.find(x => x.kind === e.kind &&
+    (x.kind === 'team' ? x.base === e.base : x.nameLower === e.nameLower)) || null) : null;
+}
+function refreshFinder(){
+  if(!shownQuery){ renderIntro(); return; }
+  const typed = input.value, picked = selectedEntry;
+  input.value = shownQuery; selectedEntry = freshEntry(shownEntry);
+  runSearch();
+  input.value = typed; selectedEntry = picked;
+}
 
 const viewTabs = document.querySelectorAll('.view-tab');
 const searchPanelEl = document.getElementById('searchPanel');
@@ -2508,6 +2526,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   // Reset per-day UI state so nothing carries over from a previous day.
   selectedEntry = null;
   input.value = '';
+  shownQuery = ''; shownEntry = null;
   if(typeof updateClearBtn === 'function') updateClearBtn();
   TEAM_EXPANDED.clear();
   TEAM_OPEN_GROUPS.clear();
@@ -2844,6 +2863,7 @@ function playerResultHTML(entry){
 }
 
 function runSearch(){
+  shownQuery = input.value.trim(); shownEntry = selectedEntry;
   const raw = input.value.trim();
   if(!raw){
     renderIntro();
