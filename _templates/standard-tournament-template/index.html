@@ -1178,10 +1178,10 @@
   .live-pill .live-dot{margin-right:6px;}
 
   .names-row{
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:12px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:start;
+    column-gap:12px;
     margin-bottom:12px;
   }
   .team-block{flex:1; min-width:0; text-align:left;}
@@ -1201,6 +1201,20 @@
     line-height:1.45;
   }
   .team-block .players .p{display:block;}
+  /* Both sides share the names-row grid's rows: the team codes on the first,
+     then one row per player name, each as tall as the taller side's name. A
+     name that wraps moves both sides' next name down together, so codes and
+     names stay level whatever the line count. */
+  .names-row .team-block, .names-row .team-block .players{display:contents;}
+  .names-row .team-block .team-name{grid-column:1; grid-row:1;}
+  .names-row .team-block .p{grid-column:1;}
+  .names-row .team-block .p:first-child{grid-row:2; margin-top:4px;}
+  .names-row .team-block .p:nth-child(2){grid-row:3;}
+  .names-row .team-block.right .team-name,
+  .names-row .team-block.right .p{grid-column:3;}
+  .names-row .team-block.tbd .players{display:block; grid-column:1; grid-row:2 / span 2; margin-top:4px;}
+  .names-row .team-block.right.tbd .players{grid-column:3;}
+  .names-row .score-col{grid-column:2; grid-row:1 / span 3; align-self:center;}
   .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
   .you-badge{
     display:inline-block;
@@ -1308,7 +1322,7 @@
     .court-pill{font-size:13px; padding:5px 14px;}
     .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
     .next-pill{font-size:11px; padding:5px 11px;}
-    .names-row{gap:8px; margin-bottom:14px;}
+    .names-row{column-gap:8px; margin-bottom:14px;}
     .team-block .players{font-size:14px;}
     .score-row{font-size:30px;}
     .meta-row{justify-content:center;}

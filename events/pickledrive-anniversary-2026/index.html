@@ -989,8 +989,8 @@
   .tm-row-body{
     display:grid;
     grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
-    gap:8px;
-    align-items:center;
+    column-gap:8px;
+    align-items:start;
   }
   .tm-players{
     font-size:12.5px;
@@ -1002,6 +1002,18 @@
   }
   .tm-players.right{ text-align:right; }
   .tm-players.unset{ color:var(--ink-soft); font-style:italic; font-weight:500; }
+  /* Each player of a pair on their own line, and both sides share the row-body
+     grid's two rows: first players level, second players level, however a
+     name wraps. */
+  .tm-players .p{ display:block; }
+  .tm-row-body .tm-players:not(.unset){ display:contents; }
+  .tm-row-body .tm-players .p{ grid-column:1; }
+  .tm-row-body .tm-players.right .p{ grid-column:3; }
+  .tm-row-body .tm-players .p:first-child{ grid-row:1; }
+  .tm-row-body .tm-players .p:nth-child(2){ grid-row:2; }
+  .tm-row-body .tm-players.unset{ grid-column:1; grid-row:1 / span 2; align-self:center; }
+  .tm-row-body .tm-players.unset.right{ grid-column:3; }
+  .tm-row-body .tm-rscore{ grid-column:2; grid-row:1 / span 2; align-self:center; }
   .tm-rscore{
     font-family:'Montserrat',sans-serif;
     font-size:14px;
@@ -2026,7 +2038,7 @@ function teamMatchupRowHTML(m, swap){
   const played = dayIsLive && m.played;
   const players = (s, right) => s.p1 === 'TBD'
     ? `<div class="tm-players unset${right ? ' right' : ''}">Lineup not set</div>`
-    : `<div class="tm-players${right ? ' right' : ''}">${escapeHtml(s.p1)} / ${escapeHtml(s.p2)}</div>`;
+    : `<div class="tm-players${right ? ' right' : ''}"><span class="p">${escapeHtml(s.p1)}</span><span class="p">${escapeHtml(s.p2)}</span></div>`;
   const score = played
     ? `<span class="tm-rscore">${a.score > b.score ? `<b>${a.score}</b>` : a.score}–${b.score > a.score ? `<b>${b.score}</b>` : b.score}</span>`
     : `<span class="tm-rscore">–</span>`;

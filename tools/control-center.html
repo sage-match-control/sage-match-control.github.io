@@ -1746,10 +1746,10 @@
   .live-pill .live-dot{margin-right:6px;}
 
   .names-row{
-    display:flex;
-    align-items:flex-end;
-    justify-content:space-between;
-    gap:12px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+    align-items:start;
+    column-gap:12px;
     margin-bottom:14px;
   }
   .team-block{flex:1; min-width:0; text-align:left;}
@@ -1770,6 +1770,20 @@
     line-height:1.45;
   }
   .team-block .players .p{display:block;}
+  /* Both sides share the names-row grid's rows: the team codes on the first,
+     then one row per player name, each as tall as the taller side's name. A
+     name that wraps moves both sides' next name down together, so codes and
+     names stay level whatever the line count. */
+  .names-row .team-block, .names-row .team-block .players{display:contents;}
+  .names-row .team-block .team-name{grid-column:1; grid-row:1;}
+  .names-row .team-block .p{grid-column:1;}
+  .names-row .team-block .p:first-child{grid-row:2; margin-top:4px;}
+  .names-row .team-block .p:nth-child(2){grid-row:3;}
+  .names-row .team-block.right .team-name,
+  .names-row .team-block.right .p{grid-column:3;}
+  .names-row .team-block.tbd .players{display:block; grid-column:1; grid-row:2 / span 2; margin-top:4px;}
+  .names-row .team-block.right.tbd .players{grid-column:3;}
+  .names-row .score-col{grid-column:2; grid-row:1 / span 3; align-self:center;}
   .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
   .you-badge{
     display:inline-block;
@@ -1900,7 +1914,7 @@
     .court-pill{font-size:13px; padding:5px 14px;}
     .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
     .next-pill{font-size:11px; padding:5px 11px;}
-    .names-row{gap:6px; margin-bottom:14px;}
+    .names-row{column-gap:6px; margin-bottom:14px;}
     .team-block .players{font-size:13px;}
     .score-col{font-size:26px; padding:0 2px;}
     .meta-row{justify-content:center;}
@@ -2406,8 +2420,8 @@
   .tm-row-body{
     display:grid;
     grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
-    gap:8px;
-    align-items:center;
+    column-gap:8px;
+    align-items:start;
   }
   .tm-players{
     font-size:12.5px;
@@ -2419,6 +2433,18 @@
   }
   .tm-players.right{ text-align:right; }
   .tm-players.unset{ color:var(--ink-soft); font-style:italic; font-weight:500; }
+  /* Each player of a pair on their own line, and both sides share the row-body
+     grid's two rows: first players level, second players level, however a
+     name wraps. */
+  .tm-players .p{ display:block; }
+  .tm-row-body .tm-players:not(.unset){ display:contents; }
+  .tm-row-body .tm-players .p{ grid-column:1; }
+  .tm-row-body .tm-players.right .p{ grid-column:3; }
+  .tm-row-body .tm-players .p:first-child{ grid-row:1; }
+  .tm-row-body .tm-players .p:nth-child(2){ grid-row:2; }
+  .tm-row-body .tm-players.unset{ grid-column:1; grid-row:1 / span 2; align-self:center; }
+  .tm-row-body .tm-players.unset.right{ grid-column:3; }
+  .tm-row-body .tm-rscore{ grid-column:2; grid-row:1 / span 2; align-self:center; }
   .tm-rscore{
     font-family:'Inter',sans-serif;
     font-size:14px;
@@ -4385,7 +4411,7 @@ function teamMatchupRowHTML(m, swap){
   const played = dayIsLive && m.played;
   const players = (s, right) => s.p1 === 'TBD'
     ? `<div class="tm-players unset${right ? ' right' : ''}">Lineup not set</div>`
-    : `<div class="tm-players${right ? ' right' : ''}">${escapeHtml(s.p1)} / ${escapeHtml(s.p2)}</div>`;
+    : `<div class="tm-players${right ? ' right' : ''}"><span class="p">${escapeHtml(s.p1)}</span><span class="p">${escapeHtml(s.p2)}</span></div>`;
   const score = played
     ? `<span class="tm-rscore">${a.score > b.score ? `<b>${a.score}</b>` : a.score}–${b.score > a.score ? `<b>${b.score}</b>` : b.score}</span>`
     : `<span class="tm-rscore">–</span>`;
