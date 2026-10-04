@@ -1057,6 +1057,92 @@
   }
   .toast-close:hover{opacity:1;}
 
+  /* ---------- SCORE DIALOG (spec: control-center-score-entry-spec.md §5.2) ----------
+     The same rules, in the same words, in tools/control-center.html and
+     _templates/scorer/scorer.html (and so every events/<key>/scorer.html). */
+  .score-dialog{
+    width:min(520px, calc(100vw - 32px));
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+    border:none;
+    border-radius:var(--radius);
+    padding:20px;
+    background:var(--white);
+    color:var(--ink);
+    box-shadow:var(--card-shadow);
+    font-family:'Inter',sans-serif;
+  }
+  .score-dialog::backdrop{background:rgba(11,24,38,.55);}
+  .score-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px;}
+  .score-title{margin:0; font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; line-height:1.2; letter-spacing:.01em;}
+  .score-sub{margin-top:2px; font-size:13px; color:var(--ink-soft);}
+  .score-x{
+    flex:0 0 auto; border:0; background:transparent; color:var(--ink-soft);
+    font-size:28px; line-height:1; padding:0 6px; cursor:pointer;
+    min-width:44px; min-height:44px; margin:-8px -10px -8px 0;
+  }
+  .score-x:hover{color:var(--ink);}
+  .score-x:disabled{opacity:.4; cursor:not-allowed;}
+  .score-sides{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .score-side{min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:4px;}
+  .score-side-name{font-weight:700; font-size:15px; line-height:1.25; overflow-wrap:anywhere;}
+  .score-chip{
+    align-self:flex-start;
+    font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em;
+    padding:1px 8px; border-radius:999px; background:var(--paper-dim); color:var(--ink-soft);
+  }
+  .score-side-players{font-size:13px; line-height:1.35; color:var(--ink-soft); overflow-wrap:anywhere; margin-bottom:6px;}
+  .score-side-players.unset{font-style:italic;}
+  .score-input{
+    font:inherit; font-size:32px; font-weight:700; text-align:center;
+    width:100%; height:64px;
+    border:2px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .score-input:focus{outline:none; border-color:var(--green);}
+  .score-winner{font-size:22px; font-weight:800; line-height:1.25; margin:4px 0 10px;}
+  .score-winner-players{font-size:15px; font-weight:400; color:var(--ink-soft);}
+  .score-big{font-size:44px; font-weight:800; line-height:1.1; text-align:center; font-variant-numeric:tabular-nums;}
+  .score-big-names{display:flex; justify-content:space-around; gap:12px; margin:2px 0 10px; font-size:13px; color:var(--ink-soft); text-align:center;}
+  .score-big-names span{flex:1 1 0; min-width:0; overflow-wrap:anywhere;}
+  .score-was{color:var(--ink-soft); font-size:14px; margin:4px 0 8px; text-align:center;}
+  .score-winner + .score-was{text-align:left;}
+  .score-warn{
+    margin:10px 0 0; padding:10px 14px 10px 30px; border-radius:10px;
+    background:#FFF4E0; border:1px solid rgba(240,170,40,.55); color:#7A4B00; font-size:14px;
+  }
+  .score-warn li{margin:2px 0;}
+  .score-error{
+    margin:12px 0 0; padding:10px 14px; border-radius:10px;
+    background:#FDEDEF; border:1px solid rgba(255,90,110,.5); color:#9A2A3A; font-size:14px;
+  }
+  .score-note{margin:12px 0 0; font-size:14px; font-style:italic; color:var(--ink-soft);}
+  .score-conflict{margin:0 0 10px; font-size:15px;}
+  .score-conflict-row{margin:4px 0; font-size:15px;}
+  .score-conflict-row span{display:inline-block; min-width:96px; color:var(--ink-soft);}
+  .score-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px;}
+  .score-saving{margin-right:auto; font-size:14px; color:var(--ink-soft);}
+  .score-btn{
+    font:inherit; font-size:15px; font-weight:600;
+    min-height:44px; padding:0 18px; border:none; border-radius:10px; cursor:pointer;
+  }
+  .score-btn.primary{background:var(--navy); color:var(--white);}
+  .score-btn.secondary{background:var(--paper-dim); color:var(--ink);}
+  .score-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .score-btn:focus-visible, .score-x:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+  .scoreable{cursor:pointer;}
+  .scoreable:hover, .scoreable:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+  .score-hint{font-size:12px; font-weight:600; color:var(--green-dark); margin-left:auto; white-space:nowrap;}
+  @media (max-width:599px){
+    .score-dialog{
+      width:100%; max-width:100%; margin:auto 0 0;
+      border-radius:var(--radius) var(--radius) 0 0;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom));
+    }
+    .score-actions .score-btn{flex:1 1 auto;}
+  }
+
   /* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
   .category-toggle-bar{
     display:none; /* shown only at the desktop-standings breakpoint (900px wide and 600px tall) */
@@ -2714,6 +2800,22 @@
 
       <div class="organizer-divider"></div>
 
+      <!-- Scorer links (control-center-score-entry-spec.md §5.8): a link that can
+           enter scores and nothing else, and a switch that stops every such link.
+           The switch writes config/events.json (PUT /v1/events/:event/score-entry). -->
+      <div id="scorerLinksSection" style="display:none;">
+        <label class="search-label">Scorer links</label>
+        <div class="golive-current" id="scorerLinksCurrent"></div>
+        <div class="golive-buttons" id="scorerLinksButtons" style="display:none;">
+          <button type="button" class="golive-btn" data-scorer="links">Accepting</button>
+          <button type="button" class="golive-btn golive-btn-danger" data-scorer="console">Stopped</button>
+        </div>
+        <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
+        <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
+        <p class="organizer-hint">A scorer link opens this event's scorer page, where staff enter scores for any venue on that day and do nothing else. Each link works for 24 hours, and only while this is set to <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder. Takes effect within about a minute.</p>
+        <div class="organizer-divider"></div>
+      </div>
+
       <!-- The schedule board is a venue wall display, deliberately unlisted from
            the public pages — this is its only entry point, operators launch it
            from here and spectators never see a link to it. Tournament Hub just
@@ -2735,6 +2837,21 @@
   S.A.G.E. Match Control<br>
   One console, every registered event.
 </footer>
+
+<!-- Score dialog (control-center-score-entry-spec.md §5.2): the same markup in the scorer page. -->
+<dialog id="scoreDialog" class="score-dialog" aria-labelledby="scoreDialogTitle">
+  <div class="score-head">
+    <div>
+      <h2 id="scoreDialogTitle" class="score-title"></h2>
+      <div id="scoreDialogSub" class="score-sub"></div>
+    </div>
+    <button type="button" class="score-x" id="scoreDialogClose" aria-label="Close">&times;</button>
+  </div>
+  <div id="scoreDialogBody"></div>
+  <p id="scoreDialogNote" class="score-note" hidden></p>
+  <div id="scoreDialogError" class="score-error" role="alert" hidden></div>
+  <div id="scoreDialogActions" class="score-actions"></div>
+</dialog>
 
 <!-- Short outcomes (go-live, sync method, sign-in, "pick a day first") show
      here, pinned to the top of the screen so they are seen wherever the
@@ -3775,6 +3892,7 @@ async function loadLiveData(){
       renderLiveMatches();
     }
     if(typeof renderAwards === 'function') renderAwards();
+    scoreDialog.refresh();
 
     // "Synced" reflects when Cloud Run actually published this snapshot
     // (i.e. when the sheet was last edited and Apps Script synced it), not
@@ -4414,7 +4532,7 @@ function sideChipHTML(side){
   return base ? `<span class="chip">${escapeHtml(base)}</span>` : '';
 }
 
-function teamMatchupRowHTML(m, swap){
+function teamMatchupRowHTML(m, swap, scoreable = false){
   const a = swap ? { code: m.t2, p1: m.t2p1, p2: m.t2p2, score: m.t2Score }
                  : { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score };
   const b = swap ? { code: m.t1, p1: m.t1p1, p2: m.t1p2, score: m.t1Score }
@@ -4428,10 +4546,13 @@ function teamMatchupRowHTML(m, swap){
     ? `<span class="tm-rscore">${a.score > b.score ? `<b>${a.score}</b>` : a.score}–${b.score > a.score ? `<b>${b.score}</b>` : b.score}</span>`
     : `<span class="tm-rscore">–</span>`;
   const plabel = pairLabel(m.t1, true);
-  return `<div class="tm-row${live ? ' live' : ''}">
+  // Match Finder only (scoreable): click to enter the score (spec §5.7).
+  const scoreAt = scoreable ? scoreAttrs(m) : '';
+  return `<div class="tm-row${live ? ' live' : ''}${scoreAt ? ' scoreable' : ''}"${scoreAt}>
     <div class="tm-row-meta">
       <span>#${m.num}</span>${plabel ? `<span class="tm-plabel">${escapeHtml(plabel)}</span>` : ''}
       ${live ? `<span class="tm-live"><span class="live-dot" aria-hidden="true"></span>Court ${escapeHtml(m.liveCourt)}</span>` : ''}
+      ${scoreAt ? scoreHintHTML(m) : ''}
     </div>
     <div class="tm-row-body">${players(a, false)}${score}${players(b, true)}</div>
   </div>`;
@@ -4440,8 +4561,9 @@ function teamMatchupRowHTML(m, swap){
 // The one matchup component. focusBase: put that base team on the left
 // (display only). compact: headline only, matches behind a toggle. onlyMatch:
 // show just the row for that match number (a player's result). isNext: flag
-// "Next up".
-function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch = null, isNext = false } = {}){
+// "Next up". scoreable: Match Finder's calls only; makes each match line
+// open the score dialog (Standings' cards stay read-only, spec §5.7).
+function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch = null, isNext = false, scoreable = false } = {}){
   const r = mu.result;
   const swap = focusBase !== null && baseTeamOf(mu.side1) !== focusBase && baseTeamOf(mu.side2) === focusBase;
   const L = swap ? 2 : 1, R = swap ? 1 : 2;
@@ -4480,7 +4602,7 @@ function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch 
   const expanded = !compact || TEAM_EXPANDED.has(mu.matchUp);
   const rowMatches = onlyMatch === null ? mu.matches : mu.matches.filter(m => m.num === onlyMatch);
   const rows = expanded
-    ? `<div class="tm-rows">${rowMatches.map(m => teamMatchupRowHTML(m, swap)).join('')}</div>`
+    ? `<div class="tm-rows">${rowMatches.map(m => teamMatchupRowHTML(m, swap, scoreable)).join('')}</div>`
     : '';
   const toggle = compact
     ? `<button type="button" class="tm-toggle" data-tm-toggle="${escapeHtml(mu.matchUp)}" aria-expanded="${expanded}">${expanded ? 'Hide matches' : 'Show matches'}</button>`
@@ -4753,7 +4875,7 @@ function teamResultHTML(entry){
     </div>
     <div class="results-meta">${list.length} matchup${list.length===1?'':'s'} found, in schedule order</div>
     ${TEAM_ROSTER_BY_CODE.has(base) ? `<div style="margin:0 0 14px">${teamRosterCardHTML(base, { toggle: false })}</div>` : ''}
-    ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx })).join('')}
+    ${list.map((mu, i) => teamMatchupCardHTML(mu, { focusBase: base, isNext: i === nextIdx, scoreable: true })).join('')}
     ${unset ? TEAM_LINEUP_NOTE : ''}`;
 }
 
@@ -4764,7 +4886,7 @@ function teamPlayerResultHTML(entry){
     .sort((a, b) => a.num - b.num);
   const cards = matches.map(m => {
     const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
-    return mu ? teamMatchupCardHTML(mu, { onlyMatch: m.num }) : '';
+    return mu ? teamMatchupCardHTML(mu, { onlyMatch: m.num, scoreable: true }) : '';
   }).join('');
   const teamNames = entry.teams.length ? entry.teams.join(', ') + ' · ' : '';
   const unset = MATCHES.some(teamMatchLineupUnset);
@@ -4843,7 +4965,7 @@ function allMatchupsHTML(hint){
   const list = TEAM_MATCHUPS.slice().sort((a, b) => matchupFirstNum(a) - matchupFirstNum(b));
   if(!list.length) return '';
   return `<div class="results-meta">All ${list.length} matchups, by match number. ${hint}</div>
-    ${list.map(mu => teamMatchupCardHTML(mu, {})).join('')}`;
+    ${list.map(mu => teamMatchupCardHTML(mu, { scoreable: true })).join('')}`;
 }
 
 // ---- Awards (spec §9.6) ----
@@ -6029,8 +6151,10 @@ const syncStatusEl = document.getElementById('syncStatus');
 // flow as picking the day by hand. isInitialLoad only affects whether a
 // previously-saved search is brought back afterwards.
 async function selectDay(idx, { isInitialLoad = false } = {}){
+  scoreDialog.close();
   clearResultBoxes();
   currentDayIndex = idx;
+  renderScorerLinks();
   liveChannel.follow(CURRENT_EVENT_KEY, DAYS[idx].key);
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
@@ -6287,8 +6411,11 @@ function ticketHTML(m, teamCode, isNext){
     ? `<span class="next-pill">Next Up</span>`
     : '';
 
+  // Match Finder only: click to enter this match's score (spec §5.7).
+  const scoreAt = scoreAttrs(m);
+
   return `
-  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}">
+  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}${scoreAt ? ' scoreable' : ''}"${scoreAt}>
     <div class="ticket-body">
       <div class="time-row">
         <span class="center-pill">${escapeHtml(m.time)}</span>
@@ -6310,9 +6437,472 @@ function ticketHTML(m, teamCode, isNext){
       <div class="meta-row">
         <span class="meta-chip">Match #${m.num}</span>
         ${tag}
+        ${scoreAt ? scoreHintHTML(m) : ''}
       </div>
     </div>
   </div>`;
+}
+
+// ==== SCORE CLIENT — identical in tools/control-center.html, ====
+// ==== _templates/scorer/scorer.html and every events/<key>/scorer.html; ====
+// ==== see sage-docs/docs/specs/.../control-center-score-entry-spec.md §5 ====
+// The score dialog: Enter -> Review -> Save, conflicts, and the save request.
+// Everything that differs between pages is passed in.
+
+const SCORE_SAVE_TIMEOUT_MS = 120000;
+const SCORE_KEY_GUARD_MS = 400;
+const SCORE_SLOW_MS = 5000;
+
+/**
+ * opts:
+ *   dialog            the <dialog> element (markup §5.2, the same in every page)
+ *   apiBase           Cloud Run base URL
+ *   getToken()        bearer token, or null
+ *   fixture           string | null: when set, saves are simulated (onFixtureSave)
+ *   describe(m)       -> { title, sub, sides: [side, side] },
+ *                        side = { name, code, players: [p1, p2] | null, missing }  // missing: shown when players is null
+ *   readOnlyReason(m) -> string | null   (non-null opens the dialog read-only with that text)
+ *   extraWarnings(m)  -> string[]        (series, lineup: page-specific)
+ *   findMatch(facility, num) -> the page's current copy of that match, or null
+ *   notify(kind, text)                   kind: 'ok' | 'warn' | 'error'
+ *   friendlyError(raw) -> string
+ *   unreachable(err)  -> string
+ *   expiredText       shown on a 401
+ *   resyncHint        appended to the "publishing failed" message
+ *   onFixtureSave(state, team1Score, team2Score)  page patches its data and redraws
+ * -> { open(day, facility, m), close(), refresh(), isOpen() }
+ */
+function createScoreDialog(opts){
+  const dlg = opts.dialog;
+  const part = id => dlg.querySelector('#' + id);
+  const titleEl = part('scoreDialogTitle');
+  const subEl = part('scoreDialogSub');
+  const bodyEl = part('scoreDialogBody');
+  const noteEl = part('scoreDialogNote');
+  const errorEl = part('scoreDialogError');
+  const actionsEl = part('scoreDialogActions');
+  const closeBtn = part('scoreDialogClose');
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const SLOW_TEXT = 'Still waiting on the workbook. Large workbooks can take up to a minute.';
+
+  let s = null;          // the open match's state; null when closed
+  let slowTimer = null;
+
+  function scoreBasicWarnings(a, b){
+    const hi = Math.max(a, b), out = [];
+    if(a === b) out.push('Tied: neither side wins this match.');
+    else if(hi < 11) out.push('Neither side reached 11.');
+    else if(Math.abs(a - b) === 1) out.push('Won by 1 point.');
+    if(hi > 21) out.push('Unusually high: over 21.');
+    return out;
+  }
+
+  function open(day, facility, m){
+    clearSlowTimer();
+    s = {
+      day, facility, num: m.num, m: { ...m },
+      expected: { teamCode1: m.t1, teamCode2: m.t2, team1Score: m.t1Score, team2Score: m.t2Score },
+      step: opts.readOnlyReason(m) ? 'readonly' : 'enter',
+      t1: m.t1Score === null ? '' : String(m.t1Score),
+      t2: m.t2Score === null ? '' : String(m.t2Score),
+      clear: false, note: '', error: '', conflict: null, reviewShownAt: 0, saves: 0,
+    };
+    render();
+    if(!dlg.open) dlg.showModal();
+    focusStep();
+  }
+
+  function close(){
+    clearSlowTimer();
+    s = null;
+    if(dlg.open) dlg.close();
+  }
+
+  function isOpen(){ return !!s && dlg.open; }
+
+  function clearSlowTimer(){
+    if(slowTimer !== null){ clearTimeout(slowTimer); slowTimer = null; }
+  }
+
+  // ---- drawing ----
+
+  function sideHTML(side, input){
+    const showCode = side.code && side.code !== side.name;
+    const players = side.players
+      ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
+      : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    return `<div class="score-side">
+      <div class="score-side-name">${esc(side.name)}</div>
+      ${showCode ? `<span class="score-chip">${esc(side.code)}</span>` : ''}
+      ${players}
+      ${input || ''}
+    </div>`;
+  }
+
+  function inputHTML(n, side){
+    return `<input class="score-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off"` +
+           ` data-score-side="${n}" aria-label="Score for ${esc(side.name)}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
+  }
+
+  function button(label, cls, onClick, extra){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    if(extra && extra.disabled) b.disabled = true;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderNote(){
+    const text = s && s.step === 'saving' ? (s.slow ? SLOW_TEXT : '') : (s ? s.note : '');
+    noteEl.textContent = text;
+    noteEl.hidden = !text;
+  }
+
+  function render(){
+    if(!s) return;
+    const d = opts.describe(s.m);
+    titleEl.textContent = d.title;
+    subEl.textContent = d.sub || '';
+    subEl.hidden = !d.sub;
+    errorEl.textContent = s.error;
+    errorEl.hidden = !s.error;
+    renderNote();
+    closeBtn.disabled = s.step === 'saving';
+    actionsEl.textContent = '';
+    const [side1, side2] = d.sides;
+
+    if(s.step === 'readonly'){
+      bodyEl.innerHTML = `<div class="score-sides">${sideHTML(side1)}${sideHTML(side2)}</div>
+        <p class="score-note">${esc(opts.readOnlyReason(s.m) || '')}</p>`;
+      actionsEl.append(button('Close', 'score-btn secondary', close));
+      return;
+    }
+
+    if(s.step === 'enter'){
+      bodyEl.innerHTML = `<div class="score-sides">${sideHTML(side1, inputHTML(1, side1))}${sideHTML(side2, inputHTML(2, side2))}</div>`;
+      const inputs = bodyEl.querySelectorAll('.score-input');
+      const reviewBtn = button('Review →', 'score-btn primary', () => goReview(), { disabled: !(s.t1 !== '' && s.t2 !== '') });
+      const sync = () => { reviewBtn.disabled = !(s.t1 !== '' && s.t2 !== ''); };
+      inputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          const digits = inp.value.replace(/\D/g, '').slice(0, 2);
+          if(inp.value !== digits) inp.value = digits;
+          if(inp.dataset.scoreSide === '1') s.t1 = digits; else s.t2 = digits;
+          sync();
+        });
+        inp.addEventListener('keydown', (e) => {
+          if(e.key !== 'Enter') return;
+          e.preventDefault();
+          if(inp.dataset.scoreSide === '1') inputs[1].focus();
+          else if(!reviewBtn.disabled) goReview();
+        });
+      });
+      actionsEl.append(button('Cancel', 'score-btn secondary', close));
+      if(s.m.played) actionsEl.append(button('Clear score', 'score-btn secondary', () => { s.clear = true; goStep('review'); }));
+      actionsEl.append(reviewBtn);
+      return;
+    }
+
+    if(s.step === 'review' || s.step === 'saving'){
+      const saving = s.step === 'saving';
+      const a = Number(s.t1), b = Number(s.t2);
+      let html;
+      if(s.clear){
+        const was = s.m.t1Score === null || s.m.t2Score === null ? 'no score' : `${s.m.t1Score} – ${s.m.t2Score}`;
+        html = `<div class="score-winner">Clear the score of match #${esc(s.num)}</div>
+          <div class="score-was">Now ${esc(was)}</div>`;
+      } else {
+        const players = side => side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
+        const headline = a === b
+          ? `<div class="score-winner">Tied — neither side wins this match</div>`
+          : `<div class="score-winner">Winner: ${esc((a > b ? side1 : side2).name)}${players(a > b ? side1 : side2)}</div>`;
+        const warnings = scoreBasicWarnings(a, b).concat(opts.extraWarnings(s.m) || []);
+        html = `${headline}
+          <div class="score-big">${esc(a)} – ${esc(b)}</div>
+          <div class="score-big-names"><span>${esc(side1.name)}</span><span>${esc(side2.name)}</span></div>
+          ${s.m.played ? `<div class="score-was">Was ${esc(s.m.t1Score)} – ${esc(s.m.t2Score)}</div>` : ''}
+          ${warnings.length ? `<ul class="score-warn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}`;
+      }
+      bodyEl.innerHTML = html;
+      if(saving){
+        const msg = document.createElement('span');
+        msg.className = 'score-saving';
+        msg.textContent = 'Saving to the sheet…';
+        actionsEl.append(msg);
+        actionsEl.append(button('← Back', 'score-btn secondary', () => {}, { disabled: true }));
+        actionsEl.append(button(s.clear ? 'Clear score' : `Save ${a}–${b} to sheet`, 'score-btn primary', () => {}, { disabled: true }));
+        return;
+      }
+      actionsEl.append(button('← Back', 'score-btn secondary', () => goStep('enter')));
+      actionsEl.append(button(s.clear ? 'Clear score' : `Save ${a}–${b} to sheet`, 'score-btn primary', save));
+      return;
+    }
+
+    if(s.step === 'conflict'){
+      const c = s.conflict, e = s.expected;
+      const codesChanged = c.teamCode1 !== e.teamCode1 || c.teamCode2 !== e.teamCode2;
+      if(codesChanged){
+        bodyEl.innerHTML = `<p class="score-conflict">This match number now belongs to ${esc(c.teamCode1)} v ${esc(c.teamCode2)}. Close it and open the match again.</p>`;
+        actionsEl.append(button('Close', 'score-btn primary', close));
+        return;
+      }
+      const now = c.team1Score === null && c.team2Score === null
+        ? 'no score'
+        : `${esc(c.teamCode1)} ${c.team1Score === null ? '–' : esc(c.team1Score)} – ${c.team2Score === null ? '–' : esc(c.team2Score)} ${esc(c.teamCode2)}`;
+      const mine = s.clear ? 'clear the score' : `${esc(e.teamCode1)} ${esc(s.t1)} – ${esc(s.t2)} ${esc(e.teamCode2)}`;
+      bodyEl.innerHTML = `<p class="score-conflict">The sheet changed since you opened this match.</p>
+        <p class="score-conflict-row"><span>It now reads:</span> <b>${now}</b></p>
+        <p class="score-conflict-row"><span>You entered:</span> <b>${mine}</b></p>`;
+      actionsEl.append(button('Keep the sheet’s score', 'score-btn secondary', () => {
+        const num = s.num;
+        close();
+        opts.notify('ok', `Match #${num} left as the sheet has it.`);
+      }));
+      actionsEl.append(button('Replace with yours', 'score-btn primary', () => {
+        s.expected = { ...s.conflict };
+        s.conflict = null;
+        save();
+      }));
+    }
+  }
+
+  // Where the cursor goes when a step is first shown (never on a redraw of the same step).
+  function focusStep(){
+    if(!s) return;
+    if(s.step === 'enter'){
+      const first = bodyEl.querySelector('.score-input');
+      if(first){ first.focus(); first.select(); }
+    } else {
+      const primary = actionsEl.querySelector('.score-btn.primary:not(:disabled)') || actionsEl.querySelector('.score-btn:not(:disabled)');
+      if(primary) primary.focus();
+    }
+  }
+
+  function goStep(step){
+    s.step = step;
+    s.error = '';
+    if(step === 'review') s.reviewShownAt = performance.now();
+    render();
+    focusStep();
+  }
+
+  function goReview(){
+    if(!s || s.t1 === '' || s.t2 === '') return;
+    s.clear = false;
+    goStep('review');
+  }
+
+  // ---- saving ----
+
+  async function save(){
+    const mine = s;
+    const team1Score = s.clear ? null : Number(s.t1);
+    const team2Score = s.clear ? null : Number(s.t2);
+    mine.sent = { a: team1Score, b: team2Score };
+    s.step = 'saving'; s.error = ''; s.slow = false; render();
+    clearSlowTimer();
+    slowTimer = setTimeout(() => {
+      slowTimer = null;
+      if(s === mine && s.step === 'saving'){ s.slow = true; renderNote(); }
+    }, SCORE_SLOW_MS);
+    if(opts.fixture) return fixtureSave(mine, team1Score, team2Score);
+    const token = opts.getToken();
+    if(!token) return failed(mine, opts.expiredText);
+    const url = `${opts.apiBase}/v1/days/${encodeURIComponent(s.day)}/facilities/` +
+                `${encodeURIComponent(s.facility)}/matches/${s.num}/score`;
+    let res, json = null;
+    try {
+      res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ team1Score, team2Score, expected: s.expected }),
+        signal: AbortSignal.timeout(SCORE_SAVE_TIMEOUT_MS),
+      });
+      json = await res.json().catch(() => null);
+    } catch(err){
+      if(s !== mine) return;
+      return failed(mine, err && err.name === 'TimeoutError'
+        ? 'No answer after 2 minutes. The score may or may not be in the sheet: Save again is safe.'
+        : opts.unreachable(err));
+    }
+    if(s !== mine) return;   // closed meanwhile
+    handle(mine, res.status, json);
+  }
+
+  // Back to Review with the reason shown; Save is enabled again.
+  function failed(st, text){
+    if(s !== st) return;
+    clearSlowTimer();
+    st.step = 'review';
+    st.error = text;
+    render();
+    focusStep();
+  }
+
+  function handle(st, status, json){
+    if(s !== st) return;
+    clearSlowTimer();
+    const num = st.num, e = st.expected;
+    const a = st.sent.a, b = st.sent.b;
+    if(status === 200 && json){
+      const sync = json.sync || { ok: false, error: 'no answer from the publisher' };
+      if(!sync.ok){
+        close();
+        opts.notify('warn', `Match #${num} is in the sheet, but publishing failed: ${opts.friendlyError(sync.error)}. ${opts.resyncHint}`);
+      } else if(json.unchanged){
+        close();
+        opts.notify('ok', a === null ? `Match #${num} already had no score in the sheet.` : `Match #${num} already read ${a}–${b} in the sheet.`);
+      } else {
+        close();
+        opts.notify('ok', a === null ? `Match #${num}’s score cleared.` : `Match #${num} saved: ${e.teamCode1} ${a}–${b} ${e.teamCode2}.`);
+      }
+      return;
+    }
+    if(status === 409 && json && json.current){
+      st.conflict = json.current;
+      st.step = 'conflict';
+      render();
+      focusStep();
+      return;
+    }
+    if(status === 401) return failed(st, opts.expiredText);
+    failed(st, opts.friendlyError((json && json.error) || `HTTP ${status}`));
+  }
+
+  async function fixtureSave(st, a, b){
+    await new Promise(r => setTimeout(r, 700));
+    if(s !== st) return;
+    if(new URLSearchParams(location.search).get('scoreConflict') === '1' && st.saves === 0){
+      st.saves++;
+      return handle(st, 409, { error: 'conflict', current: { ...st.expected, team1Score: 11, team2Score: 9 } });
+    }
+    opts.onFixtureSave(st, a, b);
+    close();
+    opts.notify('ok', 'Fixture: not sent. The next poll restores the fixture’s scores.');
+  }
+
+  // ---- a new snapshot while the dialog is open ----
+
+  function refresh(){
+    if(!s || !['enter', 'review'].includes(s.step)) return;
+    const now = opts.findMatch(s.facility, s.num);
+    const e = s.expected;
+    let note = '';
+    if(!now) note = 'This match is no longer in the published schedule.';
+    else if(now.t1 !== e.teamCode1 || now.t2 !== e.teamCode2) note = `This match number now shows ${now.t1} v ${now.t2}.`;
+    else if(now.t1Score !== e.team1Score || now.t2Score !== e.team2Score)
+      note = now.played ? `The sheet now reads ${now.t1Score}–${now.t2Score}.` : 'The sheet’s score for this match was cleared.';
+    if(note !== s.note){ s.note = note; renderNote(); }   // only the note, never the inputs
+  }
+
+  // ---- dialog plumbing ----
+
+  // A second Enter or space landing on Review moments after it appears (a fast
+  // double Enter from the last input) must not press Save.
+  function guardKey(e){
+    if(!s || s.step !== 'review') return;
+    if(performance.now() - s.reviewShownAt >= SCORE_KEY_GUARD_MS) return;
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); }
+  }
+  dlg.addEventListener('keydown', guardKey, true);
+  dlg.addEventListener('keyup', guardKey, true);
+
+  // Esc closes, except while a save is in flight.
+  dlg.addEventListener('cancel', (e) => { if(s && s.step === 'saving') e.preventDefault(); });
+  // Only when it really is closed: a close() followed at once by an open() leaves
+  // this event queued, and it must not wipe the new match.
+  dlg.addEventListener('close', () => { if(!dlg.open){ clearSlowTimer(); s = null; } });
+  closeBtn.addEventListener('click', () => { if(!s || s.step !== 'saving') close(); });
+
+  return { open, close, refresh, isOpen };
+}
+
+// ==== END SCORE CLIENT ====
+
+// ---- Score entry in Match Finder (spec §5.7) ----
+// Only Match Finder's tickets and team match lines open the dialog; Live
+// Matches, Standings and Awards stay read-only (D8), so nothing there calls
+// scoreAttrs. Entry is on when the event's events.json entry carries
+// "scoreEntry": "console" | "links" and the operator is signed in.
+function scoreEntryAvailable(){
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  if(!ev || (ev.scoreEntry !== 'console' && ev.scoreEntry !== 'links')) return false;
+  return FIXTURE ? true : !!currentAuthToken();
+}
+
+function scoreAttrs(m){
+  if(!scoreEntryAvailable() || matchByeSide(m) !== null) return '';
+  return ` data-score-num="${m.num}" data-score-facility="${escapeHtml(m.facility)}" role="button" tabindex="0"` +
+         ` aria-label="${m.played ? 'Edit' : 'Enter'} score for match ${m.num}"`;
+}
+
+function scoreHintHTML(m){
+  return `<span class="score-hint" aria-hidden="true">✎ ${m.played ? 'Edit score' : 'Enter score'}</span>`;
+}
+
+const scoreDialog = createScoreDialog({
+  dialog: document.getElementById('scoreDialog'),
+  apiBase: CLOUD_RUN_BASE_URL,
+  getToken: currentAuthToken,
+  fixture: FIXTURE,
+  describe(m){
+    const team = CURRENT_TYPE === 'team';
+    const code = nonByeCode(m);
+    const title = `Match #${m.num}` + (m.court ? ` · ${m.court}` : '') + (m.time ? ` · ${m.time}` : '') +
+      (FACILITIES.length > 1 ? ` · ${m.facility}` : '');
+    const sub = team
+      ? [m.matchUp, pairLabel(m.t1, true)].filter(Boolean).join(' · ')
+      : [divisionEventLabel(code), roundLabel(parseCode(code).rest) || 'Round Robin'].filter(Boolean).join(' · ');
+    const side = (c, p1, p2) => ({
+      name: team ? (teamNameOf(sideOf(c)) || c) : c,
+      code: c,
+      players: p1 === 'TBD' ? null : [p1, p2],
+      missing: team ? 'Lineup not set' : 'To be decided',
+    });
+    return { title, sub, sides: [side(m.t1, m.t1p1, m.t1p2), side(m.t2, m.t2p1, m.t2p2)] };
+  },
+  readOnlyReason(m){
+    return CURRENT_TYPE !== 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD') ? 'Players for this match aren’t decided yet.' : null;
+  },
+  extraWarnings(m){
+    const out = [];
+    if([...unneededSeriesGames(MATCHES)].some(x => x.num === m.num && x.facility === m.facility)){
+      out.push('This series game isn’t needed: the series is already decided.');
+    }
+    if(CURRENT_TYPE === 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD')) out.push('Lineup not set for this match.');
+    return out;
+  },
+  findMatch: (f, n) => MATCHES.find(x => x.num === n && x.facility === f) || null,
+  notify: (kind, text) => showToast(kind, text, 'score'),
+  friendlyError: friendlyApiMessage,
+  unreachable: unreachableMessage,
+  expiredText: 'Your sign-in expired. Sign in on Mission Control, then save again.',
+  resyncHint: 'Use “Resync this day now” on Mission Control.',
+  onFixtureSave(s, a, b){
+    const m = MATCHES.find(x => x.num === s.num && x.facility === s.facility);
+    if(m){ m.t1Score = a; m.t2Score = b; m.played = a !== null; }
+    if(CURRENT_TYPE === 'team') rebuildTeamData();
+    refreshFinder();
+  },
+});
+
+resultsEl.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-score-num]');
+  if(!el || e.target.closest('button, a, input')) return;
+  openScoreFromFinder(el.dataset.scoreFacility, Number(el.dataset.scoreNum));
+});
+resultsEl.addEventListener('keydown', (e) => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-score-num]')){
+    e.preventDefault();
+    openScoreFromFinder(e.target.dataset.scoreFacility, Number(e.target.dataset.scoreNum));
+  }
+});
+function openScoreFromFinder(facility, num){
+  const m = MATCHES.find(x => x.num === num && x.facility === facility);
+  if(!m){ showToast('error', `Match #${num} isn't loaded. Refresh and try again.`, 'score'); return; }
+  scoreDialog.open(DAYS[currentDayIndex].key, facility, m);
 }
 
 // ---------- Live Matches (Court Control) ----------
@@ -6852,7 +7442,7 @@ function renderMatchByNumber(n){
   if(CURRENT_TYPE === 'team'){
     const mu = TEAM_MATCHUPS.find(x => x.matchUp === m.matchUp);
     resultsEl.innerHTML = `<div class="results-head"><h2>Match #${n}</h2></div>
-      ${mu ? teamMatchupCardHTML(mu, { onlyMatch: n }) : ''}`;
+      ${mu ? teamMatchupCardHTML(mu, { onlyMatch: n, scoreable: true }) : ''}`;
     return;
   }
   const label = divisionLabel(nonByeCode(m));
@@ -7918,6 +8508,174 @@ if(syncMethodButtonsEl){
   });
 }
 
+// ---- Scorer links (spec §5.8) ----
+// A link that can enter scores and nothing else, and the Accepting / Stopped
+// switch that stops every such link. The switch writes the event's scoreEntry
+// in config/events.json through the API (PUT /v1/events/:event/score-entry);
+// the page's own copy of the registry is updated to match, since it would
+// otherwise stay stale until a reload. Rendered from the registry alone, so
+// it is safe to call before anything has loaded.
+function renderScorerLinks(){
+  const section = document.getElementById('scorerLinksSection');
+  if(!section) return;
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  const mode = ev && ev.scoreEntry;
+  if(mode !== 'console' && mode !== 'links'){ section.style.display = 'none'; return; }
+  section.style.display = '';
+  const canAct = FIXTURE ? true : !!currentAuthToken();
+  const current = document.getElementById('scorerLinksCurrent');
+  let html = mode === 'links'
+    ? '<b>Accepting</b>: anyone with a scorer link for the day can enter scores.'
+    : '<b>Stopped</b>: scorer links can’t save scores or be issued. Operators still can, in Match Finder.';
+  if(!canAct) html += ' Sign in to change this or issue a link.';
+  current.className = `golive-current state-${mode === 'links' ? 'true' : 'false'}`;
+  current.innerHTML = html;
+  const buttons = document.getElementById('scorerLinksButtons');
+  buttons.style.display = canAct ? '' : 'none';
+  buttons.querySelectorAll('[data-scorer]').forEach(btn => btn.classList.toggle('active', btn.dataset.scorer === mode));
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  const issueBtn = document.getElementById('scorerLinkBtn');
+  issueBtn.style.display = canAct && mode === 'links' && day ? '' : 'none';
+  if(day) issueBtn.textContent = `Issue scorer link for ${day.label}`;
+}
+
+async function setScorerLinksMode(mode){
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  if(!ev) return;
+  const buttons = [...document.querySelectorAll('#scorerLinksButtons [data-scorer]')];
+  buttons.forEach(b => { b.disabled = true; });
+  try {
+    if(FIXTURE){
+      ev.scoreEntry = mode;
+    } else {
+      const token = currentAuthToken();
+      if(!token){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/score-entry`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      const body = await res.json().catch(() => null);
+      if(!res.ok){
+        let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
+        if(res.status === 401) msg += ' Sign in again.';
+        showToast('error', `Couldn't change scorer links: ${msg}`, 'scorerlinks');
+        return;
+      }
+      ev.scoreEntry = body.scoreEntry;
+    }
+    if(mode !== 'links'){
+      const box = document.getElementById('scorerLinkResult');
+      box.style.display = 'none';
+      box.textContent = '';
+    }
+    renderScorerLinks();
+    showToast('ok', FIXTURE ? 'Fixture: not sent.'
+      : mode === 'links' ? 'Scorer links accepted again. Takes effect within about a minute.'
+      : 'Scorer links stopped. Takes effect within about a minute.', 'scorerlinks');
+  } catch(err){
+    showToast('error', unreachableMessage(err), 'scorerlinks');
+  } finally {
+    buttons.forEach(b => { b.disabled = false; });
+  }
+}
+
+function renderScorerLink(day, issued){
+  const url = FIXTURE
+    ? `${location.origin}/events/${CURRENT_EVENT_KEY}/scorer.html?scorer=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
+    : `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/scorer?scorer=${issued.token}`;
+  const box = document.getElementById('scorerLinkResult');
+  box.className = 'organizer-result ok rich';
+  box.textContent = '';
+  const title = document.createElement('div');
+  title.className = 'result-title';
+  title.textContent = `Scorer link for ${day.label}`;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.readOnly = true;
+  input.value = url;
+  input.className = 'attendance-link-input';
+  input.setAttribute('aria-label', 'Scorer link');
+  input.addEventListener('focus', () => input.select());
+  const actions = document.createElement('div');
+  actions.className = 'attendance-link-actions';
+  const button = (text, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'organizer-secondary-btn';
+    b.textContent = text;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  actions.append(button('Copy', async () => {
+    try{ await navigator.clipboard.writeText(url); showToast('ok', 'Link copied.', 'scorerlinks'); }
+    catch(e){ input.focus(); showToast('warn', 'Could not copy automatically. The link is selected: copy it by hand.', 'scorerlinks'); }
+  }));
+  if(navigator.share){
+    actions.append(button('Share', () => { navigator.share({ title: `Scorer · ${day.label}`, url }).catch(() => {}); }));
+  }
+  const holder = document.createElement('div');
+  holder.className = 'attendance-qr';
+  const qrBtn = button('Show QR', () => attConsoleShowQr(url, holder, qrBtn, 'scorer link'));
+  actions.append(qrBtn);
+  const until = new Date(issued.expiresAt).toLocaleString('en-US', {
+    timeZone: 'Asia/Manila', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+  const valid = document.createElement('div');
+  valid.className = 'attendance-link-valid';
+  valid.textContent = `Valid until ${until} (24 hours)`;
+  box.append(title, input, actions, valid, holder);
+  box.style.display = '';
+  addResultClose(box);
+  revealResultBox(box);
+}
+
+async function issueScorerLink(){
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  if(!day) return;
+  const token = currentAuthToken();
+  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
+  const epoch = resultEpoch;
+  const btn = document.getElementById('scorerLinkBtn');
+  btn.disabled = true;
+  try{
+    let issued;
+    if(FIXTURE){
+      // A token whose payload is real, so the scorer page can decode it.
+      const b64url = v => btoa(v).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      issued = { token: b64url(JSON.stringify({ exp: Date.now() + 864e5, scope: 'score-desk', day: day.key })) + '.fixture',
+                 expiresAt: Date.now() + 864e5, day: day.key };
+    }else{
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/scores/scorer-links`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const body = await res.json().catch(() => null);
+      if(!res.ok){
+        let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
+        if(res.status === 401) msg += ' Sign in again.';
+        showToast('error', `Couldn't issue a scorer link: ${msg}`, 'scorerlinks');
+        return;
+      }
+      issued = body;
+    }
+    if(resultEpoch !== epoch){
+      showToast('warn', `A scorer link for ${day.label} was issued, but you've moved on. Issue it again from that day.`, 'scorerlinks');
+      return;
+    }
+    renderScorerLink(day, issued);
+  }catch(err){
+    showToast('error', unreachableMessage(err), 'scorerlinks');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('scorerLinksButtons').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-scorer]');
+  if(btn) setScorerLinksMode(btn.dataset.scorer);
+});
+document.getElementById('scorerLinkBtn').addEventListener('click', issueScorerLink);
+
 function renderAuthStatus(){
   if(!orgAuthStatusEl) return;
   const stored = currentAuthToken() ? loadAuthToken() : null;
@@ -7935,6 +8693,9 @@ function renderAuthStatus(){
   }
   syncActionAvailability();
   refreshSyncMethod();
+  renderScorerLinks();
+  // The pencil hint on Match Finder's matches appears and disappears with sign-in.
+  if(MATCHES.length) refreshFinder();
 }
 
 async function signIn(){
@@ -8006,6 +8767,7 @@ const orgStatusBox = document.getElementById('orgStatusBox');
 // tab or waiting for the next poll both update it for free.
 function renderOrganizerStatus(){
   renderGoLiveControl();
+  renderScorerLinks();
   if(!orgStatusBox) return;
   // Whether this console is receiving pushed snapshots or polling GitHub.
   // Re-rendered on each push (onSnapshot) and on every poll, which covers a
@@ -8514,7 +9276,7 @@ function attConsoleLoadQr(){
 }
 
 // Draws the link into a canvas in the browser; the token never leaves the page.
-async function attConsoleShowQr(url, holder, btn){
+async function attConsoleShowQr(url, holder, btn, label = 'desk link'){
   if(holder.firstChild){ holder.textContent = ''; btn.textContent = 'Show QR'; return; }
   btn.disabled = true;
   try{
@@ -8526,7 +9288,7 @@ async function attConsoleShowQr(url, holder, btn){
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = (n + margin * 2) * scale;
     canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', 'QR code for the desk link');
+    canvas.setAttribute('aria-label', `QR code for the ${label}`);
     canvas.style.maxWidth = '100%';
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff';
@@ -8800,6 +9562,7 @@ function renderEventPicker(){
 // is brought back afterwards (see selectDay) — a manual event switch drops
 // it, same as a manual day switch always has.
 async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = null } = {}){
+  scoreDialog.close();
   clearResultBoxes();
   const rawEvent = EVENTS_REGISTRY.get(eventKey);
   CURRENT_EVENT_KEY = eventKey;
@@ -8818,6 +9581,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
   teamResetState();
   FACILITIES = [];
+  renderScorerLinks();
   viewTabsWrapEl.style.display = 'none';
   syncStatusEl.style.display = 'none';
   liveResultsEl.style.display = 'none';

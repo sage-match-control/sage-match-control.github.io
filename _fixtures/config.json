@@ -9,6 +9,7 @@
       "type": "team",
       "title": "PickleDrive Club One Year Celebration",
       "attendance": "desks",
+      "scoreEntry": "links",
       "days": {
         "pickledrive-anniversary-2026-day1": {
           "label": "Oct 3",
@@ -27,6 +28,7 @@
       "type": "standard",
       "title": "Attendance Demo (fixture only)",
       "attendance": "console",
+      "scoreEntry": "links",
       "display": {
         "divisions": {
           "N": "Novice",

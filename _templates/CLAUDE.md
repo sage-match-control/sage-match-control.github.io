@@ -347,15 +347,23 @@ clubs; it is not a general multi-club template.
     **Issue desk link** produces the link to it. See
     `sage-docs/docs/specs/.../multi-event-attendance-spec.md`.
 
-12. **Share every facility workbook with the API's service account** as
-    **Editor**, for an event with any `attendance` setting:
+12. **Add the scorer page, if the event uses scorer links.** For
+    `"scoreEntry": "links"`, copy `_templates/scorer/scorer.html` to
+    `events/<event-key>/scorer.html` and replace `{{EVENT_KEY}}` and
+    `{{EVENT_TITLE}}`. Linked from nowhere public; Mission Control's
+    **Issue scorer link** produces the link. For `"console"`, or no
+    `scoreEntry`, skip it. See
+    `sage-docs/docs/specs/.../control-center-score-entry-spec.md`.
+
+13. **Share every facility workbook with the API's service account** as
+    **Editor**, for an event with any `attendance` or `scoreEntry` setting:
     `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com`. Without it
-    the roster update and every mark fail with a message naming the account.
+    the roster update, every mark and every score save fail with a message naming the account.
     A workbook copied into a Drive folder already shared with the account is
     expected to inherit the share, but that is not confirmed yet: check the
     workbook's Share dialog lists the account.
 
-13. **Make the hub board's QR panel.** The venue's Tournament Hub board is a
+14. **Make the hub board's QR panel.** The venue's Tournament Hub board is a
     24 × 36 in sintra print, `_templates/hub-pubmat/`, that's the same for
     every event except its QR panel. Once step 3 is done, run
 
@@ -464,7 +472,8 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
 | `ATTENDANCE CLIENT` block | `tools/control-center.html`, `_templates/attendance/attendance.html` and every event's `attendance.html`: byte-identical (compare with `diff`) |
-| `LIVE CHANNEL` block | both, and `tools/control-center.html` and every unfinished event's pages: byte-identical (compare with `diff`). A finished event's pages keep it with `LIVE_BASE_URL = ''` (§7) |
+| `SCORE CLIENT` block | `tools/control-center.html`, `_templates/scorer/scorer.html` and every event's `scorer.html`: byte-identical (compare with `diff`) |
+| `LIVE CHANNEL` block | both, the scorer template, and `tools/control-center.html` and every unfinished event's pages, `scorer.html` included: byte-identical (compare with `diff`). A finished event's pages keep it with `LIVE_BASE_URL = ''` (§7) |
 
 Two constants are platform-wide rather than per-event, so each template carries
 them as literals, **not** `{{TOKEN}}`s: `GHPAGES_OWNER`/`GHPAGES_REPO` (the
@@ -500,8 +509,8 @@ added prefix. Not a concern today.)
 ## 7. After the event: live push off, then archiving
 
 Once the event's last day is over, turn live push off for its pages: set
-`LIVE_BASE_URL = ''` in the `LIVE CHANNEL` block of its `index.html` and
-`schedule.html`, and leave the rest of the block alone. Nothing is published
+`LIVE_BASE_URL = ''` in the `LIVE CHANNEL` block of its `index.html`,
+`schedule.html` and `scorer.html` (if it has one), and leave the rest of the block alone. Nothing is published
 for the event any more, so a socket would only hold a Worker connection open
 (and ping it every 50 s) for every visitor, against the Worker's daily
 request cap. With the constant empty the page never connects and reads its

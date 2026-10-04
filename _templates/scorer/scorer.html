@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{EVENT_TITLE}} — Scorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Same house palette as the event's index.html (its THEME block). Staff
+     pages stay light, like the tools. --radius and --card-shadow are the
+     tokens the score dialog's rules (SCORE DIALOG, below) read. */
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --red:#B42318;
+    --radius:14px;
+    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  html{overflow-x:hidden;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+
+  header.top{
+    background:var(--navy);
+    color:var(--white);
+    padding:16px 0 14px;
+  }
+  .kicker{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:12.5px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:#A8D65C;
+  }
+  h1{
+    font-family:'Archivo Black',sans-serif;
+    font-weight:400;
+    text-transform:uppercase;
+    font-size:26px;
+    margin:2px 0 4px;
+  }
+  .event{font-size:14px;color:#D6DCE8;overflow-wrap:anywhere;}
+
+  main{padding-top:14px;padding-bottom:28px;}
+  .scorer-message{
+    margin:40px 0;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:17px;
+  }
+  .scorer-message:empty{display:none;}
+
+  /* Venue picker: always visible once a venue is chosen, so a scorer can
+     switch venue at any time without a new link. */
+  .venue-label{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .venue-label.prompt{font-size:17px; letter-spacing:.02em; text-transform:none; color:var(--ink); font-weight:700;}
+  .venue-buttons{display:flex; flex-wrap:wrap; gap:8px;}
+  .venue-btn{
+    font:inherit; font-size:15px; font-weight:600;
+    min-height:44px; padding:0 16px;
+    border:2px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink); cursor:pointer;
+  }
+  .venue-btn[aria-pressed="true"]{background:var(--green); border-color:var(--green); color:var(--navy);}
+  .venue-btn:focus-visible{outline:2px solid var(--navy); outline-offset:2px;}
+  .venue-single{font-size:17px; font-weight:700;}
+
+  #scorerFilters{margin-top:14px;}
+  .filter-search{
+    font:inherit; font-size:16px;
+    width:100%; height:48px; padding:0 14px;
+    border:2px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink);
+  }
+  .filter-search:focus{outline:none; border-color:var(--green);}
+  .filter-courts{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+  .court-chip{
+    font:inherit; font-size:14px; font-weight:600;
+    min-height:40px; padding:0 14px;
+    border:2px solid var(--line); border-radius:999px;
+    background:var(--white); color:var(--ink); cursor:pointer;
+  }
+  .court-chip[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:var(--white);}
+  .court-chip:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+  .filter-hide{display:flex; align-items:center; gap:10px; margin-top:10px; font-size:15px; min-height:44px;}
+  .filter-hide input{width:22px; height:22px; accent-color:var(--navy);}
+  .scorer-count{margin:6px 0 10px; font-size:14px; font-weight:600; color:var(--ink-soft);}
+  .scorer-count:empty{display:none;}
+
+  .scorer-list{display:grid; gap:10px;}
+  .scorer-empty{margin:28px 0; text-align:center; color:var(--ink-soft); font-size:16px;}
+  .score-card{
+    min-height:56px;
+    padding:12px 14px;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-left:4px solid var(--green);
+    border-radius:12px;
+    box-shadow:0 8px 20px -16px rgba(11,24,38,.35);
+  }
+  .score-card.played{border-left-color:var(--navy);}
+  .sc-meta{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
+    letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;
+    overflow-wrap:anywhere;
+  }
+  .sc-body{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:10px;}
+  .sc-side{min-width:0;}
+  .sc-side.right{text-align:right;}
+  .sc-name{font-weight:700; font-size:15px; line-height:1.25; overflow-wrap:anywhere;}
+  .sc-chip{
+    display:inline-block; margin-top:2px;
+    font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em;
+    padding:1px 8px; border-radius:999px; background:var(--paper-dim); color:var(--ink-soft);
+  }
+  .sc-players{font-size:13px; color:var(--ink-soft); line-height:1.35; overflow-wrap:anywhere;}
+  .sc-players.unset{font-style:italic;}
+  .sc-score{font-size:24px; font-weight:800; min-width:64px; text-align:center; font-variant-numeric:tabular-nums;}
+  .sc-score.none{color:var(--ink-soft); font-weight:600;}
+
+  /* One message at a time, pinned to the top (the score dialog's outcomes). */
+  .scorer-toast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    top:max(16px, env(safe-area-inset-top));
+    width:min(92vw, 440px);
+    z-index:1000;
+    padding:12px 16px;
+    border-radius:12px;
+    font-size:14px; line-height:1.45;
+    box-shadow:var(--card-shadow);
+    background:var(--white); border:1px solid var(--line); color:var(--ink);
+  }
+  .scorer-toast[hidden]{display:none;}
+  .scorer-toast.ok{background:#EAF7EF; border-color:rgba(52,199,120,.5); color:#0F5C2E;}
+  .scorer-toast.error{background:#FDEDEF; border-color:rgba(255,90,110,.5); color:#9A2A3A;}
+  .scorer-toast.warn{background:#FFF4E0; border-color:rgba(240,170,40,.55); color:#7A4B00;}
+
+  /* ---------- SCORE DIALOG (spec: control-center-score-entry-spec.md §5.2) ----------
+     The same rules, in the same words, in tools/control-center.html and
+     _templates/scorer/scorer.html (and so every events/<key>/scorer.html). */
+  .score-dialog{
+    width:min(520px, calc(100vw - 32px));
+    max-height:calc(100vh - 32px);
+    overflow-y:auto;
+    border:none;
+    border-radius:var(--radius);
+    padding:20px;
+    background:var(--white);
+    color:var(--ink);
+    box-shadow:var(--card-shadow);
+    font-family:'Inter',sans-serif;
+  }
+  .score-dialog::backdrop{background:rgba(11,24,38,.55);}
+  .score-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px;}
+  .score-title{margin:0; font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; line-height:1.2; letter-spacing:.01em;}
+  .score-sub{margin-top:2px; font-size:13px; color:var(--ink-soft);}
+  .score-x{
+    flex:0 0 auto; border:0; background:transparent; color:var(--ink-soft);
+    font-size:28px; line-height:1; padding:0 6px; cursor:pointer;
+    min-width:44px; min-height:44px; margin:-8px -10px -8px 0;
+  }
+  .score-x:hover{color:var(--ink);}
+  .score-x:disabled{opacity:.4; cursor:not-allowed;}
+  .score-sides{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .score-side{min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:4px;}
+  .score-side-name{font-weight:700; font-size:15px; line-height:1.25; overflow-wrap:anywhere;}
+  .score-chip{
+    align-self:flex-start;
+    font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em;
+    padding:1px 8px; border-radius:999px; background:var(--paper-dim); color:var(--ink-soft);
+  }
+  .score-side-players{font-size:13px; line-height:1.35; color:var(--ink-soft); overflow-wrap:anywhere; margin-bottom:6px;}
+  .score-side-players.unset{font-style:italic;}
+  .score-input{
+    font:inherit; font-size:32px; font-weight:700; text-align:center;
+    width:100%; height:64px;
+    border:2px solid var(--line); border-radius:10px;
+    background:var(--white); color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .score-input:focus{outline:none; border-color:var(--green);}
+  .score-winner{font-size:22px; font-weight:800; line-height:1.25; margin:4px 0 10px;}
+  .score-winner-players{font-size:15px; font-weight:400; color:var(--ink-soft);}
+  .score-big{font-size:44px; font-weight:800; line-height:1.1; text-align:center; font-variant-numeric:tabular-nums;}
+  .score-big-names{display:flex; justify-content:space-around; gap:12px; margin:2px 0 10px; font-size:13px; color:var(--ink-soft); text-align:center;}
+  .score-big-names span{flex:1 1 0; min-width:0; overflow-wrap:anywhere;}
+  .score-was{color:var(--ink-soft); font-size:14px; margin:4px 0 8px; text-align:center;}
+  .score-winner + .score-was{text-align:left;}
+  .score-warn{
+    margin:10px 0 0; padding:10px 14px 10px 30px; border-radius:10px;
+    background:#FFF4E0; border:1px solid rgba(240,170,40,.55); color:#7A4B00; font-size:14px;
+  }
+  .score-warn li{margin:2px 0;}
+  .score-error{
+    margin:12px 0 0; padding:10px 14px; border-radius:10px;
+    background:#FDEDEF; border:1px solid rgba(255,90,110,.5); color:#9A2A3A; font-size:14px;
+  }
+  .score-note{margin:12px 0 0; font-size:14px; font-style:italic; color:var(--ink-soft);}
+  .score-conflict{margin:0 0 10px; font-size:15px;}
+  .score-conflict-row{margin:4px 0; font-size:15px;}
+  .score-conflict-row span{display:inline-block; min-width:96px; color:var(--ink-soft);}
+  .score-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px;}
+  .score-saving{margin-right:auto; font-size:14px; color:var(--ink-soft);}
+  .score-btn{
+    font:inherit; font-size:15px; font-weight:600;
+    min-height:44px; padding:0 18px; border:none; border-radius:10px; cursor:pointer;
+  }
+  .score-btn.primary{background:var(--navy); color:var(--white);}
+  .score-btn.secondary{background:var(--paper-dim); color:var(--ink);}
+  .score-btn:disabled{opacity:.5; cursor:not-allowed;}
+  .score-btn:focus-visible, .score-x:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+  .scoreable{cursor:pointer;}
+  .scoreable:hover, .scoreable:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+  .score-hint{font-size:12px; font-weight:600; color:var(--green-dark); margin-left:auto; white-space:nowrap;}
+  @media (max-width:599px){
+    .score-dialog{
+      width:100%; max-width:100%; margin:auto 0 0;
+      border-radius:var(--radius) var(--radius) 0 0;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom));
+    }
+    .score-actions .score-btn{flex:1 1 auto;}
+  }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="kicker">S.A.G.E. Match Control Experts</div>
+    <h1>Scorer</h1>
+    <div class="event">{{EVENT_TITLE}}<span id="dayLabel"></span></div>
+  </div>
+</header>
+<main class="wrap">
+  <p class="scorer-message" id="scorerMessage" role="status"></p>
+  <div id="facilityPicker"></div>
+  <div id="scorerFilters"></div>
+  <div class="scorer-count" id="scorerCount"></div>
+  <div class="scorer-list" id="scorerList"></div>
+</main>
+
+<!-- Score dialog (control-center-score-entry-spec.md §5.2): the same markup in Control Center. -->
+<dialog id="scoreDialog" class="score-dialog" aria-labelledby="scoreDialogTitle">
+  <div class="score-head">
+    <div>
+      <h2 id="scoreDialogTitle" class="score-title"></h2>
+      <div id="scoreDialogSub" class="score-sub"></div>
+    </div>
+    <button type="button" class="score-x" id="scoreDialogClose" aria-label="Close">&times;</button>
+  </div>
+  <div id="scoreDialogBody"></div>
+  <p id="scoreDialogNote" class="score-note" hidden></p>
+  <div id="scoreDialogError" class="score-error" role="alert" hidden></div>
+  <div id="scoreDialogActions" class="score-actions"></div>
+</dialog>
+
+<div class="scorer-toast" id="scorerToast" role="status" aria-live="polite" hidden></div>
+
+<script>
+// ============================================================================
+// CONFIGURATION
+// The scorer page: staff enter scores with a scorer link, one link per event
+// day and every venue of it, scoped to entering scores and nothing else,
+// good for 24 hours. Linked from nowhere public. See
+// sage-docs/docs/specs/.../control-center-score-entry-spec.md §6.
+// ============================================================================
+const EVENT_KEY = '{{EVENT_KEY}}';
+// Same address as tools/control-center.html's CLOUD_RUN_BASE_URL.
+const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
+const GHPAGES_OWNER = 'sage-match-control';
+const GHPAGES_REPO = 'event-data';
+// Local testing only: on localhost, ?fixture=<name> reads /_fixtures/ instead of
+// the published data and simulates saves. Inert on the live site.
+const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
+  ? new URLSearchParams(location.search).get('fixture')
+  : null;
+const POLL_INTERVAL_MS = 10000;
+const FETCH_TIMEOUT_MS = 8000;
+const SCORER_STORAGE_KEY = `sage.scorer.${EVENT_KEY}`;
+
+// ==== LIVE CHANNEL — identical in every page that uses it; see ====
+// ==== sage-docs/docs/specs/.../durable-object-push-spec.md §7   ====
+// Receives each new snapshot the moment Cloud Run publishes it, over one
+// WebSocket per page. GitHub Pages polling stays as the fallback: whenever
+// the socket isn't open, fetchDaySnapshot polls GitHub exactly as before.
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev'; // e.g. 'wss://sage-live.<subdomain>.workers.dev'; '' disables live push
+const LIVE_PING_MS = 50000;          // under Cloudflare's idle-connection timeout
+const LIVE_PONG_TIMEOUT_MS = 10000;  // no pong by then: treat the socket as dead
+const LIVE_SAFETY_POLL_MS = 60000;   // while connected, still check GitHub this often
+const LIVE_RETRY_MAX_MS = 30000;
+
+function createLiveChannel({ enabled, onSnapshot }){
+  let ws = null, key = null, latest = null, paused = false;
+  let retries = 0, retryTimer = null, pingTimer = null, pongTimer = null;
+  let lastSafetyPoll = 0;
+
+  const stamp = s => Date.parse((s && (s.publishedAt || s.generatedAt)) || 0) || 0;
+
+  function clearTimers(){
+    clearTimeout(retryTimer); clearInterval(pingTimer); clearTimeout(pongTimer);
+    retryTimer = pingTimer = pongTimer = null;
+  }
+  function close(){
+    clearTimers();
+    if(ws){ ws.onclose = null; try { ws.close(); } catch(e){} ws = null; }
+  }
+  function scheduleRetry(){
+    if(paused || !key) return;
+    const delay = Math.min(LIVE_RETRY_MAX_MS, 1000 * 2 ** retries) + Math.random() * 1000;
+    retries++;
+    retryTimer = setTimeout(open, delay);
+  }
+  function open(){
+    close();
+    if(!enabled || paused || !key) return;
+    const myKey = key;
+    ws = new WebSocket(`${LIVE_BASE_URL}/live/${myKey.event}/${myKey.day}`);
+    ws.onopen = () => {
+      retries = 0;
+      pingTimer = setInterval(() => {
+        try { ws.send('ping'); } catch(e){}
+        clearTimeout(pongTimer);
+        pongTimer = setTimeout(() => { try { ws.close(); } catch(e){} }, LIVE_PONG_TIMEOUT_MS);
+      }, LIVE_PING_MS);
+    };
+    ws.onmessage = ev => {
+      clearTimeout(pongTimer);
+      if(ev.data === 'pong') return;
+      let msg; try { msg = JSON.parse(ev.data); } catch(e){ return; }
+      if(msg.type !== 'snapshot' || !msg.snapshot) return;
+      if(!key || key.event !== myKey.event || key.day !== myKey.day) return; // switched away
+      if(latest && latest.key === `${myKey.event}/${myKey.day}` && msg.version <= latest.version) return;
+      latest = { key: `${myKey.event}/${myKey.day}`, version: msg.version, snapshot: msg.snapshot };
+      onSnapshot();
+    };
+    ws.onclose = () => { clearTimers(); ws = null; scheduleRetry(); };
+    ws.onerror = () => { /* onclose follows */ };
+  }
+
+  return {
+    // Point the channel at a day (or at nothing with null). Reconnects.
+    follow(event, day){
+      const next = event && day ? { event, day } : null;
+      if(next && key && next.event === key.event && next.day === key.day) return;
+      key = next; retries = 0; open();
+    },
+    pause(){ paused = true; close(); },
+    resume(){ paused = false; retries = 0; open(); },
+    isOpen(){ return !!ws && ws.readyState === WebSocket.OPEN; },
+    // What fetchDaySnapshot should return, or null to fetch from GitHub.
+    cached(event, day){
+      if(!this.isOpen() || !latest || latest.key !== `${event}/${day}`) return null;
+      if(Date.now() - lastSafetyPoll > LIVE_SAFETY_POLL_MS) return null; // time for a GitHub check
+      return latest.snapshot;
+    },
+    // Called with every snapshot fetched from GitHub: returns whichever of
+    // it and the pushed one is newer. Catches a push path that has quietly
+    // stopped while the socket stays open (e.g. Cloud Run's live publish failing).
+    newer(event, day, fetched){
+      lastSafetyPoll = Date.now();
+      if(!latest || latest.key !== `${event}/${day}`) return fetched;
+      return stamp(fetched) > stamp(latest.snapshot) ? fetched : latest.snapshot;
+    },
+  };
+}
+// ==== END LIVE CHANNEL ====
+
+// ============================================================================
+// HELPERS COPIED FROM tools/control-center.html
+// Copies, not shared blocks: each is unchanged from the console's. If the
+// console's rule changes, change it here too (the played/BYE and series rules
+// are kept in step by hand; see CLAUDE.md, "Things that must be kept in sync").
+// ============================================================================
+
+// parseCSV, rowsToMatches (tools/control-center.html)
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){
+        if(text[i+1] === '"'){ field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+function rowsToMatches(rows){
+  if(rows.length < 2) return [];
+  const header = rows[0].map(h => h.trim());
+  const idx = name => header.indexOf(name);
+  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
+        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
+        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
+        iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
+        iLiveCourt = idx('court'), iMatchUp = idx('matchUp');
+
+  const out = [];
+  for(let r = 1; r < rows.length; r++){
+    const row = rows[r];
+    if(!row || row.length === 0) continue;
+    const num = parseInt(row[iNum], 10);
+    if(!num) continue;
+    const t1 = (row[iT1]||'').trim();
+    const t2 = (row[iT2]||'').trim();
+    let t1p1 = (row[iP1a]||'').trim();
+    let t1p2 = (row[iP1b]||'').trim();
+    let t2p1 = (row[iP2a]||'').trim();
+    let t2p2 = (row[iP2b]||'').trim();
+    // Placeholder bracket slots repeat the team code as the player name
+    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
+    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
+    // Scores are optional — only present once a match has been played
+    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
+    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
+    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
+    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
+    const played = t1Score !== null && t2Score !== null;
+    const court = iCourt > -1 ? (row[iCourt]||'').trim() : '';
+    // A value here means the match is currently being played on that court —
+    // separate from CourtAssignment above, which is just the scheduled court.
+    const liveCourt = iLiveCourt > -1 ? (row[iLiveCourt]||'').trim() : '';
+    out.push({
+      num,
+      time: (row[iSched]||'').trim(),
+      court,
+      liveCourt,
+      matchUp: iMatchUp > -1 ? (row[iMatchUp]||'').trim() : '', // team type only; '' elsewhere
+      t1, t1p1, t1p2, t2, t2p1, t2p2,
+      t1Score, t2Score, played
+    });
+  }
+  out.sort((a,b) => a.num - b.num);
+  return out;
+}
+
+// BYE_RE, sideIsBye, matchByeSide (tools/control-center.html, "Bye detection")
+const BYE_RE = /^bye$/i;
+function sideIsBye(code, p1, p2){
+  return BYE_RE.test((code || '').trim())
+      || BYE_RE.test((p1   || '').trim())
+      || BYE_RE.test((p2   || '').trim());
+}
+function matchByeSide(m){
+  const t1Bye = sideIsBye(m.t1, m.t1p1, m.t1p2);
+  const t2Bye = sideIsBye(m.t2, m.t2p1, m.t2p2);
+  if(t1Bye && t2Bye) return 'both'; // data error
+  if(t1Bye) return 't1';
+  if(t2Bye) return 't2';
+  return null;
+}
+
+// SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames (tools/control-center.html, "Series finals")
+const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
+function seriesGameOf(code){
+  const m = SERIES_GAME_RE.exec((code || '').trim());
+  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
+}
+// -> Map(series -> [{ m, game, seat1, seat2 }] in game order)
+function seriesGroups(matches){
+  const groups = new Map();
+  matches.forEach(m => {
+    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
+    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
+    if(!groups.has(a.series)) groups.set(a.series, []);
+    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
+  });
+  groups.forEach(list => list.sort((x, y) => x.game - y.game));
+  return groups;
+}
+// One series, in game order -> { decidedBy, tie, unneeded }
+function walkSeries(list){
+  const games = list[list.length - 1].game;
+  const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
+  const wins = { 1: 0, 2: 0 };
+  let decidedBy = null, tie = null;
+  const unneeded = [];
+  list.forEach(g => {
+    if(decidedBy){ unneeded.push(g.m); return; }
+    if(!g.m.played) return;
+    if(g.m.t1Score === g.m.t2Score){ tie = tie || g.m; return; }
+    const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
+    wins[seat] = (wins[seat] || 0) + 1;
+    if(wins[seat] >= (need[seat] ?? Infinity)) decidedBy = g.m;
+  });
+  return { decidedBy, tie, unneeded };
+}
+function unneededSeriesGames(matches){
+  const out = new Set();
+  seriesGroups(matches).forEach(list => walkSeries(list).unneeded.forEach(m => out.add(m)));
+  return out;
+}
+
+// HTTP_WORDS, httpWords, messageFromJson, friendlyApiMessage (tools/control-center.html, "Readable API messages")
+const HTTP_WORDS = {
+  400: 'rejected the request', 401: 'refused the credentials', 403: 'refused access',
+  404: 'was not found', 409: 'reported a conflict', 422: 'rejected the data',
+  429: 'is rate-limiting requests'
+};
+function httpWords(status){
+  return HTTP_WORDS[status] || (status >= 500 ? 'had a server error' : 'answered with an error');
+}
+
+// The human part of a JSON error body: Google's { error: { message } },
+// GitHub's { message }, the Worker's and this API's { error }. Null if none.
+function messageFromJson(text){
+  try{
+    const o = JSON.parse(text);
+    if(o && typeof o === 'object'){
+      if(o.error && typeof o.error === 'object' && typeof o.error.message === 'string') return o.error.message;
+      if(typeof o.message === 'string') return o.message;
+      if(typeof o.error === 'string') return o.error;
+    }
+  } catch(e){}
+  return null;
+}
+
+function friendlyApiMessage(raw){
+  let s = String(raw || '').trim();
+  if(s.startsWith('{')){
+    const whole = messageFromJson(s);
+    if(whole) s = whole;
+  }
+  // "HTTP 403 {…}" up to the end of that reason (the next "; " or the end).
+  s = s.replace(/HTTP (\d{3})\s*(\{[\s\S]*?\})(?=\s*(?:;\s|$))/g, (m, status, json) => {
+    const inner = messageFromJson(json);
+    return `${httpWords(+status)} (${status})` + (inner ? ` — ${inner}` : '');
+  });
+  // A bare "HTTP 500" (no message from the server) needs a subject.
+  const bare = /^HTTP \d{3}$/.test(s);
+  s = s.replace(/\bHTTP (\d{3})\b/g, (m, status) => `${httpWords(+status)} (${status})`);
+  s = s.replace(/timed out after (\d+)ms/g, (m, ms) => `timed out after ${Math.round(ms / 100) / 10} s`);
+  return bare ? `Cloud Run ${s}` : s;
+}
+
+// escapeHtml (tools/control-center.html)
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ==== SCORE CLIENT — identical in tools/control-center.html, ====
+// ==== _templates/scorer/scorer.html and every events/<key>/scorer.html; ====
+// ==== see sage-docs/docs/specs/.../control-center-score-entry-spec.md §5 ====
+// The score dialog: Enter -> Review -> Save, conflicts, and the save request.
+// Everything that differs between pages is passed in.
+
+const SCORE_SAVE_TIMEOUT_MS = 120000;
+const SCORE_KEY_GUARD_MS = 400;
+const SCORE_SLOW_MS = 5000;
+
+/**
+ * opts:
+ *   dialog            the <dialog> element (markup §5.2, the same in every page)
+ *   apiBase           Cloud Run base URL
+ *   getToken()        bearer token, or null
+ *   fixture           string | null: when set, saves are simulated (onFixtureSave)
+ *   describe(m)       -> { title, sub, sides: [side, side] },
+ *                        side = { name, code, players: [p1, p2] | null, missing }  // missing: shown when players is null
+ *   readOnlyReason(m) -> string | null   (non-null opens the dialog read-only with that text)
+ *   extraWarnings(m)  -> string[]        (series, lineup: page-specific)
+ *   findMatch(facility, num) -> the page's current copy of that match, or null
+ *   notify(kind, text)                   kind: 'ok' | 'warn' | 'error'
+ *   friendlyError(raw) -> string
+ *   unreachable(err)  -> string
+ *   expiredText       shown on a 401
+ *   resyncHint        appended to the "publishing failed" message
+ *   onFixtureSave(state, team1Score, team2Score)  page patches its data and redraws
+ * -> { open(day, facility, m), close(), refresh(), isOpen() }
+ */
+function createScoreDialog(opts){
+  const dlg = opts.dialog;
+  const part = id => dlg.querySelector('#' + id);
+  const titleEl = part('scoreDialogTitle');
+  const subEl = part('scoreDialogSub');
+  const bodyEl = part('scoreDialogBody');
+  const noteEl = part('scoreDialogNote');
+  const errorEl = part('scoreDialogError');
+  const actionsEl = part('scoreDialogActions');
+  const closeBtn = part('scoreDialogClose');
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const SLOW_TEXT = 'Still waiting on the workbook. Large workbooks can take up to a minute.';
+
+  let s = null;          // the open match's state; null when closed
+  let slowTimer = null;
+
+  function scoreBasicWarnings(a, b){
+    const hi = Math.max(a, b), out = [];
+    if(a === b) out.push('Tied: neither side wins this match.');
+    else if(hi < 11) out.push('Neither side reached 11.');
+    else if(Math.abs(a - b) === 1) out.push('Won by 1 point.');
+    if(hi > 21) out.push('Unusually high: over 21.');
+    return out;
+  }
+
+  function open(day, facility, m){
+    clearSlowTimer();
+    s = {
+      day, facility, num: m.num, m: { ...m },
+      expected: { teamCode1: m.t1, teamCode2: m.t2, team1Score: m.t1Score, team2Score: m.t2Score },
+      step: opts.readOnlyReason(m) ? 'readonly' : 'enter',
+      t1: m.t1Score === null ? '' : String(m.t1Score),
+      t2: m.t2Score === null ? '' : String(m.t2Score),
+      clear: false, note: '', error: '', conflict: null, reviewShownAt: 0, saves: 0,
+    };
+    render();
+    if(!dlg.open) dlg.showModal();
+    focusStep();
+  }
+
+  function close(){
+    clearSlowTimer();
+    s = null;
+    if(dlg.open) dlg.close();
+  }
+
+  function isOpen(){ return !!s && dlg.open; }
+
+  function clearSlowTimer(){
+    if(slowTimer !== null){ clearTimeout(slowTimer); slowTimer = null; }
+  }
+
+  // ---- drawing ----
+
+  function sideHTML(side, input){
+    const showCode = side.code && side.code !== side.name;
+    const players = side.players
+      ? `<div class="score-side-players">${esc(side.players[0])}<br>${esc(side.players[1])}</div>`
+      : `<div class="score-side-players unset">${esc(side.missing || '')}</div>`;
+    return `<div class="score-side">
+      <div class="score-side-name">${esc(side.name)}</div>
+      ${showCode ? `<span class="score-chip">${esc(side.code)}</span>` : ''}
+      ${players}
+      ${input || ''}
+    </div>`;
+  }
+
+  function inputHTML(n, side){
+    return `<input class="score-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off"` +
+           ` data-score-side="${n}" aria-label="Score for ${esc(side.name)}" value="${esc(n === 1 ? s.t1 : s.t2)}">`;
+  }
+
+  function button(label, cls, onClick, extra){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    if(extra && extra.disabled) b.disabled = true;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderNote(){
+    const text = s && s.step === 'saving' ? (s.slow ? SLOW_TEXT : '') : (s ? s.note : '');
+    noteEl.textContent = text;
+    noteEl.hidden = !text;
+  }
+
+  function render(){
+    if(!s) return;
+    const d = opts.describe(s.m);
+    titleEl.textContent = d.title;
+    subEl.textContent = d.sub || '';
+    subEl.hidden = !d.sub;
+    errorEl.textContent = s.error;
+    errorEl.hidden = !s.error;
+    renderNote();
+    closeBtn.disabled = s.step === 'saving';
+    actionsEl.textContent = '';
+    const [side1, side2] = d.sides;
+
+    if(s.step === 'readonly'){
+      bodyEl.innerHTML = `<div class="score-sides">${sideHTML(side1)}${sideHTML(side2)}</div>
+        <p class="score-note">${esc(opts.readOnlyReason(s.m) || '')}</p>`;
+      actionsEl.append(button('Close', 'score-btn secondary', close));
+      return;
+    }
+
+    if(s.step === 'enter'){
+      bodyEl.innerHTML = `<div class="score-sides">${sideHTML(side1, inputHTML(1, side1))}${sideHTML(side2, inputHTML(2, side2))}</div>`;
+      const inputs = bodyEl.querySelectorAll('.score-input');
+      const reviewBtn = button('Review →', 'score-btn primary', () => goReview(), { disabled: !(s.t1 !== '' && s.t2 !== '') });
+      const sync = () => { reviewBtn.disabled = !(s.t1 !== '' && s.t2 !== ''); };
+      inputs.forEach(inp => {
+        inp.addEventListener('input', () => {
+          const digits = inp.value.replace(/\D/g, '').slice(0, 2);
+          if(inp.value !== digits) inp.value = digits;
+          if(inp.dataset.scoreSide === '1') s.t1 = digits; else s.t2 = digits;
+          sync();
+        });
+        inp.addEventListener('keydown', (e) => {
+          if(e.key !== 'Enter') return;
+          e.preventDefault();
+          if(inp.dataset.scoreSide === '1') inputs[1].focus();
+          else if(!reviewBtn.disabled) goReview();
+        });
+      });
+      actionsEl.append(button('Cancel', 'score-btn secondary', close));
+      if(s.m.played) actionsEl.append(button('Clear score', 'score-btn secondary', () => { s.clear = true; goStep('review'); }));
+      actionsEl.append(reviewBtn);
+      return;
+    }
+
+    if(s.step === 'review' || s.step === 'saving'){
+      const saving = s.step === 'saving';
+      const a = Number(s.t1), b = Number(s.t2);
+      let html;
+      if(s.clear){
+        const was = s.m.t1Score === null || s.m.t2Score === null ? 'no score' : `${s.m.t1Score} – ${s.m.t2Score}`;
+        html = `<div class="score-winner">Clear the score of match #${esc(s.num)}</div>
+          <div class="score-was">Now ${esc(was)}</div>`;
+      } else {
+        const players = side => side.players ? `<span class="score-winner-players"> · ${esc(side.players[0])} / ${esc(side.players[1])}</span>` : '';
+        const headline = a === b
+          ? `<div class="score-winner">Tied — neither side wins this match</div>`
+          : `<div class="score-winner">Winner: ${esc((a > b ? side1 : side2).name)}${players(a > b ? side1 : side2)}</div>`;
+        const warnings = scoreBasicWarnings(a, b).concat(opts.extraWarnings(s.m) || []);
+        html = `${headline}
+          <div class="score-big">${esc(a)} – ${esc(b)}</div>
+          <div class="score-big-names"><span>${esc(side1.name)}</span><span>${esc(side2.name)}</span></div>
+          ${s.m.played ? `<div class="score-was">Was ${esc(s.m.t1Score)} – ${esc(s.m.t2Score)}</div>` : ''}
+          ${warnings.length ? `<ul class="score-warn">${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}`;
+      }
+      bodyEl.innerHTML = html;
+      if(saving){
+        const msg = document.createElement('span');
+        msg.className = 'score-saving';
+        msg.textContent = 'Saving to the sheet…';
+        actionsEl.append(msg);
+        actionsEl.append(button('← Back', 'score-btn secondary', () => {}, { disabled: true }));
+        actionsEl.append(button(s.clear ? 'Clear score' : `Save ${a}–${b} to sheet`, 'score-btn primary', () => {}, { disabled: true }));
+        return;
+      }
+      actionsEl.append(button('← Back', 'score-btn secondary', () => goStep('enter')));
+      actionsEl.append(button(s.clear ? 'Clear score' : `Save ${a}–${b} to sheet`, 'score-btn primary', save));
+      return;
+    }
+
+    if(s.step === 'conflict'){
+      const c = s.conflict, e = s.expected;
+      const codesChanged = c.teamCode1 !== e.teamCode1 || c.teamCode2 !== e.teamCode2;
+      if(codesChanged){
+        bodyEl.innerHTML = `<p class="score-conflict">This match number now belongs to ${esc(c.teamCode1)} v ${esc(c.teamCode2)}. Close it and open the match again.</p>`;
+        actionsEl.append(button('Close', 'score-btn primary', close));
+        return;
+      }
+      const now = c.team1Score === null && c.team2Score === null
+        ? 'no score'
+        : `${esc(c.teamCode1)} ${c.team1Score === null ? '–' : esc(c.team1Score)} – ${c.team2Score === null ? '–' : esc(c.team2Score)} ${esc(c.teamCode2)}`;
+      const mine = s.clear ? 'clear the score' : `${esc(e.teamCode1)} ${esc(s.t1)} – ${esc(s.t2)} ${esc(e.teamCode2)}`;
+      bodyEl.innerHTML = `<p class="score-conflict">The sheet changed since you opened this match.</p>
+        <p class="score-conflict-row"><span>It now reads:</span> <b>${now}</b></p>
+        <p class="score-conflict-row"><span>You entered:</span> <b>${mine}</b></p>`;
+      actionsEl.append(button('Keep the sheet’s score', 'score-btn secondary', () => {
+        const num = s.num;
+        close();
+        opts.notify('ok', `Match #${num} left as the sheet has it.`);
+      }));
+      actionsEl.append(button('Replace with yours', 'score-btn primary', () => {
+        s.expected = { ...s.conflict };
+        s.conflict = null;
+        save();
+      }));
+    }
+  }
+
+  // Where the cursor goes when a step is first shown (never on a redraw of the same step).
+  function focusStep(){
+    if(!s) return;
+    if(s.step === 'enter'){
+      const first = bodyEl.querySelector('.score-input');
+      if(first){ first.focus(); first.select(); }
+    } else {
+      const primary = actionsEl.querySelector('.score-btn.primary:not(:disabled)') || actionsEl.querySelector('.score-btn:not(:disabled)');
+      if(primary) primary.focus();
+    }
+  }
+
+  function goStep(step){
+    s.step = step;
+    s.error = '';
+    if(step === 'review') s.reviewShownAt = performance.now();
+    render();
+    focusStep();
+  }
+
+  function goReview(){
+    if(!s || s.t1 === '' || s.t2 === '') return;
+    s.clear = false;
+    goStep('review');
+  }
+
+  // ---- saving ----
+
+  async function save(){
+    const mine = s;
+    const team1Score = s.clear ? null : Number(s.t1);
+    const team2Score = s.clear ? null : Number(s.t2);
+    mine.sent = { a: team1Score, b: team2Score };
+    s.step = 'saving'; s.error = ''; s.slow = false; render();
+    clearSlowTimer();
+    slowTimer = setTimeout(() => {
+      slowTimer = null;
+      if(s === mine && s.step === 'saving'){ s.slow = true; renderNote(); }
+    }, SCORE_SLOW_MS);
+    if(opts.fixture) return fixtureSave(mine, team1Score, team2Score);
+    const token = opts.getToken();
+    if(!token) return failed(mine, opts.expiredText);
+    const url = `${opts.apiBase}/v1/days/${encodeURIComponent(s.day)}/facilities/` +
+                `${encodeURIComponent(s.facility)}/matches/${s.num}/score`;
+    let res, json = null;
+    try {
+      res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ team1Score, team2Score, expected: s.expected }),
+        signal: AbortSignal.timeout(SCORE_SAVE_TIMEOUT_MS),
+      });
+      json = await res.json().catch(() => null);
+    } catch(err){
+      if(s !== mine) return;
+      return failed(mine, err && err.name === 'TimeoutError'
+        ? 'No answer after 2 minutes. The score may or may not be in the sheet: Save again is safe.'
+        : opts.unreachable(err));
+    }
+    if(s !== mine) return;   // closed meanwhile
+    handle(mine, res.status, json);
+  }
+
+  // Back to Review with the reason shown; Save is enabled again.
+  function failed(st, text){
+    if(s !== st) return;
+    clearSlowTimer();
+    st.step = 'review';
+    st.error = text;
+    render();
+    focusStep();
+  }
+
+  function handle(st, status, json){
+    if(s !== st) return;
+    clearSlowTimer();
+    const num = st.num, e = st.expected;
+    const a = st.sent.a, b = st.sent.b;
+    if(status === 200 && json){
+      const sync = json.sync || { ok: false, error: 'no answer from the publisher' };
+      if(!sync.ok){
+        close();
+        opts.notify('warn', `Match #${num} is in the sheet, but publishing failed: ${opts.friendlyError(sync.error)}. ${opts.resyncHint}`);
+      } else if(json.unchanged){
+        close();
+        opts.notify('ok', a === null ? `Match #${num} already had no score in the sheet.` : `Match #${num} already read ${a}–${b} in the sheet.`);
+      } else {
+        close();
+        opts.notify('ok', a === null ? `Match #${num}’s score cleared.` : `Match #${num} saved: ${e.teamCode1} ${a}–${b} ${e.teamCode2}.`);
+      }
+      return;
+    }
+    if(status === 409 && json && json.current){
+      st.conflict = json.current;
+      st.step = 'conflict';
+      render();
+      focusStep();
+      return;
+    }
+    if(status === 401) return failed(st, opts.expiredText);
+    failed(st, opts.friendlyError((json && json.error) || `HTTP ${status}`));
+  }
+
+  async function fixtureSave(st, a, b){
+    await new Promise(r => setTimeout(r, 700));
+    if(s !== st) return;
+    if(new URLSearchParams(location.search).get('scoreConflict') === '1' && st.saves === 0){
+      st.saves++;
+      return handle(st, 409, { error: 'conflict', current: { ...st.expected, team1Score: 11, team2Score: 9 } });
+    }
+    opts.onFixtureSave(st, a, b);
+    close();
+    opts.notify('ok', 'Fixture: not sent. The next poll restores the fixture’s scores.');
+  }
+
+  // ---- a new snapshot while the dialog is open ----
+
+  function refresh(){
+    if(!s || !['enter', 'review'].includes(s.step)) return;
+    const now = opts.findMatch(s.facility, s.num);
+    const e = s.expected;
+    let note = '';
+    if(!now) note = 'This match is no longer in the published schedule.';
+    else if(now.t1 !== e.teamCode1 || now.t2 !== e.teamCode2) note = `This match number now shows ${now.t1} v ${now.t2}.`;
+    else if(now.t1Score !== e.team1Score || now.t2Score !== e.team2Score)
+      note = now.played ? `The sheet now reads ${now.t1Score}–${now.t2Score}.` : 'The sheet’s score for this match was cleared.';
+    if(note !== s.note){ s.note = note; renderNote(); }   // only the note, never the inputs
+  }
+
+  // ---- dialog plumbing ----
+
+  // A second Enter or space landing on Review moments after it appears (a fast
+  // double Enter from the last input) must not press Save.
+  function guardKey(e){
+    if(!s || s.step !== 'review') return;
+    if(performance.now() - s.reviewShownAt >= SCORE_KEY_GUARD_MS) return;
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); e.stopPropagation(); }
+  }
+  dlg.addEventListener('keydown', guardKey, true);
+  dlg.addEventListener('keyup', guardKey, true);
+
+  // Esc closes, except while a save is in flight.
+  dlg.addEventListener('cancel', (e) => { if(s && s.step === 'saving') e.preventDefault(); });
+  // Only when it really is closed: a close() followed at once by an open() leaves
+  // this event queued, and it must not wipe the new match.
+  dlg.addEventListener('close', () => { if(!dlg.open){ clearSlowTimer(); s = null; } });
+  closeBtn.addEventListener('click', () => { if(!s || s.step !== 'saving') close(); });
+
+  return { open, close, refresh, isOpen };
+}
+
+// ==== END SCORE CLIENT ====
+
+// ============================================================================
+// THE SCORER PAGE
+// ============================================================================
+const messageEl = document.getElementById('scorerMessage');
+const pickerEl = document.getElementById('facilityPicker');
+const filtersEl = document.getElementById('scorerFilters');
+const countEl = document.getElementById('scorerCount');
+const listEl = document.getElementById('scorerList');
+const toastEl = document.getElementById('scorerToast');
+const dayLabelEl = document.getElementById('dayLabel');
+
+function say(text){ messageEl.textContent = text; }
+
+let toastTimer = null;
+const TOAST_MS = { ok: 4500, warn: 7000, error: 9000 };
+function toast(kind, text){
+  clearTimeout(toastTimer);
+  toastEl.className = `scorer-toast ${kind}`;
+  toastEl.textContent = text;
+  toastEl.hidden = false;
+  toastTimer = setTimeout(() => { toastEl.hidden = true; }, TOAST_MS[kind] || TOAST_MS.ok);
+}
+
+function store(key, value){ try{ localStorage.setItem(key, value); }catch(e){} }
+function recall(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
+
+// The token's payload is only read for display (the day, and whether it has
+// run out). The API decides what a token may do.
+function scorerDecode(token){
+  try{
+    const part = String(token).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(atob(part + '='.repeat((4 - part.length % 4) % 4)));
+    return json && json.scope === 'score-desk' && typeof json.day === 'string' && typeof json.exp === 'number' ? json : null;
+  }catch(e){ return null; }
+}
+
+function scorerLoadToken(){
+  // A link carries the token as ?scorer=…: keep it (a newer link replaces an
+  // older one), then drop it from the address bar so it does not show in
+  // screenshots or reshared links.
+  const params = new URLSearchParams(location.search);
+  const fromLink = params.get('scorer');
+  if(fromLink){
+    store(SCORER_STORAGE_KEY, JSON.stringify({ token: fromLink }));
+    params.delete('scorer');
+    const rest = params.toString();
+    try{ history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash); }catch(e){}
+  }
+  try{
+    const stored = JSON.parse(recall(SCORER_STORAGE_KEY) || 'null');
+    return stored && stored.token ? stored.token : null;
+  }catch(e){ return null; }
+}
+
+async function scorerFetchJson(url){
+  const res = await fetch(url, { cache: 'no-store' });
+  if(!res.ok) throw new Error(`replied ${res.status}`);
+  return res.json();
+}
+
+// ---- state ----
+let token = null;          // the stored scorer token
+let info = null;           // its decoded payload { day, exp }
+let entry = null;          // this event's entry in events.json
+let dayEntry = null;       // this token's day
+let facilities = [];       // [{ name, sheetId }] with a sheetId
+let facility = null;       // the chosen venue's name
+let lastSnapshot = null;   // the day's latest snapshot: every venue's data
+let matches = [];          // the chosen venue's matches, byes dropped
+let teamNames = {};        // team events: code -> name, for the chosen venue
+let loadError = '';        // why the schedule could not be loaded, or ''
+let loadMessageShown = false; // the message line currently holds loadError
+let filters = { q: '', court: '', hideScored: true };
+let scoreDialog = null;
+let liveChannel = null;
+let pollTimer = null;
+let expiryTimer = null;
+
+// ---- data ----
+
+async function fetchDaySnapshotFromPages(dayKey){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const url = FIXTURE
+    ? `/_fixtures/${EVENT_KEY}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
+    : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${dayKey}.json?t=${Date.now()}`;
+  try {
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    if(!res.ok){
+      // Not published yet shows up as a plain 404: carry the status through.
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  } catch(err){
+    if(err.name === 'AbortError') throw new Error('timed out');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Prefers the pushed snapshot while the live channel is connected; otherwise
+// (or when it is time for the periodic GitHub check) fetches from GitHub Pages
+// and keeps whichever of the two copies is newer.
+async function fetchDaySnapshot(dayKey){
+  const pushed = liveChannel.cached(EVENT_KEY, dayKey);
+  if(pushed) return pushed;
+  let fetched;
+  try {
+    fetched = await fetchDaySnapshotFromPages(dayKey);
+  } catch(err){
+    const pushedAnyway = liveChannel.newer(EVENT_KEY, dayKey, null);
+    if(pushedAnyway) return pushedAnyway;
+    throw err;
+  }
+  return liveChannel.newer(EVENT_KEY, dayKey, fetched);
+}
+
+async function loadData(){
+  if(!info) return;
+  try {
+    lastSnapshot = await fetchDaySnapshot(info.day);
+    loadError = '';
+  } catch(err){
+    loadError = err.status === 404
+      ? 'This day’s schedule isn’t published yet.'
+      : `Couldn’t load the schedule (${err.message}). Retrying.`;
+  }
+  applySnapshot();
+}
+
+// Rebuilds the chosen venue's matches from the snapshot already loaded (one
+// snapshot holds every venue's data, so a venue switch needs no fetch).
+function applySnapshot(){
+  matches = []; teamNames = {};
+  if(facility && lastSnapshot){
+    const f = (lastSnapshot.facilities || []).find(x => x.name === facility);
+    if(f){
+      matches = rowsToMatches(parseCSV(f.matchesCsv || ''))
+        .map(m => ({ ...m, facility: f.name }))
+        .filter(m => matchByeSide(m) === null);
+      if(entry.type === 'team'){
+        const rows = parseCSV(f.standingsCsv || '');
+        const head = (rows[0] || []).map(h => h.trim());
+        const iCode = head.indexOf('teamCode'), iName = head.indexOf('teamName');
+        if(iCode !== -1 && iName !== -1){
+          rows.slice(1).forEach(r => { if(r[iCode] && r[iName] && r[iName].trim()) teamNames[r[iCode].trim()] = r[iName].trim(); });
+        }
+      }
+    }
+  }
+  renderList();
+  if(scoreDialog) scoreDialog.refresh();
+}
+
+// ---- venue picker ----
+
+function filtersKey(name){ return `${SCORER_STORAGE_KEY}.filters.${name}`; }
+
+function loadFilters(name){
+  filters = { q: '', court: '', hideScored: true };
+  try{
+    const saved = JSON.parse(recall(filtersKey(name)) || 'null');
+    if(saved && typeof saved === 'object'){
+      if(typeof saved.q === 'string') filters.q = saved.q;
+      if(typeof saved.court === 'string') filters.court = saved.court;
+      if(typeof saved.hideScored === 'boolean') filters.hideScored = saved.hideScored;
+    }
+  }catch(e){}
+}
+function saveFilters(){ if(facility) store(filtersKey(facility), JSON.stringify(filters)); }
+
+function updateTitleLine(){
+  dayLabelEl.textContent = ` · ${dayEntry.label || info.day}` + (facility ? ` · ${facility}` : '');
+}
+
+function renderPicker(){
+  pickerEl.textContent = '';
+  const label = document.createElement('div');
+  label.className = 'venue-label';
+  if(facilities.length === 1){
+    label.textContent = 'Venue';
+    const only = document.createElement('div');
+    only.className = 'venue-single';
+    only.textContent = facilities[0].name;
+    pickerEl.append(label, only);
+    return;
+  }
+  if(!facility){ label.textContent = 'Which venue are you at?'; label.classList.add('prompt'); }
+  else label.textContent = 'Venue';
+  const row = document.createElement('div');
+  row.className = 'venue-buttons';
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'Venue');
+  facilities.forEach(f => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'venue-btn';
+    b.textContent = f.name;
+    b.setAttribute('aria-pressed', f.name === facility ? 'true' : 'false');
+    b.addEventListener('click', () => chooseFacility(f.name));
+    row.append(b);
+  });
+  pickerEl.append(label, row);
+}
+
+function chooseFacility(name){
+  if(name === facility) return;
+  if(scoreDialog && scoreDialog.isOpen()) return;   // the dialog is modal; nothing to switch while it shows
+  facility = name;
+  store(`${SCORER_STORAGE_KEY}.facility`, name);
+  loadFilters(name);
+  updateTitleLine();
+  renderPicker();
+  buildFilters();
+  courtChipsKey = null;
+  applySnapshot();        // from the snapshot already loaded: no fetch for a venue switch
+}
+
+// ---- filters ----
+
+function buildFilters(){
+  filtersEl.textContent = '';
+  if(!facility) return;
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'filter-search';
+  search.placeholder = 'Match #, team or player';
+  search.setAttribute('aria-label', 'Search matches');
+  search.autocomplete = 'off';
+  search.value = filters.q;
+  search.addEventListener('input', () => { filters.q = search.value; saveFilters(); renderList(); });
+  const courts = document.createElement('div');
+  courts.className = 'filter-courts';
+  courts.id = 'scorerCourts';
+  const hide = document.createElement('label');
+  hide.className = 'filter-hide';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = filters.hideScored;
+  box.addEventListener('change', () => { filters.hideScored = box.checked; saveFilters(); renderList(); });
+  hide.append(box, document.createTextNode('Hide scored'));
+  filtersEl.append(search, courts, hide);
+}
+
+function courtNumber(court){
+  const m = String(court).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+let courtChipsKey = null;
+function renderCourtChips(){
+  const holder = document.getElementById('scorerCourts');
+  if(!holder) return;
+  const courts = [...new Set(matches.map(m => m.court).filter(Boolean))]
+    .sort((a, b) => courtNumber(a) - courtNumber(b) || a.localeCompare(b));
+  if(filters.court && !courts.includes(filters.court) && matches.length) filters.court = '';
+  const key = `${facility}|${courts.join('|')}|${filters.court}`;
+  if(key === courtChipsKey) return;
+  courtChipsKey = key;
+  holder.textContent = '';
+  if(courts.length < 2) return;
+  [['', 'All courts'], ...courts.map(c => [c, c])].forEach(([value, text]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'court-chip';
+    b.textContent = text;
+    b.setAttribute('aria-pressed', filters.court === value ? 'true' : 'false');
+    b.addEventListener('click', () => { filters.court = value; saveFilters(); courtChipsKey = null; renderList(); });
+    holder.append(b);
+  });
+}
+
+// ---- the list ----
+
+function sideName(code){
+  return entry.type === 'team' ? (teamNames[String(code).split('_')[0]] || code) : code;
+}
+
+function searchText(m){
+  return `#${m.num} ${m.num} ${m.t1} ${m.t2} ${sideName(m.t1)} ${sideName(m.t2)} ${m.t1p1} ${m.t1p2} ${m.t2p1} ${m.t2p2}`.toLowerCase();
+}
+
+function sideCardHTML(code, p1, p2, right){
+  const name = sideName(code);
+  const unset = p1 === 'TBD';
+  return `<div class="sc-side${right ? ' right' : ''}">
+    <div class="sc-name">${escapeHtml(name)}</div>
+    ${name !== code ? `<span class="sc-chip">${escapeHtml(code)}</span>` : ''}
+    <div class="sc-players${unset ? ' unset' : ''}">${unset
+      ? (entry.type === 'team' ? 'Lineup not set' : 'To be decided')
+      : `${escapeHtml(p1)}<br>${escapeHtml(p2)}`}</div>
+  </div>`;
+}
+
+function renderList(){
+  if(!facility){ listEl.textContent = ''; countEl.textContent = ''; return; }
+  renderCourtChips();
+  const played = matches.filter(m => m.played).length;
+  countEl.textContent = matches.length ? `${played} of ${matches.length} scored` : '';
+  const q = filters.q.trim().toLowerCase();
+  const shown = matches.filter(m =>
+    (!filters.court || m.court === filters.court) &&
+    (!filters.hideScored || !m.played) &&
+    (!q || searchText(m).includes(q)));
+  showLoadMessage();
+  if(!shown.length){
+    const hiddenAll = matches.length > 0 && filters.hideScored && matches.every(m => m.played) && !q && !filters.court;
+    const text = hiddenAll ? 'Every match here is scored.'
+      : lastSnapshot === null ? (loadError ? '' : `Loading ${escapeHtml(facility)}…`)
+      : 'No matches to score here.';
+    listEl.innerHTML = `<p class="scorer-empty">${text}</p>`;
+    return;
+  }
+  listEl.innerHTML = shown.map(m => `<div class="score-card scoreable${m.played ? ' played' : ''}" data-score-num="${m.num}" role="button" tabindex="0"
+      aria-label="${m.played ? 'Edit' : 'Enter'} score for match ${m.num}">
+    <div class="sc-meta">#${m.num}${m.time ? ` · ${escapeHtml(m.time)}` : ''}${m.court ? ` · ${escapeHtml(m.court)}` : ''}</div>
+    <div class="sc-body">
+      ${sideCardHTML(m.t1, m.t1p1, m.t1p2, false)}
+      <div class="sc-score${m.played ? '' : ' none'}">${m.played ? `${escapeHtml(String(m.t1Score))}–${escapeHtml(String(m.t2Score))}` : '–'}</div>
+      ${sideCardHTML(m.t2, m.t2p1, m.t2p2, true)}
+    </div>
+  </div>`).join('');
+}
+
+// A failed load shows above the list (the list keeps the last good data); a good one clears it.
+function showLoadMessage(){
+  if(loadError){ say(loadError); loadMessageShown = true; }
+  else if(loadMessageShown){ say(''); loadMessageShown = false; }
+}
+
+listEl.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-score-num]');
+  if(card) openScore(Number(card.dataset.scoreNum));
+});
+listEl.addEventListener('keydown', (e) => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-score-num]')){
+    e.preventDefault();
+    openScore(Number(e.target.dataset.scoreNum));
+  }
+});
+function openScore(num){
+  const m = matches.find(x => x.num === num);
+  if(!m){ toast('error', `Match #${num} isn’t loaded. Refresh and try again.`); return; }
+  scoreDialog.open(info.day, facility, m);
+}
+
+// ---- the dialog ----
+
+function createDialog(){
+  return createScoreDialog({
+    dialog: document.getElementById('scoreDialog'),
+    apiBase: CLOUD_RUN_BASE_URL,
+    getToken: () => token,
+    fixture: FIXTURE,
+    describe(m){
+      const title = `Match #${m.num}` + (m.court ? ` · ${m.court}` : '') + (m.time ? ` · ${m.time}` : '');
+      let sub;
+      if(entry.type === 'team'){
+        sub = m.matchUp || '';
+      }else{
+        const parts = String(m.t1).split('_');
+        const category = entry.type === 'dual-meet' ? (parts[1] || parts[0]) : parts[0];
+        const rest = parts.slice(entry.type === 'dual-meet' ? 2 : 1).join('_');
+        sub = [category, scorerStage(rest)].filter(Boolean).join(' · ');
+      }
+      const side = (c, p1, p2) => ({
+        name: sideName(c),
+        code: c,
+        players: p1 === 'TBD' ? null : [p1, p2],
+        missing: entry.type === 'team' ? 'Lineup not set' : 'To be decided',
+      });
+      return { title, sub, sides: [side(m.t1, m.t1p1, m.t1p2), side(m.t2, m.t2p1, m.t2p2)] };
+    },
+    readOnlyReason(m){
+      return entry.type !== 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD') ? 'Players for this match aren’t decided yet.' : null;
+    },
+    extraWarnings(m){
+      const out = [];
+      if([...unneededSeriesGames(matches)].some(x => x.num === m.num && x.facility === m.facility)){
+        out.push('This series game isn’t needed: the series is already decided.');
+      }
+      if(entry.type === 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD')) out.push('Lineup not set for this match.');
+      return out;
+    },
+    findMatch: (f, n) => (f === facility ? matches.find(x => x.num === n) || null : null),
+    notify: (kind, text) => toast(kind, text),
+    friendlyError: friendlyApiMessage,
+    unreachable: err => `Couldn’t reach the server. Check this device’s connection and try again. (${err && err.message || err})`,
+    expiredText: 'This scorer link has expired. Ask the operator for a new one.',
+    resyncHint: 'Tell the operator so they can resync.',
+    onFixtureSave(s, a, b){
+      const m = matches.find(x => x.num === s.num);
+      if(m){ m.t1Score = a; m.t2Score = b; m.played = a !== null; }
+      renderList();
+    },
+  });
+}
+
+// The stage of a match from the rest of its team code (what follows the
+// category): Round Robin, or the bracket round.
+const SCORER_STAGES = { R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Final', B: 'Bronze Match' };
+function scorerStage(rest){
+  if(!/^\d+$/.test(rest)){
+    for(const k of ['R16', 'QF', 'SF', 'F', 'B']){
+      if(new RegExp(`(^|_)${k}(_|\\d|$)`).test(rest)) return SCORER_STAGES[k];
+    }
+  }
+  return 'Round Robin';
+}
+
+// ---- start-up ----
+
+function stopEverything(text){
+  if(scoreDialog) scoreDialog.close();
+  clearInterval(pollTimer); clearInterval(expiryTimer);
+  if(liveChannel) liveChannel.pause();
+  pickerEl.textContent = ''; filtersEl.textContent = ''; countEl.textContent = ''; listEl.textContent = '';
+  say(text);
+}
+
+async function scorerStart(){
+  token = scorerLoadToken();
+  info = token ? scorerDecode(token) : null;
+  if(!info){
+    say('Ask the operator for a scorer link.');
+    return;
+  }
+  if(Date.now() >= info.exp){
+    say('This scorer link has expired. Ask the operator for a new one.');
+    return;
+  }
+
+  try{
+    const configUrl = FIXTURE
+      ? `/_fixtures/config.json?t=${Date.now()}`
+      : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
+    const config = await scorerFetchJson(configUrl);
+    entry = config.events && config.events[EVENT_KEY];
+  }catch(err){
+    say(`Could not load this event (${err.message}). Check this device’s connection and reload.`);
+    return;
+  }
+  if(!entry || entry.scoreEntry !== 'links'){
+    say('Scorer links are stopped for this event. Ask the operator.');
+    return;
+  }
+  dayEntry = entry.days && entry.days[info.day];
+  if(!dayEntry){
+    say('This scorer link doesn’t match a day of this event. Ask the operator for a new one.');
+    return;
+  }
+  facilities = (dayEntry.facilities || []).filter(f => f && f.name && f.sheetId);
+  if(!facilities.length){
+    say('No venues are set up for this day yet. Ask the operator.');
+    return;
+  }
+
+  const remembered = recall(`${SCORER_STORAGE_KEY}.facility`);
+  facility = facilities.length === 1 ? facilities[0].name
+    : (facilities.some(f => f.name === remembered) ? remembered : null);
+  if(facility) loadFilters(facility);
+  updateTitleLine();
+
+  scoreDialog = createDialog();
+  liveChannel = createLiveChannel({
+    enabled: !!LIVE_BASE_URL && !FIXTURE,
+    onSnapshot: () => loadData(),
+  });
+  liveChannel.follow(EVENT_KEY, info.day);
+
+  renderPicker();
+  buildFilters();
+  renderList();           // "Loading <venue>…" until the first snapshot arrives
+  await loadData();
+
+  // Poll while visible; pause the channel and the poll while the tab or app is backgrounded.
+  pollTimer = setInterval(loadData, POLL_INTERVAL_MS);
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+      clearInterval(pollTimer);
+      liveChannel.pause();
+    } else {
+      liveChannel.resume();
+      loadData();
+      clearInterval(pollTimer);
+      pollTimer = setInterval(loadData, POLL_INTERVAL_MS);
+    }
+  });
+
+  // The link stops working at exp: say so instead of failing every save.
+  expiryTimer = setInterval(() => {
+    if(Date.now() >= info.exp) stopEverything('This scorer link has expired. Ask the operator for a new one.');
+  }, 60000);
+}
+
+scorerStart();
+</script>
+</body>
+</html>
