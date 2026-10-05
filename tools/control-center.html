@@ -8435,13 +8435,25 @@ function renderScheduleLauncher(){
     : '';
 }
 
-// sessionStorage only — cleared when the tab closes, never written into
-// this file. Holds { token, expiresAt } from a successful /auth/login —
-// never the username/password themselves, and never SYNC_SHARED_SECRET,
-// which stays server-side always (see AuthService.mjs).
-function loadAuthToken(){ try{ return JSON.parse(sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || 'null'); } catch(e){ return null; } }
-function saveAuthToken(token, expiresAt){ try{ sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt })); } catch(e){} }
-function clearAuthToken(){ try{ sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY); } catch(e){} }
+// Never written into this file. Holds { token, expiresAt } from a successful
+// /auth/login — never the username/password themselves, and never
+// SYNC_SHARED_SECRET, which stays server-side always (see AuthService.mjs).
+// In a browser tab it lives in sessionStorage, cleared when the tab closes.
+// Installed as an app it lives in localStorage instead: iOS ends a home-screen
+// app's session whenever it drops the app from memory in the background, which
+// wipes sessionStorage and signed the operator out mid-event. The token's own
+// expiresAt still ends the sign-in on time either way.
+function authTokenStore(){
+  const installed = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+    || window.navigator.standalone === true;
+  return installed ? localStorage : sessionStorage;
+}
+function loadAuthToken(){ try{ return JSON.parse(authTokenStore().getItem(AUTH_TOKEN_STORAGE_KEY) || 'null'); } catch(e){ return null; } }
+function saveAuthToken(token, expiresAt){ try{ authTokenStore().setItem(AUTH_TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt })); } catch(e){} }
+function clearAuthToken(){
+  try{ sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY); } catch(e){}
+  try{ localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY); } catch(e){}
+}
 
 // The token string if signed in and not yet expired, else null — checked
 // fresh on every call rather than cached, so an expired session is caught
