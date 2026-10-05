@@ -2778,7 +2778,7 @@
 
       <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
 
-      <div class="switch-row" style="margin:14px 0;">
+      <div class="switch-row" id="orgCsvRow" style="margin:14px 0;">
         <button type="button" class="switch" id="orgUseCsvMethod" role="switch" aria-checked="false" aria-labelledby="orgUseCsvMethodLabel"><span class="switch-thumb"></span></button>
         <span class="switch-label plain" id="orgUseCsvMethodLabel">Use CSV export fallback instead of Sheets API</span>
       </div>
@@ -2801,6 +2801,7 @@
            console's own tabs always stay live, for preview (spec §3). -->
       <label class="search-label">Public site status</label>
       <div class="golive-current" id="goLiveCurrent"></div>
+      <p class="organizer-hint" id="goLiveSignInHint" style="display:none; margin-top:-2px;">Sign in to change this.</p>
       <div class="golive-buttons">
         <button type="button" class="golive-btn" data-live="auto">Auto</button>
         <button type="button" class="golive-btn" data-live="true">Force live</button>
@@ -8387,6 +8388,11 @@ function syncActionAvailability(){
   if(orgResyncBtn) orgResyncBtn.style.display = signedIn ? '' : 'none';
   if(orgFacilityResyncGroupEl) orgFacilityResyncGroupEl.style.display = (signedIn && FACILITIES.length > 1) ? '' : 'none';
   if(goLiveButtonsEl) goLiveButtonsEl.style.display = signedIn ? '' : 'none';
+  // The CSV-fallback toggle only changes how the resync buttons read the sheet.
+  const csvRow = document.getElementById('orgCsvRow');
+  if(csvRow) csvRow.style.display = signedIn ? '' : 'none';
+  const goLiveHint = document.getElementById('goLiveSignInHint');
+  if(goLiveHint) goLiveHint.style.display = signedIn ? 'none' : '';
 }
 
 function renderFacilityControls(){
@@ -8443,9 +8449,26 @@ function clearAuthToken(){ try{ sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY
 function currentAuthToken(){
   const stored = loadAuthToken();
   if(!stored || !stored.token || !stored.expiresAt) return null;
-  if(Date.now() >= stored.expiresAt){ clearAuthToken(); return null; }
+  if(Date.now() >= stored.expiresAt){
+    clearAuthToken();
+    sessionExpired();
+    return null;
+  }
   return stored.token;
 }
+
+// The first check that finds the session over (a poll redrawing Match Finder, a
+// click, the timer below) redraws everything that depends on sign-in, once,
+// and says why the controls went away. Deferred so it never runs inside the
+// render that made the check.
+function sessionExpired(){
+  setTimeout(() => {
+    renderAuthStatus();
+    showToast('warn', 'Your sign-in expired. Sign in again to resync, score or mark attendance.', 'auth');
+  }, 0);
+}
+// A page left open on a tab with no polling still notices within half a minute.
+setInterval(() => { currentAuthToken(); }, 30000);
 
 // ---- Sync method switch ---------------------------------------------------
 // Reads GET /sync/config (operator token) for { live: { enabled, switch, active } }
@@ -8615,9 +8638,9 @@ function renderScorerLinks(){
   let html = mode === 'links'
     ? '<b>Accepting</b>: anyone with a scorer link for the day can enter scores.'
     : '<b>Stopped</b>: scorer links can\u2019t save scores or be issued. Operators still can, in Match Finder.';
-  if(pageOk === false){
+  if(canAct && pageOk === false){
     html += ` <b>This event has no scorer page</b> (<code>events/${escapeHtml(CURRENT_EVENT_KEY)}/scorer.html</code> isn\u2019t on the site), so the switch and links are off. Add the page first (see Adding a new event).`;
-  } else if(pageOk === null){
+  } else if(canAct && pageOk === null){
     html += ' Checking for the scorer page\u2026';
   }
   if(!canAct) html += ' Sign in to change this or issue a link.';
@@ -8803,6 +8826,9 @@ function renderAuthStatus(){
   renderScorerLinks();
   // The pencil hint on Match Finder's matches appears and disappears with sign-in.
   if(MATCHES.length) refreshFinder();
+  // So do the Attendance tab's buttons, when it is the tab on screen. (This first runs at
+  // load, before the Attendance section's own variables exist, hence the try.)
+  try{ if(attConsoleView) attConsoleRenderChrome(); }catch(e){ /* not initialised yet */ }
 }
 
 async function signIn(){
