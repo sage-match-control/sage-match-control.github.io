@@ -2812,7 +2812,7 @@
       <div class="organizer-divider"></div>
 
       <!-- Emergency switch between "live push + GitHub archive" and "GitHub
-           only". Writes config/events.json (POST /sync/live-push), so it works
+           only". Writes config/events.json (PUT /v3/settings/live-push), so it works
            even when the live Worker is the thing that is broken. -->
       <label class="search-label">Sync method</label>
       <div class="golive-current" id="syncMethodCurrent"></div>
@@ -2826,7 +2826,7 @@
 
       <!-- Scorer links (control-center-score-entry-spec.md §5.8): a link that can
            enter scores and nothing else, and a switch that stops every such link.
-           The switch writes config/events.json (PUT /v1/events/:event/score-entry). -->
+           The switch writes config/events.json (PUT /v3/events/{event}/score-entry). -->
       <div id="scorerLinksSection" style="display:none;">
         <label class="search-label">Scorer links</label>
         <div class="golive-current" id="scorerLinksCurrent"></div>
@@ -2962,7 +2962,7 @@ const POLL_INTERVAL_MS = 10000;
 // ---- Browser storage keys -------------------------------------------------
 // One session for the whole console, not namespaced per event (spec §4) —
 // signing in once covers every event, so an operator running two events
-// doesn't sign in twice. Holds the token /auth/login returns, never the
+// doesn't sign in twice. Holds the token POST /v3/sessions returns, never the
 // raw SYNC_SHARED_SECRET/password — see AuthService.mjs on the backend.
 const STORAGE_SELECTION_KEY = 'sage.lastSelection'; // { event, day } JSON — last picked, for a bare visit (spec §5)
 const STORAGE_SEARCH_KEY = 'sage.search';
@@ -3188,7 +3188,7 @@ function groupForDesk(people, { type, teamName, categoryLabel, showWithdrawn } =
 // PUT one person's check-in. Rejects with Error(body.error || "HTTP <status>")
 // and err.status; a fetch that never got an answer rejects with no status.
 async function markPerson({ apiBase, token, day, facility, key, present }){
-  const url = `${apiBase}/v1/days/${encodeURIComponent(day)}/facilities/${encodeURIComponent(facility)}/attendance/${encodeURIComponent(key)}`;
+  const url = `${apiBase}/v3/days/${encodeURIComponent(day)}/facilities/${encodeURIComponent(facility)}/people/${encodeURIComponent(key)}/attendance`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -6756,7 +6756,7 @@ function createScoreDialog(opts){
     if(opts.fixture) return fixtureSave(mine, team1Score, team2Score);
     const token = opts.getToken();
     if(!token) return failed(mine, opts.expiredText);
-    const url = `${opts.apiBase}/v1/days/${encodeURIComponent(s.day)}/facilities/` +
+    const url = `${opts.apiBase}/v3/days/${encodeURIComponent(s.day)}/facilities/` +
                 `${encodeURIComponent(s.facility)}/matches/${s.num}/score`;
     let res, json = null;
     try {
@@ -8336,8 +8336,8 @@ async function setGoLive(value){
   showGoLiveResult('loading', `Setting ${day.label} to ${value}…`);
 
   try {
-    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/${day.key}/live`, {
-      method: 'POST',
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/visibility`, {
+      method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ isLive: value })
     });
@@ -8436,7 +8436,7 @@ function renderScheduleLauncher(){
 }
 
 // Never written into this file. Holds { token, expiresAt } from a successful
-// /auth/login — never the username/password themselves, and never
+// POST /v3/sessions — never the username/password themselves, and never
 // SYNC_SHARED_SECRET, which stays server-side always (see AuthService.mjs).
 // In a browser tab it lives in sessionStorage, cleared when the tab closes.
 // Installed as an app it lives in localStorage instead: iOS ends a home-screen
@@ -8483,8 +8483,8 @@ function sessionExpired(){
 setInterval(() => { currentAuthToken(); }, 30000);
 
 // ---- Sync method switch ---------------------------------------------------
-// Reads GET /sync/config (operator token) for { live: { enabled, switch, active } }
-// and writes POST /sync/live-push. `enabled` is whether Cloud Run's environment
+// Reads GET /v3/diagnostics/sync (operator token) for { live: { enabled, switch, active } }
+// and writes PUT /v3/settings/live-push. `enabled` is whether Cloud Run's environment
 // configures live push at all; `switch` is the operator's setting in
 // config/events.json. Only the switch is changed from here.
 const syncMethodCurrentEl = document.getElementById('syncMethodCurrent');
@@ -8539,8 +8539,9 @@ async function refreshSyncMethod(){
     return;
   }
   try {
-    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/diagnostics/sync`, { headers: { 'Authorization': `Bearer ${token}` } });
     if(seq !== syncMethodReadSeq) return;
+    if(res.status === 404) throw new Error('Cloud Run is older than 3.0.0');
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const cfg = await res.json();
     if(!cfg.live) throw new Error('Cloud Run is older than 2.5.0');
@@ -8563,8 +8564,8 @@ async function setSyncMethod(enabled){
   if(syncMethodButtonsEl) syncMethodButtonsEl.querySelectorAll('.golive-btn').forEach(b => { b.disabled = true; });
   showSyncMethodResult('loading', enabled ? 'Switching live push on\u2026' : 'Switching to GitHub only\u2026');
   try {
-    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/live-push`, {
-      method: 'POST',
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/settings/live-push`, {
+      method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled })
     });
@@ -8598,7 +8599,7 @@ if(syncMethodButtonsEl){
 // ---- Scorer links (spec §5.8) ----
 // A link that can enter scores and nothing else, and the Accepting / Stopped
 // switch that stops every such link. The switch writes the event's scoreEntry
-// in config/events.json through the API (PUT /v1/events/:event/score-entry);
+// in config/events.json through the API (PUT /v3/events/{event}/score-entry);
 // the page's own copy of the registry is updated to match, since it would
 // otherwise stay stale until a reload. Rendered from the registry alone, so
 // it is safe to call before anything has loaded.
@@ -8688,10 +8689,10 @@ async function setScorerLinksMode(mode){
     } else {
       const token = currentAuthToken();
       if(!token){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
-      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/score-entry`, {
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/score-entry`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({ scoreEntry: mode }),
       });
       const body = await res.json().catch(() => null);
       if(!res.ok){
@@ -8788,7 +8789,7 @@ async function issueScorerLink(){
       issued = { token: b64url(JSON.stringify({ exp: Date.now() + 864e5, scope: 'score-desk', day: day.key })) + '.fixture',
                  expiresAt: Date.now() + 864e5, day: day.key };
     }else{
-      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/scores/scorer-links`, {
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/scores/scorer-links`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
       });
       const body = await res.json().catch(() => null);
@@ -8860,7 +8861,7 @@ async function signIn(){
 
   if(orgSignInBtn){ orgSignInBtn.disabled = true; orgSignInBtn.textContent = 'Signing in…'; }
   try {
-    const res = await fetch(`${CLOUD_RUN_BASE_URL}/auth/login`, {
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -8988,13 +8989,14 @@ function renderOrganizerStatus(){
 }
 
 // One line for Check connection: is Cloud Run's live push on? Reads
-// GET /sync/config, which reports live: { enabled, baseUrl } (never the secret)
+// GET /v3/diagnostics/sync, which reports live: { enabled, baseUrl } (never the secret)
 // from sage-tools-api 2.4.0 on; an older service has no `live` field.
 async function checkCloudRunLivePush(){
   const token = currentAuthToken();
   if(!token) return 'Live push: sign in to check whether Cloud Run is publishing to it.';
   try {
-    const res = await fetch(`${CLOUD_RUN_BASE_URL}/sync/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/diagnostics/sync`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if(res.status === 404) return 'Live push: couldn\u2019t check (Cloud Run is older than 3.0.0).';
     if(!res.ok) return `Live push: couldn't check (HTTP ${res.status}).`;
     const cfg = await res.json();
     if(!cfg.live) return 'Live push: not available (Cloud Run is older than 2.4.0).';
@@ -9026,7 +9028,7 @@ if(orgCheckConnBtn){
       if(res.ok){
         // Whether Cloud Run itself is publishing to the live Worker (as opposed
         // to the Mission Control "Live updates" line, which is about this page's
-        // own socket). /sync/config is gated, so it needs a signed-in operator.
+        // own socket). /v3/diagnostics/sync is gated, so it needs a signed-in operator.
         const liveNote = (await checkCloudRunLivePush()).replace(/^Live push:\s*/, '');
         const liveKind = /^on\b/.test(liveNote) ? 'ok' : (/^(off|switched off)\b/.test(liveNote) ? 'warn' : '');
         showResultRows(orgConnResultBox, 'ok', 'Connected to Cloud Run', [
@@ -9380,7 +9382,7 @@ async function attConsoleUpdateRoster(){
         name: f.name, ok: true, skipped: false, added: i === 0 ? 2 : 0, updated: 0, withdrawn: i === 0 ? 1 : 0, restored: 0, duplicatesCleared: 0, warnings: [],
       })) };
     }else{
-      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/attendance/reconciliations`, {
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/attendance/reconciliations`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
       });
       body = await res.json().catch(() => null);
@@ -9516,7 +9518,7 @@ async function attConsoleIssueDeskLink(){
     if(FIXTURE){
       issued = { token: 'fixture.desk-token', expiresAt: Date.parse(`${day.date || '2026-10-03'}T23:59:59.999+08:00`), day: day.key };
     }else{
-      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v1/days/${encodeURIComponent(day.key)}/attendance/desk-links`, {
+      const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/attendance/desk-links`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
       });
       const body = await res.json().catch(() => null);
@@ -9604,9 +9606,10 @@ function setResyncButtonsDisabled(disabled){
 }
 
 // facilityName: null for a full-day resync, or a facility name (e.g.
-// 'Main') to scope it — same /sync/:day endpoint either way, just with or
-// without ?facility= appended. Method (Sheets API vs the CSV export
-// fallback) is read from the checkbox at call time, so it applies equally
+// 'Main') to scope it — POST /v3/days/{day}/syncs, or
+// /v3/days/{day}/facilities/{facility}/syncs for one facility. Method (Sheets
+// API vs the CSV export fallback, sent as { method: 'csv' } in the body) is
+// read from the checkbox at call time, so it applies equally
 // whichever resync button was actually clicked.
 async function performResync(facilityName, { onStart, onDone } = {}){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
@@ -9627,12 +9630,13 @@ async function performResync(facilityName, { onStart, onDone } = {}){
   showOrgResult('loading', `Resyncing ${scopeLabel}${useCsvMethod ? ' (CSV fallback)' : ''}\u2026`);
 
   try {
-    const params = new URLSearchParams();
-    if(facilityName) params.set('facility', facilityName);
-    if(useCsvMethod) params.set('method', 'csv');
-    const qs = params.toString();
-    const url = `${CLOUD_RUN_BASE_URL}/sync/${day.key}` + (qs ? `?${qs}` : '');
-    const res = await fetch(url, {
+    const url = `${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}` +
+                (facilityName ? `/facilities/${encodeURIComponent(facilityName)}` : '') + '/syncs';
+    const res = await fetch(url, useCsvMethod ? {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method: 'csv' })
+    } : {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
     });

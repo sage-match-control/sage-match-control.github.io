@@ -549,7 +549,7 @@
 </div>
 
 <script>
-  const API_URL = "https://sage-tools-api-811926984834.us-central1.run.app/scoresheets/generate/stream";
+  const API_URL = "https://sage-tools-api-811926984834.us-central1.run.app/v3/scoresheets";
 
   // event-data is a project repo under the same GitHub Pages org, so these are
   // same-origin — no CORS. Pages caches every response for ~10 minutes with no
@@ -1016,7 +1016,7 @@
     resetProgress();
 
     try {
-      const res = await fetch(API_URL, { method: 'POST', body: fd });
+      const res = await fetch(API_URL, { method: 'POST', headers: { 'Accept': 'application/x-ndjson' }, body: fd });
 
       // Validation failures happen before streaming starts, so they still
       // arrive as a normal non-200 JSON response.

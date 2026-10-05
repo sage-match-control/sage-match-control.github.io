@@ -207,7 +207,7 @@ clubs; it is not a general multi-club template.
    Commit it. **No `sage-tools-api` deploy is needed** — every running
    instance re-checks `config/events.json` within `SYNC_CONFIG_TTL_MS`
    (about a minute by default; see §0). Give it a minute, or confirm with
-   `GET /sync/config` (`X-Sync-Secret` header) that your day keys show up
+   `GET /v3/diagnostics/sync` (`X-Sync-Secret` header) that your day keys show up
    in its `days` list, before installing the Apps Script in the next step
    — a sync attempt against a day key that isn't live yet fails with
    `UnknownSyncDayError`.

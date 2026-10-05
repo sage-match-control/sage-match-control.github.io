@@ -872,7 +872,7 @@ function createScoreDialog(opts){
     if(opts.fixture) return fixtureSave(mine, team1Score, team2Score);
     const token = opts.getToken();
     if(!token) return failed(mine, opts.expiredText);
-    const url = `${opts.apiBase}/v1/days/${encodeURIComponent(s.day)}/facilities/` +
+    const url = `${opts.apiBase}/v3/days/${encodeURIComponent(s.day)}/facilities/` +
                 `${encodeURIComponent(s.facility)}/matches/${s.num}/score`;
     let res, json = null;
     try {

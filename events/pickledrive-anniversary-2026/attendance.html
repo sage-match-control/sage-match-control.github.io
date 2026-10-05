@@ -232,7 +232,7 @@ function groupForDesk(people, { type, teamName, categoryLabel, showWithdrawn } =
 // PUT one person's check-in. Rejects with Error(body.error || "HTTP <status>")
 // and err.status; a fetch that never got an answer rejects with no status.
 async function markPerson({ apiBase, token, day, facility, key, present }){
-  const url = `${apiBase}/v1/days/${encodeURIComponent(day)}/facilities/${encodeURIComponent(facility)}/attendance/${encodeURIComponent(key)}`;
+  const url = `${apiBase}/v3/days/${encodeURIComponent(day)}/facilities/${encodeURIComponent(facility)}/people/${encodeURIComponent(key)}/attendance`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
