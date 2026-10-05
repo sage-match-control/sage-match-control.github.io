@@ -266,14 +266,14 @@ clubs; it is not a general multi-club template.
    > than guessing — see §1 above.
 
 8. **Install the sync script.** Once per facility spreadsheet for this
-   event (this is the Apps Script side of things — `scripts/sheets-sync.gs`
+   event (this is the Apps Script side of things — `apps-script/sheets-sync.gs`
    lives in `sage-tools-api`, not in this repo — though a dual meet's
    generated workbook carries it already, so this reduces to reload + set up
    for those):
 
    1. Open the spreadsheet → Extensions → Apps Script.
    2. Delete the default empty `Code.gs` content and paste in the whole
-      contents of `sage-tools-api/scripts/sheets-sync.gs`. The file is
+      contents of `sage-tools-api/apps-script/sheets-sync.gs`. The file is
       identical for every workbook of every event — nothing in it is
       spreadsheet-specific.
    3. Reload the spreadsheet and run **SAGE → Set up live sync**.
