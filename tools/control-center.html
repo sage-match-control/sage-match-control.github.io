@@ -8818,12 +8818,22 @@ document.getElementById('scorerSwitch').addEventListener('click', (e) => {
 });
 document.getElementById('scorerLinkBtn').addEventListener('click', issueScorerLink);
 
+// "3:30 PM" when the sign-in ends today, else "3:30 AM, Tue, Oct 6" — a sign-in
+// usually outlasts midnight, and a bare time would read as later today. Absolute
+// rather than "tomorrow", so the status line stays true if the page stays open
+// past midnight without redrawing it.
+function signedInUntilText(expiresAt){
+  const end = new Date(expiresAt);
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(end);
+  if(end.toDateString() === new Date().toDateString()) return time;
+  return `${time}, ${new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(end)}`;
+}
+
 function renderAuthStatus(){
   if(!orgAuthStatusEl) return;
   const stored = currentAuthToken() ? loadAuthToken() : null;
   if(stored){
-    const until = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(stored.expiresAt));
-    orgAuthStatusEl.textContent = `Signed in until ${until}.`;
+    orgAuthStatusEl.textContent = `Signed in until ${signedInUntilText(stored.expiresAt)}.`;
     orgAuthStatusEl.classList.add('signed-in');
     if(orgSignOutBtn) orgSignOutBtn.style.display = '';
     if(orgLoginFormEl) orgLoginFormEl.style.display = 'none';
@@ -8863,8 +8873,7 @@ async function signIn(){
     saveAuthToken(body.token, body.expiresAt);
     if(orgPasswordInput) orgPasswordInput.value = '';
     renderAuthStatus();
-    const until = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(body.expiresAt));
-    showToast('ok', `Signed in until ${until}.`, 'auth');
+    showToast('ok', `Signed in until ${signedInUntilText(body.expiresAt)}.`, 'auth');
   } catch(err){
     showToast('error', unreachableMessage(err), 'auth');
   } finally {
