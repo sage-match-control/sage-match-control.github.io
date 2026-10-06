@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dual Meet — Tournament Hub</title>
+<meta name="description" content="Find your pair's full Dual Meet match schedule, live scores, and standings.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dual Meet — Tournament Hub">
+<meta property="og:description" content="Find your pair's full match schedule, live scores, and standings.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/lib/v1/css/ticket.css">
+<link rel="stylesheet" href="/lib/v1/css/finder.css">
+<link rel="stylesheet" href="/lib/v1/css/live-matches.css">
+<link rel="stylesheet" href="/lib/v1/css/standings.css">
+<link rel="stylesheet" href="/lib/v1/css/hub.css">
+<style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the six brand tokens below and nothing
+     else: every rule in this file resolves through them or through the
+     role aliases underneath.
+
+     Contrast rules this palette has to respect — the green is a *fill*
+     colour, not a text colour:
+       - --green on white is ~2.3:1 and fails AA at any size. Use it as a
+         background (with --navy text on top, ~5.4:1) or on a navy panel.
+       - --green-dark on white is ~4.0:1 — still under the 4.5:1 body
+         floor, so keep it for large/display text only.
+       - Small text on paper is --ink (~13.8:1) or --ink-soft (~5.9:1).
+     ================================================================ */
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#FFFFFF;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#0B1B3C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:#B8E830;
+    --court-dark:#080808;
+    --court-line:#F2F2F2;
+    --amber:#FFE24D;
+    --cork:#FF3D9A;
+    --muted:#6B7690;
+    --navy-mid:#141414;
+    --card-shadow:0 18px 40px -20px rgba(8,3,24,.6);
+  }
+
+                                                                                                  /* Desktop: break the standings board out of the page's narrow .wrap
+     max-width so it can actually use the screen. Each category becomes its
+     own column in a 4-column grid: the first 3 columns hold one row per
+     division (top row Low Intermediate, then High Intermediate — sortedCats
+     is already grouped by division then event, so consecutive same-division
+     categories land on the same row automatically), and the 4th column is
+     reserved for any division with fewer categories than EVENTS configures
+     (currently just Advanced, with a single Men's Doubles category) —
+     renderStandings wraps those in .standings-col-overflow, spanning the
+     full row-height of the columns beside it and vertically centered there
+     instead of leaving a half-empty row of its own. */
+
+
+           /* the all-matches list under the stats */
+
+
+
+/* ==== THIS TEMPLATE'S OWN TOUCHES, where it differs from lib/v1/css — site-engine-spec §12 ==== */
+/* §12 row 11: the base margin-bottom, kept by this page (the shared one is the standard Hub's 12px) */
+.names-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:start;
+  column-gap:12px;
+  margin-bottom:14px;
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  .live-match-pill{font-size:7.5px; padding:1px 5px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  .live-vs-score{font-size:11px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+input.cat-filter-input{
+  flex:1;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:.01em;
+  padding:12px 14px;
+  border-radius:10px;
+  border:2px solid rgba(20,27,44,.18);
+  background:var(--white);
+  color:var(--ink);
+  outline:none;
+  min-width:0;
+  width:100%;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-board{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  padding:4px 4px 16px;
+  align-items:stretch;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-col{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:16px;
+  break-inside:avoid;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.stage-banner + .br-table-wrap .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(240px, 1fr));
+    /* Four 240px columns plus gaps and the 32px side padding need about
+       1084px. Narrower desktop windows scroll the board sideways inside
+       itself, the way the standard board does, instead of widening the
+       whole page. */
+    overflow-x:auto;
+    max-height:none;
+    max-width:2160px;
+    margin:0 auto;
+    padding-bottom:20px;
+    align-items:stretch;
+  }
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop .standings-col{
+    /* Wide enough to fit both clubs' brackets side by side (see
+       .category-clubs-row above) — the row itself scrolls internally, so
+       this column doesn't need its own max-height/overflow-y. */
+    width:100%;
+    max-width:520px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+  }
+}
+/* §12: this page's own version of a rule the two Hubs disagree on; the shared rule is the standard Hub's, and what it sets that this one does not is reset here */
+.qr-panel .qr-link-text{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;
+  font-weight: bolder;
+  max-width:180px;
+  line-height:1.4;
+  margin-top:8px;
+  /* Show the whole link. Put a <wbr> after the "/" when filling in
+     tinyurl.com/<wbr>SAGExPNFxBUP so it breaks there; otherwise it breaks wherever it runs out of room. */
+  overflow-wrap:anywhere;
+}
+/* §12: this page's own version of a rule the two Hubs disagree on; the shared rule is the standard Hub's, and what it sets that this one does not is reset here */
+footer a{ color:var(--navy); text-decoration:underline; }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="qr-panel" aria-hidden="false">
+  <img src="/events/pnf-x-bup-dual-meet/assets/qr.png" alt="QR code linking to this Tournament Hub site" />
+  <div class="qr-link-text">tinyurl.com/<wbr>SAGExPNFxBUP</div>
+  <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
+</div>
+
+<header class="hero">
+  <div class="hero-logos">
+    <img src="/assets/logo.png" alt="Dual Meet logo" />
+    <span class="hero-logos-sep">&times;</span>
+    <img src="/assets/logo.png" alt="S.A.G.E." />
+  </div>
+  <div class="tagline-script"></div>
+  <div class="eyebrow">Pickle &amp; Friends Community &times; 1Bataan United Picklers &nbsp;·&nbsp; 12 September 2026 &nbsp;·&nbsp; Pampanga Pickleball Center</div>
+  <div class="club-logos">
+    <img src="/events/pnf-x-bup-dual-meet/assets/pnf-logo.jpg" alt="Pickle &amp; Friends Community logo" />
+    <span class="club-logos-sep">&times;</span>
+    <img src="/events/pnf-x-bup-dual-meet/assets/bup-logo.jpg" alt="1Bataan United Picklers logo" />
+  </div>
+  <h1 class="title">Dual Meet</h1>
+  <div class="domination-line"></div>
+  <p class="subtitle">Find your pair's full match schedule — every round, every opponent, in order.</p>
+
+  <div class="day-picker" id="dayPickerWrap">
+    <label for="dayPicker">Select tournament day</label>
+    <select id="dayPicker"></select>
+  </div>
+
+  <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
+    <button class="view-tab active" data-view="finder" type="button">Match Finder</button>
+    <button class="view-tab" data-view="live" type="button">Live Matches</button>
+    <button class="view-tab" data-view="standings" type="button">Standings</button>
+  </div>
+
+  <div class="regal-rule"><span class="diamond"></span></div>
+
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
+</header>
+
+<div class="wrap">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
+    <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div id="liveBoard"></div>
+  </div>
+  <div class="search-panel" id="searchPanel" style="display:none;">
+    <label class="search-label" for="teamInput">Enter your pair's names</label>
+    <div class="search-row autocomplete">
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
+  </div>
+  <div id="results" style="display:none;"></div>
+  <div id="standingsResults" style="display:none;">
+    <div id="standingsBody"></div>
+  </div>
+</div>
+
+<footer>
+  Dual Meet &middot; 12 September 2026 &middot; Pampanga Pickleball Center<br>
+  Powered by S.A.G.E. Match Control Experts
+</footer>
+
+<script type="module">
+// ============================================================================
+// SETTINGS — the only script in this page. The days, facilities and labels come from
+// event-data/config/events.json (sage-docs/docs/specs/.../site-engine-spec.md §4.6); the rest of the
+// Hub is lib/v1/apps/hub.js.
+// ============================================================================
+import { mountHub } from '/lib/v1/apps/hub.js';
+
+// Does triple duty: the event's key in events.json, its folder in the shared data repo, and its folder under
+// events/ in this repo. Keep all three identical.
+const EVENT_KEY = 'pnf-x-bup-dual-meet';
+
+// The live Worker's address: '' turns push off for this page, as a finished event's pages do
+// (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = ''; // v2 test copy of a finished event: GitHub only
+
+// The two clubs' logos, by club code. Their names come from events.json (display.clubs).
+const CLUB_LOGOS = {
+  'PNF': '/events/pnf-x-bup-dual-meet/assets/pnf-logo.jpg',
+  'BUP': '/events/pnf-x-bup-dual-meet/assets/bup-logo.jpg',
+};
+
+mountHub({ eventKey: EVENT_KEY, liveBaseUrl: LIVE_BASE_URL, clubLogos: CLUB_LOGOS });
+</script>
+</body>
+</html>
