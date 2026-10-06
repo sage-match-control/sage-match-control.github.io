@@ -11,12 +11,16 @@ export const ACCEPTED = [
     reason: 'the pair code on a ticket is Control Center’s small muted label, on the Hub too',
   },
   {
-    case: /^(cc\/[^/]+|dm-index\/[^/]+)\/(finder|finder-by-number|finder-search)\/[^/]+\/phone$|^cc-signed-in\/[^/]+\/score-entry-save\/[^/]+\/phone$/, kind: 'pixels', row: 10,
-    reason: 'at phone sizes a ticket has the standard Hub’s names gap and players size, in Control Center and the dual-meet Hub too',
+    case: /^(cc\/[^/]+|dm-index\/[^/]+)\/(finder|finder-by-number|finder-search|live)\/[^/]+\/phone$|^cc-signed-in\/[^/]+\/score-entry-save\/[^/]+\/phone$/, kind: 'pixels', row: 10,
+    reason: 'at phone sizes a ticket has the standard Hub’s names gap and players size, and a Live Matches row its team code and players sizes, in Control Center and the dual-meet Hub too',
   },
   {
     case: /^cc\/piggleball-2026\/finder\/[^/]+\/desktop$/, kind: 'pixels', row: 1,
     reason: 'a series final’s game that is never played is greyed out (“Not needed”) on Control Center’s tickets too',
+  },
+  {
+    case: /^std-index\/[^/]+\/live\//, kind: 'pixels', row: 9,
+    reason: 'a Live Matches row ends in Control Center’s 2px divider (rgba(20,27,44,.4)), on the Hub too',
   },
   // ---- Phase 3, Match Finder (views/finder.js) ----
   {

@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/lib/v1/css/ticket.css">
 <link rel="stylesheet" href="/lib/v1/css/finder.css">
+<link rel="stylesheet" href="/lib/v1/css/live-matches.css">
 <style>
   /* ============================ THEME ============================
      S.A.G.E. house palette — navy structure, green accent, off-white
@@ -404,187 +405,7 @@
   .day-picker select:hover, .day-picker select:focus{border-color:rgba(124,185,44,.6); outline:none;}
   .day-picker select option{color:var(--ink);}
 
-    .live-board-meta{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:2px;
-    margin:0 0 22px;
-  }
-  .live-board-meta .stat{
-    flex:none;
-    min-width:220px;
-  }
-  .live-board-meta .stat b{color:var(--cork);}
-
-  .facility-title{
-    display:flex;
-    align-items:baseline;
-    gap:8px;
-    margin:26px 0 10px;
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:15px;
-    letter-spacing:.03em;
-    text-transform:uppercase;
-    color:var(--court-line);
-  }
-  .facility-title:first-child{margin-top:0;}
-  .facility-title .facility-count{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    letter-spacing:.04em;
-    text-transform:none;
-    color:var(--ink-soft);
-  }
-  .live-table-wrap{
-    background:var(--white);
-    border-radius:10px;
-    overflow-x:auto;
-    box-shadow:var(--card-shadow);
-    margin-bottom:18px;
-    border:1px solid rgba(20,27,44,.08);
-  }
-  table.live-table{
-    width:100%;
-    min-width:520px;
-    border-collapse:collapse;
-  }
-  table.live-table thead th{
-    background:var(--navy);
-    color:var(--white);
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:600;
-    font-size:9.5px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    padding:9px 10px;
-    text-align:left;
-    white-space:nowrap;
-  }
-  table.live-table td{
-    padding:9px 10px;
-    border-bottom:2px solid rgba(20,27,44,.4);
-    vertical-align:middle;
-  }
-  table.live-table tr:last-child td{border-bottom:none;}
-  td.live-court-cell{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:17px;
-    color:var(--court-dark);
-    background:rgba(124,185,44,.16);
-    white-space:nowrap;
-    width:1%;
-    text-align:center;
-    vertical-align:middle;
-  }
-  td.live-court-cell .live-dot{margin-right:6px;}
-  /* Idle court (see liveEmptyRowHTML) — same size/shape as a live one, just
-     without the lime "in play" highlight. */
-  td.live-court-cell.idle{
-    background:var(--paper-dim);
-    color:var(--muted);
-  }
-  td.live-team-cell{ min-width:130px; }
-  td.live-team-cell.right{ text-align:right; }
-  /* Logo sits beside the whole code+players block (not inline with the code
-     text), sized to nearly the full height of that block, on the outer edge
-     of the table — right-justified (not reversed — reversing the flex axis
-     would put it first-source-item-last, i.e. back toward the middle) for
-     the right-hand team so both logos point outward, away from the VS column. */
-  .live-team-cell-inner{
-    display:flex;
-    align-items:center;
-    gap:10px;
-  }
-  td.live-team-cell.right .live-team-cell-inner{
-    justify-content:flex-end;
-  }
-  .live-team-text{ min-width:0; }
-  .live-team-logo{
-    width:52px; height:52px;
-    border-radius:50%;
-    object-fit:cover;
-    flex-shrink:0;
-    border:1px solid rgba(20,27,44,.15);
-  }
-  .live-team-logo-placeholder{
-    background:transparent;
-    border-color:transparent;
-  }
-  /* Code is a compact reference tag now; the players' names are what a
-     spectator actually scans for, so they carry the visual weight. */
-  .live-team-code{
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:600;
-    font-size:9.5px;
-    letter-spacing:.04em;
-    color:var(--muted);
-    text-transform:uppercase;
-  }
-  .live-team-code.tbd{color:var(--muted); font-weight:500; font-style:italic;}
-  .live-team-players{
-    font-family:'Inter',sans-serif;
-    font-weight:700;
-    font-size:13px;
-    color:var(--ink);
-    line-height:1.3;
-    margin-top:2px;
-  }
-  .live-team-players .p{display:block;}
-  td.live-vs-cell{
-    text-align:center;
-    white-space:nowrap;
-    width:1%;
-  }
-  /* Match number — was its own table column; now a small pill stacked above
-     the score/VS instead, freeing that column's width for Match Details. */
-  .live-match-pill{
-    display:inline-block;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:8.5px;
-    font-weight:700;
-    letter-spacing:.04em;
-    color:var(--muted);
-    background:rgba(20,27,44,.06);
-    border-radius:100px;
-    padding:2px 7px;
-    margin-bottom:3px;
-  }
-  .live-match-pill.placeholder{ visibility:hidden; }
-  .live-vs-score{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:13px;
-    color:var(--muted);
-  }
-  /* Qualified with table.live-table so it actually wins: the generic
-     `table.live-table td` rule above is (0,1,2) and outranks a bare
-     `td.live-cat-cell` (0,1,1), which silently swallowed this padding.
-     Kept tight — it is a label strip, and every pixel here is multiplied
-     by the court count down the board. */
-  table.live-table td.live-cat-cell{
-    border-bottom:none;
-    padding:3px 10px 1px;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:9px;
-    line-height:1.35;
-    letter-spacing:.03em;
-    text-transform:uppercase;
-    color:var(--muted);
-    background:rgba(20,27,44,.03);
-    text-align:center;
-  }
-  td.live-cat-cell .live-round{
-    color:var(--cork);
-    font-weight:700;
-  }
-  td.live-cat-cell .live-empty-label{
-    font-style:italic;
-  }
-
-  /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
+                                                          /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
   .category-filter{
     display:none; /* shown below the desktop-standings breakpoint (900px wide and 600px tall) */
     background:var(--white);
@@ -1109,19 +930,7 @@
 
   @media (max-width:480px){
                                 .score-logo{width:64px; height:64px; margin-bottom:4px;}
-            .live-table-wrap{overflow-x:visible;}
-    table.live-table{min-width:0;}
-    table.live-table th, table.live-table td{padding:6px 5px;}
-    td.live-court-cell{font-size:13px;}
-    td.live-team-cell{min-width:0;}
-    .live-team-code{font-size:8px;}
-    .live-team-logo{width:40px; height:40px;}
-    .live-team-cell-inner{gap:6px;}
-    .live-team-players{font-size:11px;}
-    .live-match-pill{font-size:7.5px; padding:1px 5px;}
-    .live-vs-score{font-size:11px;}
-    table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
-  }
+                                                          }
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
@@ -1134,6 +943,18 @@
   align-items:start;
   column-gap:12px;
   margin-bottom:14px;
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  .live-match-pill{font-size:7.5px; padding:1px 5px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  .live-vs-score{font-size:11px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
 }
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
@@ -1238,6 +1059,7 @@ import { captureScrollPositions, restoreScrollPositions } from '/lib/v1/views/sc
 import { standingRowClass } from '/lib/v1/views/ticket.js';
 import * as Ticket from '/lib/v1/views/ticket.js';
 import { createFinder } from '/lib/v1/views/finder.js';
+import * as Live from '/lib/v1/views/live-matches.js';
 
 // ============================================================================
 // CONFIGURATION — everything a tournament organizer would need to touch
@@ -1501,17 +1323,6 @@ function parseCode(code){
     : { club: p.club, division: split.divCode, event: split.evCode, rest: p.rest };
   parseCodeCache.set(code, result);
   return result;
-}
-
-// Maps a court number to its facility name via the FACILITIES list in the
-// CONFIGURATION block above.
-function facilityForCourt(court){
-  if(!court) return '';
-  const m = court.match(/(\d+)/);
-  if(!m) return '';
-  const n = parseInt(m[1], 10);
-  const facility = FACILITIES.find(f => n >= f.courts[0] && n <= f.courts[1]);
-  return facility ? facility.name : '';
 }
 
 function divisionLabel(code){ return parseCode(code).division ? Codes.divisionLabel(code, EVENT_TYPE, DISPLAY) : null; }
@@ -2076,50 +1887,6 @@ function ticketHTML(m, teamCode, isNext){
   return Ticket.ticketHTML(m, MODEL, { teamCode, isNext, teamLogoHTML });
 }
 
-// ---------- Live Matches (Court Control) ----------
-// One card per court — whatever match currently has a value in the
-// 'court' column is the match being played there right now.
-// Every configured court (from FACILITIES), mapped to its current live
-// match or null — always the same set of keys regardless of how many
-// matches actually happen to be live right now. Deliberately NOT just the
-// live ones: a table whose row count changes on every refresh (as matches
-// start/finish on different courts) jumps around the page and scrolls the
-// user's view out from under them, which is what liveTableRowsHTML's empty
-// branch and this full-court enumeration exist to prevent.
-function buildLiveCourts(){
-  const byCourt = new Map();
-  FACILITIES.forEach(f => {
-    for(let n = f.courts[0]; n <= f.courts[1]; n++) byCourt.set(String(n), null);
-  });
-  MATCHES.forEach(m => {
-    if(!m.liveCourt) return;
-    // MATCHES is already sorted by matchNumber ascending, so the last
-    // match written to a given court wins — that's the current one.
-    byCourt.set(m.liveCourt, m);
-  });
-  return byCourt;
-}
-
-function courtSortKey(court){
-  const m = court.match(/(\d+)/);
-  return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
-}
-
-// Buckets every court (live or idle) by facility (in ascending court-number
-// order, so each FACILITIES entry falls out naturally since their court
-// ranges don't overlap) with anything unmapped collected into a trailing
-// 'Other Courts' group instead of getting silently dropped.
-function groupLiveCourtsByFacility(liveCourts){
-  const sortedCourts = Array.from(liveCourts.keys()).sort((a,b) => courtSortKey(a) - courtSortKey(b));
-  const groups = new Map();
-  sortedCourts.forEach(court => {
-    const facility = facilityForCourt(court) || 'Other Courts';
-    if(!groups.has(facility)) groups.set(facility, []);
-    groups.get(facility).push([court, liveCourts.get(court)]);
-  });
-  return groups;
-}
-
 // Club logo for the compact table cell — .score-logo (used in the ticket
 // cards) is a different, larger-still size tuned for that card, not this row.
 function liveTeamLogoHTML(teamCode){
@@ -2127,109 +1894,11 @@ function liveTeamLogoHTML(teamCode){
   return club && club.logo ? `<img class="live-team-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
 }
 
-// Placeholder row for a court with nothing live on it right now. Mirrors
-// liveTableRowsHTML's real-match row exactly — same cells, same rowspans,
-// same number of team-code/player-name lines, same invisible logo-sized
-// placeholder (just blank/transparent) — so the row's height doesn't change
-// the instant a match actually starts on this court.
-function liveEmptyRowHTML(court){
-  const blankTeamCell = `<div class="live-team-cell-inner">
-    <span class="live-team-logo live-team-logo-placeholder" aria-hidden="true"></span>
-    <div class="live-team-text">
-      <div class="live-team-code">&nbsp;</div>
-      <div class="live-team-players"><span class="p">&nbsp;</span><span class="p">&nbsp;</span></div>
-    </div>
-  </div>`;
-  return `<tr>
-    <td class="live-court-cell idle" rowspan="2">${escapeHtml(court)}</td>
-    <td class="live-cat-cell" colspan="3"><span class="live-empty-label">No match playing</span></td>
-  </tr>
-  <tr class="live-match-row">
-    <td class="live-team-cell">${blankTeamCell}</td>
-    <td class="live-vs-cell"><span class="live-match-pill placeholder">&nbsp;</span><div class="live-vs-score">&nbsp;</div></td>
-    <td class="live-team-cell right">${blankTeamCell}</td>
-  </tr>`;
-}
-
-function liveTableRowsHTML(court, m){
-  if(!m) return liveEmptyRowHTML(court);
-  // divisionEventLabel (not divisionLabel) — this cell already shows both
-  // teams' clubs via their logos, so prefixing it with just one team's club
-  // name (divisionLabel's normal behavior, meant for single-team contexts
-  // like the search autocomplete) would be redundant and arbitrarily favor
-  // whichever team happens to parse first.
-  const t1Cat = divisionEventLabel(m.t1);
-  const t2Cat = divisionEventLabel(m.t2);
-  const cat = t1Cat !== 'Other' ? t1Cat : (t2Cat !== 'Other' ? t2Cat : '');
-  const t1TBD = m.t1p1 === 'TBD';
-  const t2TBD = m.t2p1 === 'TBD';
-  const oppRound = roundLabel(parseCode(m.t2).rest) || roundLabel(parseCode(m.t1).rest);
-  const roundText = oppRound || 'Round Robin';
-  const scoreHTML = m.played
-    ? `${escapeHtml(String(m.t1Score))}&ndash;${escapeHtml(String(m.t2Score))}`
-    : 'VS';
-
-  // logoRight: whether the logo renders after the text instead of before —
-  // mirrors the two sides so both logos sit toward the table's outer edges.
-  // The logo sits beside the code+players block (not inside the code line),
-  // sized to span roughly that block's full height.
-  const teamCellHTML = (code, tbd, p1, p2, logoRight) => {
-    const logo = liveTeamLogoHTML(code);
-    const text = `<div class="live-team-text">
-      <div class="live-team-code${tbd ? ' tbd':''}">${escapeHtml(code)}</div>
-      <div class="live-team-players">${tbd ? 'To be determined' : `<span class="p">${escapeHtml(p1)}</span><span class="p">${escapeHtml(p2)}</span>`}</div>
-    </div>`;
-    return `<div class="live-team-cell-inner">${logoRight ? text + logo : logo + text}</div>`;
-  };
-
-  return `<tr>
-    <td class="live-court-cell" rowspan="2"><span class="live-dot" aria-hidden="true"></span>${escapeHtml(court)}</td>
-    <td class="live-cat-cell" colspan="3">${cat ? escapeHtml(cat) + ' &middot; ' : ''}<span class="live-round">${escapeHtml(roundText)}</span></td>
-  </tr>
-  <tr class="live-match-row">
-    <td class="live-team-cell">${teamCellHTML(m.t1, t1TBD, m.t1p1, m.t1p2, false)}</td>
-    <td class="live-vs-cell"><span class="live-match-pill">#${m.num}</span><div class="live-vs-score">${scoreHTML}</div></td>
-    <td class="live-team-cell right">${teamCellHTML(m.t2, t2TBD, m.t2p1, m.t2p2, true)}</td>
-  </tr>`;
-}
-
-function facilityTableHTML(facility, rows){
-  // A single-facility event has nothing to distinguish, so the venue name
-  // above the table would just be redundant.
-  const liveCount = rows.filter(([, m]) => m).length;
-  const titleHTML = FACILITIES.length === 1 ? '' : `<div class="facility-title">${escapeHtml(facility)} <span class="facility-count">${liveCount} court${liveCount===1?'':'s'} in play</span></div>`;
-  return `
-  ${titleHTML}
-  <div class="live-table-wrap" data-facility-key="${escapeHtml(facility)}">
-    <table class="live-table">
-      <thead><tr>
-        <th>Court</th><th colspan="3">Match Details</th>
-      </tr></thead>
-      <tbody>${rows.map(([c, m]) => liveTableRowsHTML(c, m)).join('')}</tbody>
-    </table>
-  </div>`;
-}
-
+// ---------- Live Matches (Court Control) ----------
+// The board is lib/v1/views/live-matches.js: one table per facility, a row per court, the courts
+// taken from the facility's own matches.
 function renderLiveMatches(){
-  const boardEl = liveBoardEl;
-  const metaEl = liveBoardMetaEl;
-  if(!boardEl) return;
-
-  const liveCourts = buildLiveCourts();
-  // The board always shows every configured court (see buildLiveCourts), so
-  // this count is just the ones actually in play right now, not the total.
-  const totalCourts = Array.from(liveCourts.values()).filter(Boolean).length;
-  metaEl.innerHTML = totalCourts > 0
-    ? `<span class="live-dot" aria-hidden="true"></span><div class="stat"><b>${totalCourts}</b><span>court${totalCourts===1?'':'s'} in play</span></div>`
-    : `<div class="stat"><b>0</b><span>courts in play</span></div>`;
-  const groups = groupLiveCourtsByFacility(liveCourts);
-
-  // Full rebuild on every 15s refresh, same as Standings — capture/restore
-  // keeps a scrolled-right facility table (mobile) from snapping back to
-  // the left edge every time.
-  const scrollPositions = captureScrollPositions(boardEl);
-  boardEl.innerHTML = Array.from(groups.entries()).map(([facility, rows]) => facilityTableHTML(facility, rows)).join('');
-  restoreScrollPositions(boardEl, scrollPositions);
+  Live.renderLiveMatches(MODEL, { boardEl: liveBoardEl, metaEl: liveBoardMetaEl, teamLogoHTML: liveTeamLogoHTML });
 }
 
 finder.renderIntro();

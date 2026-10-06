@@ -1,0 +1,234 @@
+/* Live Matches: one table per facility, a court per row (lib/v1/views/live-matches.js).
+   Colour, radius and shadow come from the page's theme properties (site-engine-spec §4.7). */
+
+.live-board-meta{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:2px;
+margin:0 0 22px;
+  }
+
+.live-board-meta .stat{
+  flex:none;
+  min-width:220px;
+}
+
+.live-board-meta .stat b{color:var(--cork);}
+
+.facility-title{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin:26px 0 10px;
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:15px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  color:var(--court-line);
+}
+
+.facility-title:first-child{margin-top:0;}
+
+.facility-title .facility-count{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  letter-spacing:.04em;
+  text-transform:none;
+  color:var(--ink-soft);
+}
+
+.live-table-wrap{
+  background:var(--white);
+  border-radius:10px;
+  overflow-x:auto;
+  box-shadow:var(--card-shadow);
+  margin-bottom:18px;
+  border:1px solid rgba(20,27,44,.08);
+}
+
+table.live-table{
+  width:100%;
+  min-width:520px;
+  border-collapse:collapse;
+}
+
+table.live-table thead th{
+  background:var(--navy);
+  color:var(--white);
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  padding:9px 10px;
+  text-align:left;
+  white-space:nowrap;
+}
+
+table.live-table td{
+  padding:9px 10px;
+  border-bottom:2px solid rgba(20,27,44,.4);
+  vertical-align:middle;
+}
+
+table.live-table tr:last-child td{border-bottom:none;}
+
+td.live-court-cell{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:17px;
+  color:var(--court-dark);
+  background:rgba(124,185,44,.16);
+  white-space:nowrap;
+  width:1%;
+  text-align:center;
+  vertical-align:middle;
+}
+
+td.live-court-cell .live-dot{margin-right:6px;}
+
+/* Idle court (see liveEmptyRowHTML) — same size and shape as a live one,
+   just without the "in play" highlight. */
+td.live-court-cell.idle{
+  background:var(--paper-dim);
+  color:var(--muted);
+}
+
+td.live-team-cell{ min-width:130px; }
+
+td.live-team-cell.right{ text-align:right; }
+
+/* The code is a compact reference tag; the players' names are what a
+   spectator actually scans for, so they carry the visual weight. */
+.live-team-code{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  font-size:9.5px;
+  letter-spacing:.04em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+
+.live-team-code.tbd{color:var(--muted); font-weight:500; font-style:italic;}
+
+.live-team-players{
+  font-family:'Inter',sans-serif;
+  font-weight:700;
+  font-size:13px;
+  color:var(--ink);
+  line-height:1.3;
+  margin-top:2px;
+}
+
+.live-team-players .p{display:block;}
+
+td.live-vs-cell{
+  text-align:center;
+  white-space:nowrap;
+  width:1%;
+}
+
+/* Match number — was its own table column; now a small pill stacked above
+   the score/VS instead, freeing that column's width for Match Details. */
+.live-match-pill{
+  display:inline-block;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:8.5px;
+  font-weight:700;
+  letter-spacing:.04em;
+  color:var(--muted);
+  background:rgba(20,27,44,.06);
+  border-radius:100px;
+  padding:2px 7px;
+  margin-bottom:3px;
+}
+
+.live-match-pill.placeholder{ visibility:hidden; }
+
+.live-vs-score{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:13px;
+  color:var(--muted);
+}
+
+/* Qualified with table.live-table so it actually wins: the generic
+   `table.live-table td` rule above is (0,1,2) and outranks a bare
+   `td.live-cat-cell` (0,1,1), which silently swallowed this padding.
+   Kept tight — it is a label strip, and every pixel here is multiplied
+   by the court count down the board. */
+table.live-table td.live-cat-cell{
+  border-bottom:none;
+  padding:3px 10px 1px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9px;
+  line-height:1.35;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  color:var(--muted);
+  background:rgba(20,27,44,.03);
+  text-align:center;
+}
+
+td.live-cat-cell .live-round{
+  color:var(--cork);
+  font-weight:700;
+}
+
+td.live-cat-cell .live-empty-label{
+  font-style:italic;
+}
+
+@media (max-width:480px) {
+  .live-table-wrap{overflow-x:visible;}
+
+  table.live-table{min-width:0;}
+
+  table.live-table th, table.live-table td{padding:6px 5px;}
+
+  td.live-court-cell{font-size:13px;}
+
+  td.live-team-cell{min-width:0;}
+
+  .live-team-code{font-size:10px;}
+
+  .live-team-players{font-size:10.5px;}
+}
+
+/* Logo sits beside the whole code+players block (not inline with the code
+   text), sized to nearly the full height of that block, on the outer edge
+   of the table — right-justified (not reversed — reversing the flex axis
+   would put it first-source-item-last, i.e. back toward the middle) for
+   the right-hand team so both logos point outward, away from the VS column. */
+.live-team-cell-inner{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+td.live-team-cell.right .live-team-cell-inner{
+  justify-content:flex-end;
+}
+
+.live-team-text{ min-width:0; }
+
+.live-team-logo{
+  width:52px; height:52px;
+  border-radius:50%;
+  object-fit:cover;
+  flex-shrink:0;
+  border:1px solid rgba(20,27,44,.15);
+}
+
+.live-team-logo-placeholder{
+  background:transparent;
+  border-color:transparent;
+}
+
+@media (max-width:480px) {
+  .live-team-logo{width:40px; height:40px;}
+
+  .live-team-cell-inner{gap:6px;}
+}
