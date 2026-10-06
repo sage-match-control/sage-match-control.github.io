@@ -1,0 +1,181 @@
+/* The scorer page's own layout: the header, the venue picker, the filters, the match cards and the toast
+   (lib/v1/apps/scorer.js). The score dialog is css/score-dialog.css. */
+
+*{box-sizing:border-box;}
+
+html,body{margin:0;padding:0;}
+
+html{overflow-x:hidden;}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+
+header.top{
+  background:var(--navy);
+  color:var(--white);
+  padding:16px 0 14px;
+}
+
+.kicker{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  font-size:12.5px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:#A8D65C;
+}
+
+h1{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  text-transform:uppercase;
+  font-size:26px;
+  margin:2px 0 4px;
+}
+
+.event{font-size:14px;color:#D6DCE8;overflow-wrap:anywhere;}
+
+main{padding-top:14px;padding-bottom:28px;}
+
+.scorer-message{
+  margin:40px 0;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:17px;
+}
+
+.scorer-message:empty{display:none;}
+
+/* Venue picker: always visible once a venue is chosen, so a scorer can
+   switch venue at any time without a new link. */
+.venue-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  font-size:13px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+  margin-bottom:6px;
+}
+
+.venue-label.prompt{font-size:17px; letter-spacing:.02em; text-transform:none; color:var(--ink); font-weight:700;}
+
+.venue-buttons{display:flex; flex-wrap:wrap; gap:8px;}
+
+.venue-btn{
+  font:inherit; font-size:15px; font-weight:600;
+  min-height:44px; padding:0 16px;
+  border:2px solid var(--line); border-radius:10px;
+  background:var(--white); color:var(--ink); cursor:pointer;
+}
+
+.venue-btn[aria-pressed="true"]{background:var(--green); border-color:var(--green); color:var(--navy);}
+
+.venue-btn:focus-visible{outline:2px solid var(--navy); outline-offset:2px;}
+
+.venue-single{font-size:17px; font-weight:700;}
+
+#scorerFilters{margin-top:14px;}
+
+.filter-search{
+  font:inherit; font-size:16px;
+  width:100%; height:48px; padding:0 14px;
+  border:2px solid var(--line); border-radius:10px;
+  background:var(--white); color:var(--ink);
+}
+
+.filter-search:focus{outline:none; border-color:var(--green);}
+
+.filter-courts{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;}
+
+.court-chip{
+  font:inherit; font-size:14px; font-weight:600;
+  min-height:40px; padding:0 14px;
+  border:2px solid var(--line); border-radius:999px;
+  background:var(--white); color:var(--ink); cursor:pointer;
+}
+
+.court-chip[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:var(--white);}
+
+.court-chip:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+
+.filter-hide{display:flex; align-items:center; gap:10px; margin-top:10px; font-size:15px; min-height:44px;}
+
+.filter-hide input{width:22px; height:22px; accent-color:var(--navy);}
+
+.scorer-count{margin:6px 0 10px; font-size:14px; font-weight:600; color:var(--ink-soft);}
+
+.scorer-count:empty{display:none;}
+
+.scorer-list{display:grid; gap:10px;}
+
+.scorer-empty{margin:28px 0; text-align:center; color:var(--ink-soft); font-size:16px;}
+
+.score-card{
+  min-height:56px;
+  padding:12px 14px;
+  background:var(--white);
+  border:1px solid var(--line);
+  border-left:4px solid var(--green);
+  border-radius:12px;
+  box-shadow:0 8px 20px -16px rgba(11,24,38,.35);
+}
+
+.score-card.played{border-left-color:var(--navy);}
+
+.sc-meta{
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;
+  overflow-wrap:anywhere;
+}
+
+.sc-body{display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:10px;}
+
+.sc-side{min-width:0;}
+
+.sc-side.right{text-align:right;}
+
+.sc-name{font-weight:700; font-size:15px; line-height:1.25; overflow-wrap:anywhere;}
+
+.sc-chip{
+  display:inline-block; margin-top:2px;
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em;
+  padding:1px 8px; border-radius:999px; background:var(--paper-dim); color:var(--ink-soft);
+}
+
+.sc-players{font-size:13px; color:var(--ink-soft); line-height:1.35; overflow-wrap:anywhere;}
+
+.sc-players.unset{font-style:italic;}
+
+.sc-score{font-size:24px; font-weight:800; min-width:64px; text-align:center; font-variant-numeric:tabular-nums;}
+
+.sc-score.none{color:var(--ink-soft); font-weight:600;}
+
+/* One message at a time, pinned to the top (the score dialog's outcomes). */
+.scorer-toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  top:max(16px, env(safe-area-inset-top));
+  width:min(92vw, 440px);
+  z-index:1000;
+  padding:12px 16px;
+  border-radius:12px;
+  font-size:14px; line-height:1.45;
+  box-shadow:var(--card-shadow);
+  background:var(--white); border:1px solid var(--line); color:var(--ink);
+}
+
+.scorer-toast[hidden]{display:none;}
+
+.scorer-toast.ok{background:#EAF7EF; border-color:rgba(52,199,120,.5); color:#0F5C2E;}
+
+.scorer-toast.error{background:#FDEDEF; border-color:rgba(255,90,110,.5); color:#9A2A3A;}
+
+.scorer-toast.warn{background:#FFF4E0; border-color:rgba(240,170,40,.55); color:#7A4B00;}

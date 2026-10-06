@@ -12,7 +12,8 @@ for (const [label, rel] of Object.entries(LIVE_PAGES)) {
   test(`extractFunction returns every function of ${label} whole`, () => {
     const text = fs.readFileSync(path.join(SITE_ROOT, rel), 'utf8');
     const names = functionNames(text);
-    assert.ok(names.length >= 1, 'found functions');
+    // A shell (the Hubs, since Phase 4) has no function of its own: nothing to extract.
+    if (names.length === 0) return;
     for (const name of names) {
       const fn = extractFunction(text, name);
       assert.ok(fn, `${name} extracted`);
@@ -23,6 +24,11 @@ for (const [label, rel] of Object.entries(LIVE_PAGES)) {
     }
   });
 }
+
+test('the extractor still has a real page (Control Center) to be right on', () => {
+  const withFunctions = Object.values(LIVE_PAGES).filter(rel => functionNames(fs.readFileSync(path.join(SITE_ROOT, rel), 'utf8')).length > 0);
+  assert.ok(withFunctions.length >= 1, `pages with functions: ${withFunctions.join(', ')}`);
+});
 
 test('extractConst reads objects, arrays, strings, regexes and template literals', () => {
   const text = [

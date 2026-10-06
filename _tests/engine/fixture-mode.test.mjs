@@ -53,7 +53,9 @@ describe('fixture mode on the templates', () => {
       const h = await openPage(browser, `${site.baseUrl}/_templates/${page}`, { time: '2026-10-03T13:00:00+08:00' });
       try {
         await settle(h.page);
-        assert.ok(h.errors.some(e => e.includes('github.io/event-data/attendance-demo-2026/data/')), JSON.stringify(h.errors));
+        // The Hub reads the event's settings (events.json) before anything else; the board goes straight to the snapshot.
+        const asked = label === 'Hub' ? 'github.io/event-data/config/events.json' : 'github.io/event-data/attendance-demo-2026/data/';
+        assert.ok(h.errors.some(e => e.includes(asked)), JSON.stringify(h.errors));
       } finally { await h.close(); }
     });
   }

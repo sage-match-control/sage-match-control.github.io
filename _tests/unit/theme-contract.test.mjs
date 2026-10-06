@@ -14,7 +14,7 @@ export const CONTRACT = [
 ];
 
 // Properties a page may set to adjust one component; the CSS reads each with a fallback, so a page that sets none is unaffected.
-export const OPTIONAL = ['--att-bar-bg'];
+export const OPTIONAL = ['--att-bar-bg', '--red'];
 
 const LIB = path.join(SITE_ROOT, 'lib', 'v1');
 const read = dir => (fs.existsSync(path.join(LIB, dir))

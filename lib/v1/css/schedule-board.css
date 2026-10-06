@@ -1,0 +1,559 @@
+/* The venue schedule board: courts across, time slots down, one card per match, and its print sheets
+   (lib/v1/apps/schedule-board.js). Colour, radius and shadow come from the page's theme properties
+   (site-engine-spec §4.7). A dual meet's club tags (.fo-club) are used only when the page sets clubOrder. */
+
+*{box-sizing:border-box;}
+
+html,body{margin:0;padding:0;}
+
+/* Flex column rather than a hardcoded grid height: the masthead changes
+   height when collapsed, and any fixed calc(100vh - Npx) silently desyncs
+   from it. This way the board always takes exactly the remaining space. */
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  height:100vh;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- MASTHEAD ----------
+   The tools use a tall navy "bezel" panel on a stand. A wall display needs
+   that vertical space for match rows, so this is the same navy bezel and
+   green eyebrow rendered as one compact bar. */
+.bezel{
+  background:var(--navy);
+  border-radius:0 0 6px 6px;
+  padding:7px 16px;
+  display:flex; align-items:center; gap:14px;
+  /* Wraps rather than forcing the document wider than the viewport on a
+     phone or tablet — see NARROW SCREENS below. No-op when it fits. */
+  flex-wrap:wrap;
+  box-shadow:0 10px 30px -14px rgba(11,24,38,.55);
+  flex:0 0 auto; z-index:40;
+}
+
+/* Collapsed: keep the SAGE identity, the event name, the colour key, and a
+   trimmed sub (date + match count only — see paintSub). The operator chrome
+   hides: the court filter (its state is already carried in the URL) and the
+   export button. Ctrl+P still prints, so nothing is actually lost. */
+.bezel.compact{ padding:4px 16px; }
+
+.bezel.compact .venuefilter,
+.bezel.compact .courtfilter,
+.bezel.compact .bezel-export{ display:none; }
+
+.bezel.compact img{ width:26px; height:26px; }
+
+.bezel.compact h1{ font-size:15px; }
+
+.bezel-export{
+  display:flex; align-items:center; gap:5px;
+  padding:4px 10px; flex:0 0 auto;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  border-radius:6px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.28);
+  background:transparent; color:rgba(255,255,255,.7);
+  transition:background .12s, color .12s, border-color .12s;
+}
+
+.bezel-export:hover{ background:var(--green); border-color:var(--green); color:var(--navy); }
+
+.bezel-export svg{ width:13px; height:13px; }
+
+.bezel-toggle{
+  display:flex; align-items:center; justify-content:center;
+  width:26px; height:26px; flex:0 0 auto;
+  border-radius:6px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.28);
+  background:transparent; color:rgba(255,255,255,.7);
+  transition:background .12s, color .12s, border-color .12s;
+}
+
+.bezel-toggle:hover{ border-color:var(--green); color:var(--white); }
+
+.bezel-toggle svg{ width:13px; height:13px; transition:transform .18s; }
+
+.bezel.compact .bezel-toggle svg{ transform:rotate(180deg); }
+
+.bezel img{ width:34px; height:34px; object-fit:contain; flex-shrink:0; }
+
+.bezel .titles{ display:flex; flex-direction:column; }
+
+.eyebrow{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; letter-spacing:.2em; text-transform:uppercase;
+  font-size:10px; color:var(--green); margin:0;
+}
+
+.bezel h1{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400; font-size:17px; line-height:1.05;
+  color:var(--white); margin:0; letter-spacing:.01em;
+}
+
+.meta{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  font-size:11px; color:rgba(255,255,255,.62); white-space:nowrap;
+}
+
+/* ---------- COURT FILTER ----------
+   Drives which court columns render. Bookmarkable via ?courts= so a second
+   screen boots straight into its own range with nobody clicking anything. */
+.courtfilter{
+  display:flex; align-items:center; gap:4px;
+  margin-left:18px; padding-left:16px;
+  border-left:1px solid rgba(255,255,255,.22);
+}
+
+.cf-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:rgba(255,255,255,.5); margin-right:3px;
+}
+
+.cf-btn{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:12px; letter-spacing:.04em;
+  min-width:22px; padding:2px 6px;
+  border-radius:5px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.28);
+  background:transparent; color:rgba(255,255,255,.6);
+  transition:background .12s, color .12s, border-color .12s;
+}
+
+.cf-btn:hover{ border-color:var(--green); color:var(--white); }
+
+.cf-btn.on{ background:var(--green); border-color:var(--green); color:var(--navy); }
+
+.cf-btn.all{ letter-spacing:.12em; text-transform:uppercase; padding:2px 9px; }
+
+/* ---------- VENUE FILTER ----------
+   Rendered only when the day has more than one venue. Narrows the board to
+   one venue's matches and courts. Bookmarkable via ?venue=, like ?courts=,
+   and styled with the court filter's buttons. */
+.venuefilter{
+  display:flex; align-items:center; gap:4px;
+  margin-left:18px; padding-left:16px;
+  border-left:1px solid rgba(255,255,255,.22);
+}
+
+.venuefilter[hidden]{ display:none; }
+
+.venuefilter .cf-btn{ padding:2px 9px; }
+
+.legend{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
+
+.legend-item{
+  display:flex; align-items:center; gap:5px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:rgba(255,255,255,.85); white-space:nowrap;
+}
+
+.legend-swatch{ width:12px; height:12px; border-radius:3px; flex:0 0 auto; }
+
+.legend-live{
+  display:flex; align-items:center; gap:5px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--green);
+  padding-left:11px; border-left:1px solid rgba(255,255,255,.22);
+}
+
+/* ---------- GRID ---------- */
+.grid-wrap{ overflow:auto; flex:1 1 auto; min-height:0; position:relative; }
+
+/* Fluid: court columns share whatever width the window gives them (1fr), so
+   the board fills a 1600px laptop and a 3250px wall panel alike, and gets
+   wider still when the court filter narrows the set. The 190px floor is the
+   point below which the face-off stops being readable — past that the
+   wrapper scrolls horizontally rather than crushing the cells further.
+   No min-width:max-content here: that pinned the grid to its content width
+   and forced a scrollbar even when there was room to fit. */
+.sched-grid{
+  display:grid;
+  grid-template-columns:64px repeat(var(--cols,9), minmax(190px, 1fr));
+  gap:4px; padding:5px;
+}
+
+.corner{ position:sticky; top:0; left:0; z-index:35; background:var(--paper); }
+
+.col-head{
+  position:sticky; top:0; z-index:25;
+  background:var(--navy);
+  border-radius:7px; padding:4px 4px 5px; text-align:center;
+}
+
+.col-head .ch-label{
+  display:block;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; font-size:9px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--green);
+}
+
+.col-head .ch-num{
+  font-family:'Archivo Black',sans-serif; font-size:16px;
+  color:var(--white); line-height:1.1;
+}
+
+.time-cell{
+  position:sticky; left:0; z-index:20;
+  background:var(--navy);
+  border-radius:7px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:4px 2px;
+}
+
+.time-cell .tc-time{
+  font-family:'Archivo Black',sans-serif; font-size:12px;
+  color:var(--white); line-height:1.25; white-space:nowrap;
+}
+
+.time-cell .tc-warn{
+  margin-top:3px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.08em;
+  color:var(--navy); background:var(--green);
+  border-radius:100px; padding:0 6px;
+}
+
+/* ---------- MATCH CELL ----------
+   Light theme, so the organiser's category colours can be used the way the
+   spreadsheet itself uses them: a soft tint of the hue behind navy text,
+   with the solid hue as a left rule. No lightness compression needed here —
+   unlike the dark build, where they had to be pushed to ~48% to stay apart. */
+.cell{
+  /* 40%: the strongest tint that still clears ~6.9:1 contrast for navy body
+     text on the darkest category (HI WD). Measured, not guessed. */
+  background:color-mix(in srgb, var(--cat, var(--ink-soft)) 40%, var(--white));
+  border:1px solid var(--line);
+  border-left:5px solid var(--cat, var(--ink-soft));
+  border-radius:8px;
+  padding:4px 9px 5px;
+  display:flex; flex-direction:column;
+  min-height:60px; position:relative; overflow:hidden;
+}
+
+.cell-top{ display:flex; align-items:center; gap:6px; margin-bottom:2px; }
+
+.cell-num{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:11px; letter-spacing:.06em;
+  color:var(--ink-soft);
+}
+
+.cell-cat{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--cat-text, var(--white));
+  background:var(--cat, var(--ink-soft));
+  border-radius:100px; padding:1px 7px;
+}
+
+/* Stage of the ladder. Pool play is the overwhelming majority of cells, so
+   it stays a quiet outline — shouting "RR" 224 times would just be noise.
+   Playoff rounds invert to solid navy so a Bronze or Final is findable at a
+   glance from across the room. */
+.cell-stage{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-soft);
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:100px; padding:0 6px;
+}
+
+.cell-stage.playoff{
+  color:var(--white);
+  background:var(--navy);
+  border-color:var(--navy);
+}
+
+.cell-live{
+  margin-left:auto;
+  display:inline-flex; align-items:center; gap:4px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--white); background:var(--green-dark);
+  border-radius:100px; padding:1px 7px 1px 5px;
+}
+
+.dot{
+  width:5px; height:5px; border-radius:50%; background:var(--white);
+  animation:pulse 1.8s infinite; flex:0 0 auto;
+}
+
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(255,255,255,.75);}
+  70%{box-shadow:0 0 0 6px rgba(255,255,255,0);}
+  100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}
+}
+
+/* Face-off: stacked player names either side of the centre score. */
+.faceoff{ display:flex; align-items:center; gap:8px; flex:1 1 auto; }
+
+.fo-side{ flex:1 1 0; min-width:0; display:flex; align-items:center; gap:6px; }
+
+.fo-side.right{ flex-direction:row-reverse; text-align:right; }
+
+.fo-names{ min-width:0; display:flex; flex-direction:column; }
+
+.fo-name{
+  font-size:12px; font-weight:700; color:var(--ink);
+  line-height:1.3; max-width:100%;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* Each name line keeps its height even while empty (a slot whose names
+   aren't in yet), so a cell is the same size before and after. */
+.fo-name{ min-height:1.3em; }
+
+.fo-name.unknown{ color:var(--ink-soft); font-weight:500; font-style:italic; }
+
+.fo-center{
+  flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
+  padding:0 2px; min-width:52px;
+}
+
+.fo-score{
+  font-family:'Archivo Black',sans-serif; font-size:17px; line-height:1;
+  color:var(--ink); white-space:nowrap;
+}
+
+/* Loser muted, winner full navy. The separator uses --ink-soft, not --line:
+   the card sits on a category tint, and --line disappears against it. */
+.fo-score .lose{ color:var(--ink-soft); font-weight:400; }
+
+.fo-score .sep{ color:var(--ink-soft); margin:0 4px; font-size:12px; opacity:.65; }
+
+.fo-vs{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--ink-soft);
+}
+
+/* states */
+/* Dimmed enough to recede behind live/upcoming, but not so far that the
+   darkest category drops under 4.5:1 for its body text. */
+.cell.done{ opacity:.84; }
+
+.cell.not-needed{ opacity:.35; filter:grayscale(1); }
+
+/* a series final's game never played */
+.cell.live{
+  border-color:var(--green);
+  border-left-color:var(--cat, var(--green));
+  box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px rgba(124,185,44,.6);
+}
+
+.cell.empty{
+  background:var(--paper-dim);
+  border:1px dashed var(--line);
+  border-left:1px dashed var(--line);
+  align-items:center; justify-content:center;
+  color:var(--ink-soft); opacity:.5;
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600; font-size:11px; letter-spacing:.18em; text-transform:uppercase;
+}
+
+/* ---------- BOARD MESSAGE ----------
+   Shown only in place of the grid before the first successful load, or if
+   that first load fails outright. Once a real snapshot has rendered once,
+   a failed poll leaves it exactly as-is instead of replacing it with this —
+   a stale board beats an error on a wall display. */
+.board-msg{
+  display:flex; align-items:center; justify-content:center; height:100%;
+  padding:40px; text-align:center;
+  font-family:'Barlow Condensed',sans-serif; font-weight:600;
+  font-size:15px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink-soft);
+}
+
+.board-msg .retry-btn{
+  margin-left:12px; font-family:inherit; font-weight:700; letter-spacing:.08em;
+  font-size:13px; text-transform:uppercase; padding:5px 14px;
+  border-radius:100px; border:1px solid var(--ink-soft);
+  background:transparent; color:var(--ink); cursor:pointer;
+}
+
+.board-msg .retry-btn:hover{ border-color:var(--green-dark); color:var(--green-dark); }
+
+@media screen and (max-width: 980px) {
+  .bezel{ gap:6px 10px; padding:7px 12px; }
+
+  .bezel img{ order:1; width:26px; height:26px; }
+
+  .bezel .titles{ order:2; flex:1 1 auto; min-width:0; }
+
+  .eyebrow{ font-size:8px; letter-spacing:.14em; }
+
+  .bezel h1{ font-size:14px; }
+
+  .bezel-export{ order:3; }
+
+  .bezel-toggle{ order:4; }
+
+  /* Each of these takes a full row of its own rather than competing for
+     what is left of a 375px line. */
+  .meta{ order:5; flex:1 0 100%; white-space:normal; font-size:10px; }
+
+  .venuefilter,
+  .courtfilter{
+    order:6; flex:1 0 100%; flex-wrap:wrap;
+    margin-left:0; padding-left:0; border-left:none;
+  }
+
+  .legend{ order:7; flex:1 0 100%; margin-left:0; gap:8px; }
+
+  .legend-live{ order:8; padding-left:0; border-left:none; }
+}
+
+@media screen and (max-width: 720px) {
+  /* Deliberate, phone-only exception to the rule that the legend survives
+     collapsing. That rule protects the wall display, where a passive viewer
+     cannot ask for the colour key back. Here the viewer is the one who just
+     tapped collapse, and the legend costs two full rows — hiding it takes
+     the masthead from 111px to 52px, which is more than a whole match row
+     back on a phone. Expanding brings it straight back. */
+  .bezel.compact .legend,
+  .bezel.compact .legend-live{ display:none; }
+
+  /* Tighter gutter and a lower column floor, so two courts fit on a 375px
+     screen instead of one and a sliver. 54px for the time column, not 46:
+     "12:00 PM" in Archivo Black overflows anything narrower, and that
+     column is sticky so it clips rather than scrolls. */
+  .sched-grid{
+    grid-template-columns:54px repeat(var(--cols,9), minmax(158px, 1fr));
+    gap:3px; padding:4px;
+  }
+
+  .time-cell{ padding:4px 1px; }
+
+  .time-cell .tc-time{ font-size:10px; }
+
+  .cell{ min-height:0; }
+
+  .cell-top{ flex-wrap:wrap; }
+
+  /* Stacked face-off: side / score / side down the cell, so the names get
+     the full width. Both sides read club-then-names here — mirroring only
+     makes sense when they sit either side of a centre column. */
+  .faceoff{ flex-direction:column; align-items:stretch; gap:1px; }
+
+  .fo-side, .fo-side.right{ flex-direction:row; justify-content:flex-start; text-align:left; }
+
+  .fo-names{ flex:1 1 auto; }
+
+  .fo-name{ font-size:11.5px; line-height:1.2; }
+
+  .fo-center{ align-self:center; min-width:0; padding:1px 0; }
+
+  .fo-score{ font-size:14px; }
+}
+
+/* ---------- PRINT / PDF ----------
+   The board is far wider than any sheet, so buildPrintPages() emits one
+   .print-page per group of courts and the browser handles the breaks. Screen
+   chrome is dropped entirely; what prints is a titled grid per sheet. */
+#printRoot{ display:none; }
+
+@page{ size:A4 landscape; margin:9mm; }
+
+@media print {
+  html,body{ height:auto; display:block; background:var(--white); }
+
+  .bezel, .grid-wrap{ display:none !important; }
+
+  #printRoot{ display:block; }
+
+  .print-page{ break-after:page; }
+
+  .print-page:last-child{ break-after:auto; }
+
+  .print-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    border-bottom:2px solid var(--navy);
+    padding-bottom:4px; margin-bottom:6px;
+  }
+
+  .print-eyebrow{
+    display:block;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:8pt; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--green-dark);
+  }
+
+  .print-title{
+    font-family:'Archivo Black',sans-serif; font-size:13pt; color:var(--navy);
+  }
+
+  .print-head-right{ text-align:right; }
+
+  .print-scope{
+    display:block;
+    font-family:'Archivo Black',sans-serif; font-size:11pt; color:var(--navy);
+  }
+
+  .print-meta{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:600; font-size:8pt; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+
+  /* Compact enough that all 15 slots clear a single sheet's height. */
+  .print-grid{ gap:2px; padding:0; }
+
+  .print-grid .cell{ min-height:0; padding:2px 5px 3px; border-radius:4px; }
+
+  .print-grid .col-head, .print-grid .time-cell{ border-radius:4px; padding:2px; }
+
+  .print-grid .col-head .ch-num{ font-size:11pt; }
+
+  .print-grid .col-head .ch-label{ font-size:5.5pt; }
+
+  .print-grid .time-cell .tc-time{ font-size:8pt; }
+
+  .print-grid .cell-num, .print-grid .cell-cat, .print-grid .cell-stage{ font-size:5.5pt; }
+
+  /* 6.5pt, not 7pt: at 7pt a 4-court sheet (~244px columns) clipped a handful
+     of names, and on paper there is no hover to recover them. 6.5pt clears
+     every shape tested — 1, 3, 4 and 9 courts, 15 to 40 slots — with no extra
+     sheets. 6pt buys nothing further, so this is the largest that works. */
+  .print-grid .fo-name{ font-size:6.5pt; line-height:1.15; }
+
+  .print-grid .fo-score{ font-size:10pt; }
+
+  .print-grid .fo-vs{ font-size:7pt; }
+
+  .print-grid .cell.done{ opacity:1; }
+
+  /* ink is cheap; contrast is not */
+  .print-grid .cell.live{ box-shadow:none; border:2px solid var(--green-dark); }
+
+  /* Tints and the category rule must survive the print pipeline. */
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+}
+
+.fo-club{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.1em; color:var(--white);
+  border-radius:3px; padding:2px 5px; flex:0 0 auto;
+}
+
+/* Keyed by side (a/b), not by club code, so the two clubs get their fill
+   from CLUB_ORDER below rather than from a class named after one event's
+   clubs. */
+.fo-club.club-a{ background:var(--navy); }
+
+.fo-club.club-b{ background:var(--ink-soft); }
+
+.fo-club.club-x{ background:var(--ink-soft); }
+
+@media print {
+  .print-grid .fo-club{ font-size:5.5pt; padding:1px 3px; }
+}
