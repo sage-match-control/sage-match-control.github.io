@@ -25,11 +25,10 @@ code), are shared across every event, and only need doing once — skip this
 section if they're already in place (which they will be for any event
 after the first one instantiated with these templates).
 
-- **`GITHUB_REPO` must be `event-data`.** Every template's `snapshotUrlFor`
-  now points at `sage-match-control.github.io/event-data/<event-key>/data/`
-  (see the `GHPAGES_OWNER`/`GHPAGES_REPO` constants in each template's
-  `CONFIGURATION` block, which mirror this), so Cloud Run has to publish
-  there too. This is fixed platform config now, not something you pick per
+- **`GITHUB_REPO` must be `event-data`.** Every page reads its snapshot from
+  `sage-match-control.github.io/event-data/<event-key>/data/` (the
+  `GHPAGES_OWNER`/`GHPAGES_REPO` constants in `lib/v1/platform.js`, which
+  mirror this), so Cloud Run has to publish there too. This is fixed platform config now, not something you pick per
   event.
 - **The `event-data` repo must exist**, with GitHub Pages enabled
   (Settings → Pages → Deploy from branch → whatever `GITHUB_BRANCH` is set
@@ -122,11 +121,12 @@ clubs; it is not a general multi-club template.
    grep -r '{{' events/<event-key>/
    ```
 
-4. **Fill in the `// EXAMPLE — replace` config values** in `index.html`'s
-   `CONFIGURATION` block: `DAYS`, `FACILITIES`, `DIVISIONS`, `EVENTS` — and,
-   for `dual-meet-template/`, `CLUBS` (which is filled from tokens directly,
-   not left as an example — see §3). Control Center (`tools/control-center.html`)
-   takes its config from `event-data/config/events.json` — see step 7.
+4. **There is no config to fill in.** The pages are shells (§8): the days,
+   the facilities and the division, event and club labels come from
+   `event-data/config/events.json` at run time (step 7), the same file
+   Control Center reads. The one setting a dual meet's `index.html` adds is
+   `CLUB_LOGOS`, filled from tokens (§3). The schedule board's `CAT_META`
+   is step 6.
 
 5. **Leave the theme alone unless the event genuinely needs its own.** Every
    page ships the S.A.G.E. house palette — navy structure, green accent,
@@ -162,8 +162,8 @@ clubs; it is not a general multi-club template.
    Two things to fill in beyond the shared tokens:
 
    - **`{{SCHEDULE_DAY_KEY}}`** — the board shows exactly one day. Set this
-     to that day's key from `DAYS` (step 4). For a multi-day event, point it
-     at whichever day is being played; there is no day picker on the board.
+     to that day's key in `events.json` (step 7). For a multi-day event, point
+     it at whichever day is being played; there is no day picker on the board.
    - **`CAT_META`** — one entry per `<DIVISION><EVENT>` code, giving each
      category its chip label and the hue that tints its cells.
 
@@ -186,16 +186,17 @@ clubs; it is not a general multi-club template.
    built from the snapshot's facility names. `?venue=<facility name>`
    narrows it to one facility's matches and courts, and composes with
    `?courts=`, so each venue's screen can be bookmarked to its own board.
-   Nothing to configure. It relies on the continuous court numbering
-   described in step 4's `FACILITIES` (Main 1–4, Annex 5–9).
+   Nothing to configure. It relies on court numbers that run on across a
+   day's facilities (Main 1–4, Annex 5–9), which the workbooks' `SCHEDULE`
+   tabs set.
 
 7. **Add the event + its days to the shared config.** In the `event-data`
    repo, open `config/events.json` and add an entry to `events` for
    `<event-key>`, with one sub-entry per day under `days` (see
    `config/README.md` in that repo for the full shape). **Day keys must be
    globally unique across every event already in that file** — prefix them
-   with something event-specific (e.g. `<event-key>-day1`), matching
-   whatever you used in `DAYS` in step 4. (If this event's spreadsheets use
+   with something event-specific (e.g. `<event-key>-day1`), matching the
+   schedule board's `{{SCHEDULE_DAY_KEY}}` (step 6). (If this event's spreadsheets use
    different tab **names** than that file's `defaults` block, set
    `matchesSheetName` / `standingsSheetName` on the day entry to override
    them. Most events won't need this — and there is no GID equivalent to
@@ -255,8 +256,13 @@ clubs; it is not a general multi-club template.
    > deliberate trade: it is the only place the console reads, so it is the
    > only place they can live without reintroducing per-event code. The cost
    > is that fixing a division label is a commit to `event-data` rather than
-   > to this repo. The public `index.html` is unaffected — it keeps its own
-   > `DIVISIONS`/`EVENTS`/`CLUBS` block from step 4.
+   > to this repo. The public `index.html` reads the same block (it no longer
+   > keeps its own `DIVISIONS`/`EVENTS`/`CLUBS`), so for a Hub `display` is
+   > not optional in practice: without it the Hub shows raw codes too.
+   >
+   > **An event stays in `events.json` for as long as any page built on the
+   > engine shows it.** Removing a finished event's entry would blank its
+   > Hub, schedule board, scorer page and desk page.
 
    > Control Center lives at `tools/control-center.html` (see
    > `sage-docs/docs/specs/.../match-control-console-spec.md`, written before the console's
@@ -277,10 +283,9 @@ clubs; it is not a general multi-club template.
       identical for every workbook of every event — nothing in it is
       spreadsheet-specific.
    3. Reload the spreadsheet and run **SAGE → Set up live sync**.
-   4. Enter the day key (the same key you used in `DAYS` in step 4 and in
-      `config/events.json` in step 7) and the facility name (must match a
-      `name` in this event's `FACILITIES` array **exactly**,
-      case-sensitive), and confirm the tabs to watch (SCHEDULE and Court
+   4. Enter the day key (the same key as in `config/events.json`, step 7)
+      and the facility name (must match a facility `name` of that day in
+      `config/events.json` **exactly**, case-sensitive), and confirm the tabs to watch (SCHEDULE and Court
       Control are pre-ticked when present). Setup validates the secret, the
       day key and the facility name against Cloud Run — including a real
       test sync — before saving anything, and reports what it found.
@@ -402,22 +407,18 @@ clubs; it is not a general multi-club template.
 
 | Token | Meaning |
 | --- | --- |
-| `{{CLUB_A_CODE}}` / `{{CLUB_B_CODE}}` | Short club codes used in team codes (e.g. `PPA`) and as the `CLUBS` object's keys. Also drive `schedule.html`'s `CLUB_ORDER`, which decides which club tag gets which fill. |
-| `{{CLUB_A_NAME}}` / `{{CLUB_B_NAME}}` | Full club names — hero eyebrow, `CLUBS` config. |
-| `{{CLUB_A_LOGO}}` / `{{CLUB_B_LOGO}}` | Paths to each club's logo image (§2 step 2). Shown in the hero, the club win summary, the Live Matches table and every match card. |
+| `{{CLUB_A_CODE}}` / `{{CLUB_B_CODE}}` | Short club codes used in team codes (e.g. `PPA`) and as the `CLUB_LOGOS` keys. Also drive `schedule.html`'s `CLUB_ORDER`, which decides which club tag gets which fill. |
+| `{{CLUB_A_NAME}}` / `{{CLUB_B_NAME}}` | Full club names — hero eyebrow and alt text. The names the page shows come from `display.clubs` in `events.json` (step 7). |
+| `{{CLUB_A_LOGO}}` / `{{CLUB_B_LOGO}}` | Paths to each club's logo image (§2 step 2), passed to the engine as `CLUB_LOGOS`. Shown in the hero, the club win summary, the Live Matches table and every match card. |
 
-Unlike `DAYS`/`FACILITIES`/`DIVISIONS`/`EVENTS`, the `CLUBS` config in
-`dual-meet-template/` is **not** an example to replace — it's built
-directly from the club tokens above, since a dual meet always has exactly
-two clubs.
+A dual meet always has exactly two clubs, so `CLUB_LOGOS` and `CLUB_ORDER`
+are filled from the club tokens above, not left as examples.
 
-> **Watch `&` in names.** Most tokens land in two kinds of place: raw HTML
-> (the hero eyebrow, an `alt=`, the footer) and a JavaScript string literal
-> (the `CLUBS` config). A name like `Pickle & Friends Community` needs
-> `&amp;` in the HTML occurrences but a plain `&` in the JS one — the page
-> escapes that value again on its way into the DOM, so an entity there
-> renders as the literal `&amp;`. Same applies to `{{EVENT_TITLE}}` and
-> `{{VENUE}}`. If you see `&amp;` on the rendered page, this is why.
+> **Watch `&` in names.** Tokens land in raw HTML (the hero eyebrow, an
+> `alt=`, the footer). A name like `Pickle & Friends Community` needs
+> `&amp;` there. The `events.json` names are plain text, so they take a
+> plain `&`. Same applies to `{{EVENT_TITLE}}` and `{{VENUE}}`. If you see
+> `&amp;` on the rendered page, this is why.
 
 ## 4. Required spreadsheet columns
 
@@ -467,23 +468,27 @@ Within one event's folder, across `index.html` and `schedule.html`:
 
 | Value | Where |
 | --- | --- |
-| `EVENT_KEY` | both — and the `events/` folder name, and the `event-data` folder name |
-| `DAYS[].key` | `index.html`, plus `schedule.html`'s `DAY_KEY`, plus `config/events.json`, plus each spreadsheet's day key, set through its **SAGE → Set up live sync** |
-| `FACILITIES[].name` | `index.html`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
-| `CLUBS` | `index.html`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
-| theme `:root` | both — plus the two non-CSS palettes noted in §2 step 5 |
-| `ATTENDANCE CLIENT` block | `tools/control-center.html`, `_templates/attendance/attendance.html` and every event's `attendance.html`: byte-identical (compare with `diff`) |
-| `SCORE CLIENT` block | `tools/control-center.html`, `_templates/scorer/scorer.html` and every event's `scorer.html`: byte-identical (compare with `diff`) |
-| `LIVE CHANNEL` block | both, the scorer template, and `tools/control-center.html` and every unfinished event's pages, `scorer.html` included: byte-identical (compare with `diff`). A finished event's pages keep it with `LIVE_BASE_URL = ''` (§7) |
+| `EVENT_KEY` | every shell — and the `events/` folder name, the `event-data` folder name, and the event's key in `config/events.json` |
+| day key | `config/events.json`, plus `schedule.html`'s `DAY_KEY`, plus each spreadsheet's day key, set through its **SAGE → Set up live sync** |
+| facility name | `config/events.json`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
+| club codes | `index.html`'s `CLUB_LOGOS`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
+| theme `:root` | `index.html` and `schedule.html` — plus the two non-CSS palettes noted in §2 step 5 |
+| `LIVE_BASE_URL` | each shell, as a literal: `''` turns push off for that page (§7) |
 
-Two constants are platform-wide rather than per-event, so each template carries
-them as literals, **not** `{{TOKEN}}`s: `GHPAGES_OWNER`/`GHPAGES_REPO` (the
-`event-data` Pages address) and `LIVE_BASE_URL` (the live Worker's `wss://`
-address, in the `LIVE CHANNEL` block; `''` turns push off for that page). A
-new event inherits both from its template and needs nothing set.
+The `ATTENDANCE CLIENT`, `SCORE CLIENT` and `LIVE CHANNEL` blocks this table
+used to list are modules of the engine now (§8), so there is nothing to
+keep byte-identical. The three finished events' `attendance.html` files
+(Pickle for Sight, Piggleball, PickleDrive) keep their own copy of the
+attendance block; they are frozen.
 
-`index.html`'s `computeDayIsLive()` derives the auto-live threshold from
-the day's own data: it goes live `GO_LIVE_LEAD_HOURS` (4) before the
+`LIVE_BASE_URL` (the live Worker's `wss://` address) is platform-wide rather
+than per-event, so each shell carries it as a literal, **not** a `{{TOKEN}}`.
+The `event-data` Pages address (`GHPAGES_OWNER`/`GHPAGES_REPO`) is in
+`lib/v1/platform.js`. A new event inherits both from its template and needs
+nothing set.
+
+The Hub's auto-live threshold (`computeDayIsLive` in
+`lib/v1/domain/golive.js`) is derived from the day's own data: it goes live `GO_LIVE_LEAD_HOURS` (4) before the
 earliest scheduled match time on the synced Schedule column, computed
 fresh from whatever's published — no hour to set or keep in sync per
 event. A day's `isLive` override (`true`/`false`), set from the Match
@@ -510,14 +515,14 @@ added prefix. Not a concern today.)
 ## 7. After the event: live push off, then archiving
 
 Once the event's last day is over, turn live push off for its pages: set
-`LIVE_BASE_URL = ''` in the `LIVE CHANNEL` block of its `index.html`,
-`schedule.html` and `scorer.html` (if it has one), and leave the rest of the block alone. Nothing is published
+`LIVE_BASE_URL = ''` in the settings script of its `index.html`,
+`schedule.html` and `scorer.html` (if it has one). Nothing is published
 for the event any more, so a socket would only hold a Worker connection open
 (and ping it every 50 s) for every visitor, against the Worker's daily
 request cap. With the constant empty the page never connects and reads its
-snapshot from GitHub instead, so the final results still show. That one line
-is the only place a finished event's block differs from the live copies; it
-no longer has to be kept byte-identical with them.
+snapshot from GitHub instead, so the final results still show. Leave the
+shell's `import` lines alone, and leave the event in `config/events.json`
+(§2 step 7): the shells read it.
 
 The folder stays where it is, at the URL the venue's QR code points to.
 Archiving is a separate, later step. When you do it, move the folder into
@@ -530,4 +535,40 @@ mv events/<event-key> events/archives/<event-key>
 Because its asset paths are root-absolute (§6), nothing needs
 re-prefixing — this is the exact step the earliest, pre-template event
 pages got wrong, and why their icons are currently broken in
-`events/archives/`.
+`events/archives/`. The same goes for the shells' `/lib/v1/...` imports and
+stylesheet links: root-absolute, so the move needs no edit.
+
+## 8. The engine, and its versioning rule
+
+The event pages are **shells**: their markup (the hero, the tabs, the empty
+view containers), a `THEME` block of colours and one small `<script
+type="module">` of settings that calls the engine. Everything else is the
+engine, at `lib/v1/` in the root of this repo, which this folder's pages and
+Control Center share:
+
+- `lib/v1/apps/` — one module per kind of page: `hub.js` (`mountHub`),
+  `schedule-board.js`, `scorer.js`, `attendance-desk.js`. Each documents its
+  settings in its header and rejects an unknown or missing one with a
+  console error that names it.
+- `lib/v1/views/`, `lib/v1/css/` — the Match Finder, tickets, Live Matches,
+  Standings, team views, score dialog and attendance list, and their CSS.
+- `lib/v1/domain/` — the rules (played, BYE, series, standings, go-live,
+  team events), plain functions with no DOM. `lib/v1/data/` — events.json,
+  snapshots, the live channel, the API. `lib/v1/platform.js` — the constants.
+- Dependencies point one way (`platform` ← `domain` ← `data` ← `views` ←
+  `apps`); `_tests/unit/guards.test.mjs` enforces it. The theme contract
+  (`_tests/unit/theme-contract.test.mjs`) lists the custom properties a
+  shell's `:root` must define.
+
+**The versioning rule.** Pages import `/lib/v1/...`. Only the newest version
+folder is ever edited, and an edit to it must be compatible: it may add a
+module, an export, an option or a CSS class, or fix a bug, but it never
+removes or renames an export, a CSS class a page's markup or CSS uses, or a
+theme property, and never changes an export's parameters or return shape in a
+way an existing caller would notice. Within a version, one module may only
+start using another module's export after that export was published in an
+**earlier** push (browsers keep a file up to 10 minutes). An incompatible
+change is `lib/v2/`: copy `v1`, change it there, move Control Center, the
+templates and every unfinished event's pages to it, and freeze `v1`. A
+finished event's shell never moves version. The comparison harness
+(`_tests/`, `npm run verify`) has to pass before a push to `main`.

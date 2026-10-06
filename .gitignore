@@ -1,2 +1,5 @@
 **/*beta*
 _templates/hub-pubmat/out/
+
+_tests/node_modules/
+_tests/out/

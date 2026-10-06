@@ -1,0 +1,69 @@
+/* The attendance desk page's own layout: the header, the message line, and the mapping of the check-in list's
+   --att-* tokens to the page's palette (lib/v1/apps/attendance-desk.js). Linked before css/attendance.css. */
+
+*{box-sizing:border-box;}
+
+html,body{margin:0;padding:0;}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+  font-size:16px;
+  line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+
+header.top{
+  background:var(--navy);
+  color:var(--white);
+  padding:16px 0 14px;
+}
+
+.kicker{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  font-size:12.5px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:#A8D65C;
+}
+
+h1{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  text-transform:uppercase;
+  font-size:26px;
+  margin:2px 0 4px;
+}
+
+.event{font-size:14px;color:#D6DCE8;overflow-wrap:anywhere;}
+
+main{padding-top:14px;padding-bottom:20px;}
+
+.desk-message{
+  margin:40px 0;
+  text-align:center;
+  color:var(--ink-soft);
+  font-size:17px;
+}
+
+.desk-message:empty{display:none;}
+
+/* The block's colours, mapped to this palette. Green is a fill, so the text
+   on it is navy (see the THEME contrast note in index.html). */
+.att-root{
+  --att-navy:var(--navy);
+  --att-green:var(--green);
+  --att-green-dark:var(--green-dark);
+  --att-paper:var(--paper);
+  --att-dim:var(--paper-dim);
+  --att-line:var(--line);
+  --att-ink:var(--ink);
+  --att-soft:var(--ink-soft);
+  --att-red:var(--red,#B42318);
+}
+
+.att-badge,.att-bar button{color:var(--navy);}

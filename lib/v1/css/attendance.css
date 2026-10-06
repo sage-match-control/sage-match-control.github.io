@@ -1,0 +1,47 @@
+/* The staff check-in list (lib/v1/views/attendance-view.js), in Control Center's Attendance tab and on the desk page.
+   The page points the --att-* tokens at its own palette. */
+
+.att-root{--att-navy:#05133B;--att-green:#5E9106;--att-green-dark:#3C6B02;--att-paper:#F5F6F8;--att-dim:#E9ECF1;--att-line:#D3D9E3;--att-ink:#05133B;--att-soft:#4A5572;--att-white:#FFFFFF;--att-red:#B42318;
+  color:var(--att-ink);font-family:inherit;line-height:1.4;box-sizing:border-box;}
+.att-root *{box-sizing:border-box;}
+.att-venues{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;}
+.att-venues button{flex:1;min-width:110px;font-weight:600;font-size:14px;font-family:inherit;padding:9px 10px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);cursor:pointer;}
+.att-venues button[aria-pressed="true"]{background:var(--att-navy);color:var(--att-white);border-color:var(--att-navy);}
+.att-bar{display:flex;gap:8px;}
+.att-bar input{flex:1;min-width:0;font-size:16px;font-family:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
+.att-bar button{font-weight:600;font-size:14px;font-family:inherit;padding:0 14px;border-radius:10px;border:0;background:var(--att-green);color:var(--att-white);cursor:pointer;}
+.att-count{margin:8px 0 0;font-weight:700;font-size:14px;min-height:20px;}
+.att-catbar{position:sticky;top:0;z-index:5;background:var(--att-bar-bg,var(--att-paper));padding:8px 0 6px;margin-top:6px;border-bottom:1px solid var(--att-line);}
+.att-catrow{display:flex;gap:8px;align-items:center;}
+.att-chips{display:flex;gap:6px;flex:1;min-width:0;overflow-x:auto;white-space:nowrap;scrollbar-width:none;padding-bottom:2px;}
+.att-chips::-webkit-scrollbar{display:none;}
+.att-chip{flex:0 0 auto;font-weight:600;font-size:13px;font-family:inherit;padding:6px 11px;border-radius:20px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);cursor:pointer;}
+.att-chip[aria-pressed="true"]{background:var(--att-navy);color:var(--att-white);border-color:var(--att-navy);}
+.att-chip.att-dim{opacity:.45;}
+.att-jump{flex:none;max-width:42%;font-size:14px;font-family:inherit;padding:6px 8px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
+.att-status{min-height:18px;margin-top:6px;font-size:13px;color:var(--att-soft);}
+.att-status.att-error{color:var(--att-red);font-weight:600;}
+.att-list{padding:14px 0 60px;}
+.att-sec{margin:0 0 22px;}
+.att-sec h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:16px;margin:0 0 8px;}
+.att-sec h2 span{white-space:nowrap;font-size:13px;color:var(--att-soft);letter-spacing:.08em;font-weight:600;}
+.att-pair{background:var(--att-white);border:1px solid var(--att-line);border-left:4px solid var(--att-line);border-radius:14px;margin-bottom:8px;overflow:hidden;}
+.att-pair.att-ready{border-left-color:var(--att-green);}
+.att-pair-head{display:flex;justify-content:space-between;align-items:center;padding:8px 14px 0;font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--att-soft);}
+.att-badge{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--att-white);background:var(--att-green);border-radius:20px;padding:2px 8px;margin-left:auto;}
+.att-player{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;cursor:pointer;}
+.att-player + .att-player{border-top:1px solid var(--att-dim);}
+.att-who{min-width:0;}
+.att-name{font-weight:600;overflow-wrap:anywhere;}
+.att-shirt{margin-left:7px;font-weight:700;font-size:12px;letter-spacing:.06em;white-space:nowrap;color:var(--att-soft);background:var(--att-dim);border:1px solid var(--att-line);border-radius:6px;padding:1px 6px;vertical-align:1px;}
+.att-tag{margin-left:7px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--att-red);border:1px solid var(--att-red);border-radius:6px;padding:0 5px;vertical-align:1px;}
+.att-time{display:block;font-size:12.5px;color:var(--att-soft);}
+.att-player.att-in .att-time{color:var(--att-green-dark);font-weight:600;}
+.att-switch{appearance:none;-webkit-appearance:none;flex:none;width:52px;height:30px;margin:0;border-radius:30px;background:var(--att-line);position:relative;cursor:pointer;transition:background .15s;}
+.att-switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--att-white);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s;}
+.att-switch:checked{background:var(--att-green);}
+.att-switch:checked::after{transform:translateX(22px);}
+.att-switch:disabled{opacity:.55;cursor:default;}
+.att-switch:focus-visible{outline:3px solid var(--att-green);outline-offset:2px;}
+.att-empty{color:var(--att-soft);text-align:center;padding:40px 0;}
+@media (prefers-reduced-motion: reduce){ .att-switch,.att-switch::after{transition:none;} }

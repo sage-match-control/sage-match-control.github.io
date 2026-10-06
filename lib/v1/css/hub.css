@@ -1,0 +1,417 @@
+/* The Tournament Hub's page: the hero, the day picker, the tabs, the sync line and the footer
+   (lib/v1/apps/hub.js). Colour, radius and shadow come from the page's theme properties (site-engine-spec §4.7). */
+
+*{box-sizing:border-box;}
+
+html,body{margin:0;padding:0;}
+
+html{overflow-x:hidden;}
+
+/* No overflow-x here (unlike html above) — pairing overflow-x:hidden with
+   any overflow-y (even an explicit 'visible') makes the UA compute
+   overflow-y as auto too (CSS spec: a non-visible axis can't pair with a
+   literally-visible one), which would make body a second, independent
+   scroll container nested inside html's. The real page scrolling already
+   happens on html (window.scrollY tracks documentElement.scrollTop, not
+   body's), so any position:sticky element inside body would resolve
+   against body's own never-moving scroll offset instead and just scroll
+   off as if it weren't sticky at all — leaving body's overflow fully
+   unset keeps it out of the scroll-container chain so sticky elements
+   (the standings category headers) bind to html. */
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{max-width:920px;margin:0 auto;padding:0 20px 90px;}
+
+/* ---------- HERO ---------- */
+header.hero{
+  padding:52px 20px 40px;
+  text-align:center;
+  color:var(--white);
+  position:relative;
+  background:var(--navy);
+  border-radius:0 0 var(--radius) var(--radius);
+  box-shadow:0 24px 60px -28px rgba(11,24,38,.45);
+  margin-bottom:28px;
+}
+
+.hero-logos{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  margin:0 auto 14px;
+}
+
+.hero-logos img{
+  width:56px; height:56px;
+  object-fit:contain;
+  border-radius:14px;
+  background:var(--white);
+  box-shadow:0 4px 14px rgba(0,0,0,.25);
+}
+
+.hero-logos-sep{
+  font-family:'Archivo Black',sans-serif;
+  font-size:20px;
+  color:var(--court);
+  opacity:.85;
+}
+
+.regal-rule{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  max-width:280px;
+  margin:0 auto 30px;
+}
+
+.regal-rule::before, .regal-rule::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg, transparent, rgba(124,185,44,.7));
+}
+
+.regal-rule::after{ background:linear-gradient(90deg, rgba(124,185,44,.7), transparent); }
+
+.regal-rule .diamond{
+  width:7px; height:7px;
+  background:var(--amber);
+  transform:rotate(45deg);
+  flex-shrink:0;
+}
+
+.eyebrow{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  font-size:12px;
+  color:var(--green);
+  margin-bottom:16px;
+}
+
+.tagline-script{
+  font-family:'Inter',sans-serif;
+  font-style:italic;
+  font-weight:700;
+  font-size:clamp(14px,3.4vw,18px);
+  color:var(--white);
+  letter-spacing:.01em;
+  margin:0 0 14px;
+  opacity:.92;
+}
+
+.domination-line{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(20px,5.4vw,32px);
+  text-transform:uppercase;
+  letter-spacing:.01em;
+  color:var(--green);
+  margin:2px 0 12px;
+}
+
+h1.title{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:clamp(34px,8.2vw,62px);
+  line-height:1.04;
+  letter-spacing:.005em;
+  margin:0 0 10px;
+  text-transform:uppercase;
+  color:var(--white);
+}
+
+h1.title .accent{ color:var(--green); }
+
+.subtitle{
+  font-size:15px;
+  color:rgba(255,255,255,.75);
+  max-width:480px;
+  margin:0 auto 34px;
+  line-height:1.55;
+}
+
+/* ---------- HERO-SCOPED CONTROL OVERRIDES ----------
+   The day picker, view tabs and sync line are shared controls whose base
+   rules (further down) are written for the paper ground of .wrap. Inside
+   the navy bezel they'd be navy-on-navy, so they're re-stated here as
+   light-on-navy instead of being forked into two separate components.
+   Scoped to .hero so the base rules keep working anywhere else. */
+.hero .view-tab{
+  border-color:rgba(255,255,255,.28);
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.82);
+}
+
+.hero .view-tab:hover{ border-color:var(--green); color:var(--white); }
+
+.hero .view-tab.active{
+  background:var(--green);
+  border-color:var(--green);
+  color:var(--navy);
+}
+
+.hero .day-picker label{ color:rgba(255,255,255,.6); }
+
+/* The chevron is baked into the select's background-image, so it has to be
+   re-stated per ground — the navy one in the base rule would vanish here. */
+.hero .day-picker select{
+  border-color:rgba(255,255,255,.28);
+  background-color:rgba(255,255,255,.06);
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>');
+  color:var(--white);
+}
+
+.hero .day-picker select:hover,
+.hero .day-picker select:focus{ border-color:var(--green); }
+
+.hero .sync-status{ color:rgba(255,255,255,.62); }
+
+.hero .sync-status.ok{ color:var(--green); }
+
+.hero .sync-status.error{ color:#FFB4A2; }
+
+.hero .sync-status .retry-btn{
+  border-color:rgba(255,180,162,.55);
+  color:#FFB4A2;
+}
+
+.hero .sync-status .retry-btn:hover{ background:rgba(255,180,162,.15); }
+
+/* On a phone the search stays in reach while scrolling a long match list:
+     it sticks to the top of the screen. */
+input#teamInput{
+    width:100%;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:20px;
+    font-weight:600;
+    letter-spacing:.03em;
+    padding:14px 40px 14px 16px;
+    border-radius:10px;
+    border:2px solid rgba(20,27,44,.18);
+    background:var(--white);
+    color:var(--ink);
+    text-transform:uppercase;
+    outline:none;
+    min-width:0;
+  }
+
+input#teamInput:focus{border-color:var(--green-dark);}
+
+input#teamInput::placeholder{color:var(--ink-soft); font-weight:500; text-transform:none;}
+
+.sync-status{
+    max-width:560px;
+    margin:14px auto 0;
+    text-align:center;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:11.5px;
+    letter-spacing:.03em;
+    color:var(--ink-soft);
+  }
+
+.sync-status.ok{color:var(--amber);}
+
+.sync-status.error{color:#B3261E;}
+
+.sync-status .retry-btn{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;
+  background:none;
+  border:1px solid rgba(179,38,30,.45);
+  color:#B3261E;
+  padding:2px 8px;
+  border-radius:100px;
+  cursor:pointer;
+  margin-left:6px;
+}
+
+.sync-status .retry-btn:hover{background:rgba(179,38,30,.10);}
+
+/* ---------- DESKTOP QR PANEL ---------- */
+.qr-panel{
+  display:none;
+  position:fixed;
+  top:26px;
+  right:26px;
+  z-index:60;
+  background:var(--white);
+  border-radius:16px;
+  padding:14px 14px 12px;
+  box-shadow:var(--card-shadow);
+  text-align:center;
+}
+
+.qr-panel img{
+  display:block;
+  width:180px;
+  height:180px;
+  border-radius:8px;
+}
+
+.qr-panel .qr-link-text{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:13px;
+  font-weight: bolder;
+  max-width:180px;
+  line-height:1.4;
+  margin-top:8px;
+  /* Show the whole link. Put a <wbr> after the "/" when filling in
+     {{QR_URL}} so it breaks there; otherwise it breaks wherever it runs out of room. */
+  overflow-wrap:anywhere;
+}
+
+.qr-panel .qr-caption{
+  margin-top:8px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  max-width:180px;
+  line-height:1.4;
+}
+
+@media (min-width:900px) {
+  .qr-panel{ display:block; }
+}
+
+/* ---------- VIEW TABS ---------- */
+.view-tabs{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:24px;
+}
+
+.view-tab{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:9px 20px;
+  border-radius:100px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--ink);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.view-tab:hover{border-color:rgba(124,185,44,.6);}
+
+.view-tab.active{
+  background:var(--court);
+  border-color:var(--court);
+  color:var(--court-dark);
+}
+
+/* ---------- DAY PICKER ---------- */
+.day-picker{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:20px;
+}
+
+.day-picker label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink-soft);
+}
+
+.day-picker select{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12.5px;
+  font-weight:600;
+  letter-spacing:.03em;
+  padding:8px 34px 8px 16px;
+  border-radius:100px;
+  border:1px solid var(--line);
+  background:var(--white) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%2314263C" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 12px center;
+  background-size:11px;
+  color:var(--court-line);
+  cursor:pointer;
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+}
+
+.day-picker select:hover, .day-picker select:focus{border-color:rgba(124,185,44,.6); outline:none;}
+
+.day-picker select option{color:var(--ink);}
+
+footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    line-height:1.9;
+    margin-top:60px;
+    padding-bottom:20px;
+    font-family:'Barlow Condensed',sans-serif;
+  }
+
+footer a{ color:var(--court); text-decoration:none; }
+
+footer a:hover{ text-decoration:underline; }
+
+@media (max-width:480px) {
+  .score-row{font-size:30px;}
+}
+
+:focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
+
+@media (prefers-reduced-motion: reduce) {
+  *{transition:none !important;}
+}
+
+.club-logos{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:22px;
+  margin:0 0 20px;
+}
+
+.club-logos img{
+  width:clamp(84px,20vw,140px);
+  aspect-ratio:1/1;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid var(--line);
+  box-shadow:var(--card-shadow);
+  background:var(--white);
+}
+
+.club-logos .club-logos-sep{
+  font-family:'Archivo Black',sans-serif;
+  font-size:clamp(22px,5vw,34px);
+  color:var(--court);
+  opacity:.85;
+}
+
+.score-logo{
+    display:inline-block;
+    width:88px; height:88px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid rgba(20,27,44,.12);
+    margin-bottom:6px;
+  }
+
+@media (max-width:480px) {
+  .score-logo{width:64px; height:64px; margin-bottom:4px;}
+}

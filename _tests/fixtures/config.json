@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "_comment": "Source of truth for sage-tools-api's sync registry — fetched at runtime by SyncConfigStore, cached for SYNC_CONFIG_TTL_MS (default ~1 minute). See README.md in this folder for the shape/validation rules before editing by hand.",
+  "defaults": {
+    "matchesSheetName": "CSV",
+    "standingsSheetName": "STANDINGSCSV"
+  },
+  "events": {
+    "piggleball-2026": {
+      "type": "standard",
+      "title": "Piggleball Chairman's Cup",
+      "attendance": "desks",
+      "scoreEntry": "console",
+      "days": {
+        "piggleball-day1": {
+          "label": "Oct 3",
+          "date": "2026-10-03",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Centro Atletico",
+              "sheetId": "test"
+            }
+          ]
+        }
+      },
+      "display": {
+        "divisions": {
+          "N": "Novice",
+          "I": "Intermediate"
+        },
+        "events": {
+          "D": "Open Doubles",
+          "MD": "Men's Doubles",
+          "XD": "Mixed Doubles"
+        }
+      }
+    },
+    "pickle-for-sight-2026": {
+      "type": "standard",
+      "title": "Pickle for Sight",
+      "days": {
+        "pickle-for-sight-day1": {
+          "label": "Sep 27",
+          "date": "2026-09-27",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "PCPH Main",
+              "sheetId": "test"
+            },
+            {
+              "name": "PCPH Annex",
+              "sheetId": "test"
+            }
+          ]
+        }
+      },
+      "display": {
+        "divisions": {
+          "N": "Novice",
+          "LI": "Low Intermediate",
+          "HI": "High Intermediate"
+        },
+        "events": {
+          "MD": "Men's Doubles",
+          "WD": "Women's Doubles",
+          "XD": "Mixed Doubles"
+        }
+      }
+    },
+    "pnf-x-bup-dual-meet": {
+      "type": "dual-meet",
+      "title": "PNF × BUP Dual Meet",
+      "days": {
+        "pnf-x-bup-day1": {
+          "_comment": "This sheet's STANDINGSCSV tab happens to sit at gid 1801965166 — a different gid resolves to a leftover tab, apparently because this workbook was duplicated from the archived ppa-x-club-2600-dual-meet sheet and inherited its old tab gids. Harmless now: both fetch paths address tabs by name (see GvizCsvFetcher.mjs), so this quirk never mattered once that changed. Left as a note in case the workbook's gids come up again.",
+          "label": "Sep 12",
+          "date": "2026-09-12",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Pampanga Pickleball Center",
+              "sheetId": "test"
+            }
+          ]
+        }
+      },
+      "display": {
+        "divisions": {
+          "LI": "Low Intermediate",
+          "HI": "High Intermediate",
+          "A": "Advanced"
+        },
+        "events": {
+          "WD": "Women's Doubles",
+          "MD": "Men's Doubles",
+          "XD": "Mixed Doubles"
+        },
+        "clubs": {
+          "PNF": "Pickle & Friends Community",
+          "BUP": "1Bataan United Picklers"
+        }
+      }
+    },
+    "pickledrive-anniversary-2026": {
+      "type": "team",
+      "title": "PickleDrive Club One Year Celebration",
+      "attendance": "desks",
+      "scoreEntry": "console",
+      "days": {
+        "pickledrive-anniversary-2026-day1": {
+          "label": "Oct 3",
+          "date": "2026-10-03",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Kingcourts",
+              "sheetId": "test"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
