@@ -13,6 +13,9 @@ export const CONTRACT = [
   '--white', '--muted', '--amber', '--cork', '--court', '--court-dark', '--court-line', '--radius', '--card-shadow',
 ];
 
+// Properties a page may set to adjust one component; the CSS reads each with a fallback, so a page that sets none is unaffected.
+export const OPTIONAL = ['--att-bar-bg'];
+
 const LIB = path.join(SITE_ROOT, 'lib', 'v1');
 const read = dir => (fs.existsSync(path.join(LIB, dir))
   ? fs.readdirSync(path.join(LIB, dir)).filter(f => f.endsWith(dir === 'css' ? '.css' : '.js')).map(f => ({ rel: `${dir}/${f}`, text: fs.readFileSync(path.join(LIB, dir, f), 'utf8') }))
@@ -29,7 +32,7 @@ function boardContract() {
 }
 
 test('every custom property the engine CSS reads is in the contract, or set by the engine itself', () => {
-  const listed = new Set([...CONTRACT, ...boardContract()]);
+  const listed = new Set([...CONTRACT, ...OPTIONAL, ...boardContract()]);
   const setByEngine = new Set();
   for (const f of [...css, ...read('views'), ...read('apps'), ...read('data')]) {
     for (const m of f.text.matchAll(/(--[a-z0-9-]+)\s*:/g)) setByEngine.add(m[1]);
@@ -49,5 +52,13 @@ test('the contract is the one the templates and Control Center define', () => {
     const root = text.match(/:root\s*\{[\s\S]*?\n\s*\}/);
     assert.ok(root, `${rel} has a :root block`);
     for (const name of CONTRACT) assert.ok(root[0].includes(name + ':') || root[0].includes(name + ' :'), `${rel} defines ${name}`);
+  }
+});
+
+test('an optional property is always read with a fallback', () => {
+  for (const f of css) {
+    for (const name of OPTIONAL) {
+      for (const m of f.text.matchAll(new RegExp(String.raw`var\(\s*${name}\s*([,)])`, 'g'))) assert.equal(m[1], ',', `${f.rel} reads ${name} without a fallback`);
+    }
   }
 });
