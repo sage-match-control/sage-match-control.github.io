@@ -109,6 +109,12 @@ import {
   attOneEditApart, possibleDuplicates, sameNameSameCategory,
 } from '/lib/v1/domain/attendance.js';
 
+// The engine's data layer: constants, the registry, the snapshot, link tokens.
+import { CLOUD_RUN_BASE_URL, ATTENDANCE_POLL_MS, fixtureName } from '/lib/v1/platform.js';
+import { loadRegistry } from '/lib/v1/data/registry.js';
+import { fetchDaySnapshotFromPages } from '/lib/v1/data/snapshot.js';
+import { deskDecode, deskLoadToken, deskStorageKey } from '/lib/v1/data/tokens.js';
+
 // ==== ATTENDANCE CLIENT — identical in control-center.html and every attendance.html; see ====
 // ==== sage-docs/docs/specs/.../multi-event-attendance-spec.md §6.1                       ====
 // Staff check-in: reads each facility workbook's ATTENDANCE tab (published CSV
@@ -117,7 +123,6 @@ import {
 // nothing outside itself except what its host passes to createAttendanceView.
 // Every top-level name here starts with att / ATTENDANCE_ / attendance, or is
 // one of the names listed in the spec's table.
-const ATTENDANCE_POLL_MS = 10000;
 
 function attendanceCsvUrl(sheetId){
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&headers=1&sheet=ATTENDANCE`;
@@ -568,56 +573,17 @@ function createAttendanceView(opts){
 // nowhere public. See sage-docs/docs/specs/.../multi-event-attendance-spec.md §6.4.
 // ============================================================================
 const EVENT_KEY = '{{EVENT_KEY}}';
-// Same address as tools/control-center.html's CLOUD_RUN_BASE_URL.
-const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
-const GHPAGES_OWNER = 'sage-match-control';
-const GHPAGES_REPO = 'event-data';
-// Local testing only: on localhost, ?fixture=<name> reads /_fixtures/ instead of
-// the published data and marks in memory. Inert on the live site.
-const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
-  ? new URLSearchParams(location.search).get('fixture')
-  : null;
-const DESK_STORAGE_KEY = `sage.attendance.desk.${EVENT_KEY}`;
+// Local testing only: on localhost, ?fixture=<name> reads /_fixtures/ instead of the published data and
+// marks in memory (lib/v1/platform.js). Inert on the live site.
+const FIXTURE = fixtureName();
+const DESK_STORAGE_KEY = deskStorageKey(EVENT_KEY);
 
 const deskMessageEl = document.getElementById('deskMessage');
 const deskRootEl = document.getElementById('deskRoot');
 function deskSay(text){ deskMessageEl.textContent = text; }
 
-// The token's payload is only read for display (the day, and whether it has
-// run out). The API decides what a token may do.
-function deskDecode(token){
-  try{
-    const part = String(token).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
-    const json = JSON.parse(atob(part + '='.repeat((4 - part.length % 4) % 4)));
-    return json && typeof json.day === 'string' && typeof json.exp === 'number' ? json : null;
-  }catch(e){ return null; }
-}
-
-function deskLoadToken(){
-  // A link carries the token as ?desk=…: keep it, then drop it from the
-  // address bar so it does not show in screenshots or reshared links.
-  const params = new URLSearchParams(location.search);
-  const fromLink = params.get('desk');
-  if(fromLink){
-    try{ localStorage.setItem(DESK_STORAGE_KEY, JSON.stringify({ token: fromLink })); }catch(e){}
-    params.delete('desk');
-    const rest = params.toString();
-    try{ history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash); }catch(e){}
-  }
-  try{
-    const stored = JSON.parse(localStorage.getItem(DESK_STORAGE_KEY) || 'null');
-    return stored && stored.token ? stored.token : null;
-  }catch(e){ return null; }
-}
-
-async function deskFetchJson(url){
-  const res = await fetch(url, { cache: 'no-store' });
-  if(!res.ok) throw new Error(`replied ${res.status}`);
-  return res.json();
-}
-
 async function deskStart(){
-  const token = deskLoadToken();
+  const token = deskLoadToken(EVENT_KEY);
   const info = token ? deskDecode(token) : null;
   if(!info || Date.now() >= info.exp){
     deskSay('Ask the operator for a desk link.');
@@ -626,13 +592,10 @@ async function deskStart(){
 
   let entry;
   try{
-    const configUrl = FIXTURE
-      ? `/_fixtures/config.json?t=${Date.now()}`
-      : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
-    const config = await deskFetchJson(configUrl);
+    const config = await loadRegistry({ fixture: FIXTURE });
     entry = config.events && config.events[EVENT_KEY];
   }catch(err){
-    deskSay(`Could not load this event (${err.message}). Check this device's connection and reload.`);
+    deskSay(`Could not load this event (${err.message.replace(/^HTTP (\d+)$/, 'replied $1')}). Check this device's connection and reload.`);
     return;
   }
   if(!entry || entry.attendance !== 'desks'){
@@ -651,10 +614,7 @@ async function deskStart(){
   const teamNames = {};
   if(entry.type === 'team'){
     try{
-      const snapshotUrl = FIXTURE
-        ? `/_fixtures/${EVENT_KEY}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
-        : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${info.day}.json?t=${Date.now()}`;
-      const snapshot = await deskFetchJson(snapshotUrl);
+      const snapshot = await fetchDaySnapshotFromPages(EVENT_KEY, info.day, { fixture: FIXTURE });
       (snapshot.facilities || []).forEach(f => {
         const rows = attParseCsv(f.standingsCsv || '');
         const head = (rows[0] || []).map(h => h.trim());

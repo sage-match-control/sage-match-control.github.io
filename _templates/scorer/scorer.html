@@ -298,6 +298,15 @@ import { rowsToMatches } from '/lib/v1/domain/matches.js';
 import { matchByeSide } from '/lib/v1/domain/byes.js';
 import { unneededSeriesGames } from '/lib/v1/domain/series.js';
 
+// The engine's data layer: constants, the registry, the snapshot and its poll, the live channel, link tokens, API errors.
+import { CLOUD_RUN_BASE_URL, fixtureName } from '/lib/v1/platform.js';
+import { loadRegistry } from '/lib/v1/data/registry.js';
+import { createPoller } from '/lib/v1/data/snapshot.js';
+import { createLiveChannel } from '/lib/v1/data/live-channel.js';
+import { friendlyApiMessage } from '/lib/v1/data/api.js';
+import { scorerDecode, scorerLoadToken, scorerStorageKey } from '/lib/v1/data/tokens.js';
+import * as Snapshot from '/lib/v1/data/snapshot.js';
+
 // ============================================================================
 // CONFIGURATION
 // The scorer page: staff enter scores with a scorer link, one link per event
@@ -306,105 +315,14 @@ import { unneededSeriesGames } from '/lib/v1/domain/series.js';
 // sage-docs/docs/specs/.../control-center-score-entry-spec.md §6.
 // ============================================================================
 const EVENT_KEY = '{{EVENT_KEY}}';
-// Same address as tools/control-center.html's CLOUD_RUN_BASE_URL.
-const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
-const GHPAGES_OWNER = 'sage-match-control';
-const GHPAGES_REPO = 'event-data';
-// Local testing only: on localhost, ?fixture=<name> reads /_fixtures/ instead of
-// the published data and simulates saves. Inert on the live site.
-const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
-  ? new URLSearchParams(location.search).get('fixture')
-  : null;
-const POLL_INTERVAL_MS = 10000;
-const FETCH_TIMEOUT_MS = 8000;
-const SCORER_STORAGE_KEY = `sage.scorer.${EVENT_KEY}`;
+// Local testing only: on localhost, ?fixture=<name> reads /_fixtures/ instead of the published data and
+// simulates saves (lib/v1/platform.js). Inert on the live site.
+const FIXTURE = fixtureName();
+const SCORER_STORAGE_KEY = scorerStorageKey(EVENT_KEY);
 
-// ==== LIVE CHANNEL — identical in every page that uses it; see ====
-// ==== sage-docs/docs/specs/.../durable-object-push-spec.md §7   ====
-// Receives each new snapshot the moment Cloud Run publishes it, over one
-// WebSocket per page. GitHub Pages polling stays as the fallback: whenever
-// the socket isn't open, fetchDaySnapshot polls GitHub exactly as before.
-const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev'; // e.g. 'wss://sage-live.<subdomain>.workers.dev'; '' disables live push
-const LIVE_PING_MS = 50000;          // under Cloudflare's idle-connection timeout
-const LIVE_PONG_TIMEOUT_MS = 10000;  // no pong by then: treat the socket as dead
-const LIVE_SAFETY_POLL_MS = 60000;   // while connected, still check GitHub this often
-const LIVE_RETRY_MAX_MS = 30000;
-
-function createLiveChannel({ enabled, onSnapshot }){
-  let ws = null, key = null, latest = null, paused = false;
-  let retries = 0, retryTimer = null, pingTimer = null, pongTimer = null;
-  let lastSafetyPoll = 0;
-
-  const stamp = s => Date.parse((s && (s.publishedAt || s.generatedAt)) || 0) || 0;
-
-  function clearTimers(){
-    clearTimeout(retryTimer); clearInterval(pingTimer); clearTimeout(pongTimer);
-    retryTimer = pingTimer = pongTimer = null;
-  }
-  function close(){
-    clearTimers();
-    if(ws){ ws.onclose = null; try { ws.close(); } catch(e){} ws = null; }
-  }
-  function scheduleRetry(){
-    if(paused || !key) return;
-    const delay = Math.min(LIVE_RETRY_MAX_MS, 1000 * 2 ** retries) + Math.random() * 1000;
-    retries++;
-    retryTimer = setTimeout(open, delay);
-  }
-  function open(){
-    close();
-    if(!enabled || paused || !key) return;
-    const myKey = key;
-    ws = new WebSocket(`${LIVE_BASE_URL}/live/${myKey.event}/${myKey.day}`);
-    ws.onopen = () => {
-      retries = 0;
-      pingTimer = setInterval(() => {
-        try { ws.send('ping'); } catch(e){}
-        clearTimeout(pongTimer);
-        pongTimer = setTimeout(() => { try { ws.close(); } catch(e){} }, LIVE_PONG_TIMEOUT_MS);
-      }, LIVE_PING_MS);
-    };
-    ws.onmessage = ev => {
-      clearTimeout(pongTimer);
-      if(ev.data === 'pong') return;
-      let msg; try { msg = JSON.parse(ev.data); } catch(e){ return; }
-      if(msg.type !== 'snapshot' || !msg.snapshot) return;
-      if(!key || key.event !== myKey.event || key.day !== myKey.day) return; // switched away
-      if(latest && latest.key === `${myKey.event}/${myKey.day}` && msg.version <= latest.version) return;
-      latest = { key: `${myKey.event}/${myKey.day}`, version: msg.version, snapshot: msg.snapshot };
-      onSnapshot();
-    };
-    ws.onclose = () => { clearTimers(); ws = null; scheduleRetry(); };
-    ws.onerror = () => { /* onclose follows */ };
-  }
-
-  return {
-    // Point the channel at a day (or at nothing with null). Reconnects.
-    follow(event, day){
-      const next = event && day ? { event, day } : null;
-      if(next && key && next.event === key.event && next.day === key.day) return;
-      key = next; retries = 0; open();
-    },
-    pause(){ paused = true; close(); },
-    resume(){ paused = false; retries = 0; open(); },
-    isOpen(){ return !!ws && ws.readyState === WebSocket.OPEN; },
-    // What fetchDaySnapshot should return, or null to fetch from GitHub.
-    cached(event, day){
-      if(!this.isOpen() || !latest || latest.key !== `${event}/${day}`) return null;
-      if(Date.now() - lastSafetyPoll > LIVE_SAFETY_POLL_MS) return null; // time for a GitHub check
-      return latest.snapshot;
-    },
-    // Called with every snapshot fetched from GitHub: returns whichever of
-    // it and the pushed one is newer. Catches a push path that has quietly
-    // stopped while the socket stays open (e.g. Cloud Run's live publish failing).
-    newer(event, day, fetched){
-      lastSafetyPoll = Date.now();
-      if(!latest || latest.key !== `${event}/${day}`) return fetched;
-      return stamp(fetched) > stamp(latest.snapshot) ? fetched : latest.snapshot;
-    },
-  };
-}
-// ==== END LIVE CHANNEL ====
+// The live Worker's address (lib/v1/data/live-channel.js): '' turns push off for this page, as a finished
+// event's pages do (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
 // ============================================================================
 // HELPERS COPIED FROM tools/control-center.html
@@ -413,48 +331,6 @@ function createLiveChannel({ enabled, onSnapshot }){
 // played/BYE and series rules are no longer copies: they are imported from
 // lib/v1/domain, above.)
 // ============================================================================
-
-// HTTP_WORDS, httpWords, messageFromJson, friendlyApiMessage (tools/control-center.html, "Readable API messages")
-const HTTP_WORDS = {
-  400: 'rejected the request', 401: 'refused the credentials', 403: 'refused access',
-  404: 'was not found', 409: 'reported a conflict', 422: 'rejected the data',
-  429: 'is rate-limiting requests'
-};
-function httpWords(status){
-  return HTTP_WORDS[status] || (status >= 500 ? 'had a server error' : 'answered with an error');
-}
-
-// The human part of a JSON error body: Google's { error: { message } },
-// GitHub's { message }, the Worker's and this API's { error }. Null if none.
-function messageFromJson(text){
-  try{
-    const o = JSON.parse(text);
-    if(o && typeof o === 'object'){
-      if(o.error && typeof o.error === 'object' && typeof o.error.message === 'string') return o.error.message;
-      if(typeof o.message === 'string') return o.message;
-      if(typeof o.error === 'string') return o.error;
-    }
-  } catch(e){}
-  return null;
-}
-
-function friendlyApiMessage(raw){
-  let s = String(raw || '').trim();
-  if(s.startsWith('{')){
-    const whole = messageFromJson(s);
-    if(whole) s = whole;
-  }
-  // "HTTP 403 {…}" up to the end of that reason (the next "; " or the end).
-  s = s.replace(/HTTP (\d{3})\s*(\{[\s\S]*?\})(?=\s*(?:;\s|$))/g, (m, status, json) => {
-    const inner = messageFromJson(json);
-    return `${httpWords(+status)} (${status})` + (inner ? ` — ${inner}` : '');
-  });
-  // A bare "HTTP 500" (no message from the server) needs a subject.
-  const bare = /^HTTP \d{3}$/.test(s);
-  s = s.replace(/\bHTTP (\d{3})\b/g, (m, status) => `${httpWords(+status)} (${status})`);
-  s = s.replace(/timed out after (\d+)ms/g, (m, ms) => `timed out after ${Math.round(ms / 100) / 10} s`);
-  return bare ? `Cloud Run ${s}` : s;
-}
 
 // escapeHtml (tools/control-center.html)
 function escapeHtml(s){
@@ -887,40 +763,6 @@ function toast(kind, text){
 function store(key, value){ try{ localStorage.setItem(key, value); }catch(e){} }
 function recall(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
 
-// The token's payload is only read for display (the day, and whether it has
-// run out). The API decides what a token may do.
-function scorerDecode(token){
-  try{
-    const part = String(token).split('.')[0].replace(/-/g, '+').replace(/_/g, '/');
-    const json = JSON.parse(atob(part + '='.repeat((4 - part.length % 4) % 4)));
-    return json && json.scope === 'score-desk' && typeof json.day === 'string' && typeof json.exp === 'number' ? json : null;
-  }catch(e){ return null; }
-}
-
-function scorerLoadToken(){
-  // A link carries the token as ?scorer=…: keep it (a newer link replaces an
-  // older one), then drop it from the address bar so it does not show in
-  // screenshots or reshared links.
-  const params = new URLSearchParams(location.search);
-  const fromLink = params.get('scorer');
-  if(fromLink){
-    store(SCORER_STORAGE_KEY, JSON.stringify({ token: fromLink }));
-    params.delete('scorer');
-    const rest = params.toString();
-    try{ history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash); }catch(e){}
-  }
-  try{
-    const stored = JSON.parse(recall(SCORER_STORAGE_KEY) || 'null');
-    return stored && stored.token ? stored.token : null;
-  }catch(e){ return null; }
-}
-
-async function scorerFetchJson(url){
-  const res = await fetch(url, { cache: 'no-store' });
-  if(!res.ok) throw new Error(`replied ${res.status}`);
-  return res.json();
-}
-
 // ---- state ----
 let token = null;          // the stored scorer token
 let info = null;           // its decoded payload { day, exp }
@@ -936,49 +778,13 @@ let loadMessageShown = false; // the message line currently holds loadError
 let filters = { q: '', court: '', hideScored: true };
 let scoreDialog = null;
 let liveChannel = null;
-let pollTimer = null;
+let poller = null;
 let expiryTimer = null;
 
 // ---- data ----
 
-async function fetchDaySnapshotFromPages(dayKey){
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  const url = FIXTURE
-    ? `/_fixtures/${EVENT_KEY}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
-    : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${EVENT_KEY}/data/${dayKey}.json?t=${Date.now()}`;
-  try {
-    const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
-    if(!res.ok){
-      // Not published yet shows up as a plain 404: carry the status through.
-      const err = new Error(`HTTP ${res.status}`);
-      err.status = res.status;
-      throw err;
-    }
-    return await res.json();
-  } catch(err){
-    if(err.name === 'AbortError') throw new Error('timed out');
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Prefers the pushed snapshot while the live channel is connected; otherwise
-// (or when it is time for the periodic GitHub check) fetches from GitHub Pages
-// and keeps whichever of the two copies is newer.
-async function fetchDaySnapshot(dayKey){
-  const pushed = liveChannel.cached(EVENT_KEY, dayKey);
-  if(pushed) return pushed;
-  let fetched;
-  try {
-    fetched = await fetchDaySnapshotFromPages(dayKey);
-  } catch(err){
-    const pushedAnyway = liveChannel.newer(EVENT_KEY, dayKey, null);
-    if(pushedAnyway) return pushedAnyway;
-    throw err;
-  }
-  return liveChannel.newer(EVENT_KEY, dayKey, fetched);
+function fetchDaySnapshot(dayKey){
+  return Snapshot.fetchDaySnapshot(EVENT_KEY, dayKey, { liveChannel, fixture: FIXTURE });
 }
 
 async function loadData(){
@@ -1278,14 +1084,14 @@ function scorerStage(rest){
 
 function stopEverything(text){
   if(scoreDialog) scoreDialog.close();
-  clearInterval(pollTimer); clearInterval(expiryTimer);
+  if(poller) poller.stop(); clearInterval(expiryTimer);
   if(liveChannel) liveChannel.pause();
   pickerEl.textContent = ''; filtersEl.textContent = ''; countEl.textContent = ''; listEl.textContent = '';
   say(text);
 }
 
 async function scorerStart(){
-  token = scorerLoadToken();
+  token = scorerLoadToken(EVENT_KEY);
   info = token ? scorerDecode(token) : null;
   if(!info){
     say('Ask the operator for a scorer link.');
@@ -1297,13 +1103,10 @@ async function scorerStart(){
   }
 
   try{
-    const configUrl = FIXTURE
-      ? `/_fixtures/config.json?t=${Date.now()}`
-      : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
-    const config = await scorerFetchJson(configUrl);
+    const config = await loadRegistry({ fixture: FIXTURE });
     entry = config.events && config.events[EVENT_KEY];
   }catch(err){
-    say(`Could not load this event (${err.message}). Check this device’s connection and reload.`);
+    say(`Could not load this event (${err.message.replace(/^HTTP (\d+)$/, 'replied $1')}). Check this device’s connection and reload.`);
     return;
   }
   if(!entry || entry.scoreEntry !== 'links'){
@@ -1329,6 +1132,7 @@ async function scorerStart(){
 
   scoreDialog = createDialog();
   liveChannel = createLiveChannel({
+    baseUrl: LIVE_BASE_URL,
     enabled: !!LIVE_BASE_URL && !FIXTURE,
     onSnapshot: () => loadData(),
   });
@@ -1340,18 +1144,8 @@ async function scorerStart(){
   await loadData();
 
   // Poll while visible; pause the channel and the poll while the tab or app is backgrounded.
-  pollTimer = setInterval(loadData, POLL_INTERVAL_MS);
-  document.addEventListener('visibilitychange', () => {
-    if(document.hidden){
-      clearInterval(pollTimer);
-      liveChannel.pause();
-    } else {
-      liveChannel.resume();
-      loadData();
-      clearInterval(pollTimer);
-      pollTimer = setInterval(loadData, POLL_INTERVAL_MS);
-    }
-  });
+  poller = createPoller({ onTick: loadData, liveChannel });
+  poller.start();
 
   // The link stops working at exp: say so instead of failing every save.
   expiryTimer = setInterval(() => {

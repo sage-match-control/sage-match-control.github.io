@@ -2915,6 +2915,14 @@ import * as Progress from '/lib/v1/domain/progress.js';
 import * as Teams from '/lib/v1/domain/teams.js';
 import * as Awards from '/lib/v1/domain/awards.js';
 
+// The engine's data layer: constants, the registry, the snapshot and its poll, the live channel, readable API errors.
+import { CLOUD_RUN_BASE_URL, ATTENDANCE_POLL_MS, fixtureName } from '/lib/v1/platform.js';
+import { loadRegistry, eventConfigFrom } from '/lib/v1/data/registry.js';
+import { createPoller } from '/lib/v1/data/snapshot.js';
+import { createLiveChannel } from '/lib/v1/data/live-channel.js';
+import { friendlyApiMessage } from '/lib/v1/data/api.js';
+import * as Snapshot from '/lib/v1/data/snapshot.js';
+
 // ============================================================================
 // CONFIGURATION — platform-wide constants only. Everything event-specific
 // (days, facilities, categories, clubs) is resolved at runtime from
@@ -2922,10 +2930,6 @@ import * as Awards from '/lib/v1/domain/awards.js';
 // This is the whole point of the console (sage-docs/docs/specs/.../match-control-console-spec.md):
 // one file, no per-event edits, ever.
 // ============================================================================
-
-// The console is a single file that can hardcode this (spec §6) — unlike
-// per-event pages, which take it as a {{CLOUD_RUN_BASE_URL}} template token.
-const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
 
 // ORGANIZER PAGE: always live, regardless of any day's isLive config or schedule: this page is
 // only ever used by operators, so there is no reason to hide scores or the Live Matches/Standings
@@ -2936,40 +2940,10 @@ function consoleDayIsLive(_day){
   return true;
 }
 
-// ---- Event registry (event-data/config/events.json) ------------------------
-// One shared repo, one folder per event. GitHub Pages must be enabled on
-// event-data (Settings -> Pages -> Deploy from branch -> GHPAGES_BRANCH)
-// with a .nojekyll file at its root so GitHub serves JSON as plain static
-// files. Pages caches every response for ~10 minutes with no way to force
-// an early refresh — the cache-busting query param below is what keeps
-// fetches actually fresh instead of stuck on a stale copy.
-const GHPAGES_OWNER  = 'sage-match-control';
-const GHPAGES_REPO   = 'event-data';
-const GHPAGES_BRANCH = 'main'; // not part of any URL below — just a reminder of which branch Pages needs to be set to deploy from in repo Settings
-// Local testing only: on localhost, ?fixture=<name> loads /_fixtures/config.json
-// as the registry and /_fixtures/<eventKey>/<name>.json as the snapshot.
-// _fixtures/ is never published (Jekyll skips "_" folders), and the hostname
-// check keeps this inert on the live site.
-const FIXTURE = ['localhost', '127.0.0.1'].includes(location.hostname)
-  ? new URLSearchParams(location.search).get('fixture')
-  : null;
-const configUrlFor = () => FIXTURE
-  ? `/_fixtures/config.json?t=${Date.now()}`
-  : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/config/events.json?t=${Date.now()}`;
-const snapshotUrlFor = (eventKey, dayKey) => FIXTURE
-  ? `/_fixtures/${eventKey}/${encodeURIComponent(FIXTURE)}.json?t=${Date.now()}`
-  : `https://${GHPAGES_OWNER}.github.io/${GHPAGES_REPO}/${eventKey}/data/${dayKey}.json?t=${Date.now()}`;
-
-// ---- Network & polling timing --------------------------------------------
-// How long to wait on a fetch before giving up (venue wifi at a live event
-// can hang rather than fail outright).
-const FETCH_TIMEOUT_MS = 8000;
-// How often to re-check GitHub Pages while a tab is open and visible.
-// Paused automatically while the tab/app is backgrounded. Apps Script syncs
-// within a few seconds of an edit (SYNC_SETTLE_MS, SYNC_MIN_GAP_MS) and the
-// live channel pushes it; while its socket is open this poll re-renders from
-// the pushed snapshot and only checks GitHub every LIVE_SAFETY_POLL_MS.
-const POLL_INTERVAL_MS = 10000;
+// ---- Fixtures ----------------------------------------------------------------
+// Local testing only: on localhost, ?fixture=<name> loads /_fixtures/config.json as the registry and
+// /_fixtures/<eventKey>/<name>.json as the snapshot (lib/v1/platform.js). Inert on the live site.
+const FIXTURE = fixtureName();
 
 // ---- Browser storage keys -------------------------------------------------
 // One session for the whole console, not namespaced per event (spec §4) —
@@ -2984,92 +2958,8 @@ const AUTH_TOKEN_STORAGE_KEY = 'sage.authToken';
 // END CONFIGURATION — implementation follows below
 // ============================================================================
 
-// ==== LIVE CHANNEL — identical in every page that uses it; see ====
-// ==== sage-docs/docs/specs/.../durable-object-push-spec.md §7   ====
-// Receives each new snapshot the moment Cloud Run publishes it, over one
-// WebSocket per page. GitHub Pages polling stays as the fallback: whenever
-// the socket isn't open, fetchDaySnapshot polls GitHub exactly as before.
-const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev'; // e.g. 'wss://sage-live.<subdomain>.workers.dev'; '' disables live push
-const LIVE_PING_MS = 50000;          // under Cloudflare's idle-connection timeout
-const LIVE_PONG_TIMEOUT_MS = 10000;  // no pong by then: treat the socket as dead
-const LIVE_SAFETY_POLL_MS = 60000;   // while connected, still check GitHub this often
-const LIVE_RETRY_MAX_MS = 30000;
-
-function createLiveChannel({ enabled, onSnapshot }){
-  let ws = null, key = null, latest = null, paused = false;
-  let retries = 0, retryTimer = null, pingTimer = null, pongTimer = null;
-  let lastSafetyPoll = 0;
-
-  const stamp = s => Date.parse((s && (s.publishedAt || s.generatedAt)) || 0) || 0;
-
-  function clearTimers(){
-    clearTimeout(retryTimer); clearInterval(pingTimer); clearTimeout(pongTimer);
-    retryTimer = pingTimer = pongTimer = null;
-  }
-  function close(){
-    clearTimers();
-    if(ws){ ws.onclose = null; try { ws.close(); } catch(e){} ws = null; }
-  }
-  function scheduleRetry(){
-    if(paused || !key) return;
-    const delay = Math.min(LIVE_RETRY_MAX_MS, 1000 * 2 ** retries) + Math.random() * 1000;
-    retries++;
-    retryTimer = setTimeout(open, delay);
-  }
-  function open(){
-    close();
-    if(!enabled || paused || !key) return;
-    const myKey = key;
-    ws = new WebSocket(`${LIVE_BASE_URL}/live/${myKey.event}/${myKey.day}`);
-    ws.onopen = () => {
-      retries = 0;
-      pingTimer = setInterval(() => {
-        try { ws.send('ping'); } catch(e){}
-        clearTimeout(pongTimer);
-        pongTimer = setTimeout(() => { try { ws.close(); } catch(e){} }, LIVE_PONG_TIMEOUT_MS);
-      }, LIVE_PING_MS);
-    };
-    ws.onmessage = ev => {
-      clearTimeout(pongTimer);
-      if(ev.data === 'pong') return;
-      let msg; try { msg = JSON.parse(ev.data); } catch(e){ return; }
-      if(msg.type !== 'snapshot' || !msg.snapshot) return;
-      if(!key || key.event !== myKey.event || key.day !== myKey.day) return; // switched away
-      if(latest && latest.key === `${myKey.event}/${myKey.day}` && msg.version <= latest.version) return;
-      latest = { key: `${myKey.event}/${myKey.day}`, version: msg.version, snapshot: msg.snapshot };
-      onSnapshot();
-    };
-    ws.onclose = () => { clearTimers(); ws = null; scheduleRetry(); };
-    ws.onerror = () => { /* onclose follows */ };
-  }
-
-  return {
-    // Point the channel at a day (or at nothing with null). Reconnects.
-    follow(event, day){
-      const next = event && day ? { event, day } : null;
-      if(next && key && next.event === key.event && next.day === key.day) return;
-      key = next; retries = 0; open();
-    },
-    pause(){ paused = true; close(); },
-    resume(){ paused = false; retries = 0; open(); },
-    isOpen(){ return !!ws && ws.readyState === WebSocket.OPEN; },
-    // What fetchDaySnapshot should return, or null to fetch from GitHub.
-    cached(event, day){
-      if(!this.isOpen() || !latest || latest.key !== `${event}/${day}`) return null;
-      if(Date.now() - lastSafetyPoll > LIVE_SAFETY_POLL_MS) return null; // time for a GitHub check
-      return latest.snapshot;
-    },
-    // Called with every snapshot fetched from GitHub: returns whichever of
-    // it and the pushed one is newer. Catches a push path that has quietly
-    // stopped while the socket stays open (e.g. Cloud Run's live publish failing).
-    newer(event, day, fetched){
-      lastSafetyPoll = Date.now();
-      if(!latest || latest.key !== `${event}/${day}`) return fetched;
-      return stamp(fetched) > stamp(latest.snapshot) ? fetched : latest.snapshot;
-    },
-  };
-}
-// ==== END LIVE CHANNEL ====
+// The live Worker's address (lib/v1/data/live-channel.js); '' turns push off for this page.
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
 // ==== ATTENDANCE CLIENT — identical in control-center.html and every attendance.html; see ====
 // ==== sage-docs/docs/specs/.../multi-event-attendance-spec.md §6.1                       ====
@@ -3079,7 +2969,6 @@ function createLiveChannel({ enabled, onSnapshot }){
 // nothing outside itself except what its host passes to createAttendanceView.
 // Every top-level name here starts with att / ATTENDANCE_ / attendance, or is
 // one of the names listed in the spec's table.
-const ATTENDANCE_POLL_MS = 10000;
 
 function attendanceCsvUrl(sheetId){
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&headers=1&sheet=ATTENDANCE`;
@@ -3524,7 +3413,8 @@ function createAttendanceView(opts){
 // ==== END ATTENDANCE CLIENT ====
 
 const liveChannel = createLiveChannel({
-  enabled: !!LIVE_BASE_URL && !(typeof FIXTURE !== 'undefined' && FIXTURE),
+  baseUrl: LIVE_BASE_URL,
+  enabled: !!LIVE_BASE_URL && !FIXTURE,
   onSnapshot: () => { loadLiveData(); renderOrganizerStatus(); },
 });
 
@@ -3564,50 +3454,8 @@ function dayModel(){
   };
 }
 
-// jsDelivr/GitHub can hang on a bad connection (likely at a live event on
-// venue wifi) rather than failing outright — cap every request so a stalled
-// fetch degrades into the normal retry UI instead of leaving "Loading live
-// schedule..." on screen forever. (FETCH_TIMEOUT_MS is set in the
-// CONFIGURATION block at the top of this script.)
-async function fetchDaySnapshotFromPages(dayKey){
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(snapshotUrlFor(CURRENT_EVENT_KEY, dayKey), { cache: 'no-store', signal: controller.signal });
-    if(!res.ok){
-      // Cloud Run hasn't published this day yet at all shows up here as a
-      // plain 404 from jsDelivr/GitHub — carry the status through so the
-      // caller can tell "not published yet" apart from a real failure.
-      const err = new Error(`HTTP ${res.status}`);
-      err.status = res.status;
-      throw err;
-    }
-    return await res.json();
-  } catch(err){
-    if(err.name === 'AbortError') throw new Error('timed out');
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Prefers the pushed snapshot while the live channel is connected; otherwise
-// (or when it is time for the periodic GitHub check) fetches from GitHub Pages
-// and keeps whichever of the two copies is newer.
-async function fetchDaySnapshot(dayKey){
-  const pushed = liveChannel.cached(CURRENT_EVENT_KEY, dayKey);
-  if(pushed) return pushed;
-  let fetched;
-  try {
-    fetched = await fetchDaySnapshotFromPages(dayKey);
-  } catch(err){
-    // GitHub has nothing yet (404 before the day's first archive) or can't be
-    // reached, but a pushed copy may exist.
-    const pushedAnyway = liveChannel.newer(CURRENT_EVENT_KEY, dayKey, null);
-    if(pushedAnyway) return pushedAnyway;
-    throw err;
-  }
-  return liveChannel.newer(CURRENT_EVENT_KEY, dayKey, fetched);
+function fetchDaySnapshot(dayKey){
+  return Snapshot.fetchDaySnapshot(CURRENT_EVENT_KEY, dayKey, { liveChannel, fixture: FIXTURE });
 }
 
 async function loadLiveData(){
@@ -8010,53 +7858,6 @@ function showResultRows(box, kind, title, rows){
   revealResultBox(box);
 }
 
-// ---- Readable API messages -------------------------------------------------
-// sage-tools-api's errors carry the upstream service's raw reply, e.g.
-//   Main: HTTP 403 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
-//   GitHub commit failed: HTTP 409 {"message":"is at abc but expected def","documentation_url":"…"}
-//   live Worker publish failed: HTTP 401 {"error":"unauthorized"}
-// These turn each "HTTP <status> <json>" into words plus the JSON's own message.
-const HTTP_WORDS = {
-  400: 'rejected the request', 401: 'refused the credentials', 403: 'refused access',
-  404: 'was not found', 409: 'reported a conflict', 422: 'rejected the data',
-  429: 'is rate-limiting requests'
-};
-function httpWords(status){
-  return HTTP_WORDS[status] || (status >= 500 ? 'had a server error' : 'answered with an error');
-}
-
-// The human part of a JSON error body: Google's { error: { message } },
-// GitHub's { message }, the Worker's and this API's { error }. Null if none.
-function messageFromJson(text){
-  try{
-    const o = JSON.parse(text);
-    if(o && typeof o === 'object'){
-      if(o.error && typeof o.error === 'object' && typeof o.error.message === 'string') return o.error.message;
-      if(typeof o.message === 'string') return o.message;
-      if(typeof o.error === 'string') return o.error;
-    }
-  } catch(e){}
-  return null;
-}
-
-function friendlyApiMessage(raw){
-  let s = String(raw || '').trim();
-  if(s.startsWith('{')){
-    const whole = messageFromJson(s);
-    if(whole) s = whole;
-  }
-  // "HTTP 403 {…}" up to the end of that reason (the next "; " or the end).
-  s = s.replace(/HTTP (\d{3})\s*(\{[\s\S]*?\})(?=\s*(?:;\s|$))/g, (m, status, json) => {
-    const inner = messageFromJson(json);
-    return `${httpWords(+status)} (${status})` + (inner ? ` — ${inner}` : '');
-  });
-  // A bare "HTTP 500" (no message from the server) needs a subject.
-  const bare = /^HTTP \d{3}$/.test(s);
-  s = s.replace(/\bHTTP (\d{3})\b/g, (m, status) => `${httpWords(+status)} (${status})`);
-  s = s.replace(/timed out after (\d+)ms/g, (m, ms) => `timed out after ${Math.round(ms / 100) / 10} s`);
-  return bare ? `Cloud Run ${s}` : s;
-}
-
 // ============================================================================
 // ATTENDANCE TAB — staff check-in for an event whose events.json entry carries
 // "attendance": "console" | "desks". The shared ATTENDANCE CLIENT block above
@@ -8566,9 +8367,10 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   clearResultBoxes();
   const rawEvent = EVENTS_REGISTRY.get(eventKey);
   CURRENT_EVENT_KEY = eventKey;
-  // type must be explicit and recognized — never inferred (spec §1/§2.1).
-  CURRENT_TYPE = rawEvent && (rawEvent.type === 'dual-meet' || rawEvent.type === 'standard' || rawEvent.type === 'team') ? rawEvent.type : null;
-  DISPLAY = (rawEvent && rawEvent.display) || {};
+  // type must be explicit and recognized — never inferred (spec §1/§2.1): eventConfigFrom gives null for anything else.
+  const eventConfig = eventConfigFrom({ events: Object.fromEntries(EVENTS_REGISTRY) }, eventKey);
+  CURRENT_TYPE = eventConfig ? eventConfig.type : null;
+  DISPLAY = eventConfig ? eventConfig.display : {};
 
   if(eventPickerEl) eventPickerEl.value = eventKey;
   if(eventTitleLineEl) eventTitleLineEl.textContent = rawEvent && rawEvent.title ? rawEvent.title : eventKey;
@@ -8609,9 +8411,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
     return;
   }
 
-  DAYS = Object.entries(rawEvent.days || {})
-    .map(([key, d]) => ({ key, label: d.label, date: d.date || null }))
-    .sort((a, b) => (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99'));
+  DAYS = eventConfig.days.map(d => ({ key: d.key, label: d.label, date: d.date || null }));
   renderDayPicker();
 
   if(DAYS.length === 0){
@@ -8647,9 +8447,7 @@ if(eventPickerEl){
 async function boot(){
   let raw;
   try {
-    const res = await fetch(configUrlFor(), { cache: 'no-store' });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    raw = await res.json();
+    raw = await loadRegistry({ fixture: FIXTURE });
   } catch(err){
     dayPromptEl.innerHTML = `Couldn't load the event registry (event-data/config/events.json): ${escapeHtml(err.message)}. <button id="retryBootBtn" class="retry-btn">Retry</button>`;
     dayPromptEl.style.display = '';
@@ -8701,17 +8499,7 @@ boot();
 // Pause the poll while the tab/app is backgrounded — no point spending
 // battery and mobile data re-fetching data nobody's looking at — and catch
 // up with an immediate refresh as soon as it's visible again.
-let pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
-document.addEventListener('visibilitychange', () => {
-  if(document.hidden){
-    clearInterval(pollTimer);
-    liveChannel.pause();
-  } else {
-    liveChannel.resume();
-    loadLiveData();
-    pollTimer = setInterval(loadLiveData, POLL_INTERVAL_MS);
-  }
-});
+createPoller({ onTick: loadLiveData, liveChannel }).start();
 </script>
 </body>
 </html>
