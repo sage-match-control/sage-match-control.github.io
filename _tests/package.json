@@ -1,0 +1,16 @@
+{
+  "name": "sage-site-tests",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tests for the site engine (lib/v1) and the comparison harness. Never published: Jekyll skips folders starting with an underscore.",
+  "scripts": {
+    "test": "node --test \"unit/**/*.test.mjs\"",
+    "compare": "node --test \"engine/**/*.test.mjs\"",
+    "verify": "npm test && npm run compare"
+  },
+  "devDependencies": {
+    "pixelmatch": "7.2.0",
+    "playwright": "1.63.0",
+    "pngjs": "7.0.0"
+  }
+}
