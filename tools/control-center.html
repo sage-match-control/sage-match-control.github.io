@@ -1997,7 +1997,7 @@ const scoreDialog = createScoreDialog({
     const title = `Match #${m.num}` + (m.court ? ` · ${m.court}` : '') + (m.time ? ` · ${m.time}` : '') +
       (FACILITIES.length > 1 ? ` · ${m.facility}` : '');
     const sub = team
-      ? [m.matchUp, pairLabel(m.t1, true)].filter(Boolean).join(' · ')
+      ? [m.matchUp, pairLabel(m.t1, true, MODEL.event.pairs || undefined)].filter(Boolean).join(' · ')
       : [Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES), roundLabel(Codes.parseCode(code, CURRENT_TYPE).rest) || 'Round Robin'].filter(Boolean).join(' · ');
     const side = (c, p1, p2) => ({
       name: team ? (teams.nameOf(sideOf(c)) || c) : c,
