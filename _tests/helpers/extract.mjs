@@ -1,7 +1,6 @@
 // Pull a function or a top-level `const NAME = …;` out of a page's text, and
-// replace a const's initializer. Used by the harness (settings of a finished
-// event's pages, §6.3) and by the characterization tests (the old function's
-// text from the baseline page, site-engine-spec §5.2).
+// replace a const's initializer. Used by the harness (the settings of the
+// baseline pages, §6.3) and by the no-copies test.
 //
 // It is a scanner, not a parser: it knows enough JavaScript to skip strings,
 // template literals (with nested `${}`), comments and regex literals while it

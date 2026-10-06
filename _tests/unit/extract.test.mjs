@@ -1,5 +1,5 @@
 // The extractor has to be right on the real pages, because the harness and the
-// characterization tests both trust it. Every column-0 function in every live
+// no-copies test both trust it. Every column-0 function in every live
 // page must come back whole.
 import test from 'node:test';
 import assert from 'node:assert/strict';

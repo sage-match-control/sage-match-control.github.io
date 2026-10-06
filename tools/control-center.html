@@ -1463,9 +1463,8 @@ let CURRENT_EVENT_CONFIG = null; // the selected event as eventConfigFrom reads 
 // The selected day, or null before one is picked.
 function currentDay(){ return currentDayIndex !== null ? DAYS[currentDayIndex] : null; }
 
-function dayModel(){ return MODEL; }
 
-function fetchDaySnapshot(dayKey){
+function loadDaySnapshot(dayKey){
   return Snapshot.fetchDaySnapshot(CURRENT_EVENT_KEY, dayKey, { liveChannel, fixture: FIXTURE });
 }
 
@@ -1491,7 +1490,7 @@ async function loadLiveData(){
   }
 
   try {
-    const snapshot = await fetchDaySnapshot(day.key);
+    const snapshot = await loadDaySnapshot(day.key);
     if(currentDayIndex !== dayIndexAtStart) return false; // superseded by a newer day switch — discard
 
     // Server-side (Cloud Run) already fetched each facility, so this is
@@ -1527,7 +1526,7 @@ async function loadLiveData(){
     finder.rebuildIndex(); // also re-renders the Match Finder panel (search results or intro)
     if(dayIsLive){
       renderStandings();
-      renderLiveMatches();
+      drawLiveMatches();
     }
     if(typeof renderAwards === 'function') renderAwards();
     scoreDialog.refresh();
@@ -1598,36 +1597,16 @@ function revealLiveTabsAfterLoad(){
   showView('organizer');
 }
 
-function parseCode(code){ return Codes.parseCode(code, CURRENT_TYPE); }
-
-function splitCategory(category){ return Codes.splitCategory(category, DISPLAY); }
-
 // Tracks every category token that display config couldn't resolve, so the
 // console can show one visible warning instead of a silent "Other" bucket
 // (spec §2.4). Cleared and rebuilt at the top of every renderStandings pass.
 const UNRESOLVED_CATEGORIES = new Set();
-
-function categoryLabel(category){ return Codes.categoryLabel(category, DISPLAY, UNRESOLVED_CATEGORIES); }
-
-function clubLabel(clubCode){ return Codes.clubLabel(clubCode, DISPLAY); }
-
-function divisionLabel(code){ return Codes.divisionLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES); }
-
-function divisionEventLabel(code){ return Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES); }
 
 // Category display order: built once per render pass (see renderStandings)
 // from whichever category tokens are actually present, ordered by
 // DISPLAY.divisions x DISPLAY.events key order when display config exists,
 // else first-appearance order in the data (spec §2.1/§2.3 — DIVISION_ORDER/
 // EVENT_ORDER disappear entirely; JSON key order does this job instead).
-
-function standingsStageKey(teamCode){ return Codes.standingsStageKey(teamCode, CURRENT_TYPE); }
-
-function teamRosterFor(base){ return Awards.teamRosterFor(dayModel(), base); }
-
-function teamMedalist(side){ return Awards.teamMedalist(dayModel(), side); }
-
-function buildTeamPodium(){ return Awards.buildTeamPodium(dayModel()); }
 
 // A medalist's display name: the team name for a team event, otherwise the pair.
 function medalNameText(medalist){
@@ -1644,25 +1623,6 @@ function medalNamesHTML(medalist){
 // ---- Awards podium derivation (awards-podium-tab-spec §2) --------------
 // Everything below is a pure function over MATCHES/STANDINGS — no fetch, no
 // config, no new failure mode. See sage-docs/docs/specs/.../awards-podium-tab-spec.md.
-
-function matchCategoryOf(m){ return Awards.matchCategoryOf(m, CURRENT_TYPE); }
-function matchRestOf(m){ return Awards.matchRestOf(m, CURRENT_TYPE); }
-
-function resolveDecisiveMatch(category, keyword){ return Awards.resolveDecisiveMatch(dayModel(), category, keyword); }
-
-function medalistFromTeam(team){ return Awards.medalistFromTeam(dayModel(), team); }
-
-function categoryBronzeIsByeDecided(category){ return Awards.categoryBronzeIsByeDecided(dayModel(), category); }
-
-function standingsBronzeWalkover(category){ return Awards.standingsBronzeWalkover(dayModel(), category); }
-
-function standingsTop3ForCategory(category){ return Awards.standingsTop3ForCategory(dayModel(), category); }
-
-function categoryRoundRobinDone(category){ return Awards.categoryRoundRobinDone(dayModel(), category); }
-
-function buildPodiums(){ return Awards.buildPodiums(dayModel()); }
-
-function computeOverallChampion(){ return Awards.computeOverallChampion(dayModel()); }
 
 // Shows/hides a banner naming any category token that display config
 // couldn't resolve to a division+event label (spec §2.4) — replaces the
@@ -1818,7 +1778,7 @@ function showView(view){
   if(attConsoleResultsEl) attConsoleResultsEl.style.display = view === 'attendance' ? '' : 'none';
   if(view === 'attendance' && !attConsoleView) attConsoleMount();
   if(view === 'standings') renderStandings();
-  if(view === 'live') renderLiveMatches();
+  if(view === 'live') drawLiveMatches();
   if(view === 'awards') renderAwards();
   if(view === 'organizer' && typeof updateOrganizerDayLabel === 'function'){
     updateOrganizerDayLabel();
@@ -1998,7 +1958,7 @@ function ticketDecorate(m){
   const attrs = scoreAttrs(m);
   return attrs ? { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) } : {};
 }
-function ticketHTML(m, teamCode, isNext){
+function consoleTicketHTML(m, teamCode, isNext){
   return Ticket.ticketHTML(m, MODEL, {
     teamCode, isNext,
     decorate: ticketDecorate,
@@ -2038,7 +1998,7 @@ const scoreDialog = createScoreDialog({
       (FACILITIES.length > 1 ? ` · ${m.facility}` : '');
     const sub = team
       ? [m.matchUp, pairLabel(m.t1, true)].filter(Boolean).join(' · ')
-      : [divisionEventLabel(code), roundLabel(parseCode(code).rest) || 'Round Robin'].filter(Boolean).join(' · ');
+      : [Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES), roundLabel(Codes.parseCode(code, CURRENT_TYPE).rest) || 'Round Robin'].filter(Boolean).join(' · ');
     const side = (c, p1, p2) => ({
       name: team ? (teams.nameOf(sideOf(c)) || c) : c,
       code: c,
@@ -2092,16 +2052,12 @@ function openScoreFromFinder(facility, num){
 // ---- Facility progress (sage-docs/docs/specs/.../facility-progress-spec.md) ----
 // Done / left / estimated finish per facility, computed from the matches
 // already loaded — no fetch. Shown twice: a card per facility on Live Matches
-// (drawn by renderLiveMatches through its facilityExtras hook) and one line per
+// (drawn by drawLiveMatches through its facilityExtras hook) and one line per
 // facility in Mission Control's sync status (facilityStatusProgressHTML,
 // called by renderOrganizerStatus). Both run on every poll. The estimate is
 // the operators' own formula — (matches left + blank slots left) × slot
 // length ÷ courts — floored at the busiest court's own queue.
 const facilityProgressEl = document.getElementById('facilityProgress');
-
-function eventDayNowMinutes(){ return Progress.eventDayNowMinutes(currentDay(), Date.now()); }
-
-function eventDayMinutesFromISO(iso){ return Progress.eventDayMinutesFromISO(currentDay(), iso); }
 
 // Actual end. The snapshot answers this itself: SyncService stamps
 // facilities[].completedAt the first round a facility shows every match
@@ -2125,7 +2081,7 @@ function facilityEndKey(name){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   return `${CURRENT_EVENT_KEY}|${day ? day.key : '?'}|${name}`;
 }
-function facilityActualEnd(name, p, syncedAt, completedAt){
+function resolveFacilityEnd(name, p, syncedAt, completedAt){
   const key = facilityEndKey(name);
   const r = Progress.facilityActualEnd(p, syncedAt, completedAt, loadFacilityEnds()[key]);
   rememberFacilityEnd(key, r.keep);
@@ -2138,9 +2094,7 @@ function rememberFacilityEnd(key, keep){
   saveFacilityEnds(ends);
 }
 
-function facilityDataIsStale(name){ return Progress.facilityDataIsStale(LAST_SNAPSHOT, name, Date.now(), STALE_WARNING_MS); }
-
-function facilityProgressFor(name){
+function progressForFacility(name){
   const info = Progress.facilityProgressFor(name, {
     matchesByFacility: new Map(MATCHES_BY_FACILITY.map(f => [f.name, f.matches])),
     snapshot: LAST_SNAPSHOT, day: currentDay(), now: Date.now(),
@@ -2152,12 +2106,10 @@ function facilityProgressFor(name){
   return rest;
 }
 
-function facilityFinishParts(p, isEventDay, actualEnd){ return Progress.facilityFinishParts(p, isEventDay, actualEnd, currentDay()); }
-
 function facilityProgressCardHTML(name, info){
   const { p, isEventDay, stale, syncedAt, actualEnd } = info;
   const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
-  const { finish, sub } = facilityFinishParts(p, isEventDay, actualEnd);
+  const { finish, sub } = Progress.facilityFinishParts(p, isEventDay, actualEnd, currentDay());
   const subs = [];
   if(sub) subs.push(sub);
   if(stale) subs.push(`<span class="fp-behind">Data from ${relativeTimeFromNow(syncedAt)} &mdash; estimate reads late until this sheet syncs again</span>`);
@@ -2183,9 +2135,9 @@ function facilityProgressCardHTML(name, info){
 // Mission Control: the second line inside a facility's sync-status row, or ''
 // when there's nothing to show (spec §2.2).
 function facilityStatusProgressHTML(name){
-  const info = facilityProgressFor(name);
+  const info = progressForFacility(name);
   if(!info || info.p.total === 0) return '';
-  const { finish } = facilityFinishParts(info.p, info.isEventDay, info.actualEnd);
+  const { finish } = Progress.facilityFinishParts(info.p, info.isEventDay, info.actualEnd, currentDay());
   const staleText = info.stale ? ' &middot; <span class="fp-behind">stale &mdash; may read late</span>' : '';
   return `<span class="org-status-progress">${info.p.done} / ${info.p.total} done &middot; ${finish}${staleText}</span>`;
 }
@@ -2194,12 +2146,12 @@ function facilityStatusProgressHTML(name){
 // The board is lib/v1/views/live-matches.js: one table per facility, a row per court, the courts
 // taken from the facility's own matches. Control Center adds the facility progress cards
 // (facilityExtras) and a team event's own rows (liveRow).
-function renderLiveMatches(){
+function drawLiveMatches(){
   const team = CURRENT_TYPE === 'team';
   Live.renderLiveMatches(MODEL, {
     boardEl: liveBoardEl, metaEl: liveBoardMetaEl,
     extrasEl: facilityProgressEl,
-    facilityExtras: name => facilityProgressCardHTML(name, facilityProgressFor(name)),
+    facilityExtras: name => facilityProgressCardHTML(name, progressForFacility(name)),
     liveRow: team ? teams.liveRow : undefined,
     emptyMatchupHTML: team ? '<div class="live-matchup">&nbsp;</div>' : '',
   });
@@ -2216,21 +2168,21 @@ function matchByNumberHTML(n){
     return `<div class="results-head"><h2>Match #${n}</h2></div>
       ${mu ? teams.matchupCard(mu, { onlyMatch: n, interactive: true }) : ''}`;
   }
-  const label = divisionLabel(nonByeCode(m));
+  const label = Codes.divisionLabel(nonByeCode(m), CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES);
   return `<div class="results-head">
       <h2>Match #${n}</h2>
       ${label ? `<span class="division-tag">${label}</span>` : ''}
     </div>
-    ${ticketHTML(m, null, false)}`;
+    ${consoleTicketHTML(m, null, false)}`;
 }
 
 finder.renderIntro();
 
 // ---------- Awards tab (podium finishers + image export) ----------------
 // Read-only, derived tab — no fetch, no config, no auth. See
-// sage-docs/docs/specs/.../awards-podium-tab-spec.md. buildPodiums() (defined above, next to
-// the Standings render functions it shares helpers with) does all the
-// derivation; everything here is presentation + Canvas 2D export.
+// sage-docs/docs/specs/.../awards-podium-tab-spec.md. buildPodiums
+// (lib/v1/domain/awards.js) does all the derivation; everything here is
+// presentation + Canvas 2D export.
 const awardsSummaryBarEl = document.getElementById('awardsSummaryBar');
 const awardsGridEl = document.getElementById('awardsGrid');
 const awardsChampionBannerEl = document.getElementById('awardsChampionBanner');
@@ -2272,14 +2224,14 @@ function medalRowHTML(rankEmoji, rankClass, medalist){
 function awardsCardHTML(p){
   if(p.warning){
     return `<div class="award-card">
-      <div class="award-card-head">${escapeHtml(categoryLabel(p.category))}</div>
+      <div class="award-card-head">${escapeHtml(Codes.categoryLabel(p.category, DISPLAY, UNRESOLVED_CATEGORIES))}</div>
       <div class="award-warning">${escapeHtml(p.warning)}</div>
       <button type="button" class="awards-export-btn" disabled>Export image</button>
     </div>`;
   }
   return `<div class="award-card">
     <div class="award-card-head">
-      ${escapeHtml(categoryLabel(p.category))}
+      ${escapeHtml(Codes.categoryLabel(p.category, DISPLAY, UNRESOLVED_CATEGORIES))}
       ${p.source === 'standings' ? '<span class="award-chip by-standings">By standings</span>' : ''}
     </div>
     ${medalRowHTML('\u{1F947}', 'gold', p.gold)}
@@ -2291,9 +2243,9 @@ function awardsCardHTML(p){
 
 function renderAwards(){
   if(!awardsGridEl || !awardsSummaryBarEl) return;
-  const podiums = CURRENT_TYPE === 'team' ? [buildTeamPodium()] : buildPodiums();
+  const podiums = CURRENT_TYPE === 'team' ? [Awards.buildTeamPodium(MODEL)] : Awards.buildPodiums(MODEL);
 
-  if(awardsChampionBannerEl) awardsChampionBannerEl.innerHTML = overallChampionHTML(computeOverallChampion());
+  if(awardsChampionBannerEl) awardsChampionBannerEl.innerHTML = overallChampionHTML(Awards.computeOverallChampion(MODEL));
 
   if(podiums.length === 0){
     awardsSummaryBarEl.innerHTML = '';
@@ -2513,7 +2465,7 @@ async function drawPodiumCard(ctx, w, h, podium){
   y += 68;
   ctx.fillStyle = c.paper;
   ctx.font = '400 54px "Archivo Black"';
-  const catLines = wrapCanvasText(ctx, categoryLabel(podium.category).toUpperCase(), w - 120).slice(0, 2);
+  const catLines = wrapCanvasText(ctx, Codes.categoryLabel(podium.category, DISPLAY, UNRESOLVED_CATEGORIES).toUpperCase(), w - 120).slice(0, 2);
   catLines.forEach((line, i) => { ctx.fillText(line, w / 2, y + i * 60); });
   y += catLines.length > 1 ? 60 * 2 : 60;
   if(podium.source === 'standings'){
@@ -2648,7 +2600,7 @@ function renderWholeTournamentCard(ctx, x, y, cellW, p, draw){
   let cy = y + pad;
 
   ctx.font = '700 24px "Barlow Condensed"';
-  const catLines = wrapCanvasText(ctx, categoryLabel(p.category), contentW);
+  const catLines = wrapCanvasText(ctx, Codes.categoryLabel(p.category, DISPLAY, UNRESOLVED_CATEGORIES), contentW);
   catLines.forEach(line => {
     cy += 26;
     if(draw){ ctx.fillStyle = c.paper; ctx.font = '700 24px "Barlow Condensed"'; ctx.fillText(line, x + pad, cy); }
@@ -2775,7 +2727,7 @@ function renderChampionBand(ctx, x, y, bandW, oc, draw){
 // every card wraps to fit its content rather than ever being truncated.
 function renderWholeTournamentSheet(ctx, w, podiums, draw, sageMark){
   const c = AWARDS_EXPORT_COLORS;
-  const overallChampion = computeOverallChampion();
+  const overallChampion = Awards.computeOverallChampion(MODEL);
 
   if(draw) ctx.textAlign = 'center';
   const markW = 66, markH = 66; // logo.png is square
@@ -2898,8 +2850,6 @@ const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgResultBox = document.getElementById('orgResultBox');
 const organizerDayLabelEl = document.getElementById('organizerDayLabel');
 
-function earliestScheduleMinutes(){ return GoLive.earliestScheduleMinutes(LAST_SNAPSHOT); }
-
 // Describes what "auto" currently resolves to, for display only — the
 // console's own tabs ignore this entirely (consoleDayIsLive above always
 // returns true). Mirrors the real gating logic index.html uses, so this
@@ -2907,7 +2857,7 @@ function earliestScheduleMinutes(){ return GoLive.earliestScheduleMinutes(LAST_S
 function describeAutoGoLive(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day) return 'Auto';
-  const earliestMin = earliestScheduleMinutes();
+  const earliestMin = GoLive.earliestScheduleMinutes(LAST_SNAPSHOT);
   if(earliestMin === null || !day.date){
     return 'Auto — not live yet (no scheduled match times synced for this day)';
   }
@@ -3879,7 +3829,7 @@ function attConsoleMount(){
     facilities: FACILITIES,
     type: CURRENT_TYPE,
     teamName: code => (CURRENT_TYPE === 'team' ? teams.nameOf(code) : null),
-    categoryLabel: code => categoryLabel(code),
+    categoryLabel: code => Codes.categoryLabel(code, DISPLAY, UNRESOLVED_CATEGORIES),
     notify: (kind, text) => showToast(kind, text, 'attendance'),
     onData: attConsoleOnData,
     showWithdrawn: false,
@@ -3926,7 +3876,7 @@ function attConsoleRenderExtras(){
     });
     sameNameSameCategory(f.people).forEach(p => {
       const repeated = p.categories.find((c, i) => p.categories.indexOf(c) !== i);
-      const label = CURRENT_TYPE === 'team' ? repeated : categoryLabel(repeated);
+      const label = CURRENT_TYPE === 'team' ? repeated : Codes.categoryLabel(repeated, DISPLAY, UNRESOLVED_CATEGORIES);
       items.push(`${p.player} is listed twice in ${label}${where}: ${p.teams.join(', ')}. ${ATT_CONSOLE_FIX_HINT}`);
     });
     withdrawn += f.people.filter(p => p.withdrawn).length;

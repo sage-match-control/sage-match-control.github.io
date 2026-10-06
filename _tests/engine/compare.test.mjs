@@ -64,8 +64,9 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
         const r = compareResults(base, branch);
         const errors = [...base.errors, ...branch.errors];
         if (errors.some(e => !TRANSIENT.test(e))) break;               // a real page error
-        // A page that reports its own load timing out was starved (the machine was busy), not different.
-        const stalled = [base, branch].some(x => /(timed out)/.test(x.text));
+        // A page that reports its own load timing out, or is caught in the middle of a poll's reload, was
+        // starved (the machine was busy, so the case ran long), not different.
+        const stalled = [base, branch].some(x => /\(timed out\)|Loading live schedule/.test(x.text));
         if (!errors.length && !stalled && ((r.pixelsSame && r.textSame) || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry; a real difference is still there on the reruns
         if (stalled) await new Promise(r => setTimeout(r, 2000));
         [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
