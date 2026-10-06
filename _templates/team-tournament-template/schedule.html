@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{EVENT_TITLE}} — Schedule</title>
+<meta name="description" content="Live court-by-court schedule board for {{EVENT_TITLE}}.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{EVENT_TITLE}} — Schedule">
+<meta property="og:description" content="Live court-by-court schedule board, updated automatically as matches are assigned.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+<link rel="stylesheet" href="/lib/v1/css/schedule-board.css">
+<style>
+  /* Theme lifted from the SAGE tools (scoresheet-generator / tournament-calculator):
+     off-white paper, navy structure, SAGE green accent, Archivo Black display,
+     Barlow Condensed labels, Inter body. */
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+  }
+                                                                                                                /* ---------- NARROW SCREENS ----------
+     This board is built for a venue wall display, but Mission Control's
+     launcher means it also gets opened on a phone or tablet, and there it was
+     unusable for a structural reason: .bezel was one non-wrapping flex row,
+     so its min-content width (~966px for this event) became the *document*
+     width on any narrower device. The court filter, legend, PDF button and
+     collapse chevron all ended up past the right edge — including the court
+     filter, which is exactly the control the narrow-screen story depends on
+     ("fewer courts means wider cells").
+
+     The wrap is unconditional rather than under a breakpoint: that width
+     depends on the event's title length, court count and category count, so
+     no single threshold is right for every event. Wrapping is a no-op
+     whenever the bar fits, so the wall display is unaffected.
+
+     Below, two tiers: <=980px tidies the wrapped bar into full-width rows,
+     and <=720px makes the phone-shaped changes. The grid stays
+     courts-as-columns and keeps scrolling horizontally at every size — that
+     is the identity of the board, and it is what the print path shares. */
+
+
+</style>
+</head>
+<body>
+
+<div class="bezel">
+  <img src="/assets/logo.png" alt="S.A.G.E. logo">
+  <div class="titles">
+    <p class="eyebrow">S.A.G.E. &middot; Match Control Experts</p>
+    <h1>{{EVENT_TITLE}}</h1>
+  </div>
+  <span class="meta" id="sub">Loading schedule&hellip;</span>
+  <div class="venuefilter" id="venuefilter" hidden></div>
+  <div class="courtfilter" id="courtfilter"></div>
+  <div class="legend" id="legend"></div>
+  <div class="legend-live"><span class="dot"></span>Live now</div>
+  <button class="bezel-export" id="exportBtn" type="button"
+          title="Print / save as PDF — splits across sheets automatically">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4.5 6V2.5h7V6M4.5 12H3V7h10v5h-1.5M4.5 10h7v3.5h-7z"
+            stroke="currentColor" stroke-width="1.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>PDF</span>
+  </button>
+  <button class="bezel-toggle" id="bezelToggle" type="button"
+          aria-expanded="true" aria-controls="courtfilter" title="Hide header details">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 10l5-5 5 5" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<div class="grid-wrap">
+  <div class="sched-grid" id="grid"></div>
+  <div class="board-msg" id="boardMsg" style="display:none;"></div>
+</div>
+
+<!-- Populated only when printing; hidden on screen. -->
+<div id="printRoot" aria-hidden="true"></div>
+
+<script type="module">
+// ============================================================================
+// SETTINGS — the only script in this page: the event, the one day this board shows, and the brackets'
+// colours. The rest of the board is lib/v1/apps/schedule-board.js. EVENT_KEY doubles as this event's folder in
+// the shared event-data repo; DAY_KEY must match one of that event's days in events.json. The court count is
+// not listed: the board derives it from the data.
+// ============================================================================
+import { mountScheduleBoard } from '/lib/v1/apps/schedule-board.js';
+
+const EVENT_KEY = '{{EVENT_KEY}}';
+const DAY_KEY = '{{SCHEDULE_DAY_KEY}}';
+
+// The live Worker's address: '' turns push off for this page, as a finished event's pages do
+// (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
+
+// A team event's colour key: one entry per bracket, keyed G<n> (G1 is Bracket 1), and one PO for every playoff
+// match. A team workbook's SCHEDULE tab is uncoloured, so these colours are ours to choose, not the organiser's.
+// EXAMPLE — replace with this event's own brackets.
+//
+// `short` is the chip label, `color` the hue that tints the whole cell. Cells apply the hue as a 40% tint over
+// white, so keep each hue dark enough that navy text stays readable on it (~6.9:1 on the darkest of these) —
+// go lighter and the names get hard to read. A bracket with no entry here still gets a "BR <n>" chip, in grey.
+const CAT_META = {
+  G1: { short:'BR 1',     color:'#1155CC' },
+  G2: { short:'BR 2',     color:'#B45F06' },
+  G3: { short:'BR 3',     color:'#741B47' },
+  G4: { short:'BR 4',     color:'#38761D' },
+  PO: { short:'PLAYOFFS', color:'#14263C' }
+};
+
+mountScheduleBoard({
+  eventKey: EVENT_KEY, dayKey: DAY_KEY, liveBaseUrl: LIVE_BASE_URL,
+  categoryColors: CAT_META, type: 'team',
+});
+</script>
+</body>
+</html>
