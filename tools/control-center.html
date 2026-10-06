@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/lib/v1/css/ticket.css">
 <link rel="stylesheet" href="/lib/v1/css/finder.css">
 <link rel="stylesheet" href="/lib/v1/css/live-matches.css">
+<link rel="stylesheet" href="/lib/v1/css/standings.css">
 <style>
   /* ============================ THEME ============================
      S.A.G.E. house palette — navy structure, green accent, off-white
@@ -397,36 +398,6 @@
     color:var(--muted);
   }
   .org-status-progress b{color:var(--ink); font-weight:600;}
-                                          /* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
-  .category-filter{
-    display:none; /* shown below the desktop-standings breakpoint (900px wide and 600px tall) */
-    background:var(--white);
-    border-radius:18px;
-    padding:18px 20px;
-    box-shadow:var(--card-shadow);
-    max-width:560px;
-    margin:0 auto 20px;
-  }
-  input.cat-filter-input{
-    flex:1;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:15px;
-    font-weight:600;
-    letter-spacing:.01em;
-    padding:12px 38px 12px 14px;
-    border-radius:10px;
-    border:2px solid rgba(20,27,44,.18);
-    background:var(--white);
-    color:var(--ink);
-    outline:none;
-    min-width:0;
-    width:100%;
-  }
-  input.cat-filter-input:focus{border-color:var(--court);}
-  input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
-  @media (max-width:899px), (max-height:599px){
-    .category-filter{ display:block; }
-  }
 
   /* ---------- ORGANIZER PANEL ---------- */
   .organizer-panel{
@@ -878,551 +849,18 @@
     .score-actions .score-btn{flex:1 1 auto;}
   }
 
-  /* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
-  .category-toggle-bar{
-    display:none; /* shown only at the desktop-standings breakpoint (900px wide and 600px tall) */
-  }
-  @media (min-width:900px) and (min-height:600px){
-    .category-toggle-bar{
-      display:flex;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-      max-width:920px;
-      margin:0 auto 18px;
-    }
-  }
-  .cat-toggle-label{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.1em;
-    color:var(--ink-soft);
-    margin-right:2px;
-  }
-  .cat-toggle-chip{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:12px;
-    font-weight:600;
-    padding:6px 14px;
-    border-radius:100px;
-    border:1px solid var(--line);
-    background:var(--white);
-    color:var(--court-line);
-    cursor:pointer;
-    transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
-  }
-  .cat-toggle-chip:hover{border-color:rgba(124,185,44,.6);}
-  .cat-toggle-chip.active{
-    background:var(--court);
-    border-color:var(--court);
-    color:var(--court-dark);
-  }
-  .cat-toggle-chip.hidden-cat{
-    opacity:.4;
-    text-decoration:line-through;
-  }
-  .cat-toggle-action{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    padding:6px 12px;
-    border-radius:100px;
-    border:1px solid var(--line);
-    background:transparent;
-    color:var(--ink-soft);
-    cursor:pointer;
-    margin-left:4px;
-  }
-  .cat-toggle-action:hover{border-color:var(--green-dark); color:var(--navy);}
+                              /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
 
-  /* ---------- STANDINGS BOARD ---------- */
-  /* Mobile/tablet: a single full-width column, one category card per row
-     (see renderStandings) — normal page scroll, no inner max-height/overflow
-     needed since there's no side-by-side club columns to cap anymore. */
-  .standings-board{
-    display:flex;
-    flex-direction:column;
-    gap:20px;
-    padding:4px 4px 16px;
-    align-items:stretch;
-  }
 
-  .standings-col{
-    background:var(--white);
-    border:1px solid var(--line);
-    border-radius:16px;
-    break-inside:avoid;
-  }
-  .standings-col-body{
-    padding:0 14px 14px;
-  }
-
-  .standings-col-head{
-    position:sticky;
-    top:0;
-    z-index:2;
-    text-align:center;
-    margin:0 0 14px;
-    padding:12px 14px 10px;
-    border-bottom:1px solid var(--line);
-    background:rgba(246,247,242,.94);
-    backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    border-radius:16px 16px 0 0;
-  }
-  .standings-col-head .cat-title{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:14px;
-    text-transform:uppercase;
-    letter-spacing:.01em;
-    color:var(--navy);
-  }
-  /* Symmetric padding keeps the title centred clear of the toggle. */
-  .standings-col-head.has-toggle{padding-left:64px; padding-right:64px;}
-  .bracket-cols-toggle{
-    position:absolute;
-    top:50%;
-    right:10px;
-    transform:translateY(-50%);
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    font-weight:700;
-    letter-spacing:.06em;
-    text-transform:uppercase;
-    padding:3px 9px;
-    border-radius:999px;
-    border:1px solid var(--line);
-    background:var(--white);
-    color:var(--navy);
-    cursor:pointer;
-  }
-  .bracket-cols-toggle:hover{border-color:var(--navy);}
-  .standings-col--stacked .rr-bracket-grid{grid-template-columns:1fr;}
-  /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
-  @media (max-width:899px), (max-height:599px){
-    .standings-col-head.has-toggle{padding-left:14px; padding-right:14px;}
-    .bracket-cols-toggle{display:none;}
-  }
-
-  /* ---------- CLUB SUMMARY & PER-CLUB STANDINGS (dual meet) ---------- */
-  /* Mobile/tablet: pinned to the top of the viewport while scrolling through
-     the (potentially long) list of category cards below, so the head-to-head
-     win count stays visible instead of scrolling out of view. Reset to a
-     normal in-flow element on desktop (see the desktop-standings media query) — the
-     grid there is compact enough that this isn't needed. */
-  .club-summary{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:clamp(10px,4vw,22px);
-    margin:0 0 22px;
-    position:sticky;
-    top:0;
-    z-index:5;
-    padding:10px 6px;
-    background:rgba(246,247,242,.94);
-    backdrop-filter:blur(6px);
-    -webkit-backdrop-filter:blur(6px);
-    border-radius:0 0 16px 16px;
-  }
-  @media (min-width:900px) and (min-height:600px){
-    .club-summary{
-      position:static;
-      padding:0;
-      background:none;
-      backdrop-filter:none;
-      -webkit-backdrop-filter:none;
-    }
-  }
-  /* Horizontal box: logo+name (left) beside the wins stat (right) — wider,
-     shorter, instead of stacking all four pieces in one tall column. */
-  .club-summary-item{
-    display:flex;
-    flex-direction:row;
-    align-items:center;
-    justify-content:center;
-    gap:12px;
-    padding:10px clamp(14px,4vw,28px);
-    border-radius:16px;
-    background:var(--white);
-    border:1px solid var(--line);
-    flex:1 1 0;
-    min-width:0;
-    max-width:280px;
-  }
-  .club-summary-item.leader{
-    border-color:var(--green-dark);
-    box-shadow:0 0 26px -8px rgba(92,143,31,.45);
-  }
-  .cs-identity{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:2px;
-    flex:0 0 auto;
-  }
-  .cs-identity .cs-name{
-    font-family:'Inter',sans-serif;
-    font-weight:700;
-    font-size:clamp(9.5px,2.6vw,11px);
-    color:var(--court-line);
-    text-align:center;
-    line-height:1.2;
-    max-width:100px;
-    display:-webkit-box;
-    -webkit-line-clamp:2;
-    -webkit-box-orient:vertical;
-    overflow:hidden;
-  }
-  .cs-stat{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    flex:0 0 auto;
-  }
-  .cs-stat .cs-wins{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:clamp(26px,8vw,38px);
-    line-height:1;
-    color:var(--green-dark);
-  }
-  .cs-stat .cs-label{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:9.5px;
-    text-transform:uppercase;
-    letter-spacing:.16em;
-    color:var(--ink-soft);
-  }
-  .club-summary-vs{
-    flex:0 0 auto;
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:clamp(14px,4vw,18px);
-    color:var(--cork);
-  }
-
-  /* Desktop: each club's bracket stacked inside a shared category column
-     (see .standings-col above); at the desktop breakpoint below, the two
-     clubs sit side by side instead and scroll as a unit. */
-  .category-clubs-row{ display:block; }
-  .club-subsection{ margin-bottom:18px; }
-  .club-subsection:last-child{ margin-bottom:0; }
-  /* Bronze/Final — see renderSharedStages — sit below the per-club columns,
-     spanning the full category-column width since they're one shared match
-     rather than each club's own bracket. */
-  .shared-stages{ margin-top:14px; }
-  .club-subhead{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:.1em;
-    color:var(--cork);
-    border-bottom:1px solid var(--line);
-    padding-bottom:5px;
-    margin-bottom:8px;
-  }
-  @media (min-width:900px) and (min-height:600px){
-    .category-clubs-row{
-      display:flex;
-      gap:12px;
-      max-height:62vh;
-      overflow-y:auto;
-    }
-    .category-clubs-row::-webkit-scrollbar{width:5px;}
-    .category-clubs-row::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
-    .club-subsection{
-      flex:1 1 0;
-      min-width:0;
-      margin-bottom:0;
-    }
-    .club-subhead{
-      position:sticky; top:0;
-      background:rgba(246,247,242,.94);
-      padding-top:2px;
-      z-index:1;
-    }
-  }
-
-  .stage-block{margin-bottom:16px;}
-  .stage-block:last-child{margin-bottom:0;}
-  .stage-caption{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.1em;
-    color:var(--ink-soft);
-    margin:0 0 6px;
-  }
-  .stage-banner{
-    background:var(--navy);
-    color:var(--white);
-    border-radius:9px 9px 0 0;
-    padding:6px 10px 5px;
-    text-align:center;
-  }
-  .stage-banner .stage-title{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:11.5px;
-    text-transform:uppercase;
-    letter-spacing:.04em;
-  }
-  /* Wraps .br-table so a wide pair column (full, untruncated names) scrolls
-     horizontally within its own card instead of forcing the whole page wide
-     or truncating names with an ellipsis — the box-shadow/radius that used
-     to live on .br-table itself moves here since the table inside is now
-     free to grow past 100% width. */
-  .br-table-wrap{
-    overflow-x:auto;
-    border-radius:10px;
-    box-shadow:var(--card-shadow);
-    margin-bottom:10px;
-  }
-  .stage-banner + .br-table-wrap{ border-radius:0 0 10px 10px; margin-top:0; }
-  .br-table-wrap:last-child{margin-bottom:0;}
-  .br-table{
-    width:100%;
-    border-collapse:collapse;
-    background:var(--white);
-  }
-  /* Vertical dividers (border-right) plus the existing row dividers
-     (border-bottom) turn this into a real grid — easier to scan Pair/W/L/Q
-     as columns at a glance instead of just a list of rows. */
-  .br-table th, .br-table td{
-    padding:6px 8px;
-    text-align:left;
-    font-size:11.5px;
-    font-family:'Barlow Condensed',sans-serif;
-    border-right:1px solid rgba(20,27,44,.12);
-  }
-  .br-table th:last-child, .br-table td:last-child{ border-right:none; }
-  .br-table th{
-    font-size:9px;
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    color:var(--muted);
-    border-bottom:1px solid rgba(20,27,44,.16);
-  }
-  /* Pair is the only column without an explicit width, so it gets all the
-     leftover space once the table's stretched to 100% of its (fixed-size,
-     same as the public event pages') column — same trade-off those pages
-     make, at the same column size, so it doesn't look any emptier here.
-     Q gets its own (wider) width since "0.6667" doesn't fit in the same
-     width as a plain W/L integer. */
-  .br-table th.num{width:26px; text-align:center;}
-  .br-table th.quo{width:54px; text-align:center;}
-  .br-table th.br-badge{width:22px; text-align:center;}
-  .br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.1); }
-  .br-table tr:last-child td{border-bottom:none;}
-  .br-table tr.win{background:rgba(52,199,120,.16);}
-  .br-table tr.loss{background:rgba(255,90,110,.11);}
-  /* Stacked (not single-line) again now that the 4-column desktop grid needs
-     fewer rows overall — tight line-height keeps the two names close
-     together so this doesn't cost back all the vertical space that saved. */
-  .br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.15;}
-  /* nowrap (not ellipsis) — a long name grows .br-table past its wrap's
-     100% width instead of wrapping to a second line or getting truncated;
-     .br-table-wrap's overflow-x:auto turns that into a horizontal scroll
-     scoped to this card. */
-  .br-table td.pair span{display:block; white-space:nowrap;}
-  .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em; line-height:2.3;} /* the two lines a pair's names take */
-  .br-table td.num{text-align:center; width:26px;}
-  .br-table td.quo{text-align:center; width:54px;}
-  .br-table td.br-badge{
-    text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
-  }
-  /* A division split into multiple Round Robin brackets gets one mini table
-     per bracket instead of one flat table with a Br column, laid out here
-     so pools read side by side rather than stacking indefinitely down the
-     category column. */
-  .rr-bracket-grid{
-    display:grid;
-    /* Capped at 2 columns: each track must be at least half the row (minus
-       half the gap), so a 3rd+ bracket wraps to a new row instead of the
-       row just squeezing in more, ever-narrower columns. A single bracket
-       still gets the full width — auto-fit collapses the empty track. */
-    grid-template-columns:repeat(auto-fit, minmax(calc(50% - 5px), 1fr));
-    gap:10px;
-    margin-bottom:10px;
-  }
-  /* Mobile (below the same breakpoint as isDesktopStandings) stacks
+                                        /* Mobile (below the same breakpoint as isDesktopStandings) stacks
      the brackets in one column — two side by side don't fit a phone-width
      category card without squeezing every table. */
-  @media (max-width:899px), (max-height:599px){
-    .rr-bracket-grid{ grid-template-columns:1fr; }
-  }
-  /* Overrides the generic wrap's inline-block hug: a bracket cell's colored
-     label sits directly above and stretches to the full grid cell (it's a
-     plain block with no content-driven width of its own), so the wrap
-     underneath has to match that same full width or the two would go
-     out of alignment. The inner .br-table still shrinks to its own
-     content either way — this only affects the wrap around it. */
-  .rr-bracket-grid .br-table-wrap{ margin-bottom:0; }
-  .rr-bracket-label{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:9px;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    font-weight:700;
-    text-align:center;
-    padding:4px 6px;
-    border-radius:8px 8px 0 0;
-    color:#fff;
-  }
-  .rr-bracket-label + .br-table-wrap{ border-radius:0 0 10px 10px; margin-top:0; }
-  /* Badge text follows its own fill, not one blanket colour: white reads on
-     the navy and purple badges, navy on the green one (white on --green is
-     ~2.6:1). */
-  /* Four bracket fills that each clear 4.5:1 against their own label.
-     --green-dark under white (4.3:1) and the stock purple (3.3:1) both miss,
-     so those two are darkened rather than left to fail quietly. Same set as
-     .badge-* in bracket-generator.html — keep them in step. */
-  .badge-0{background:var(--navy);}
-  .badge-1{background:var(--green); color:var(--navy);}
-  .badge-2{background:#4C7A19;}
-  .badge-3{background:#6C5CE0;}
-  .badge-x{background:var(--muted);}
-
-  /* Playoff matchups: each stage's teams grouped into explicit head-to-head
-     cards (instead of a flat list) so it's obvious who's facing whom. */
-  .matchup{
-    display:flex;
-    flex-direction:column;
-    background:var(--white);
-    border-radius:10px;
-    overflow:hidden;
-    box-shadow:var(--card-shadow);
-    margin-bottom:10px;
-  }
-  .matchup:last-child{margin-bottom:0;}
-  .stage-banner + .matchup{border-radius:0 0 10px 10px; margin-top:0;}
-  .matchup-label{
-    text-align:center;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:9.5px;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:.08em;
-    color:var(--muted);
-    padding:6px 9px 0;
-  }
-  .matchup-row{
-    display:flex;
-    align-items:stretch;
-  }
-  .matchup-side{
-    flex:1;
-    min-width:0;
-    display:flex;
-    align-items:center;
-    padding:8px 9px;
-  }
-  .matchup-side.right{justify-content:flex-end; text-align:right;}
-  .matchup-side.win{background:rgba(52,199,120,.16);}
-  .matchup-side.loss{background:rgba(255,90,110,.11);}
-  .matchup-side .mu-pair{
-    font-family:'Inter',sans-serif;
-    font-weight:700;
-    font-size:11.5px;
-    line-height:1.25;
-    color:var(--ink);
-  }
-  /* Every slot keeps the two lines a pair's names take, and each name keeps to
-     one line (… when too long, full names on hover), so a card is the same
-     height before and after its names are filled in. */
-  .matchup-side .mu-pair{flex:1 1 auto; min-width:0; min-height:2.5em; display:flex; flex-direction:column; justify-content:center;}
-  .matchup-side .mu-pair .p{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .matchup-side .mu-pair.tbd{color:var(--muted); font-style:italic; font-weight:600; letter-spacing:.04em;}
-  .matchup-center{
-    flex:none;
-    display:flex;
-    align-items:center;
-    gap:7px;
-    padding:0 9px;
-    background:var(--court-dark);
-    align-self:stretch;
-  }
-  .matchup-center .mu-score{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:16px;
-    color:rgba(255,255,255,.6);
-  }
-  .matchup-center .mu-score.win{ color:var(--court); }
-  .matchup-vs{
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:9px;
-    letter-spacing:.1em;
-    color:#fff;
-  }
-
-  /* Desktop: break the standings board out of the page's narrow .wrap
+                                            /* Desktop: break the standings board out of the page's narrow .wrap
      max-width so it can actually use the screen. Every category is one
      column in a single row (sortedCats' division-then-event order reads
      left to right) that scrolls horizontally rather than wrapping into a
      grid — a category card is never squeezed narrower than its own content
      needs just to make a row of 4 line up. */
-  @media (min-width:900px) and (min-height:600px){
-    #standingsResults{
-      width:100vw;
-      max-width:100vw;
-      position:relative;
-      left:50%;
-      margin-left:-50vw;
-      padding:0 32px;
-      box-sizing:border-box;
-    }
-    .standings-board-desktop{
-      display:flex;
-      flex-direction:row;
-      /* Always flex-start (left-aligned), even when every category fits
-         without scrolling — centering a flex row that's actually
-         overflowing makes its start unreachable by scrolling in Chromium,
-         the row shifts left of the scrollport with no way to scroll to that
-         negative offset, permanently cutting off the first category or two. */
-      justify-content:flex-start;
-      align-items:stretch;
-      gap:20px;
-      overflow-x:auto;
-      overflow-y:visible;
-      padding-bottom:20px;
-    }
-    .standings-board-desktop .standings-col{
-      /* Fixed width, same as the public event pages' standings board (not
-         flex-grow): a category that grew to fill spare row width stretched
-         its bracket tables wider than the event pages' equivalent column,
-         which is exactly the "too much whitespace" a fixed-size table
-         doesn't have room to create. flex-shrink:0 still keeps columns from
-         getting squeezed once the row overflows — it scrolls instead. */
-      flex:0 0 360px;
-      max-width:360px;
-      display:flex;
-      flex-direction:column;
-      /* Capped and independently scrollable, same as the public event
-         pages' standings board, so one long category doesn't stretch every
-         column in the row down to match it. */
-      max-height:92vh;
-      overflow-y:auto;
-    }
-    .standings-board-desktop .standings-col::-webkit-scrollbar{width:5px;}
-    .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
-    /* A category with a 2-column Round Robin bracket grid (see
-       .rr-bracket-grid) spans a whole column's width plus the gap between
-       columns, so it resizes to exactly two normal columns' worth of space
-       instead of cramming two mini tables into one 360px card — same
-       740px (360*2 + the 20px gap) as the public event pages. */
-    .standings-board-desktop .standings-col.standings-col--wide{
-      flex:0 0 740px;
-      max-width:740px;
-    }
-  }
 
 
           .team-groups + .results-meta{margin-top:14px;} /* the all-matches list under the stats */
@@ -1456,16 +894,7 @@
     .view-tab{padding:9px 15px; font-size:12px; letter-spacing:.05em;}
     .view-tabs{gap:6px; margin-bottom:18px;}
 
-    /* The two club boxes are flex:1 but their contents were flex:0 0 auto, so
-       nothing could give and each box overflowed its own border. Letting the
-       identity and stat shrink (and trimming the padding that squeezed them)
-       keeps both boxes inside the row. */
-    .club-summary{gap:8px; padding:10px 4px;}
-    .club-summary-item{gap:8px; padding:10px;}
-    .cs-identity, .cs-stat{min-width:0;}
-    .cs-identity .cs-name{max-width:72px;}
-
-    /* Mission Control's status rows are dot + fixed-width name + detail +
+                /* Mission Control's status rows are dot + fixed-width name + detail +
        sheet link on one line, which needs more width than a small phone has.
        Letting the row wrap drops the detail onto its own line rather than
        truncating the facility name or hiding the link. */
@@ -2108,6 +1537,101 @@
 @media (max-width:480px) {
   table.live-table td.live-cat-cell{font-size:8px; padding:2px 5px 1px;}
 }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-board{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  padding:4px 4px 16px;
+  align-items:stretch;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-col{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:16px;
+  break-inside:avoid;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table-wrap{
+  overflow-x:auto;
+  border-radius:10px;
+  box-shadow:var(--card-shadow);
+  margin-bottom:10px;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.stage-banner + .br-table-wrap{ border-radius:0 0 10px 10px; margin-top:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table-wrap:last-child{margin-bottom:0;}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--white); border-radius:unset; box-shadow:unset; margin-bottom:unset; overflow:unset; table-layout:unset;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table td.pair span{display:block; white-space:nowrap; overflow:unset; text-overflow:unset;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.rr-bracket-grid .br-table-wrap{ margin-bottom:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.rr-bracket-label + .br-table-wrap{ border-radius:0 0 10px 10px; margin-top:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop{
+    display:flex;
+    flex-direction:row;
+    /* Always flex-start (left-aligned), even when every category fits
+       without scrolling — centering a flex row that's actually
+       overflowing makes its start unreachable by scrolling in Chromium,
+       the row shifts left of the scrollport with no way to scroll to that
+       negative offset, permanently cutting off the first category or two. */
+    justify-content:flex-start;
+    align-items:stretch;
+    gap:20px;
+    overflow-x:auto;
+    overflow-y:visible;
+    padding-bottom:20px;
+  }
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop .standings-col{
+    /* Fixed width, same as the public event pages' standings board (not
+       flex-grow): a category that grew to fill spare row width stretched
+       its bracket tables wider than the event pages' equivalent column,
+       which is exactly the "too much whitespace" a fixed-size table
+       doesn't have room to create. flex-shrink:0 still keeps columns from
+       getting squeezed once the row overflows — it scrolls instead. */
+    flex:0 0 360px;
+    max-width:360px;
+    display:flex;
+    flex-direction:column;
+    /* Capped and independently scrollable, same as the public event
+       pages' standings board, so one long category doesn't stretch every
+       column in the row down to match it. */
+    max-height:92vh;
+    overflow-y:auto;
+  }
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (max-width:520px) {
+  .club-summary{gap:8px; padding:10px 4px;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (max-width:520px) {
+  .club-summary-item{gap:8px; padding:10px;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (max-width:520px) {
+  .cs-identity, .cs-stat{min-width:0;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (max-width:520px) {
+  .cs-identity .cs-name{max-width:72px;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table td.pair{ max-width:unset; width:unset; }
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
@@ -2344,29 +1868,15 @@
 // Where a function takes the event's type, its display config or the clock as a
 // parameter, the page keeps a one-line wrapper that passes its own state
 // (site-engine-spec §7.1); the wrappers go when the views move into the engine.
-import { parseCSV } from '/lib/v1/domain/csv.js';
-import { BYE_RE, sideIsBye, matchByeSide, isByeStandingRow } from '/lib/v1/domain/byes.js';
-import { SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames } from '/lib/v1/domain/series.js';
-import { rowsToMatches, buildMatchByCodeIndex, matchInstanceOf } from '/lib/v1/domain/matches.js';
-import { rowsToStandings, fmtQ, isEmptyStanding } from '/lib/v1/domain/standings.js';
-import {
-  STAGE_META, CROSS_CLUB_STAGE_KEYS, STAGE_ORDER, BADGE_CLASSES, ROUND_KEYWORD_LABELS, STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD,
-  roundKeyword, roundLabel,
-} from '/lib/v1/domain/codes.js';
-import { GO_LIVE_LEAD_HOURS, parseScheduleTimeToMinutes, formatMinutesAsClock } from '/lib/v1/domain/golive.js';
-import { DAY_ROLLOVER_MIN, eventScheduleMinutes, isEventDayActive, eventClock, formatGap, computeFacilityProgress } from '/lib/v1/domain/progress.js';
-import {
-  PAIRS, STAGES, numberRepeatedPairs, parseSideCode, sideOf, pairOf, stageOf, slotOf, isGroupTeamCode, pairLabel,
-  teamMatchupResult, teamRowsToRoster, teamLevelLabel,
-} from '/lib/v1/domain/teams.js';
-import { nonByeCode, winnerOfMatch, loserOfMatch } from '/lib/v1/domain/awards.js';
-import {
-  attParseCsv, attClockTime, attSplitList, parseAttendanceCsv, defaultCategoryLabel, groupForDesk, attLettersOnly,
-  attOneEditApart, possibleDuplicates, sameNameSameCategory,
-} from '/lib/v1/domain/attendance.js';
+import { matchByeSide } from '/lib/v1/domain/byes.js';
+import { unneededSeriesGames } from '/lib/v1/domain/series.js';
+import { fmtQ } from '/lib/v1/domain/standings.js';
+import { roundLabel } from '/lib/v1/domain/codes.js';
+import { GO_LIVE_LEAD_HOURS, formatMinutesAsClock } from '/lib/v1/domain/golive.js';
+import { sideOf, isGroupTeamCode, pairLabel, teamLevelLabel } from '/lib/v1/domain/teams.js';
+import { nonByeCode } from '/lib/v1/domain/awards.js';
+import { attClockTime, parseAttendanceCsv, groupForDesk, possibleDuplicates, sameNameSameCategory } from '/lib/v1/domain/attendance.js';
 import * as Codes from '/lib/v1/domain/codes.js';
-import * as Matches from '/lib/v1/domain/matches.js';
-import * as Standings from '/lib/v1/domain/standings.js';
 import * as GoLive from '/lib/v1/domain/golive.js';
 import * as Progress from '/lib/v1/domain/progress.js';
 import * as Teams from '/lib/v1/domain/teams.js';
@@ -2384,10 +1894,10 @@ import * as Snapshot from '/lib/v1/data/snapshot.js';
 import { buildDayModel } from '/lib/v1/domain/model.js';
 import { escapeHtml } from '/lib/v1/views/html.js';
 import { captureScrollPositions, restoreScrollPositions } from '/lib/v1/views/scroll.js';
-import { standingRowClass } from '/lib/v1/views/ticket.js';
 import * as Ticket from '/lib/v1/views/ticket.js';
 import { createFinder } from '/lib/v1/views/finder.js';
 import * as Live from '/lib/v1/views/live-matches.js';
+import { createStandings } from '/lib/v1/views/standings.js';
 
 // ============================================================================
 // CONFIGURATION — platform-wide constants only. Everything event-specific
@@ -3058,7 +2568,7 @@ function splitCategory(category){ return Codes.splitCategory(category, DISPLAY);
 // Tracks every category token that display config couldn't resolve, so the
 // console can show one visible warning instead of a silent "Other" bucket
 // (spec §2.4). Cleared and rebuilt at the top of every renderStandings pass.
-let UNRESOLVED_CATEGORIES = new Set();
+const UNRESOLVED_CATEGORIES = new Set();
 
 function categoryLabel(category){ return Codes.categoryLabel(category, DISPLAY, UNRESOLVED_CATEGORIES); }
 
@@ -3073,15 +2583,8 @@ function divisionEventLabel(code){ return Codes.divisionEventLabel(code, CURRENT
 // DISPLAY.divisions x DISPLAY.events key order when display config exists,
 // else first-appearance order in the data (spec §2.1/§2.3 — DIVISION_ORDER/
 // EVENT_ORDER disappear entirely; JSON key order does this job instead).
-let CATEGORY_ORDER_INDEX = new Map();
-function buildCategoryOrderIndex(categoryTokens){ return Codes.buildCategoryOrderIndex(categoryTokens, DISPLAY); }
-function categorySortKey(sampleRow){ return Codes.categorySortKey(sampleRow, CATEGORY_ORDER_INDEX, CURRENT_TYPE); }
 
 function standingsStageKey(teamCode){ return Codes.standingsStageKey(teamCode, CURRENT_TYPE); }
-
-function isUnnamedScheduledPair(s){ return Matches.isUnnamedScheduledPair(s, MATCH_BY_CODE, CURRENT_TYPE); }
-
-function pairCell(s){ return Ticket.pairCell(s, MODEL); }
 
 // ---- team type (sage-docs/docs/specs/.../pickledrive-club-anniversary-team-tournament-spec.md) ----
 // A team event's teams have names (STANDINGSCSV), each team meets another in a
@@ -3657,341 +3160,6 @@ function buildPodiums(){ return Awards.buildPodiums(dayModel()); }
 
 function computeOverallChampion(){ return Awards.computeOverallChampion(dayModel()); }
 
-function rankStandings(rows){ return Standings.rankStandings(rows, MATCHES); }
-
-function headToHeadWins(tied){ return Standings.headToHeadWins(tied, MATCHES); }
-
-function renderStageTables(rows){
-  // A bye is never a real standings row — drop it wherever standings rows
-  // are consumed (awards-podium-tab-spec §2.6 rule 1).
-  rows = rows.filter(s => !isByeStandingRow(s));
-
-  // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
-  // sub-groups Round Robin rows (e.g. "A"/"B" or "1"/"2"). A blank bracket
-  // means every RR row for this division is one single group — no Br column
-  // is shown at all in that case, rather than showing a fabricated "1" for
-  // everyone. Unused RR slots are skipped (see isUnnamedScheduledPair), but playoff slots are always shown
-  // (as TBD if empty) so the bracket stages are visible before pairs have
-  // been seeded in.
-  const stages = new Map(); // stageKey -> array of rows
-  const rrGroups = new Map(); // bracket label -> rows
-  rows.forEach(s => {
-    const stageKey = standingsStageKey(s.teamCode);
-    if(stageKey === 'RR'){
-      if(isEmptyStanding(s) && !isUnnamedScheduledPair(s)) return;
-      const brLabel = (s.bracket || '').trim(); // '' when there's no sub-bracket for this division — no longer defaulted to '1'
-      if(!rrGroups.has(brLabel)) rrGroups.set(brLabel, []);
-      rrGroups.get(brLabel).push(s);
-    } else {
-      if(!stages.has(stageKey)) stages.set(stageKey, []);
-      stages.get(stageKey).push(s);
-    }
-  });
-  // Order each bracket group by wins, head-to-head, then quotient
-  rrGroups.forEach((group, brLabel) => rrGroups.set(brLabel, rankStandings(group)));
-
-  // A bye-decided Bronze has no contest to report — drop the whole block,
-  // not just its BYE row (§2.6 rule 2). The medalist still shows up in
-  // their own Round Robin row above.
-  if(stages.has('BRONZE') && rows.length){
-    const category = parseCode(rows[0].teamCode).category;
-    if(categoryBronzeIsByeDecided(category)) stages.delete('BRONZE');
-  }
-
-  if(rrGroups.size === 0 && stages.size === 0) return { html: '', hasMultiBracket: false };
-
-  let html = '';
-  let hasMultiBracket = false;
-
-  // Round Robin block (if any). Multiple sub-brackets (e.g. "1"/"2") each get
-  // their own mini table laid out in a grid, so a big division reads as
-  // parallel pools instead of one long flat table with a Br column.
-  if(rrGroups.size > 0){
-    const bracketLabels = Array.from(rrGroups.keys()).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
-    const hasBrackets = bracketLabels.some(k => k !== '');
-    hasMultiBracket = hasBrackets && bracketLabels.length >= 2;
-    let badgeIdx = 0;
-    const badgeMap = new Map();
-    bracketLabels.forEach(brLabel => {
-      if(brLabel !== '' && !badgeMap.has(brLabel)){ badgeMap.set(brLabel, BADGE_CLASSES[badgeIdx % BADGE_CLASSES.length]); badgeIdx++; }
-    });
-    const rrTable = rows => `<div class="br-table-wrap"><table class="br-table"><thead><tr>
-        <th>Pair</th><th class="num">W</th><th class="num">L</th><th class="quo">Q</th>
-      </tr></thead><tbody>${rows.map(s => `<tr class="${standingRowClass(s)}">
-          ${pairCell(s)}
-          <td class="num">${s.wins}</td>
-          <td class="num">${s.loss}</td>
-          <td class="quo">${fmtQ(s.quotient)}</td>
-        </tr>`).join('')}</tbody></table></div>`;
-    html += `<div class="stage-block"><div class="stage-caption">Round Robin</div>`;
-    if(hasBrackets){
-      html += `<div class="rr-bracket-grid">`;
-      bracketLabels.forEach(brLabel => {
-        const badgeClass = brLabel === '' ? 'badge-x' : badgeMap.get(brLabel);
-        html += `<div class="rr-bracket">
-          <div class="rr-bracket-label ${badgeClass}">Bracket ${brLabel ? escapeHtml(brLabel) : '—'}</div>
-          ${rrTable(rrGroups.get(brLabel))}
-        </div>`;
-      });
-      html += `</div>`;
-    } else {
-      html += rrTable(rrGroups.get(''));
-    }
-    html += `</div>`;
-  }
-
-  // Playoff-style stages, in a sensible order, unknown stages appended at the end
-  sortStageKeys(Array.from(stages.keys())).forEach(key => {
-    html += renderStageBlock(key, stages.get(key));
-  });
-
-  return { html, hasMultiBracket };
-}
-
-// Sensible stage order (STAGE_ORDER), unknown stage keys appended at the end.
-function sortStageKeys(keys){
-  return keys.sort((a,b) => {
-    const ia = STAGE_ORDER.indexOf(a), ib = STAGE_ORDER.indexOf(b);
-    if(ia === -1 && ib === -1) return a.localeCompare(b);
-    if(ia === -1) return 1;
-    if(ib === -1) return -1;
-    return ia - ib;
-  });
-}
-
-// Renders one playoff stage's block (banner or caption header, then its
-// head-to-head matchup cards) — shared by renderStageTables (per-club
-// R16/QF/SF) and renderSharedStages (cross-club Bronze/Final).
-function renderStageBlock(key, rows){
-  const meta = STAGE_META[key] || { label: key.charAt(0) + key.slice(1).toLowerCase(), banner:false };
-  let html = `<div class="stage-block">`;
-  html += meta.banner
-    ? `<div class="stage-banner"><span class="stage-title">${escapeHtml(meta.label)}</span></div>`
-    : `<div class="stage-caption">${escapeHtml(meta.label)}</div>`;
-  pairUpMatchups(rows).forEach(pair => { html += renderMatchup(pair); });
-  html += `</div>`;
-  return html;
-}
-
-// Groups a playoff stage's rows into head-to-head matchups so it's obvious
-// who's facing whom, instead of a flat list of teams. Uses the same
-// "bracket" column RR pools use (as a per-match slot id) when every row in
-// the stage has one set; otherwise falls back to pairing rows in the order
-// they arrived (a spreadsheet naturally lists a match's two sides together).
-function pairUpMatchups(rows){
-  // Prefer grouping by the match-instance number encoded in the code
-  // itself (see matchInstanceOf) — it's derived straight from the code,
-  // so it doesn't depend on the sheet's bracket column being filled in
-  // correctly or rows happening to already be in pairing order.
-  const allHaveMatchInstance = rows.length > 0 && rows.every(s => matchInstanceOf(s.teamCode) !== null);
-  if(allHaveMatchInstance){
-    const groups = new Map();
-    rows.forEach(s => {
-      const key = matchInstanceOf(s.teamCode);
-      if(!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(s);
-    });
-    return Array.from(groups.keys()).sort((a, b) => a - b).map(k => groups.get(k));
-  }
-
-  const allBracketed = rows.length > 0 && rows.every(s => (s.bracket || '').trim() !== '');
-  if(allBracketed){
-    const groups = new Map();
-    rows.forEach(s => {
-      const key = s.bracket.trim();
-      if(!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(s);
-    });
-    return Array.from(groups.values());
-  }
-  const pairs = [];
-  for(let i = 0; i < rows.length; i += 2){
-    pairs.push(rows.slice(i, i + 2));
-  }
-  return pairs;
-}
-
-// Looks up the actual match score for a playoff slot by cross-referencing
-// its teamCode against the schedule (MATCHES), rather than showing the
-// aggregate W-L/quotient stat, which is only meaningful for Round Robin.
-function scoreForTeamCode(teamCode){
-  const m = MATCH_BY_CODE.get(teamCode);
-  if(!m || !m.played) return null;
-  return m.t1 === teamCode ? m.t1Score : m.t2Score;
-}
-
-function matchupSideHtml(s, side){
-  const sideClass = side === 'right' ? ' right' : '';
-  if(!s || isEmptyStanding(s)){
-    return `<div class="matchup-side${sideClass}"><span class="mu-pair tbd">TBD</span></div>`;
-  }
-  return `<div class="matchup-side${sideClass} ${standingRowClass(s)}">
-    <span class="mu-pair" title="${escapeHtml(s.player1 + ' / ' + s.player2)}"><span class="p">${escapeHtml(s.player1)}</span><span class="p">${escapeHtml(s.player2)}</span></span>
-  </div>`;
-}
-
-function matchupScoreHTML(s){
-  if(!s || isEmptyStanding(s)) return `<span class="mu-score">&ndash;</span>`;
-  const score = scoreForTeamCode(s.teamCode);
-  const scoreLabel = score !== null ? escapeHtml(String(score)) : '&ndash;';
-  return `<span class="mu-score ${standingRowClass(s)}">${scoreLabel}</span>`;
-}
-
-// Derives a "Match N" label for a twice-to-beat matchup card from either
-// side's team code (they share the same instance number by construction —
-// pairUpMatchups is what grouped them together in the first place). Falls
-// back to whichever side actually has a code, since a not-yet-seeded TBD
-// slot still carries its bracket-slot code even with no players decided.
-function matchupInstanceLabel(pair){
-  const withCode = pair.find(s => s && s.teamCode);
-  if(!withCode) return '';
-  const instance = matchInstanceOf(withCode.teamCode);
-  return instance ? `Match ${instance}` : '';
-}
-
-function renderMatchup(pair){
-  const label = matchupInstanceLabel(pair);
-  return `<div class="matchup">
-    ${label ? `<div class="matchup-label">${escapeHtml(label)}</div>` : ''}
-    <div class="matchup-row">
-      ${matchupSideHtml(pair[0], 'left')}
-      <div class="matchup-center">
-        ${matchupScoreHTML(pair[0])}
-        <span class="matchup-vs">VS</span>
-        ${matchupScoreHTML(pair[1])}
-      </div>
-      ${matchupSideHtml(pair[1], 'right')}
-    </div>
-  </div>`;
-}
-
-// One club's bracket within a shared category column — just the
-// stage tables under a small club heading, since the outer card/head is
-// already provided by renderCategoryColumn() below.
-function renderClubSubsection(clubCode, rows){
-  const stageHtml = renderStageTables(rows).html;
-  if(!stageHtml) return '';
-  return `<div class="club-subsection">
-    <div class="club-subhead">${escapeHtml(clubLabel(clubCode))}</div>
-    ${stageHtml}
-  </div>`;
-}
-
-// Bronze/Final rows (see CROSS_CLUB_STAGE_KEYS) combined across both clubs
-// and rendered as one shared block, spanning the full category column
-// instead of sitting inside either club's own subsection. Combining them
-// before pairUpMatchups is what makes each matchup pair up one club's row
-// against the other's — the same mechanism that pairs same-club rows within
-// a per-club R16/QF/SF stage, just fed cross-club rows instead this time.
-function renderSharedStages(rows){
-  // A bye is never a real standings row — drop it wherever standings rows
-  // are consumed (awards-podium-tab-spec §2.6 rule 1).
-  rows = rows.filter(s => !isByeStandingRow(s));
-  const stages = new Map();
-  rows.forEach(s => {
-    const stageKey = standingsStageKey(s.teamCode);
-    if(!stages.has(stageKey)) stages.set(stageKey, []);
-    stages.get(stageKey).push(s);
-  });
-  // A bye-decided Bronze has no contest to report — drop the whole block,
-  // not just its BYE row (§2.6 rule 2). The medalist still shows up in
-  // their own Round Robin row.
-  if(stages.has('BRONZE') && rows.length){
-    const category = parseCode(rows[0].teamCode).category;
-    if(categoryBronzeIsByeDecided(category)) stages.delete('BRONZE');
-  }
-  if(stages.size === 0) return '';
-  let html = `<div class="shared-stages">`;
-  sortStageKeys(Array.from(stages.keys())).forEach(key => {
-    html += renderStageBlock(key, stages.get(key));
-  });
-  html += `</div>`;
-  return html;
-}
-
-// One column per division+event category, with each club's Round Robin/
-// R16/QF/SF bracket stacked (or side-by-side, at the desktop breakpoint —
-// see .category-clubs-row) inside it — this replaces the standard
-// template's single flat category card, since a dual meet's standings are
-// only meaningful split out by club up through the semifinals. Bronze/Final
-// are cross-club, so they're pulled out and rendered once via
-// renderSharedStages instead, spanning both clubs right below. Used for
-// both the desktop grid (renderStandings passes an explicit grid-position
-// styleAttr) and the mobile/tablet single-column list (styleAttr '').
-function renderCategoryColumn(cat, rows, clubOrder, styleAttr){
-  const perClubRows = [];
-  const sharedRows = [];
-  rows.forEach(s => {
-    (CROSS_CLUB_STAGE_KEYS.includes(standingsStageKey(s.teamCode)) ? sharedRows : perClubRows).push(s);
-  });
-
-  const byClub = new Map();
-  perClubRows.forEach(s => {
-    const clubCode = parseCode(s.teamCode).club || 'OTHER';
-    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
-    byClub.get(clubCode).push(s);
-  });
-  let inner = '';
-  clubOrder.filter(c => byClub.has(c)).forEach(clubCode => {
-    inner += renderClubSubsection(clubCode, byClub.get(clubCode));
-  });
-  const sharedHtml = renderSharedStages(sharedRows);
-  if(!inner && !sharedHtml) return '';
-  return `<div class="standings-col" data-cat-key="${escapeHtml(cat)}"${styleAttr ? ` style="${styleAttr}"` : ''}>
-    <div class="standings-col-head">
-      <span class="cat-title">${escapeHtml(cat)}</span>
-    </div>
-    <div class="standings-col-body">
-      ${inner ? `<div class="category-clubs-row" data-cat-key="${escapeHtml(cat)}">${inner}</div>` : ''}
-      ${sharedHtml}
-    </div>
-  </div>`;
-}
-
-// Desktop standings need room both ways: 900px wide, and 600px tall so a
-// big phone turned sideways (up to ~956px wide but under ~450px tall) keeps
-// the mobile layout. The same query is in the stylesheet's @media rules;
-// change one and change the other.
-const DESKTOP_STANDINGS_QUERY = '(min-width:900px) and (min-height:600px)';
-function isDesktopStandings(){
-  return window.matchMedia(DESKTOP_STANDINGS_QUERY).matches;
-}
-
-// Club win-totals summary bar: sums wins across Round Robin rows only, per
-// club, and highlights whichever club is currently ahead. Only shown once
-// there's more than one club present in the data (i.e. always, for a real
-// dual meet — this just degrades gracefully if a snapshot only has one
-// side's rows synced so far).
-function renderClubSummary(byClub, clubOrder){
-  const clubWins = clubOrder.map(clubCode => ({
-    code: clubCode,
-    name: clubLabel(clubCode),
-    wins: byClub.get(clubCode)
-      .filter(s => standingsStageKey(s.teamCode) === 'RR')
-      .reduce((sum, s) => sum + (s.wins || 0), 0)
-  }));
-  if(clubWins.length <= 1) return '';
-  const topWins = Math.max(...clubWins.map(c => c.wins));
-  let html = `<div class="club-summary">`;
-  clubWins.forEach((c, i) => {
-    if(i > 0) html += `<div class="club-summary-vs">VS</div>`;
-    const isLeader = c.wins === topWins && topWins > 0;
-    const identityHTML = `<div class="cs-identity">
-        <span class="cs-name">${escapeHtml(c.name)}</span>
-      </div>`;
-    const statHTML = `<div class="cs-stat">
-        <span class="cs-wins">${c.wins}</span>
-        <span class="cs-label">wins</span>
-      </div>`;
-    // Mirror the last item's internal order (stat then identity) so both
-    // items read the same way regardless of which side they're on.
-    const isLast = i === clubWins.length - 1;
-    html += `<div class="club-summary-item${isLeader ? ' leader' : ''}">${isLast ? statHTML + identityHTML : identityHTML + statHTML}</div>`;
-  });
-  html += `</div>`;
-  return html;
-}
-
 // Shows/hides a banner naming any category token that display config
 // couldn't resolve to a division+event label (spec §2.4) — replaces the
 // old silent "Other" bucket. Populated by UNRESOLVED_CATEGORIES, rebuilt at
@@ -4004,277 +3172,6 @@ function renderResolutionWarning(){
   el.innerHTML = `<strong>Unmapped categor${UNRESOLVED_CATEGORIES.size === 1 ? 'y' : 'ies'}:</strong> ${codes} — not found in this event's display.divisions/display.events config. Showing the raw code${UNRESOLVED_CATEGORIES.size === 1 ? '' : 's'} instead of a label.`;
   el.style.display = '';
 }
-
-function renderStandings(){
-  const bodyEl = standingsBodyEl;
-  if(!bodyEl) return;
-  UNRESOLVED_CATEGORIES = new Set();
-  const categoryToggleBarEl2 = document.getElementById('categoryToggleBar');
-  const categoryFilterWrapEl = document.getElementById('categoryFilterWrap');
-  if(categoryToggleBarEl2) categoryToggleBarEl2.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
-  if(categoryFilterWrapEl) categoryFilterWrapEl.style.display = CURRENT_TYPE === 'standard' ? '' : 'none';
-
-  if(CURRENT_TYPE === 'team'){
-    renderTeamStandings(); // before any category code runs (categoryTokensPresent, buildCategoryOrderIndex)
-    renderResolutionWarning();
-    return;
-  }
-
-  const scrollPositions = captureScrollPositions(bodyEl);
-
-  if(STANDINGS.length === 0){
-    if(CURRENT_TYPE === 'standard'){ CATEGORY_OPTIONS = []; CATEGORIES_MAP = new Map(); renderCategoryToggleBar(); }
-    bodyEl.innerHTML = `<div class="empty-state">No standings data yet.</div>`;
-    renderResolutionWarning();
-    return;
-  }
-
-  const categoryTokensPresent = Array.from(new Set(STANDINGS.map(s => parseCode(s.teamCode).category)));
-  CATEGORY_ORDER_INDEX = buildCategoryOrderIndex(categoryTokensPresent);
-
-  if(CURRENT_TYPE === 'standard'){
-    renderStandardStandings();
-  } else {
-    renderDualMeetStandings();
-  }
-
-  restoreScrollPositions(bodyEl, scrollPositions);
-  renderResolutionWarning();
-}
-
-// ---- dual-meet standings: per-club columns + cross-club Bronze/Final ----
-function renderDualMeetStandings(){
-  const bodyEl = standingsBodyEl;
-
-  // Group by club first — needed for the club order + win-totals summary,
-  // and for renderCategoryColumn's own per-club split of each category.
-  const byClub = new Map();
-  STANDINGS.forEach(s => {
-    const clubCode = parseCode(s.teamCode).club || 'OTHER';
-    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
-    byClub.get(clubCode).push(s);
-  });
-  const knownClubOrder = DISPLAY.clubs ? Object.keys(DISPLAY.clubs) : [];
-  const clubOrder = knownClubOrder.filter(c => byClub.has(c))
-    .concat(Array.from(byClub.keys()).filter(c => !knownClubOrder.includes(c)));
-
-  let html = renderClubSummary(byClub, clubOrder);
-
-  const categories = new Map();
-  STANDINGS.forEach(s => {
-    const cat = divisionEventLabel(s.teamCode);
-    if(!categories.has(cat)) categories.set(cat, []);
-    categories.get(cat).push(s);
-  });
-  const sortedCats = Array.from(categories.keys())
-    .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
-
-  if(isDesktopStandings()){
-    // Desktop: one column per category, each club's bracket stacked inside,
-    // laid out in a single row (sortedCats' division-then-event order reads
-    // left to right) that scrolls horizontally past the viewport instead of
-    // wrapping into a grid — see the .standings-board-desktop media query.
-    html += `<div class="standings-board standings-board-desktop">`;
-    sortedCats.forEach(cat => { html += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
-    html += `</div>`;
-  } else {
-    // Mobile/tablet: the same per-category card as desktop (see
-    // renderCategoryColumn) — each club's bracket stacked, with Bronze/Final
-    // spanning both clubs right underneath, close to that category's own
-    // Round Robin standings — just laid out as a single full-width column,
-    // one category per row, instead of a multi-column grid.
-    html += `<div class="standings-board">`;
-    sortedCats.forEach(cat => { html += renderCategoryColumn(cat, categories.get(cat), clubOrder, ''); });
-    html += `</div>`;
-  }
-
-  bodyEl.innerHTML = html;
-}
-
-// ---- standard standings: one flat card per category ----
-let selectedStandingsCategory = null; // mobile: category label chosen from the search filter, or null
-let CATEGORY_OPTIONS = [];            // sorted list of current category labels
-let CATEGORIES_MAP = new Map();       // category label -> standings rows
-let hiddenCategories = new Set();     // desktop: category labels toggled off via the toggle bar
-let stackedCategories = new Set();    // desktop: multi-bracket categories switched to one bracket column
-
-function renderCategoryCard(cat, rows){
-  const { html: stageHtml, hasMultiBracket } = renderStageTables(rows);
-  if(!stageHtml) return '';
-  const stacked = hasMultiBracket && stackedCategories.has(cat);
-  const colClass = !hasMultiBracket ? '' : stacked ? ' standings-col--stacked' : ' standings-col--wide';
-  const toggleHTML = hasMultiBracket
-    ? `<button type="button" class="bracket-cols-toggle" data-cat="${escapeHtml(cat)}" aria-pressed="${stacked}" title="${stacked ? 'Show brackets side by side' : 'Stack brackets in one column'}">${stacked ? '2 cols' : '1 col'}</button>`
-    : '';
-  return `<div class="standings-col${colClass}" data-cat-key="${escapeHtml(cat)}">
-    <div class="standings-col-head${hasMultiBracket ? ' has-toggle' : ''}">
-      <span class="cat-title">${escapeHtml(cat)}</span>
-      ${toggleHTML}
-    </div>
-    <div class="standings-col-body">${stageHtml}</div>
-  </div>`;
-}
-
-function renderCategoryToggleBar(){
-  const bar = document.getElementById('categoryToggleBar');
-  if(!bar) return;
-  if(CATEGORY_OPTIONS.length === 0){ bar.innerHTML = ''; return; }
-  const chips = CATEGORY_OPTIONS.map(cat => {
-    const isHidden = hiddenCategories.has(cat);
-    return `<button type="button" class="cat-toggle-chip${isHidden ? ' hidden-cat' : ' active'}" data-cat="${escapeHtml(cat)}">${escapeHtml(cat)}</button>`;
-  }).join('');
-  bar.innerHTML = `<span class="cat-toggle-label">Categories</span>${chips}<button type="button" class="cat-toggle-action" data-action="all">Show all</button><button type="button" class="cat-toggle-action" data-action="none">Hide all</button>`;
-}
-
-function renderStandardStandings(){
-  const bodyEl = standingsBodyEl;
-  const categories = new Map();
-  STANDINGS.forEach(s => {
-    const cat = divisionEventLabel(s.teamCode);
-    if(!categories.has(cat)) categories.set(cat, []);
-    categories.get(cat).push(s);
-  });
-  const sortedCats = Array.from(categories.keys())
-    .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
-
-  CATEGORIES_MAP = categories;
-  CATEGORY_OPTIONS = sortedCats;
-  renderCategoryToggleBar();
-
-  if(selectedStandingsCategory && !categories.has(selectedStandingsCategory)){
-    selectedStandingsCategory = null;
-    if(catInput) catInput.value = '';
-    if(typeof updateClearCatBtn === 'function') updateClearCatBtn();
-  }
-
-  let html;
-  if(isDesktopStandings()){
-    const visibleCats = CATEGORY_OPTIONS.filter(cat => !hiddenCategories.has(cat));
-    if(visibleCats.length === 0){
-      html = `<div class="empty-state">All categories are hidden. Use the toggles above to show one.</div>`;
-    } else {
-      html = `<div class="standings-board standings-board-desktop">`;
-      visibleCats.forEach(cat => { html += renderCategoryCard(cat, CATEGORIES_MAP.get(cat)); });
-      html += `</div>`;
-    }
-  } else if(selectedStandingsCategory){
-    html = `<div class="standings-cards">${renderCategoryCard(selectedStandingsCategory, CATEGORIES_MAP.get(selectedStandingsCategory))}</div>`;
-  } else {
-    html = `<div class="empty-state">Search and select a category above to view its standings.</div>`;
-  }
-
-  bodyEl.innerHTML = html;
-}
-
-if(document.getElementById('categoryToggleBar')){
-  document.getElementById('categoryToggleBar').addEventListener('click', (e) => {
-    const chip = e.target.closest('.cat-toggle-chip');
-    if(chip){
-      const cat = chip.dataset.cat;
-      if(hiddenCategories.has(cat)) hiddenCategories.delete(cat);
-      else hiddenCategories.add(cat);
-      renderCategoryToggleBar();
-      if(CURRENT_TYPE === 'standard') renderStandardStandings();
-      return;
-    }
-    const actionBtn = e.target.closest('.cat-toggle-action');
-    if(actionBtn){
-      if(actionBtn.dataset.action === 'all') hiddenCategories.clear();
-      else if(actionBtn.dataset.action === 'none') hiddenCategories = new Set(CATEGORY_OPTIONS);
-      renderCategoryToggleBar();
-      if(CURRENT_TYPE === 'standard') renderStandardStandings();
-    }
-  });
-}
-
-const catInput = document.getElementById('catFilterInput');
-const catAcList = document.getElementById('catAcList');
-let catAcIndex = -1;
-
-function renderCatAutocomplete(query){
-  if(!catAcList) return;
-  const q = query.trim().toLowerCase();
-  const matches = (q ? CATEGORY_OPTIONS.filter(c => c.toLowerCase().includes(q)) : CATEGORY_OPTIONS).slice(0, 20);
-  if(matches.length === 0){ catAcList.classList.remove('show'); catAcList.innerHTML=''; return; }
-  catAcList.innerHTML = matches.map((c,i) => `<div class="ac-item" data-cat="${escapeHtml(c)}" data-i="${i}"><span>${escapeHtml(c)}</span></div>`).join('');
-  catAcList.classList.add('show');
-  catAcIndex = -1;
-}
-
-function selectCategory(cat){
-  if(!CATEGORIES_MAP.has(cat)) return;
-  selectedStandingsCategory = cat;
-  if(catInput) catInput.value = cat;
-  updateClearCatBtn();
-  renderStandardStandings();
-}
-
-const clearCatBtn = document.getElementById('clearCatBtn');
-function updateClearCatBtn(){
-  if(clearCatBtn) clearCatBtn.classList.toggle('show', !!(catInput && catInput.value.length > 0));
-}
-if(clearCatBtn){
-  clearCatBtn.addEventListener('click', () => {
-    catInput.value = '';
-    selectedStandingsCategory = null;
-    catAcList.classList.remove('show');
-    catAcList.innerHTML = '';
-    updateClearCatBtn();
-    renderStandardStandings();
-    catInput.focus();
-  });
-}
-
-if(catInput){
-  catInput.addEventListener('input', () => { renderCatAutocomplete(catInput.value); updateClearCatBtn(); });
-  catInput.addEventListener('focus', () => renderCatAutocomplete(catInput.value));
-  document.addEventListener('click', (e) => {
-    if(!e.target.closest('#categoryFilterWrap')) catAcList.classList.remove('show');
-  });
-  catAcList.addEventListener('click', (e) => {
-    const item = e.target.closest('.ac-item');
-    if(!item) return;
-    selectCategory(item.dataset.cat);
-    catAcList.classList.remove('show');
-  });
-  catInput.addEventListener('keydown', (e) => {
-    const items = Array.from(catAcList.querySelectorAll('.ac-item'));
-    if(e.key === 'ArrowDown' && items.length){
-      e.preventDefault();
-      catAcIndex = Math.min(catAcIndex+1, items.length-1);
-      items.forEach(it=>it.classList.remove('active'));
-      items[catAcIndex].classList.add('active');
-    } else if(e.key === 'ArrowUp' && items.length){
-      e.preventDefault();
-      catAcIndex = Math.max(catAcIndex-1, 0);
-      items.forEach(it=>it.classList.remove('active'));
-      items[catAcIndex].classList.add('active');
-    } else if(e.key === 'Enter'){
-      e.preventDefault();
-      const active = catAcList.querySelector('.ac-item.active') || catAcList.querySelector('.ac-item');
-      if(active) selectCategory(active.dataset.cat);
-      catAcList.classList.remove('show');
-    } else if(e.key === 'Escape'){
-      catAcList.classList.remove('show');
-    }
-  });
-}
-
-// Re-render standings if the viewport crosses the desktop/mobile breakpoint
-// (e.g. resizing the window or rotating a tablet), so the layout stays correct.
-let lastStandingsIsDesktop = isDesktopStandings();
-let standingsResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(standingsResizeTimer);
-  standingsResizeTimer = setTimeout(() => {
-    const nowDesktop = isDesktopStandings();
-    if(nowDesktop !== lastStandingsIsDesktop){
-      lastStandingsIsDesktop = nowDesktop;
-      const el = standingsResultsEl;
-      if(el && el.style.display !== 'none') renderStandings();
-    }
-  }, 200);
-});
 
 const input = document.getElementById('teamInput');
 const acList = document.getElementById('acList');
@@ -4316,14 +3213,35 @@ const searchPanelEl = document.getElementById('searchPanel');
 const standingsResultsEl = document.getElementById('standingsResults');
 const liveResultsEl = document.getElementById('liveResults');
 const standingsBodyEl = document.getElementById('standingsBody');
-standingsBodyEl.addEventListener('click', (e) => {
-  const btn = e.target.closest('.bracket-cols-toggle');
-  if(!btn) return;
-  const cat = btn.dataset.cat;
-  if(stackedCategories.has(cat)) stackedCategories.delete(cat);
-  else stackedCategories.add(cat);
-  renderStandings();
+// Standings: lib/v1/views/standings.js draws a standard event's category cards and a dual meet's per-club
+// columns; a team event's standings are this page's own (views/teams.js). Control Center lays a dual meet
+// out as one row of columns, and collects the category codes its display settings can't label for the
+// warning shown above the board.
+const standings = createStandings({
+  bodyEl: standingsBodyEl, panelEl: standingsResultsEl,
+  toggleBarEl: document.getElementById('categoryToggleBar'),
+  catInput: document.getElementById('catFilterInput'), catAcList: document.getElementById('catAcList'), clearCatBtn: document.getElementById('clearCatBtn'),
+  getModel: () => MODEL,
+  dualMeetDesktopLayout: 'row',
+  unresolved: UNRESOLVED_CATEGORIES,
 });
+
+function renderStandings(){
+  UNRESOLVED_CATEGORIES.clear();
+  const standard = CURRENT_TYPE === 'standard';
+  const categoryToggleBarEl2 = document.getElementById('categoryToggleBar');
+  const categoryFilterWrapEl = document.getElementById('categoryFilterWrap');
+  if(categoryToggleBarEl2) categoryToggleBarEl2.style.display = standard ? '' : 'none';
+  if(categoryFilterWrapEl) categoryFilterWrapEl.style.display = standard ? '' : 'none';
+
+  if(CURRENT_TYPE === 'team'){
+    renderTeamStandings();
+    renderResolutionWarning();
+    return;
+  }
+  standings.render();
+  renderResolutionWarning();
+}
 const liveBoardEl = document.getElementById('liveBoard');
 const liveBoardMetaEl = document.getElementById('liveBoardMeta');
 const organizerResultsEl = document.getElementById('organizerResults');

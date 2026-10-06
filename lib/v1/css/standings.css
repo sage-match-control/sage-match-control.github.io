@@ -1,0 +1,610 @@
+/* Standings: the category cards, Round Robin tables, playoff matchups, the dual meet's club columns and the
+   category controls (lib/v1/views/standings.js). Colour, radius and shadow come from the page's theme
+   properties (site-engine-spec §4.7). */
+
+/* ---------- MOBILE CATEGORY FILTER (standings) ---------- */
+.category-filter{
+  display:none; /* shown below the desktop-standings breakpoint (900px wide and 600px tall) */
+  background:var(--white);
+  border-radius:18px;
+  padding:18px 20px;
+  box-shadow:var(--card-shadow);
+  max-width:560px;
+  margin:0 auto 20px;
+}
+
+input.cat-filter-input{
+  flex:1;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;
+  font-weight:600;
+  letter-spacing:.01em;
+  padding:12px 38px 12px 14px;
+  border-radius:10px;
+  border:2px solid rgba(20,27,44,.18);
+  background:var(--white);
+  color:var(--ink);
+  outline:none;
+  min-width:0;
+  width:100%;
+}
+
+input.cat-filter-input:focus{border-color:var(--court);}
+
+input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
+
+@media (max-width:899px), (max-height:599px) {
+  .category-filter{ display:block; }
+}
+
+/* ---------- DESKTOP CATEGORY TOGGLE BAR (standings) ---------- */
+.category-toggle-bar{
+  display:none; /* shown only at the desktop-standings breakpoint (900px wide and 600px tall) */
+}
+
+@media (min-width:900px) and (min-height:600px) {
+  .category-toggle-bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    max-width:920px;
+    margin:0 auto 18px;
+  }
+}
+
+.cat-toggle-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink-soft);
+  margin-right:2px;
+}
+
+.cat-toggle-chip{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:600;
+  padding:6px 14px;
+  border-radius:100px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--court-line);
+  cursor:pointer;
+  transition:background .15s ease, color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+
+.cat-toggle-chip:hover{border-color:rgba(124,185,44,.6);}
+
+.cat-toggle-chip.active{
+  background:var(--court);
+  border-color:var(--court);
+  color:var(--court-dark);
+}
+
+.cat-toggle-chip.hidden-cat{
+  opacity:.4;
+  text-decoration:line-through;
+}
+
+.cat-toggle-action{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  padding:6px 12px;
+  border-radius:100px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink-soft);
+  cursor:pointer;
+  margin-left:4px;
+}
+
+.cat-toggle-action:hover{border-color:var(--green-dark); color:var(--navy);}
+
+.standings-board::-webkit-scrollbar{width:8px; height:8px;}
+
+.standings-board::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
+
+.standings-col:last-child{margin-bottom:0;}
+
+.standings-cards{ display:block; }
+
+.standings-col-body{
+  padding:0 14px 14px;
+}
+
+.standings-col-head{
+  position:sticky;
+  top:0;
+  z-index:2;
+  text-align:center;
+  margin:0 0 14px;
+  padding:12px 14px 10px;
+  border-bottom:1px solid var(--line);
+  background:rgba(246,247,242,.94);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border-radius:16px 16px 0 0;
+}
+
+.standings-col-head .cat-title{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:.01em;
+  color:var(--navy);
+}
+
+/* Symmetric padding keeps the title centred clear of the toggle. */
+.standings-col-head.has-toggle{padding-left:64px; padding-right:64px;}
+
+.bracket-cols-toggle{
+  position:absolute;
+  top:50%;
+  right:10px;
+  transform:translateY(-50%);
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:3px 9px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--navy);
+  cursor:pointer;
+}
+
+.bracket-cols-toggle:hover{border-color:var(--navy);}
+
+.standings-col--stacked .rr-bracket-grid{grid-template-columns:1fr;}
+
+@media (max-width:899px), (max-height:599px) {
+  .standings-col-head.has-toggle{padding-left:14px; padding-right:14px;}
+
+  .bracket-cols-toggle{display:none;}
+}
+
+.stage-block{margin-bottom:16px;}
+
+.stage-block:last-child{margin-bottom:0;}
+
+.stage-caption{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--ink-soft);
+  margin:0 0 6px;
+}
+
+.stage-banner{
+  background:var(--navy);
+  color:var(--white);
+  border-radius:9px 9px 0 0;
+  padding:6px 10px 5px;
+  text-align:center;
+}
+
+.stage-banner .stage-title{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.br-table{
+  width:100%;
+  table-layout:fixed;
+  border-collapse:collapse;
+  background:var(--white);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:var(--card-shadow);
+  margin-bottom:10px;
+}
+
+.br-table:last-child{margin-bottom:0;}
+
+/* Vertical dividers (border-right) plus the existing row dividers
+   (border-bottom) turn this into a real grid — easier to scan Pair/W/L/Q
+   as columns at a glance instead of just a list of rows. */
+.br-table th, .br-table td{
+  padding:6px 8px;
+  text-align:left;
+  font-size:11.5px;
+  font-family:'Barlow Condensed',sans-serif;
+  border-right:1px solid rgba(20,27,44,.12);
+}
+
+.br-table th:last-child, .br-table td:last-child{ border-right:none; }
+
+/* Pair is the only column without an explicit width, so table-layout:fixed
+   hands it all the leftover space. Q gets its own (wider) width since
+   "0.6667" doesn't fit in the same width as a plain W/L integer. */
+.br-table th.num{width:26px; text-align:center;}
+
+.br-table th.quo{width:54px; text-align:center;}
+
+.br-table th.br-badge{width:22px; text-align:center;}
+
+.br-table th{
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--muted);
+  border-bottom:1px solid rgba(20,27,44,.16);
+}
+
+.br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.1); }
+
+.br-table tr:last-child td{border-bottom:none;}
+
+.br-table tr.win{background:rgba(52,199,120,.16);}
+
+.br-table tr.loss{background:rgba(255,90,110,.11);}
+
+/* Stacked (not single-line) again now that the 4-column desktop grid needs
+   fewer rows overall — tight line-height keeps the two names close
+   together so this doesn't cost back all the vertical space that saved. */
+.br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.15;}
+
+/* Same rule as the matchup cards: one line per name, two lines per row. */
+.br-table td.pair{width:100%; max-width:0;}
+
+.br-table td.pair span{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+.br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em; line-height:2.3;}
+
+.br-table td.num{text-align:center; width:26px;}
+
+.br-table td.quo{text-align:center; width:54px;}
+
+.br-table td.br-badge{
+  text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
+}
+
+/* A division split into multiple Round Robin brackets gets one mini table
+   per bracket instead of one flat table with a Br column, laid out here
+   so pools read side by side rather than stacking indefinitely down the
+   category column. */
+.rr-bracket-grid{
+  display:grid;
+  /* Capped at 2 columns: each track must be at least half the row (minus
+     half the gap), so a 3rd+ bracket wraps to a new row instead of the
+     row just squeezing in more, ever-narrower columns. A single bracket
+     still gets the full width — auto-fit collapses the empty track. */
+  grid-template-columns:repeat(auto-fit, minmax(calc(50% - 5px), 1fr));
+  gap:10px;
+  margin-bottom:10px;
+}
+
+@media (max-width:899px), (max-height:599px) {
+  .rr-bracket-grid{ grid-template-columns:1fr; }
+}
+
+.rr-bracket-grid .br-table{ margin-bottom:0; }
+
+.rr-bracket-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:700;
+  text-align:center;
+  padding:4px 6px;
+  border-radius:8px 8px 0 0;
+  color:#fff;
+}
+
+/* Badge text follows its own fill, not one blanket colour: white reads on
+   the navy and purple badges, navy on the green one (white on --green is
+   ~2.6:1). */
+/* Four bracket fills that each clear 4.5:1 against their own label.
+   --green-dark under white (4.3:1) and the stock purple (3.3:1) both miss,
+   so those two are darkened rather than left to fail quietly. Same set as
+   .badge-* in bracket-generator.html — keep them in step. */
+.badge-0{background:var(--navy);}
+
+.badge-1{background:var(--green); color:var(--navy);}
+
+.badge-2{background:#4C7A19;}
+
+.badge-3{background:#6C5CE0;}
+
+.badge-x{background:var(--muted);}
+
+.matchup{
+  display:flex;
+  flex-direction:column;
+  background:var(--white);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:var(--card-shadow);
+  margin-bottom:10px;
+}
+
+.matchup:last-child{margin-bottom:0;}
+
+.stage-banner + .matchup{border-radius:0 0 10px 10px; margin-top:0;}
+
+.matchup-label{
+  text-align:center;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9.5px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  padding:6px 9px 0;
+}
+
+.matchup-row{
+  display:flex;
+  align-items:stretch;
+}
+
+.matchup-side{
+  flex:1;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  padding:8px 9px;
+}
+
+.matchup-side.right{justify-content:flex-end; text-align:right;}
+
+.matchup-side.win{background:rgba(52,199,120,.16);}
+
+.matchup-side.loss{background:rgba(255,90,110,.11);}
+
+.matchup-side .mu-pair{
+  font-family:'Inter',sans-serif;
+  font-weight:700;
+  font-size:11.5px;
+  line-height:1.25;
+  color:var(--ink);
+}
+
+/* Every slot keeps the two lines a pair's names take, and each name keeps to
+   one line (… when too long, full names on hover), so a card is the same
+   height before and after its names are filled in. */
+.matchup-side .mu-pair{flex:1 1 auto; min-width:0; min-height:2.5em; display:flex; flex-direction:column; justify-content:center;}
+
+.matchup-side .mu-pair .p{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+.matchup-side .mu-pair.tbd{color:var(--muted); font-style:italic; font-weight:600; letter-spacing:.04em;}
+
+.matchup-center{
+  flex:none;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 9px;
+  background:var(--court-dark);
+  align-self:stretch;
+}
+
+.matchup-center .mu-score{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:16px;
+  color:rgba(255,255,255,.6);
+}
+
+.matchup-center .mu-score.win{ color:var(--court); }
+
+.matchup-vs{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:9px;
+  letter-spacing:.1em;
+  color:#fff;
+}
+
+@media (min-width:900px) and (min-height:600px) {
+  #standingsResults{
+    width:100vw;
+    max-width:100vw;
+    position:relative;
+    left:50%;
+    margin-left:-50vw;
+    padding:0 32px;
+    box-sizing:border-box;
+  }
+
+  /* A category with a 2-column Round Robin bracket grid (see
+     .rr-bracket-grid) spans a whole column's width plus the gap between
+     columns, so it resizes to exactly two normal columns' worth of space
+     instead of cramming two mini tables into one 360px card. */
+  .standings-board-desktop .standings-col.standings-col--wide{
+    flex:0 0 740px;
+    max-width:740px;
+  }
+
+  .standings-board-desktop .standings-col::-webkit-scrollbar{width:5px;}
+
+  .standings-board-desktop .standings-col::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
+}
+
+/* ---------- CLUB SUMMARY & PER-CLUB STANDINGS (dual meet) ---------- */
+/* Mobile/tablet: pinned to the top of the viewport while scrolling through
+   the (potentially long) list of category cards below, so the head-to-head
+   win count stays visible instead of scrolling out of view. Reset to a
+   normal in-flow element on desktop (see the desktop-standings media query) — the
+   grid there is compact enough that this isn't needed. */
+.club-summary{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(10px,4vw,22px);
+  margin:0 0 22px;
+  position:sticky;
+  top:0;
+  z-index:5;
+  padding:10px 6px;
+  background:rgba(246,247,242,.94);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  border-radius:0 0 16px 16px;
+}
+
+@media (min-width:900px) and (min-height:600px) {
+  .club-summary{
+    position:static;
+    padding:0;
+    background:none;
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+}
+
+/* Horizontal box: logo+name (left) beside the wins stat (right) — wider,
+   shorter, instead of stacking all four pieces in one tall column. */
+.club-summary-item{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:10px clamp(14px,4vw,28px);
+  border-radius:16px;
+  background:var(--white);
+  border:1px solid var(--line);
+  flex:1 1 0;
+  min-width:0;
+  max-width:280px;
+}
+
+.club-summary-item.leader{
+  border-color:var(--green-dark);
+  box-shadow:0 0 26px -8px rgba(92,143,31,.45);
+}
+
+.cs-identity{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  flex:0 0 auto;
+}
+
+.cs-identity .cs-logo{
+  width:clamp(36px,10vw,52px);
+  height:clamp(36px,10vw,52px);
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid var(--line);
+}
+
+.cs-identity .cs-name{
+  font-family:'Inter',sans-serif;
+  font-weight:700;
+  font-size:clamp(9.5px,2.6vw,11px);
+  color:var(--court-line);
+  text-align:center;
+  line-height:1.2;
+  max-width:100px;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+.cs-stat{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  flex:0 0 auto;
+}
+
+.cs-stat .cs-wins{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:clamp(26px,8vw,38px);
+  line-height:1;
+  color:var(--green-dark);
+}
+
+.cs-stat .cs-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:var(--ink-soft);
+}
+
+.club-summary-vs{
+  flex:0 0 auto;
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:clamp(14px,4vw,18px);
+  color:var(--cork);
+}
+
+/* Desktop: each club's bracket stacked inside a shared category column
+   (see .standings-col above); at the desktop breakpoint below, the two
+   clubs sit side by side instead and scroll as a unit. */
+.category-clubs-row{ display:block; }
+
+.club-subsection{ margin-bottom:18px; }
+
+.club-subsection:last-child{ margin-bottom:0; }
+
+/* Bronze/Final — see renderSharedStages — sit below the per-club columns,
+   spanning the full category-column width since they're one shared match
+   rather than each club's own bracket. */
+.shared-stages{ margin-top:14px; }
+
+.club-subhead{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--cork);
+  border-bottom:1px solid var(--line);
+  padding-bottom:5px;
+  margin-bottom:8px;
+}
+
+@media (min-width:900px) and (min-height:600px) {
+  .category-clubs-row{
+    display:flex;
+    gap:12px;
+    max-height:62vh;
+    overflow-y:auto;
+  }
+
+  .category-clubs-row::-webkit-scrollbar{width:5px;}
+
+  .category-clubs-row::-webkit-scrollbar-thumb{background:var(--paper-dim); border-radius:10px;}
+
+  .club-subsection{
+    flex:1 1 0;
+    min-width:0;
+    margin-bottom:0;
+  }
+
+  .club-subhead{
+    position:sticky; top:0;
+    background:rgba(246,247,242,.94);
+    padding-top:2px;
+    z-index:1;
+  }
+
+  .standings-col-overflow{
+    grid-column:4;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:20px;
+  }
+}
