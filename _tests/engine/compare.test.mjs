@@ -36,6 +36,13 @@ async function run(browser, site, c){
 
 const safeName = id => id.replace(/[^\w.-]+/g, '__');
 
+/** Whether the tree serves a page at `urlPath` (a query is ignored): as the static server does, the file, its .html, or the folder's index. */
+function serves(root, urlPath){
+  const clean = decodeURIComponent(urlPath.split('?')[0]).replace(/^[/\\]+/, '');
+  const full = path.join(root, clean);
+  return [full, full + '.html', path.join(full, 'index.html')].some(f => { try { return fs.statSync(f).isFile(); } catch { return false; } });
+}
+
 describe('engine compare: baseline vs branch', { concurrency }, () => {
   let baseline, browser, baseSite, branchSite;
   before(async () => {
@@ -55,6 +62,20 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
 
   for (const c of cases) {
     it(c.id, async () => {
+      // A page the baseline doesn't have yet (a new template) has nothing to compare with: it runs on the
+      // branch only, must raise no page error, and leaves its screenshot and text to review.
+      if(!serves(baseline.dir, c.path)){
+        let only = await run(browser, branchSite, c);
+        if(only.errors.some(e => TRANSIENT.test(e))) only = await run(browser, branchSite, c);
+        const dir = path.join(OUT_DIR, safeName(c.id));
+        fs.rmSync(dir, { recursive: true, force: true });
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'branch.png'), only.png);
+        fs.writeFileSync(path.join(dir, 'branch.txt'), only.text);
+        console.log(`new page, no baseline: ${c.id}`);
+        assert.deepEqual(only.errors, [], `page errors (new page, no baseline)`);
+        return;
+      }
       let [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
 
       // Anti-aliasing can differ by 1/255 on a few pixels from one run to the next (the same tree twice
@@ -96,7 +117,7 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
         fs.writeFileSync(path.join(dir, 'text.diff'), textDiff(base.text, branch.text));
         assert.fail(`${problems.join('; ')}\n  written to ${dir}`);
       }
-      if (accepted.length && (!textSame || !pixelsSame)) console.log(`accepted: ${c.id} (§12 rows ${accepted.map(a => a.row).join(', ')})`);
+      if (accepted.length && (!textSame || !pixelsSame)) console.log(`accepted: ${c.id} (rows ${accepted.map(a => a.row).join(', ')})`);
     });
   }
 });

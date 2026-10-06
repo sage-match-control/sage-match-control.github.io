@@ -1,7 +1,8 @@
 // Differences the harness accepts (site-engine-spec §6.5). An entry is allowed
 // only for §3.3 items 3, 4 and 5: a fix carried to the other page (§5.2 cause
 // 3), or an owner-approved presentation change. `row` is the §12 row that
-// records the decision. Keep this list short.
+// records the decision (a number), or the team template spec's §17 row (a string
+// beginning "team"). Keep this list short.
 //
 //   { case: <RegExp over the case id>, kind: 'text' | 'pixels' | 'both', reason, row }
 export const ACCEPTED = [
@@ -26,5 +27,19 @@ export const ACCEPTED = [
   {
     case: /^cc\/(piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder\//, kind: 'both', row: 3,
     reason: 'the Teams count on the first screen counts real pairs only (codes ending in a bare number), as the Hub does',
+  },
+  // ---- the team tournament template (sage-docs/docs/specs/.../team-tournament-template-spec.md §9 rows 8-10;
+  //      `row` names the row of the spec's §17) ----
+  {
+    case: /^cc\/pickledrive-anniversary-2026\/finder-search\//, kind: 'both', row: 'team §17 row 8',
+    reason: 'a player result shows the player’s level and gender beside the name',
+  },
+  {
+    case: /^cc\/team-demo-2026\//, kind: 'both', row: 'team §17 row 9',
+    reason: 'the demo’s pair labels come from display.pairs (MD, WD, XD) where the baseline reads the old constant (MD, WD, XD 1); a player result shows level and gender',
+  },
+  {
+    case: /^scorer\/team-demo-2026\//, kind: 'both', row: 'team §17 row 10',
+    reason: 'a playoff side shows its team’s name (or Seed n · TBD), and the dialog’s sub line reads the stage and the pair',
   },
 ];

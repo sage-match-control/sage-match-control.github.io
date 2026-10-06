@@ -37,11 +37,26 @@ const FINISHED_PAGES = {
   'pnf-x-bup-dual-meet': 'events/pnf-x-bup-dual-meet',
 };
 
+// A fixture-only event has no finished pages to read its settings from.
+const FIXED_SETTINGS = {
+  'team-demo-2026': {
+    DAY_KEY: 'team-demo-2026-day1',
+    CAT_META: {
+      G1: { short: 'BR 1', color: '#1155CC' },
+      G2: { short: 'BR 2', color: '#B45F06' },
+      G3: { short: 'BR 3', color: '#741B47' },
+      G4: { short: 'BR 4', color: '#38761D' },
+      PO: { short: 'PLAYOFFS', color: '#14263C' },
+    },
+  },
+};
+
 const settingsCache = new Map();
 
 /** `{ DAYS, FACILITIES, DIVISIONS, EVENTS, CLUBS?, CAT_META, DAY_KEY }` from the finished event's index.html and schedule.html. */
 function eventSettings(event) {
   if (settingsCache.has(event)) return settingsCache.get(event);
+  if (FIXED_SETTINGS[event]) return FIXED_SETTINGS[event];
   const dir = FINISHED_PAGES[event];
   const index = read(SITE_ROOT, dir, 'index.html');
   const schedule = read(SITE_ROOT, dir, 'schedule.html');
@@ -249,42 +264,47 @@ function* controlCenterSignedInCases(registry) {
 }
 
 function* scorerCases(registry) {
-  const event = 'piggleball-2026';
-  const day = SNAPSHOTS[event].day;
-  const time = timeFor(registry, event, day);
-  const patched = JSON.parse(JSON.stringify(registry));
-  patched.events[event].scoreEntry = 'links';
-  const link = token('score-desk', day, Date.parse(time) + 3600e3);
-  // The first playable match: nothing to do (the same in both trees) when the state leaves none.
-  const save = [click('.score-card.scoreable'), enterScores(11, 9), saveScores()].map(s => ifPresent('.score-card.scoreable', s));
-  const views = [
-    { name: 'list', steps: [], cloudRun: [scoreOk], allowErrors: [] },
-    { name: 'court-filter', steps: [clickNth('.court-chip', 2)], cloudRun: [scoreOk], allowErrors: [] },
-    { name: 'save', steps: save, cloudRun: [scoreOk], allowErrors: [] },
-    { name: 'save-conflict', steps: save, cloudRun: [scoreConflict], allowErrors: [CONSOLE_409] },
-  ];
-  for (const state of STATES) for (const v of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
-    yield common({
-      id: `scorer/${event}/${v.name}/${state}/${vp}`, page: 'scorer', path: `/_templates/scorer/scorer.html?scorer=${link}`, event, day, state, viewport,
-      time, instantiate: templateInstance(event, registry), registry: patched, snapshots: snapshotsFor([event], state),
-      cloudRun: v.cloudRun, allowErrors: v.allowErrors, steps: v.steps,
-    });
+  // Piggleball is a standard event; the team demo runs the team branches of the same page.
+  for (const event of ['piggleball-2026', 'team-demo-2026']) {
+    const day = SNAPSHOTS[event].day;
+    const time = timeFor(registry, event, day);
+    const patched = JSON.parse(JSON.stringify(registry));
+    patched.events[event].scoreEntry = 'links';
+    const link = token('score-desk', day, Date.parse(time) + 3600e3);
+    // The first playable match: nothing to do (the same in both trees) when the state leaves none.
+    const save = [click('.score-card.scoreable'), enterScores(11, 9), saveScores()].map(s => ifPresent('.score-card.scoreable', s));
+    const views = [
+      { name: 'list', steps: [], cloudRun: [scoreOk], allowErrors: [] },
+      { name: 'court-filter', steps: [clickNth('.court-chip', 2)], cloudRun: [scoreOk], allowErrors: [] },
+      { name: 'save', steps: save, cloudRun: [scoreOk], allowErrors: [] },
+      { name: 'save-conflict', steps: save, cloudRun: [scoreConflict], allowErrors: [CONSOLE_409] },
+    ];
+    for (const state of STATES) for (const v of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
+      yield common({
+        id: `scorer/${event}/${v.name}/${state}/${vp}`, page: 'scorer', path: `/_templates/scorer/scorer.html?scorer=${link}`, event, day, state, viewport,
+        time, instantiate: templateInstance(event, registry), registry: patched, snapshots: snapshotsFor([event], state),
+        cloudRun: v.cloudRun, allowErrors: v.allowErrors, steps: v.steps,
+      });
+    }
   }
 }
 
 /**
  * The desk page's backend, made fresh for every run (the two trees run a case
  * at the same time and must not share it): each venue's ATTENDANCE tab as a CSV
- * that a routed PUT changes, as the sheet would.
+ * that a routed PUT changes, as the sheet would. `venues` is
+ * `[{ name, sheetIdPrefix, file }]`: the facility name lower-cased is what the
+ * PUT's path names, the prefix is the start of that venue's sheet ID.
  */
-function attendanceBackend(event, files) {
+function attendanceBackend(event, venueList) {
   return () => {
-    const venues = Object.fromEntries(Object.entries(files).map(([name, file]) => [name, parseCsv(read(SITE_FIXTURES, event, file))]));
+    const venues = Object.fromEntries(venueList.map(v => [v.name.toLowerCase(), parseCsv(read(SITE_FIXTURES, event, v.file))]));
     const csvOf = name => toCsv(venues[name]);
-    const external = [
-      { match: /docs\.google\.com\/spreadsheets\/d\/FIXTUREMAINSHEETID/, contentType: 'text/csv', body: () => csvOf('main') },
-      { match: /docs\.google\.com\/spreadsheets\/d\/FIXTUREANNEXSHEETID/, contentType: 'text/csv', body: () => csvOf('annex') },
-    ];
+    const external = venueList.map(v => ({
+      match: new RegExp(`docs\\.google\\.com/spreadsheets/d/${v.sheetIdPrefix}`),
+      contentType: 'text/csv',
+      body: () => csvOf(v.name.toLowerCase()),
+    }));
     const cloudRun = [{
       method: 'PUT',
       path: attendanceOk.path,
@@ -307,27 +327,42 @@ function attendanceBackend(event, files) {
 }
 
 function* attendanceCases() {
-  // The attendance fixture event (site _fixtures/): two venues, a CSV each.
-  const event = 'attendance-demo-2026';
-  const day = 'attendance-demo-2026-day1';
-  const patched = JSON.parse(read(SITE_FIXTURES, 'config.json'));
-  patched.events[event].attendance = 'desks';
-  const time = timeFor(patched, event, day);
-  const link = token('attendance-desk', day, Date.parse(time) + 3600e3);
-  const instantiate = { tokens: { EVENT_KEY: event, EVENT_TITLE: 'Attendance Demo' }, settings: { EVENT_KEY: event } };
-  const backend = attendanceBackend(event, { main: 'attendance-main-pre.csv', annex: 'attendance-annex-pre.csv' });
-  const mark = click('input.att-switch[data-k="ben lim"]');
-  const views = [
-    ['list', []],
-    ['mark', [mark]],
-    ['mark-then-unmark', [mark, click('input.att-switch[data-k="ben lim"]')]],
+  // The attendance fixture events (site _fixtures/): a CSV per venue. The standard demo has two
+  // venues, the team demo one.
+  const fixtures = [
+    {
+      event: 'attendance-demo-2026', title: 'Attendance Demo', mark: click('input.att-switch[data-k="ben lim"]'),
+      venues: [
+        { name: 'main', sheetIdPrefix: 'FIXTUREMAINSHEETID', file: 'attendance-main-pre.csv' },
+        { name: 'annex', sheetIdPrefix: 'FIXTUREANNEXSHEETID', file: 'attendance-annex-pre.csv' },
+      ],
+    },
+    {
+      event: 'team-demo-2026', title: 'Team Demo', mark: click('input.att-switch'), snapshot: true,
+      venues: [{ name: 'Demo Courts', sheetIdPrefix: 'FIXTURETEAMSHEETID', file: 'attendance-demo-courts-pre.csv' }],
+    },
   ];
-  // The fixture is the ATTENDANCE tabs as they stood before check-in ("pre"); it has no snapshot.
-  for (const [vname, steps] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
-    yield common({
-      id: `attendance/${event}/${vname}/pre/${vp}`, page: 'attendance', path: `/_templates/attendance/attendance.html?desk=${link}`, event, day,
-      state: 'pre', viewport, time, instantiate, registry: patched, snapshots: {}, backend, steps,
-    });
+  for (const { event, title, mark, venues, snapshot } of fixtures) {
+    const day = SNAPSHOTS[event]?.day || `${event}-day1`;
+    const patched = JSON.parse(read(SITE_FIXTURES, 'config.json'));
+    patched.events[event].attendance = 'desks';
+    const time = timeFor(patched, event, day);
+    const link = token('attendance-desk', day, Date.parse(time) + 3600e3);
+    const instantiate = { tokens: { EVENT_KEY: event, EVENT_TITLE: title }, settings: { EVENT_KEY: event } };
+    const backend = attendanceBackend(event, venues);
+    const views = [
+      ['list', []],
+      ['mark', [mark]],
+      ['mark-then-unmark', [mark, mark]],
+    ];
+    // The fixture is the ATTENDANCE tabs as they stood before check-in ("pre"). A standard event's desk reads no
+    // snapshot; a team event's reads it for the team names.
+    for (const [vname, steps] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
+      yield common({
+        id: `attendance/${event}/${vname}/pre/${vp}`, page: 'attendance', path: `/_templates/attendance/attendance.html?desk=${link}`, event, day,
+        state: 'pre', viewport, time, instantiate, registry: patched, snapshots: snapshot ? snapshotsFor([event], 'pre') : {}, backend, steps,
+      });
+    }
   }
 }
 

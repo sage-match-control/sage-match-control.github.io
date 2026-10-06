@@ -22,6 +22,9 @@ export const SNAPSHOTS = {
     day: 'pickledrive-anniversary-2026-day1',
     file: 'pickledrive-anniversary-2026/pickledrive-anniversary-2026-day1.json',
   },
+  // Fixture only, never in event-data: a team event of another shape (8 teams, 3 pairs, SF-A seeded)
+  // so the team pages are checked on more than PickleDrive's day (team-tournament-template-spec §10.2).
+  'team-demo-2026': { day: 'team-demo-2026-day1', file: 'team-demo-2026/team-demo-2026-day1.json' },
 };
 
 export const STATES = ['final', 'pre', 'mid'];

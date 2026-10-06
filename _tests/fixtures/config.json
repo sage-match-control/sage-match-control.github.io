@@ -121,6 +121,41 @@
           ]
         }
       }
+    },
+    "team-demo-2026": {
+      "type": "team",
+      "title": "Team Demo (fixture only)",
+      "attendance": "desks",
+      "scoreEntry": "links",
+      "display": {
+        "pairs": {
+          "1": {
+            "full": "Men's Doubles",
+            "short": "MD"
+          },
+          "2": {
+            "full": "Women's Doubles",
+            "short": "WD"
+          },
+          "3": {
+            "full": "Mixed Doubles",
+            "short": "XD"
+          }
+        }
+      },
+      "days": {
+        "team-demo-2026-day1": {
+          "label": "Oct 10",
+          "date": "2026-10-10",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Demo Courts",
+              "sheetId": "test"
+            }
+          ]
+        }
+      }
     }
   }
 }
