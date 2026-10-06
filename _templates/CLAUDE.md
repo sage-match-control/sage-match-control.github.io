@@ -320,7 +320,8 @@ clubs; it is not a general multi-club template.
 
    **SAGE → Help** is present in every workbook whether configured or not,
    and carries this whole procedure plus a troubleshooting list — point an
-   operator at it rather than at this file.
+   operator at it rather than at this file. It also lists the version of each
+   SAGE script in the workbook.
 
 9. **Create the data folder.** In the `event-data` repo, create
    `<event-key>/data/` (an empty folder — or just let the first successful
