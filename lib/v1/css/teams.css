@@ -1,5 +1,5 @@
 /* Team events: the roster cards, matchup cards, bracket tables, playoffs, the Live Matches row and the team
-   Match Finder (lib/v1/views/teams.js). Only Control Center has a team event. Colour, radius and shadow come
+   Match Finder (lib/v1/views/teams.js). Control Center and a team event's Hub. Colour, radius and shadow come
    from the page's theme properties (site-engine-spec §4.7). */
 
 .team-groups + .results-meta{margin-top:14px;}
@@ -188,6 +188,7 @@ table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2
 .roster-list li.me{ font-weight:700; }
 
 .roster-tags{ display:flex; gap:6px; flex:none; }
+.results-head .player-head{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
 .roster-tag{
   font-size:11px; font-weight:600; padding:2px 7px; border-radius:6px;
