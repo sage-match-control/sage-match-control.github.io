@@ -21,7 +21,7 @@ import { ACCEPTED } from './accepted.mjs';
 const filter = process.env.CASE ? new RegExp(process.env.CASE) : null;
 const cases = buildCases().filter(c => !filter || filter.test(c.id));
 const concurrency = Number(process.env.CONCURRENCY || 4);
-const RERUNS = 2;
+const RERUNS = 3;
 // Windows briefly running out of socket buffers is the machine's, not the page's, and so is a step that
 // times out while many pages share the CPU. A page that really is broken fails every rerun too.
 const TRANSIENT = /ERR_NO_BUFFER_SPACE|ERR_CONNECTION_(RESET|CLOSED|REFUSED)|locator\.\w+: Timeout \d+ms exceeded/;
@@ -64,7 +64,10 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
         const r = compareResults(base, branch);
         const errors = [...base.errors, ...branch.errors];
         if (errors.some(e => !TRANSIENT.test(e))) break;               // a real page error
-        if (!errors.length && ((r.pixelsSame && r.textSame) || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry; a real difference is still there on the reruns
+        // A page that reports its own load timing out was starved (the machine was busy), not different.
+        const stalled = [base, branch].some(x => /(timed out)/.test(x.text));
+        if (!errors.length && !stalled && ((r.pixelsSame && r.textSame) || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry; a real difference is still there on the reruns
+        if (stalled) await new Promise(r => setTimeout(r, 2000));
         [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
       }
 

@@ -1,0 +1,134 @@
+/* The score dialog (lib/v1/views/score-dialog.js), in Control Center and on the scorer page. Colour, radius and
+   shadow come from the page's theme properties (site-engine-spec §4.7). */
+
+/* ---------- SCORE DIALOG (spec: control-center-score-entry-spec.md §5.2) ----------
+   The same rules, in the same words, in tools/control-center.html and
+   _templates/scorer/scorer.html (and so every events/<key>/scorer.html). */
+.score-dialog{
+  width:min(520px, calc(100vw - 32px));
+  max-height:calc(100vh - 32px);
+  overflow-y:auto;
+  border:none;
+  border-radius:var(--radius);
+  padding:20px;
+  background:var(--white);
+  color:var(--ink);
+  box-shadow:var(--card-shadow);
+  font-family:'Inter',sans-serif;
+}
+
+.score-dialog::backdrop{background:rgba(11,24,38,.55);}
+
+.score-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px;}
+
+.score-title{margin:0; font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; line-height:1.2; letter-spacing:.01em;}
+
+.score-sub{margin-top:2px; font-size:13px; color:var(--ink-soft);}
+
+.score-x{
+  flex:0 0 auto; border:0; background:transparent; color:var(--ink-soft);
+  font-size:28px; line-height:1; padding:0 6px; cursor:pointer;
+  min-width:44px; min-height:44px; margin:-8px -10px -8px 0;
+}
+
+.score-x:hover{color:var(--ink);}
+
+.score-x:disabled{opacity:.4; cursor:not-allowed;}
+
+.score-sides{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+.score-side{min-width:0; display:flex; flex-direction:column; align-items:stretch; gap:4px;}
+
+.score-side-name{font-weight:700; font-size:15px; line-height:1.25; overflow-wrap:anywhere;}
+
+.score-chip{
+  align-self:flex-start;
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; letter-spacing:.06em;
+  padding:1px 8px; border-radius:999px; background:var(--paper-dim); color:var(--ink-soft);
+}
+
+.score-side-players{font-size:13px; line-height:1.35; color:var(--ink-soft); overflow-wrap:anywhere; margin-bottom:6px;}
+
+.score-side-players.unset{font-style:italic;}
+
+.score-input{
+  font:inherit; font-size:32px; font-weight:700; text-align:center;
+  width:100%; height:64px;
+  border:2px solid var(--line); border-radius:10px;
+  background:var(--white); color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+
+.score-input:focus{outline:none; border-color:var(--green);}
+
+.score-winner{font-size:22px; font-weight:800; line-height:1.25; margin:4px 0 10px;}
+
+.score-winner-players{font-size:15px; font-weight:400; color:var(--ink-soft);}
+
+/* A team's win: the team name a notch smaller, the players on their own line beneath, larger. */
+.score-winner.team{font-size:18px; font-weight:700; margin-bottom:2px;}
+
+.score-winner-names{font-size:22px; font-weight:800; line-height:1.25; margin:0 0 10px; overflow-wrap:anywhere;}
+
+.score-big{font-size:44px; font-weight:800; line-height:1.1; text-align:center; font-variant-numeric:tabular-nums;}
+
+.score-big-names{display:flex; justify-content:space-around; gap:12px; margin:2px 0 10px; font-size:13px; color:var(--ink-soft); text-align:center;}
+
+.score-big-names span{flex:1 1 0; min-width:0; overflow-wrap:anywhere;}
+
+.score-was{color:var(--ink-soft); font-size:14px; margin:4px 0 8px; text-align:center;}
+
+.score-winner + .score-was{text-align:left;}
+
+.score-warn{
+  margin:10px 0 0; padding:10px 14px 10px 30px; border-radius:10px;
+  background:#FFF4E0; border:1px solid rgba(240,170,40,.55); color:#7A4B00; font-size:14px;
+}
+
+.score-warn li{margin:2px 0;}
+
+.score-error{
+  margin:12px 0 0; padding:10px 14px; border-radius:10px;
+  background:#FDEDEF; border:1px solid rgba(255,90,110,.5); color:#9A2A3A; font-size:14px;
+}
+
+.score-note{margin:12px 0 0; font-size:14px; font-style:italic; color:var(--ink-soft);}
+
+.score-conflict{margin:0 0 10px; font-size:15px;}
+
+.score-conflict-row{margin:4px 0; font-size:15px;}
+
+.score-conflict-row span{display:inline-block; min-width:96px; color:var(--ink-soft);}
+
+.score-actions{display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px;}
+
+.score-saving{margin-right:auto; font-size:14px; color:var(--ink-soft);}
+
+.score-btn{
+  font:inherit; font-size:15px; font-weight:600;
+  min-height:44px; padding:0 18px; border:none; border-radius:10px; cursor:pointer;
+}
+
+.score-btn.primary{background:var(--navy); color:var(--white);}
+
+.score-btn.secondary{background:var(--paper-dim); color:var(--ink);}
+
+.score-btn:disabled{opacity:.5; cursor:not-allowed;}
+
+.score-btn:focus-visible, .score-x:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+
+.scoreable{cursor:pointer;}
+
+.scoreable:hover, .scoreable:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+
+.score-hint{font-size:12px; font-weight:600; color:var(--green-dark); margin-left:auto; white-space:nowrap;}
+
+@media (max-width:599px) {
+  .score-dialog{
+    width:100%; max-width:100%; margin:auto 0 0;
+    border-radius:var(--radius) var(--radius) 0 0;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .score-actions .score-btn{flex:1 1 auto;}
+}
