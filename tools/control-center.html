@@ -2882,7 +2882,39 @@
      button that caused them sits. See showToast(). -->
 <div class="toast-stack" id="toastStack" aria-live="polite"></div>
 
-<script>
+<script type="module">
+// The engine (lib/v1): the rules and parsers every page shares, as modules.
+// Where a function takes the event's type, its display config or the clock as a
+// parameter, the page keeps a one-line wrapper that passes its own state
+// (site-engine-spec §7.1); the wrappers go when the views move into the engine.
+import { parseCSV } from '/lib/v1/domain/csv.js';
+import { BYE_RE, sideIsBye, matchByeSide, isByeStandingRow } from '/lib/v1/domain/byes.js';
+import { SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames } from '/lib/v1/domain/series.js';
+import { rowsToMatches, buildMatchByCodeIndex, matchInstanceOf } from '/lib/v1/domain/matches.js';
+import { rowsToStandings, fmtQ, isEmptyStanding } from '/lib/v1/domain/standings.js';
+import {
+  STAGE_META, CROSS_CLUB_STAGE_KEYS, STAGE_ORDER, BADGE_CLASSES, ROUND_KEYWORD_LABELS, STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD,
+  roundKeyword, roundLabel,
+} from '/lib/v1/domain/codes.js';
+import { GO_LIVE_LEAD_HOURS, parseScheduleTimeToMinutes, formatMinutesAsClock } from '/lib/v1/domain/golive.js';
+import { DAY_ROLLOVER_MIN, courtNumberFrom, eventScheduleMinutes, isEventDayActive, eventClock, formatGap, computeFacilityProgress } from '/lib/v1/domain/progress.js';
+import {
+  PAIRS, STAGES, numberRepeatedPairs, parseSideCode, sideOf, pairOf, stageOf, slotOf, isGroupTeamCode, pairLabel,
+  teamMatchupResult, teamRowsToRoster, teamLevelLabel,
+} from '/lib/v1/domain/teams.js';
+import { nonByeCode, winnerOfMatch, loserOfMatch } from '/lib/v1/domain/awards.js';
+import {
+  attParseCsv, attClockTime, attSplitList, parseAttendanceCsv, defaultCategoryLabel, groupForDesk, attLettersOnly,
+  attOneEditApart, possibleDuplicates, sameNameSameCategory,
+} from '/lib/v1/domain/attendance.js';
+import * as Codes from '/lib/v1/domain/codes.js';
+import * as Matches from '/lib/v1/domain/matches.js';
+import * as Standings from '/lib/v1/domain/standings.js';
+import * as GoLive from '/lib/v1/domain/golive.js';
+import * as Progress from '/lib/v1/domain/progress.js';
+import * as Teams from '/lib/v1/domain/teams.js';
+import * as Awards from '/lib/v1/domain/awards.js';
+
 // ============================================================================
 // CONFIGURATION — platform-wide constants only. Everything event-specific
 // (days, facilities, categories, clubs) is resolved at runtime from
@@ -2895,34 +2927,14 @@
 // per-event pages, which take it as a {{CLOUD_RUN_BASE_URL}} template token.
 const CLOUD_RUN_BASE_URL = 'https://sage-tools-api-811926984834.us-central1.run.app';
 
-// ORGANIZER PAGE: always live, regardless of any day's isLive config or
-// schedule — this page is only ever used by operators, not linked from the
-// public site, so there's no reason to hide scores or the Live Matches/
-// Standings tabs here the way the public site does. A separate, display-only
-// computation of the *public* site's effective state lives in the Mission
-// Control go-live control further down (see describeGoLiveState()).
-function computeDayIsLive(_day){
+// ORGANIZER PAGE: always live, regardless of any day's isLive config or schedule: this page is
+// only ever used by operators, so there is no reason to hide scores or the Live Matches/Standings
+// tabs the way the public site does (it becomes buildDayModel's alwaysLive). Renamed so it is
+// not mistaken for the engine's computeDayIsLive. A separate, display-only computation of the
+// *public* site's effective state lives in the Mission Control go-live control (describeGoLiveState()).
+function consoleDayIsLive(_day){
   return true;
 }
-
-// ---- Playoff stage display -------------------------------------------------
-// Fixed, universal stage metadata — the regexes that read it (roundKeyword,
-// standingsStageKey, etc.) don't depend on any per-event config, so this
-// never needed to move into events.json. Round Robin rows aren't listed
-// here — they're always "RR" and rendered separately.
-const STAGE_META = {
-  R16:    { label: 'Round of 16',   banner:false },
-  QF:     { label: 'Quarterfinals', banner:false },
-  SF:     { label: 'Semifinals',    banner:false },
-  BRONZE: { label: 'Bronze Battle', banner:true },
-  FINAL:  { label: 'Finals',        banner:true }
-};
-// Bronze/Final are cross-club matches (dual-meet type only) — the two clubs'
-// bracket winners (or runners-up) face each other directly, unlike Round
-// Robin/R16/QF/SF, which stay within one club's own bracket.
-const CROSS_CLUB_STAGE_KEYS = ['BRONZE', 'FINAL'];
-const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
-const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
 
 // ---- Event registry (event-data/config/events.json) ------------------------
 // One shared repo, one folder per event. GitHub Pages must be enabled on
@@ -3068,121 +3080,9 @@ function createLiveChannel({ enabled, onSnapshot }){
 // Every top-level name here starts with att / ATTENDANCE_ / attendance, or is
 // one of the names listed in the spec's table.
 const ATTENDANCE_POLL_MS = 10000;
-const ATTENDANCE_SHIRT_HEADERS = ['TShirt Size', 'T-Shirt Size', 'Shirt Size', 'tshirtSize', 'shirtSize'];
 
 function attendanceCsvUrl(sheetId){
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&headers=1&sheet=ATTENDANCE`;
-}
-
-// gviz quotes every cell and doubles an internal quote to escape it.
-function attParseCsv(text){
-  const rows = []; let row = [], cell = '', q = false;
-  for(let i = 0; i < text.length; i++){
-    const c = text[i];
-    if(q){
-      if(c === '"'){ if(text[i + 1] === '"'){ cell += '"'; i++; } else q = false; }
-      else cell += c;
-    }else if(c === '"') q = true;
-    else if(c === ','){ row.push(cell); cell = ''; }
-    else if(c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
-    else if(c !== '\r') cell += c;
-  }
-  if(cell || row.length){ row.push(cell); rows.push(row); }
-  return rows;
-}
-
-// The tab stamps timeIn as "yyyy-MM-dd HH:mm" (Manila), but take the clock
-// part off the end and show it the way a marshal reads a wall clock, so any
-// other shape still reads sensibly. Anything unexpected falls back to the raw tail.
-function attClockTime(raw){
-  const t = String(raw || '');
-  const m = t.match(/([0-9]{1,2}):([0-9]{2})(?::[0-9]{2})?[ ]*([AaPp])?[.]?[Mm]?[.]?[ ]*$/);
-  if(!m) return t.slice(-5);
-  let h = Number(m[1]);
-  const half = m[3] && m[3].toUpperCase();
-  if(half){
-    if(h === 12) h = half === 'A' ? 0 : 12;
-    else if(half === 'P') h += 12;
-  }
-  return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
-}
-
-function attSplitList(v){
-  return String(v || '').split(',').map(s => s.trim()).filter(Boolean);
-}
-
-// gviz CSV -> people[], one per FIRST row of each non-blank key. A text with
-// no header row (no ATTENDANCE tab yet) gives [].
-function parseAttendanceCsv(text){
-  const rows = attParseCsv(String(text || ''));
-  const head = (rows[0] || []).map(h => String(h).trim());
-  const col = name => head.indexOf(name);
-  const iKey = col('key');
-  if(iKey === -1) return [];
-  const iShirt = ATTENDANCE_SHIRT_HEADERS.map(col).find(i => i !== -1);
-  const seen = new Set();
-  const people = [];
-  rows.slice(1).forEach(r => {
-    const key = String(r[iKey] || '').trim();
-    if(!key || seen.has(key)) return;
-    seen.add(key);
-    people.push({
-      key,
-      player: String(r[col('player')] || '').trim() || key,
-      teams: attSplitList(r[col('teams')]),
-      categories: attSplitList(r[col('categories')]),
-      present: r[col('present')] === 'TRUE',
-      timeIn: String(r[col('timeIn')] || '').trim(),
-      withdrawn: r[col('withdrawn')] === 'TRUE',
-      shirt: iShirt === undefined ? '' : String(r[iShirt] || '').trim(),
-    });
-  });
-  return people;
-}
-
-// "<division label> <event label>" for a code like NMD (division N + event MD),
-// from an event's display block; otherwise the code itself.
-function defaultCategoryLabel(code, display){
-  const divisions = (display && display.divisions) || {};
-  const events = (display && display.events) || {};
-  const keys = Object.keys(divisions).sort((a, b) => b.length - a.length);
-  for(const d of keys){
-    const rest = String(code).slice(d.length);
-    if(String(code).startsWith(d) && Object.prototype.hasOwnProperty.call(events, rest)){
-      return `${divisions[d]} ${events[rest]}`.trim();
-    }
-  }
-  return code;
-}
-
-// What to list on the desk, grouped. Standard and dual meet: sections by
-// category (first-seen order), each holding a card per team code listing its
-// players; a person in two categories appears in both. Team events: a
-// section per team, one card each. Withdrawn people are left out unless
-// showWithdrawn. -> [{ id, label, cards: [{ teamCode, players: [person] }] }]
-function groupForDesk(people, { type, teamName, categoryLabel, showWithdrawn } = {}){
-  const sections = new Map();
-  const section = (id, label) => {
-    if(!sections.has(id)) sections.set(id, { id, label, cards: new Map() });
-    return sections.get(id);
-  };
-  const addTo = (sec, teamCode, person) => {
-    if(!sec.cards.has(teamCode)) sec.cards.set(teamCode, { teamCode, players: [] });
-    const card = sec.cards.get(teamCode);
-    if(!card.players.includes(person)) card.players.push(person);
-  };
-  (people || []).forEach(person => {
-    if(person.withdrawn && !showWithdrawn) return;
-    person.teams.forEach((teamCode, i) => {
-      if(type === 'team'){
-        addTo(section(teamCode, (teamName && teamName(teamCode)) || `Team ${teamCode}`), teamCode, person);
-      }else{
-        const code = person.categories[i] || String(teamCode).split('_')[0];
-        addTo(section(code, categoryLabel ? categoryLabel(code) : code), teamCode, person);
-      }
-    });
-  });
-  return [...sections.values()].map(s => ({ id: s.id, label: s.label, cards: [...s.cards.values()] }));
 }
 
 // PUT one person's check-in. Rejects with Error(body.error || "HTTP <status>")
@@ -3202,40 +3102,6 @@ async function markPerson({ apiBase, token, day, facility, key, present }){
     throw err;
   }
   return body;
-}
-
-function attLettersOnly(s){ return String(s).replace(/[^\p{L}\p{N}]/gu, ''); }
-
-// True when a and b are exactly one insertion, deletion or substitution apart.
-function attOneEditApart(a, b){
-  if(a === b || Math.abs(a.length - b.length) > 1) return false;
-  let i = 0;
-  while(i < a.length && i < b.length && a[i] === b[i]) i++;
-  if(a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
-  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
-}
-
-// Pairs of people whose keys read as one name written two ways: equal once
-// spacing and punctuation go (dela cruz / delacruz), or both 5+ characters
-// and one edit apart. Listed for a person to judge; never merged.
-function possibleDuplicates(people){
-  const live = (people || []).filter(p => !p.withdrawn);
-  const pairs = [];
-  for(let i = 0; i < live.length; i++){
-    for(let j = i + 1; j < live.length; j++){
-      const a = live[i].key, b = live[j].key;
-      const sameLetters = attLettersOnly(a) === attLettersOnly(b);
-      const oneEdit = a.length >= 5 && b.length >= 5 && attOneEditApart(a, b);
-      if(sameLetters || oneEdit) pairs.push([live[i], live[j]]);
-    }
-  }
-  return pairs;
-}
-
-// People with two team codes that share a category: one row, but the same
-// name twice in one category is worth a look.
-function sameNameSameCategory(people){
-  return (people || []).filter(p => !p.withdrawn && new Set(p.categories).size !== p.categories.length);
 }
 
 const ATTENDANCE_CSS = `
@@ -3673,19 +3539,11 @@ let DAYS = [];                   // this event's days, sorted by date: [{key,lab
 let FACILITIES = [];             // this day's facilities: [{name}] — resolved in selectDay(), courts derived from data (see buildFacilityCourtGroups)
 
 let currentDayIndex = null; // no day chosen yet — gates the tabs until one is picked
-let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) — set in selectDay(), re-checked on every poll
+let dayIsLive = false; // resolved via consoleDayIsLive(DAYS[currentDayIndex]) — set in selectDay(), re-checked on every poll
 
 let MATCHES = [];
 let MATCHES_BY_FACILITY = []; // [{name, matches}] — each facility's own matches kept separate (see buildFacilityCourtGroups)
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
-function buildMatchByCodeIndex(matches){
-  const idx = new Map();
-  matches.forEach(m => {
-    if(m.t1) idx.set(m.t1, m);
-    if(m.t2) idx.set(m.t2, m);
-  });
-  return idx;
-}
 let STANDINGS = [];
 // Raw last-fetched day snapshot (facilities' syncedAt, failedFacilities,
 // etc.) — kept separately from MATCHES/STANDINGS since those are the
@@ -3693,109 +3551,17 @@ let STANDINGS = [];
 // per-facility sync metadata that parsing throws away.
 let LAST_SNAPSHOT = null;
 
-function parseCSV(text){
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for(let i=0;i<text.length;i++){
-    const c = text[i];
-    if(inQuotes){
-      if(c === '"'){
-        if(text[i+1] === '"'){ field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if(c === '"') inQuotes = true;
-      else if(c === ','){ row.push(field); field=''; }
-      else if(c === '\r'){ /* skip */ }
-      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
-      else field += c;
-    }
-  }
-  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
-  return rows.filter(r => r.length > 1 || r[0] !== '');
-}
+// The selected day, or null before one is picked.
+function currentDay(){ return currentDayIndex !== null ? DAYS[currentDayIndex] : null; }
 
-function rowsToMatches(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
-        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
-        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
-        iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
-        iLiveCourt = idx('court'), iMatchUp = idx('matchUp');
-
-  const out = [];
-  for(let r = 1; r < rows.length; r++){
-    const row = rows[r];
-    if(!row || row.length === 0) continue;
-    const num = parseInt(row[iNum], 10);
-    if(!num) continue;
-    const t1 = (row[iT1]||'').trim();
-    const t2 = (row[iT2]||'').trim();
-    let t1p1 = (row[iP1a]||'').trim();
-    let t1p2 = (row[iP1b]||'').trim();
-    let t2p1 = (row[iP2a]||'').trim();
-    let t2p2 = (row[iP2b]||'').trim();
-    // Placeholder bracket slots repeat the team code as the player name
-    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
-    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
-    // Scores are optional — only present once a match has been played
-    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
-    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
-    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
-    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
-    const played = t1Score !== null && t2Score !== null;
-    const court = iCourt > -1 ? (row[iCourt]||'').trim() : '';
-    // A value here means the match is currently being played on that court —
-    // separate from CourtAssignment above, which is just the scheduled court.
-    const liveCourt = iLiveCourt > -1 ? (row[iLiveCourt]||'').trim() : '';
-    out.push({
-      num,
-      time: (row[iSched]||'').trim(),
-      court,
-      liveCourt,
-      matchUp: iMatchUp > -1 ? (row[iMatchUp]||'').trim() : '', // team type only; '' elsewhere
-      t1, t1p1, t1p2, t2, t2p1, t2p2,
-      t1Score, t2Score, played
-    });
-  }
-  out.sort((a,b) => a.num - b.num);
-  return out;
-}
-
-function rowsToStandings(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iCode = idx('teamCode'), iP1 = idx('player1'), iP2 = idx('player2'),
-        iW = idx('wins'), iL = idx('loss'), iQ = idx('quotient'), iB = idx('bracket'),
-        iName = idx('teamName'), iPF = idx('totalPoints'), iPA = idx('totalOpponentPoints');
-
-  const out = [];
-  for(let r = 1; r < rows.length; r++){
-    const row = rows[r];
-    if(!row || row.length === 0) continue;
-    const teamCode = (row[iCode]||'').trim();
-    if(!teamCode) continue;
-    const player1 = iP1 > -1 ? (row[iP1]||'').trim() : '';
-    const player2 = iP2 > -1 ? (row[iP2]||'').trim() : '';
-    const rawW = iW > -1 ? (row[iW]||'').trim() : '';
-    const rawL = iL > -1 ? (row[iL]||'').trim() : '';
-    const rawQ = iQ > -1 ? (row[iQ]||'').trim() : '';
-    const wins = rawW !== '' && !isNaN(rawW) ? parseInt(rawW, 10) : 0;
-    const loss = rawL !== '' && !isNaN(rawL) ? parseInt(rawL, 10) : 0;
-    const quotient = rawQ !== '' && !isNaN(rawQ) ? parseFloat(rawQ) : null;
-    const bracket = iB > -1 ? (row[iB]||'').trim() : '';
-    // team type only — existing events have no such columns, so these stay empty
-    const teamName = iName > -1 ? (row[iName]||'').trim() : '';
-    const rawPF = iPF > -1 ? (row[iPF]||'').trim() : '';
-    const rawPA = iPA > -1 ? (row[iPA]||'').trim() : '';
-    const pf = rawPF !== '' && !isNaN(rawPF) ? parseFloat(rawPF) : 0;
-    const pa = rawPA !== '' && !isNaN(rawPA) ? parseFloat(rawPA) : 0;
-    out.push({ teamCode, player1, player2, wins, loss, quotient, bracket, teamName, pf, pa });
-  }
-  return out;
+// The day's state in the shape the engine's domain functions read (a DayModel, lib/v1/domain/model.js),
+// built from the globals this page still keeps it in.
+function dayModel(){
+  return {
+    event: { type: CURRENT_TYPE, display: DISPLAY },
+    matches: MATCHES, standings: STANDINGS,
+    team: { rowByCode: TEAM_ROW_BY_CODE, matchups: TEAM_MATCHUPS },
+  };
 }
 
 // jsDelivr/GitHub can hang on a bad connection (likely at a live event on
@@ -3907,7 +3673,7 @@ async function loadLiveData(){
     // changed, though — calling this every 10s regardless would yank the
     // person off whatever tab they're currently looking at.
     const wasLive = dayIsLive;
-    dayIsLive = computeDayIsLive(day);
+    dayIsLive = consoleDayIsLive(day);
     if(dayIsLive !== wasLive) revealLiveTabsAfterLoad();
 
     rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
@@ -3984,201 +3750,22 @@ function revealLiveTabsAfterLoad(){
   showView('organizer');
 }
 
-// ---- Generic code parsing (position-based, not a regex built from known
-// club/division/event codes — spec §2.2: club/category sets are derived
-// from the data, never configured) ----
-// dual-meet: <CLUB>_<CATEGORY>_<REST>. standard: <CATEGORY>_<REST>.
-// Never fails structurally — grouping/rendering works even with zero
-// `display` config (spec §2.3); only labels ever need it.
-const parseCodeCache = new Map();
-function parseCode(code){
-  const cacheKey = `${CURRENT_TYPE}::${code}`;
-  let cached = parseCodeCache.get(cacheKey);
-  if(cached) return cached;
-  const parts = String(code).split('_');
-  let result;
-  if(CURRENT_TYPE === 'dual-meet'){
-    const [club, category, ...rest] = parts;
-    result = { club: club || null, category: category || null, rest: rest.join('_') };
-  } else if(CURRENT_TYPE === 'team'){
-    // Team views use the helpers in the team block below, not this — this
-    // only keeps any shared caller from breaking.
-    const [, ...rest] = parts;
-    result = { club: null, category: null, rest: rest.join('_') };
-  } else {
-    const [category, ...rest] = parts;
-    result = { club: null, category: category || null, rest: rest.join('_') };
-  }
-  parseCodeCache.set(cacheKey, result);
-  return result;
-}
+function parseCode(code){ return Codes.parseCode(code, CURRENT_TYPE); }
 
-// Splits a category token ("LIWD") into its division/event codes by
-// longest-prefix match against DISPLAY.divisions' keys (spec §2.4) — the
-// only place display config is actually required for anything. Returns
-// null if it can't be split (no display config, or no matching prefix);
-// callers fall back to showing the raw token untranslated.
-function splitCategory(category){
-  if(!category || !DISPLAY.divisions) return null;
-  const divKeys = Object.keys(DISPLAY.divisions).sort((a, b) => b.length - a.length);
-  for(const divCode of divKeys){
-    if(category.startsWith(divCode)){
-      const evCode = category.slice(divCode.length);
-      if(DISPLAY.events && Object.prototype.hasOwnProperty.call(DISPLAY.events, evCode)){
-        return { divCode, evCode };
-      }
-    }
-  }
-  return null;
-}
+function splitCategory(category){ return Codes.splitCategory(category, DISPLAY); }
 
 // Tracks every category token that display config couldn't resolve, so the
 // console can show one visible warning instead of a silent "Other" bucket
 // (spec §2.4). Cleared and rebuilt at the top of every renderStandings pass.
 let UNRESOLVED_CATEGORIES = new Set();
 
-function categoryLabel(category){
-  if(category === '__team__') return 'Team Championship';
-  if(!category) return 'Other';
-  const split = splitCategory(category);
-  if(!split){
-    if(DISPLAY.divisions) UNRESOLVED_CATEGORIES.add(category);
-    return category;
-  }
-  const divLabel = DISPLAY.divisions[split.divCode] || split.divCode;
-  const evLabel = (DISPLAY.events && DISPLAY.events[split.evCode]) || split.evCode;
-  return `${divLabel} ${evLabel}`.trim();
-}
+function categoryLabel(category){ return Codes.categoryLabel(category, DISPLAY, UNRESOLVED_CATEGORIES); }
 
-function clubLabel(clubCode){
-  if(!clubCode) return clubCode;
-  return (DISPLAY.clubs && DISPLAY.clubs[clubCode]) || clubCode;
-}
+function clubLabel(clubCode){ return Codes.clubLabel(clubCode, DISPLAY); }
 
-// Twice-to-beat playoff slots encode which meeting they belong to as a
-// trailing "(1)"/"(2)" on the team code — e.g. B35XD_F_1_(1) vs
-// B35XD_F_2_(1) for the first Final, with B35XD_F_1_(2)/B35XD_F_2_(2) as
-// the decider if the challenger forces a second match. Works the same on
-// either a full team code or just its "rest" portion, since the
-// parenthesized part is always at the very end either way. Returns null
-// for any code without one (i.e. every normal, non-twice-to-beat match).
-function matchInstanceOf(str){
-  const m = str.match(/\((\d+)\)\s*$/);
-  return m ? parseInt(m[1], 10) : null;
-}
+function divisionLabel(code){ return Codes.divisionLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES); }
 
-// Raw stage keyword only — no display text, no twice-to-beat "Match N"
-// suffix. standingsStageKey() (and anything else that needs to bucket a
-// row by stage) should use this rather than string-matching roundLabel()'s
-// output, since that carries a suffix that breaks exact-equality checks.
-function roundKeyword(rest){
-  if(/^\d+$/.test(rest)) return null; // plain pool team number -> no special tag
-  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'R16';
-  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'QF';
-  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'SF';
-  if(/(^|_)F(_|\d|$)/.test(rest)) return 'F';
-  if(/(^|_)B(_|\d|$)/.test(rest)) return 'B';
-  return null;
-}
-
-const ROUND_KEYWORD_LABELS = { R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Final', B: 'Bronze Match' };
-
-function roundLabel(rest){
-  const keyword = roundKeyword(rest);
-  if(!keyword) return null;
-  const instance = matchInstanceOf(rest);
-  const suffix = instance ? ` \u00b7 Match ${instance}` : '';
-  return ROUND_KEYWORD_LABELS[keyword] + suffix;
-}
-
-// ---- Bye detection (awards-podium-tab-spec §2.3) ----------------------
-// Twice-to-beat brackets often have no bronze match to actually play — the
-// third-place finisher is already determined by the bracket structure.
-// Rather than special-case that, it's encoded in the data: the operator
-// types BYE into the opponent's team code or either player-name cell,
-// making the real side a winner by walkover. Checking all three cells
-// (not just one) is deliberate — the sheet fills these by formula, so
-// whichever cell the operator overrides has to work.
-const BYE_RE = /^bye$/i;
-function sideIsBye(code, p1, p2){
-  return BYE_RE.test((code || '').trim())
-      || BYE_RE.test((p1   || '').trim())
-      || BYE_RE.test((p2   || '').trim());
-}
-function matchByeSide(m){
-  const t1Bye = sideIsBye(m.t1, m.t1p1, m.t1p2);
-  const t2Bye = sideIsBye(m.t2, m.t2p1, m.t2p2);
-  if(t1Bye && t2Bye) return 'both'; // data error
-  if(t1Bye) return 't1';
-  if(t2Bye) return 't2';
-  return null;
-}
-// A standings row for a bye "team" — never a real pair, dropped wherever
-// standings rows are consumed (spec §2.6 rule 1).
-function isByeStandingRow(s){
-  return BYE_RE.test((s.teamCode || '').trim()) || BYE_RE.test((s.player1 || '').trim());
-}
-
-// ---- Series finals (twice-to-beat, best-of-3) ----
-// A final played as a series of games carries its seat and game in each team
-// code: "<prefix>_F_<seat>_(<game>)", e.g. IXD_F_1_(2). Two games is
-// twice-to-beat: seat 1 (the round robin's #1) needs one win, seat 2 two.
-// Three is best-of-3: two wins each. The game where a seat reaches its wins
-// decides the series, and every game after it is never played. A tied game
-// counts for neither seat. Mirrors sage-tools-api's facilityCompletion.mjs
-// (seriesGameOf, unneededSeriesGames): change both, or "matches left" here
-// and the published completedAt disagree about when the day ended.
-const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
-function seriesGameOf(code){
-  const m = SERIES_GAME_RE.exec((code || '').trim());
-  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
-}
-// -> Map(series -> [{ m, game, seat1, seat2 }] in game order)
-function seriesGroups(matches){
-  const groups = new Map();
-  matches.forEach(m => {
-    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
-    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
-    if(!groups.has(a.series)) groups.set(a.series, []);
-    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
-  });
-  groups.forEach(list => list.sort((x, y) => x.game - y.game));
-  return groups;
-}
-// One series, in game order -> { decidedBy, tie, unneeded }
-function walkSeries(list){
-  const games = list[list.length - 1].game;
-  const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
-  const wins = { 1: 0, 2: 0 };
-  let decidedBy = null, tie = null;
-  const unneeded = [];
-  list.forEach(g => {
-    if(decidedBy){ unneeded.push(g.m); return; }
-    if(!g.m.played) return;
-    if(g.m.t1Score === g.m.t2Score){ tie = tie || g.m; return; }
-    const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
-    wins[seat] = (wins[seat] || 0) + 1;
-    if(wins[seat] >= (need[seat] ?? Infinity)) decidedBy = g.m;
-  });
-  return { decidedBy, tie, unneeded };
-}
-function unneededSeriesGames(matches){
-  const out = new Set();
-  seriesGroups(matches).forEach(list => walkSeries(list).unneeded.forEach(m => out.add(m)));
-  return out;
-}
-
-function divisionLabel(code){
-  const p = parseCode(code);
-  if(!p.category) return null;
-  const clubPart = p.club ? `${clubLabel(p.club)} · ` : '';
-  return `${clubPart}${categoryLabel(p.category)}`;
-}
-
-function divisionEventLabel(code){
-  const p = parseCode(code);
-  return categoryLabel(p.category);
-}
+function divisionEventLabel(code){ return Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES); }
 
 // Category display order: built once per render pass (see renderStandings)
 // from whichever category tokens are actually present, ordered by
@@ -4186,60 +3773,12 @@ function divisionEventLabel(code){
 // else first-appearance order in the data (spec §2.1/§2.3 — DIVISION_ORDER/
 // EVENT_ORDER disappear entirely; JSON key order does this job instead).
 let CATEGORY_ORDER_INDEX = new Map();
-function buildCategoryOrderIndex(categoryTokens){
-  const index = new Map();
-  if(DISPLAY.divisions){
-    const divKeys = Object.keys(DISPLAY.divisions);
-    const evKeys = Object.keys(DISPLAY.events || {});
-    divKeys.forEach(divCode => {
-      evKeys.forEach(evCode => {
-        const token = divCode + evCode;
-        if(categoryTokens.includes(token) && !index.has(token)) index.set(token, index.size);
-      });
-    });
-  }
-  // Anything not already placed above (no display config at all, or a
-  // token display couldn't resolve) — appended in first-appearance order
-  // rather than dropped or bucketed together.
-  categoryTokens.forEach(token => { if(!index.has(token)) index.set(token, index.size); });
-  return index;
-}
-function categorySortKey(sampleRow){
-  const p = parseCode(sampleRow.teamCode);
-  const idx = CATEGORY_ORDER_INDEX.get(p.category);
-  return idx === undefined ? 999 : idx;
-}
+function buildCategoryOrderIndex(categoryTokens){ return Codes.buildCategoryOrderIndex(categoryTokens, DISPLAY); }
+function categorySortKey(sampleRow){ return Codes.categorySortKey(sampleRow, CATEGORY_ORDER_INDEX, CURRENT_TYPE); }
 
-// (STAGE_META/STAGE_ORDER/BADGE_CLASSES are set in the CONFIGURATION block
-// up top.)
-function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
+function standingsStageKey(teamCode){ return Codes.standingsStageKey(teamCode, CURRENT_TYPE); }
 
-const STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD = { R16: 'R16', QF: 'QF', SF: 'SF', B: 'BRONZE', F: 'FINAL' };
-
-function standingsStageKey(teamCode){
-  const { rest } = parseCode(teamCode);
-  if(!rest) return 'RR';
-  return STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD[roundKeyword(rest)] || 'RR';
-}
-
-// A slot whose names aren't in yet: the sheet fills the name cells with the
-// slot's own code. A twice-to-beat game's code carries its game number
-// ("IXD_F_1_(2)", see matchInstanceOf) but its placeholder name doesn't
-// ("IXD_F_1"), so the name is also checked against the code without it.
-function isEmptyStanding(s){
-  const slotCode = s.teamCode.replace(/_?\(\d+\)\s*$/, '');
-  return !s.player1 || s.player1 === s.teamCode || s.player1 === slotCode;
-}
-
-// A Round Robin pair whose names aren't in yet: its name cells still hold its
-// own code. Shown in the RR table under that code, so standings read before
-// the rosters are pasted in. Only when the code is on the schedule, though —
-// hand-built workbooks had fixed-size rosters, and an unused slot has no
-// match, which is what isEmptyStanding() was hiding. Playoff slots are
-// excluded: they keep reading TBD until they're seeded.
-function isUnnamedScheduledPair(s){
-  return isEmptyStanding(s) && standingsStageKey(s.teamCode) === 'RR' && MATCH_BY_CODE.has(s.teamCode);
-}
+function isUnnamedScheduledPair(s){ return Matches.isUnnamedScheduledPair(s, MATCH_BY_CODE, CURRENT_TYPE); }
 
 function standingRowClass(s){
   if(s.wins === 0 && s.loss === 0) return '';
@@ -4266,36 +3805,6 @@ function pairCell(s){
 // runs only when CURRENT_TYPE === 'team'; the dual-meet and standard paths
 // never call into it. Kept together, with its wiring further down, on purpose.
 
-// Pair number (the digit after "_" in a team code) -> label. A doubles type
-// that appears more than once in a matchup is numbered in pair order
-// ("XD 1", "XD 2"); one that appears once keeps its plain label.
-const PAIRS = numberRepeatedPairs({
-  1: { full: "Men's Doubles",   short: 'MD' },
-  2: { full: "Women's Doubles", short: 'WD' },
-  3: { full: 'Mixed Doubles',   short: 'XD' },
-  4: { full: 'Mixed Doubles',   short: 'XD' }
-});
-function numberRepeatedPairs(pairs){
-  const keys = Object.keys(pairs).sort((a, b) => a - b);
-  const total = {}, seen = {}, out = {};
-  keys.forEach(k => { total[pairs[k].short] = (total[pairs[k].short] || 0) + 1; });
-  keys.forEach(k => {
-    const p = pairs[k];
-    if(total[p.short] < 2){ out[k] = p; return; }
-    const n = seen[p.short] = (seen[p.short] || 0) + 1;
-    out[k] = { full: `${p.full} ${n}`, short: `${p.short} ${n}` };
-  });
-  return out;
-}
-// Playoff stage prefix (before "-" in a side) -> label and display order.
-// A side with no "-" is a group-stage side.
-const STAGES = {
-  QF: { label: 'Quarterfinal', order: 1 },
-  SF: { label: 'Semifinal',    order: 2 },
-  Br: { label: 'Bronze',       order: 3 },
-  Fi: { label: 'Final',        order: 4 }
-};
-
 let TEAM_MATCHUPS = [];           // [{ matchUp, matches, side1, side2, stage, group, times, courts, result }]
 let TEAM_ROW_BY_CODE = new Map(); // STANDINGSCSV teamCode -> row
 let ADVANCING = new Set();        // base team letters sitting in an SF-* slot
@@ -4304,128 +3813,17 @@ let selectedEntry = null;         // the chosen entry from TEAM_INDEX
 const TEAM_EXPANDED = new Set();     // matchUp keys whose compact card shows its matches
 const TEAM_OPEN_GROUPS = new Set();  // group numbers whose "Bracket matchups" section is open
 
-// "<SIDE>_<PAIR>": A_3, SF-1_2, SF-A_2, Br-F_4, Fi-A_1. Cached — the string
-// parsing runs for every row on every render. Anything depending on the
-// loaded STANDINGS is not, because a playoff slot changes mid-event.
-const sideCodeCache = new Map();
-function parseSideCode(code){
-  let cached = sideCodeCache.get(code);
-  if(cached) return cached;
-  const i = code.indexOf('_');
-  const side = i < 0 ? code : code.slice(0, i);
-  const pairNum = i < 0 ? NaN : parseInt(code.slice(i + 1), 10);
-  const d = side.indexOf('-');
-  cached = {
-    side,
-    pair: isNaN(pairNum) ? null : pairNum,
-    stage: d < 0 ? null : side.slice(0, d),
-    slot: d < 0 ? side : side.slice(d + 1)
-  };
-  sideCodeCache.set(code, cached);
-  return cached;
-}
-function sideOf(code){ return parseSideCode(code).side; }
-function pairOf(code){ return parseSideCode(code).pair; }
-function stageOf(side){ return parseSideCode(side).stage; }
-function slotOf(side){ return parseSideCode(side).slot; }
-function isGroupTeamCode(code){ return stageOf(code) === null; }
+function baseTeamOf(side){ return Teams.baseTeamOf(side, TEAM_ROW_BY_CODE); }
+function teamNameOf(side){ return Teams.teamNameOf(side, TEAM_ROW_BY_CODE); }
+function sideLabel(side){ return Teams.sideLabel(side, TEAM_ROW_BY_CODE); }
+function groupOf(side){ return Teams.groupOf(side, TEAM_ROW_BY_CODE); }
+function stageLabel(side){ return Teams.stageLabel(side, TEAM_ROW_BY_CODE); }
 
-// The group-stage team a side belongs to: a group side is its own base team;
-// a playoff side's is its slot once the organiser has typed a team letter.
-function baseTeamOf(side){
-  if(stageOf(side) === null) return side;
-  const slot = slotOf(side);
-  return TEAM_ROW_BY_CODE.has(slot) && isGroupTeamCode(slot) ? slot : null;
-}
-function teamNameOf(side){
-  const row = TEAM_ROW_BY_CODE.get(side);
-  if(row && row.teamName) return row.teamName;
-  const base = baseTeamOf(side);
-  if(base){
-    const baseRow = TEAM_ROW_BY_CODE.get(base);
-    if(baseRow && baseRow.teamName) return baseRow.teamName;
-  }
-  return null;
-}
-function sideLabel(side){
-  return teamNameOf(side) ?? (stageOf(side) !== null ? `Seed ${slotOf(side)} · TBD` : side);
-}
-function groupOf(side){
-  const base = baseTeamOf(side);
-  const row = base ? TEAM_ROW_BY_CODE.get(base) : null;
-  const n = row ? parseInt(row.bracket, 10) : NaN;
-  return isNaN(n) ? null : n;
-}
-function stageLabel(side){
-  const stage = stageOf(side);
-  if(stage === null){
-    const g = groupOf(side);
-    return g === null ? 'Bracket' : `Bracket ${g}`;
-  }
-  return STAGES[stage] ? STAGES[stage].label : stage;
-}
-function pairLabel(code, short){
-  const p = PAIRS[pairOf(code)];
-  return p ? (short ? p.short : p.full) : '';
-}
-
-// ms = the matchup's matches (same matchUp). Won on total points across its
-// matches — pair wins never decide it, and equal total points is a tie.
-// state: 'not-started' | 'in-progress' | 'final' | 'tie'; winner: 1 | 2 | null
-function teamMatchupResult(ms){
-  const side1 = sideOf(ms[0].t1), side2 = sideOf(ms[0].t2);
-  let pts1 = 0, pts2 = 0, pairs1 = 0, pairs2 = 0, played = 0;
-  ms.forEach(m => {
-    if(!m.played) return;
-    played++;
-    pts1 += m.t1Score;
-    pts2 += m.t2Score;
-    if(m.t1Score > m.t2Score) pairs1++;
-    else if(m.t2Score > m.t1Score) pairs2++;
-  });
-  const total = ms.length;
-  let state, winner = null;
-  if(played === 0) state = 'not-started';
-  else if(played < total) state = 'in-progress';
-  else if(pts1 === pts2) state = 'tie';
-  else { state = 'final'; winner = pts1 > pts2 ? 1 : 2; }
-  return { side1, side2, pts1, pts2, pairs1, pairs2, played, total, state, winner };
-}
-
-// Everything derived from MATCHES + STANDINGS, rebuilt after each load.
 function rebuildTeamData(){
-  TEAM_ROW_BY_CODE = new Map(STANDINGS.map(s => [s.teamCode, s]));
-
-  const byMatchUp = new Map(); // insertion order = lowest match number first (MATCHES is sorted)
-  MATCHES.forEach(m => {
-    if(!m.matchUp) return;
-    if(!byMatchUp.has(m.matchUp)) byMatchUp.set(m.matchUp, []);
-    byMatchUp.get(m.matchUp).push(m);
-  });
-  const distinct = list => Array.from(new Set(list.filter(Boolean)));
-  TEAM_MATCHUPS = Array.from(byMatchUp.entries()).map(([matchUp, matches]) => {
-    const side1 = sideOf(matches[0].t1), side2 = sideOf(matches[0].t2);
-    return {
-      matchUp, matches, side1, side2,
-      stage: stageOf(side1),
-      group: groupOf(side1) ?? groupOf(side2),
-      times: distinct(matches.map(m => m.time)),
-      courts: distinct(matches.map(m => m.court)),
-      result: teamMatchupResult(matches)
-    };
-  });
-
-  // A team advances when its letter is the slot of any playoff side — the
-  // organiser types it into the workbook (spec §4.3). With quarterfinals, that
-  // is the eight QF-* qualifiers; any later slot is one of them anyway.
-  ADVANCING = new Set();
-  MATCHES.forEach(m => [m.t1, m.t2].forEach(code => {
-    const side = sideOf(code);
-    if(stageOf(side) !== null){
-      const base = baseTeamOf(side);
-      if(base) ADVANCING.add(base);
-    }
-  }));
+  const data = Teams.buildTeamData(MATCHES, STANDINGS);
+  TEAM_ROW_BY_CODE = data.rowByCode;
+  TEAM_MATCHUPS = data.matchups;
+  ADVANCING = data.advancing;
 }
 
 // ---- team rosters (the snapshot's facilities[].rosterCsv: teamCode, player,
@@ -4435,32 +3833,12 @@ let TEAM_ROSTER_BY_CODE = new Map(); // teamCode -> rows in sheet order
 const TEAM_ROSTER_OPEN = new Set();  // cards left open across the poll's re-render
 const TEAM_CHEV_SVG = '<svg class="chev" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-function teamRowsToRoster(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iCode = idx('teamCode'), iPlayer = idx('player'), iLevel = idx('level'), iGender = idx('gender');
-  if(iCode < 0 || iPlayer < 0) return [];
-  const cell = (row, i) => i > -1 ? (row[i] || '').trim() : '';
-  return rows.slice(1)
-    .map(row => ({ teamCode: cell(row, iCode), player: cell(row, iPlayer), level: cell(row, iLevel), gender: cell(row, iGender) }))
-    .filter(r => r.teamCode && r.player);
-}
 function teamSetRoster(snapshot){
-  TEAM_ROSTER = (snapshot.facilities || []).flatMap(f => teamRowsToRoster(parseCSV(f.rosterCsv || '')));
-  TEAM_ROSTER_BY_CODE = new Map();
-  TEAM_ROSTER.forEach(r => {
-    if(!TEAM_ROSTER_BY_CODE.has(r.teamCode)) TEAM_ROSTER_BY_CODE.set(r.teamCode, []);
-    TEAM_ROSTER_BY_CODE.get(r.teamCode).push(r);
-  });
+  const roster = Teams.buildTeamRoster(snapshot);
+  TEAM_ROSTER = roster.roster;
+  TEAM_ROSTER_BY_CODE = roster.byCode;
 }
-// A team's players, lowest level first (sheet order within a level).
-function teamRosterOf(teamCode){
-  const list = TEAM_ROSTER_BY_CODE.get(teamCode) || [];
-  const rank = r => { const n = parseFloat(r.level); return isNaN(n) ? Infinity : n; };
-  return list.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(x => x.r);
-}
-const teamLevelLabel = v => /^\d+(\.\d+)?$/.test(v) ? `Level ${v}` : v;
+function teamRosterOf(teamCode){ return Teams.teamRosterOf(TEAM_ROSTER_BY_CODE, teamCode); }
 
 function teamRosterListHTML(teamCode, highlight){
   return `<ul class="roster-list">${teamRosterOf(teamCode).map(r => `
@@ -4643,46 +4021,7 @@ function teamMatchupCardHTML(mu, { focusBase = null, compact = false, onlyMatch 
   </div>`;
 }
 
-// ---- Standings (spec §4.2, §4.3, §5.7) ----
-// Bracket ranking — the organiser's tiebreakers, in order:
-//   1. points scored (PF, from STANDINGSCSV)
-//   2. quotient (PF ÷ PA, from STANDINGSCSV)
-//   3. points scored head-to-head: among the teams still level after 1–2,
-//      the points each scored in its own played matches against the others
-//   4. pair wins: matches won in this bracket's played matches
-// Rows level on all four keep their STANDINGSCSV order (the sorts are stable).
-// Display only — the organiser decides who advances in the workbook (§4.3).
-function teamRankBracket(rows){
-  const groupMatches = MATCHES.filter(m => m.played && stageOf(sideOf(m.t1)) === null);
-  const byPfQ = rows.slice().sort((a, b) =>
-    (b.pf - a.pf) || ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
-  const out = [];
-  for(let i = 0; i < byPfQ.length;){
-    let j = i + 1;
-    while(j < byPfQ.length && byPfQ[j].pf === byPfQ[i].pf && byPfQ[j].quotient === byPfQ[i].quotient) j++;
-    const tied = byPfQ.slice(i, j);
-    if(tied.length > 1){
-      const codes = new Set(tied.map(s => s.teamCode));
-      const h2h = new Map(tied.map(s => [s.teamCode, 0]));
-      const wins = new Map(tied.map(s => [s.teamCode, 0]));
-      groupMatches.forEach(m => {
-        const s1 = sideOf(m.t1), s2 = sideOf(m.t2);
-        if(codes.has(s1) && codes.has(s2)){
-          h2h.set(s1, h2h.get(s1) + m.t1Score);
-          h2h.set(s2, h2h.get(s2) + m.t2Score);
-        }
-        if(wins.has(s1) && m.t1Score > m.t2Score) wins.set(s1, wins.get(s1) + 1);
-        if(wins.has(s2) && m.t2Score > m.t1Score) wins.set(s2, wins.get(s2) + 1);
-      });
-      tied.sort((a, b) =>
-        (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
-        (wins.get(b.teamCode) - wins.get(a.teamCode)));
-    }
-    out.push(...tied);
-    i = j;
-  }
-  return out;
-}
+function teamRankBracket(rows){ return Teams.teamRankBracket(rows, MATCHES); }
 
 function teamGroupTableHTML(group, rows){
   // Rank numbers appear once any team in the bracket has a result.
@@ -4992,54 +4331,11 @@ function allMatchupsHTML(hint){
     ${list.map(mu => teamMatchupCardHTML(mu, { scoreable: true })).join('')}`;
 }
 
-// ---- Awards (spec §9.6) ----
-// Every distinct player who played a match for that base team, A–Z.
-function teamRosterFor(base){
-  const names = new Set();
-  MATCHES.forEach(m => {
-    [[m.t1, m.t1p1, m.t1p2], [m.t2, m.t2p1, m.t2p2]].forEach(([code, p1, p2]) => {
-      if(baseTeamOf(sideOf(code)) !== base) return;
-      [p1, p2].forEach(n => { if(n && n !== 'TBD') names.add(n); });
-    });
-  });
-  return Array.from(names).sort((a, b) => a.localeCompare(b));
-}
+function teamRosterFor(base){ return Awards.teamRosterFor(dayModel(), base); }
 
-function teamMedalist(side){
-  const base = baseTeamOf(side);
-  const teamName = sideLabel(side);
-  return { teamName, base, roster: base ? teamRosterFor(base) : [], p1: teamName, p2: '', club: null, clubLabel: null };
-}
+function teamMedalist(side){ return Awards.teamMedalist(dayModel(), side); }
 
-// One podium in the existing shape: Gold = the Final matchup's winner,
-// Silver = its loser, Bronze = the Bronze matchup's winner, all by total
-// points. Each is null (Pending) until that matchup is final.
-function buildTeamPodium(){
-  const finalMu = TEAM_MATCHUPS.find(mu => mu.stage === 'Fi');
-  const bronzeMu = TEAM_MATCHUPS.find(mu => mu.stage === 'Br');
-  const lowestNum = mu => Math.min(...mu.matches.map(m => m.num));
-
-  const warnings = [];
-  if(finalMu && finalMu.result.state === 'tie') warnings.push(`Final is a tie on points — check match #${lowestNum(finalMu)}`);
-  if(bronzeMu && bronzeMu.result.state === 'tie') warnings.push(`Bronze is a tie on points — check match #${lowestNum(bronzeMu)}`);
-
-  let gold = null, silver = null, bronze = null;
-  if(!warnings.length){
-    const f = finalMu ? finalMu.result : null;
-    if(f && f.state === 'final'){
-      gold = teamMedalist(f.winner === 1 ? f.side1 : f.side2);
-      silver = teamMedalist(f.winner === 1 ? f.side2 : f.side1);
-    }
-    const b = bronzeMu ? bronzeMu.result : null;
-    if(b && b.state === 'final') bronze = teamMedalist(b.winner === 1 ? b.side1 : b.side2);
-  }
-  return {
-    category: '__team__', source: 'bracket',
-    gold, silver, bronze,
-    warning: warnings.length ? warnings.join('; ') : null,
-    orderIdx: 0
-  };
-}
+function buildTeamPodium(){ return Awards.buildTeamPodium(dayModel()); }
 
 // A medalist's display name: the team name for a team event, otherwise the pair.
 function medalNameText(medalist){
@@ -5057,262 +4353,28 @@ function medalNamesHTML(medalist){
 // Everything below is a pure function over MATCHES/STANDINGS — no fetch, no
 // config, no new failure mode. See sage-docs/docs/specs/.../awards-podium-tab-spec.md.
 
-// The non-bye side's code — used to read a match's category/round/instance
-// off the *real* team's code, since a literal "BYE" code parses to garbage.
-function nonByeCode(m){
-  return matchByeSide(m) === 't1' ? m.t2 : m.t1;
-}
-function matchCategoryOf(m){ return parseCode(nonByeCode(m)).category; }
-function matchRestOf(m){ return parseCode(nonByeCode(m)).rest; }
+function matchCategoryOf(m){ return Awards.matchCategoryOf(m, CURRENT_TYPE); }
+function matchRestOf(m){ return Awards.matchRestOf(m, CURRENT_TYPE); }
 
-// The decisive match (§2.4) for one category+round keyword: among all
-// matches for that round, the resolved instance with the highest instance
-// number (missing instance treated as 0). "Resolved" means played, or
-// decided by a bye walkover. Returns:
-//   { any:false }                        — no such round exists for this category
-//   { any:true, match:null, error:null } — round exists, nothing resolved yet (pending)
-//   { any:true, match, error:null }      — resolved cleanly, `match` is decisive
-//   { any:true, match, error:'tie'|'bothBye' } — a data error at that instance
-function resolveDecisiveMatch(category, keyword){
-  const candidates = MATCHES.filter(m => matchCategoryOf(m) === category && roundKeyword(matchRestOf(m)) === keyword);
-  if(candidates.length === 0) return { any: false, match: null, error: null };
-  // A series final (twice-to-beat, best-of-3) is decided by the game where a
-  // seat reaches its wins, not by the last game played: a challenger who wins
-  // twice-to-beat's game 1 has forced game 2, not won the final.
-  const series = seriesGroups(candidates);
-  if(series.size === 1){
-    const list = series.values().next().value;
-    if(list.length === candidates.length){
-      const { decidedBy, tie } = walkSeries(list);
-      if(decidedBy) return { any: true, match: decidedBy, error: null };
-      if(tie) return { any: true, match: tie, error: 'tie' };
-      return { any: true, match: null, error: null };
-    }
-  }
-  const byInstanceDesc = candidates.slice().sort((a, b) =>
-    (matchInstanceOf(matchRestOf(b)) || 0) - (matchInstanceOf(matchRestOf(a)) || 0));
-  for(const m of byInstanceDesc){
-    const side = matchByeSide(m);
-    if(side === 'both') return { any: true, match: m, error: 'bothBye' };
-    if(side === 't1' || side === 't2') return { any: true, match: m, error: null };
-    if(m.played){
-      if(m.t1Score === m.t2Score) return { any: true, match: m, error: 'tie' };
-      return { any: true, match: m, error: null };
-    }
-    // this instance hasn't happened yet — fall through to a lower instance
-  }
-  return { any: true, match: null, error: null }; // exists, nothing resolved yet
-}
+function resolveDecisiveMatch(category, keyword){ return Awards.resolveDecisiveMatch(dayModel(), category, keyword); }
 
-function winnerOfMatch(m){
-  const side = matchByeSide(m);
-  if(side === 't1') return { p1: m.t2p1, p2: m.t2p2, code: m.t2 };
-  if(side === 't2') return { p1: m.t1p1, p2: m.t1p2, code: m.t1 };
-  return m.t1Score > m.t2Score
-    ? { p1: m.t1p1, p2: m.t1p2, code: m.t1 }
-    : { p1: m.t2p1, p2: m.t2p2, code: m.t2 };
-}
-// The loser is only meaningful for a real, non-bye-decided match — a bye
-// side is never rendered as a person (§2.3).
-function loserOfMatch(m){
-  if(matchByeSide(m)) return null;
-  return m.t1Score > m.t2Score
-    ? { p1: m.t2p1, p2: m.t2p2, code: m.t2 }
-    : { p1: m.t1p1, p2: m.t1p2, code: m.t1 };
-}
+function medalistFromTeam(team){ return Awards.medalistFromTeam(dayModel(), team); }
 
-function medalistFromTeam(team){
-  if(!team) return null;
-  const club = CURRENT_TYPE === 'dual-meet' ? parseCode(team.code).club : null;
-  return { p1: team.p1, p2: team.p2, club, clubLabel: club ? clubLabel(club) : null };
-}
+function categoryBronzeIsByeDecided(category){ return Awards.categoryBronzeIsByeDecided(dayModel(), category); }
 
-// True when a category's decisive Bronze match was won by walkover — used
-// to drop the whole BRONZE block from Standings (§2.6 rule 2), not just the
-// BYE row, since a one-sided "Bronze Battle" block is worse than none.
-function categoryBronzeIsByeDecided(category){
-  const res = resolveDecisiveMatch(category, 'B');
-  return !!(res.match && !res.error && matchByeSide(res.match)) || standingsBronzeWalkover(category).walkover;
-}
+function standingsBronzeWalkover(category){ return Awards.standingsBronzeWalkover(dayModel(), category); }
 
-// A bronze decided in the standings alone: its two slots are one real pair
-// and a BYE, and no Bronze match is scheduled (a twice-to-beat category's
-// round-robin #3 takes bronze without playing). `pair` is that row once its
-// names are in, else null (still pending).
-function standingsBronzeWalkover(category){
-  const rows = STANDINGS.filter(s => parseCode(s.teamCode).category === category && standingsStageKey(s.teamCode) === 'BRONZE');
-  const byes = rows.filter(isByeStandingRow);
-  const real = rows.filter(s => !isByeStandingRow(s));
-  if(byes.length !== 1 || real.length !== 1) return { walkover: false, pair: null };
-  return { walkover: true, pair: isEmptyStanding(real[0]) ? null : real[0] };
-}
+function standingsTop3ForCategory(category){ return Awards.standingsTop3ForCategory(dayModel(), category); }
 
-// §2.5 — categories with no bracket at all fall back to the top three RR
-// standings rows, same sort Standings already applies.
-function standingsTop3ForCategory(category){
-  const rows = rankStandings(STANDINGS.filter(s => parseCode(s.teamCode).category === category && !isEmptyStanding(s) && !isByeStandingRow(s)));
-  return rows.slice(0, 3).map(s => {
-    const club = CURRENT_TYPE === 'dual-meet' ? parseCode(s.teamCode).club : null;
-    return { p1: s.player1, p2: s.player2, club, clubLabel: club ? clubLabel(club) : null };
-  });
-}
+function categoryRoundRobinDone(category){ return Awards.categoryRoundRobinDone(dayModel(), category); }
 
-// True once every Round Robin match in the category has a score. Byes are
-// never played, so they don't count against it.
-function categoryRoundRobinDone(category){
-  const rr = MATCHES.filter(m => matchCategoryOf(m) === category && !matchByeSide(m) && !roundKeyword(matchRestOf(m)));
-  return rr.length > 0 && rr.every(m => m.played);
-}
+function buildPodiums(){ return Awards.buildPodiums(dayModel()); }
 
-// -> [{ category, source: 'bracket'|'standings', gold, silver, bronze,
-//       warning }], ordered by CATEGORY_ORDER_INDEX so the
-// Awards tab agrees with Standings' own category order.
-function buildPodiums(){
-  const categoryTokens = Array.from(new Set(MATCHES.map(m => matchCategoryOf(m)).filter(Boolean)));
-  const orderIndex = buildCategoryOrderIndex(categoryTokens);
-  const results = [];
+function computeOverallChampion(){ return Awards.computeOverallChampion(dayModel()); }
 
-  categoryTokens.forEach(category => {
-    const orderIdx = orderIndex.has(category) ? orderIndex.get(category) : 999;
-    const finalRes = resolveDecisiveMatch(category, 'F');
+function rankStandings(rows){ return Standings.rankStandings(rows, MATCHES); }
 
-    if(!finalRes.any){
-      // No Final ever plays for this category — pure round robin, standings decide it.
-      // Standings only settle a podium once every Round Robin match has a
-      // score — before that, the top three are just the current leaders, so
-      // all three placings stay Pending (§2.7: never guess).
-      const top3 = standingsTop3ForCategory(category);
-      if(top3.length === 0) return; // nothing to show at all — omitted (§2.7)
-      const done = categoryRoundRobinDone(category);
-      results.push({
-        category, source: 'standings',
-        gold: done ? top3[0] || null : null,
-        silver: done ? top3[1] || null : null,
-        bronze: done ? top3[2] || null : null,
-        warning: null, orderIdx
-      });
-      return;
-    }
-
-    if(finalRes.error){
-      results.push({
-        category, source: 'bracket',
-        gold: null, silver: null, bronze: null,
-        warning: `Check the score for match #${finalRes.match.num}`, orderIdx
-      });
-      return;
-    }
-
-    const bronzeRes = resolveDecisiveMatch(category, 'B');
-    if(bronzeRes.error){
-      results.push({
-        category, source: 'bracket',
-        gold: null, silver: null, bronze: null,
-        warning: `Check the score for match #${bronzeRes.match.num}`, orderIdx
-      });
-      return;
-    }
-
-    // No Bronze match at all: a walkover set up in the standings alone
-    // (standingsBronzeWalkover) still awards it.
-    const standingsBronze = bronzeRes.any ? null : standingsBronzeWalkover(category);
-    let bronze = medalistFromTeam(bronzeRes.match ? winnerOfMatch(bronzeRes.match) : null);
-    if(standingsBronze && standingsBronze.pair){
-      const s = standingsBronze.pair;
-      bronze = medalistFromTeam({ p1: s.player1, p2: s.player2, code: s.teamCode });
-    }
-
-    results.push({
-      category, source: 'bracket',
-      gold: medalistFromTeam(finalRes.match ? winnerOfMatch(finalRes.match) : null),
-      silver: medalistFromTeam(finalRes.match ? loserOfMatch(finalRes.match) : null),
-      bronze,
-      warning: null, orderIdx
-    });
-  });
-
-  results.sort((a, b) => a.orderIdx - b.orderIdx);
-  return results;
-}
-
-// Dual-meet only: which club is ahead overall — same metric, same source
-// data, as the Standings tab's own club-summary bar (renderClubSummary):
-// total wins across Round Robin rows only, per club. Deliberately the same
-// computation rather than a podium-derived one (e.g. gold count), so the
-// two tabs never disagree about who's "ahead." Named explicitly as "Tied"
-// rather than inventing a tiebreak — consistent with this tab's "never
-// guess" rule elsewhere (§2.7).
-// -> null (not a dual-meet, or nothing to compare yet) | {
-//      rows: [{ club, clubLabel, wins }],  // per DISPLAY.clubs order
-//      champion: <row> | null,   // null when 0-0 so far, or tied
-//      tied: boolean
-//    }
-function computeOverallChampion(){
-  if(CURRENT_TYPE !== 'dual-meet' || STANDINGS.length === 0) return null;
-
-  const byClub = new Map();
-  STANDINGS.forEach(s => {
-    const clubCode = parseCode(s.teamCode).club || 'OTHER';
-    if(!byClub.has(clubCode)) byClub.set(clubCode, []);
-    byClub.get(clubCode).push(s);
-  });
-
-  const knownClubOrder = DISPLAY.clubs ? Object.keys(DISPLAY.clubs) : Array.from(byClub.keys());
-  if(knownClubOrder.length < 2) return null; // nothing meaningful to compare
-
-  const rows = knownClubOrder.map(code => {
-    const clubRows = byClub.get(code) || [];
-    const wins = clubRows
-      .filter(s => standingsStageKey(s.teamCode) === 'RR')
-      .reduce((sum, s) => sum + (s.wins || 0), 0);
-    return { club: code, clubLabel: clubLabel(code), wins };
-  });
-
-  const maxWins = Math.max(...rows.map(r => r.wins));
-  let champion = null, tied = false;
-  if(maxWins > 0){
-    const leaders = rows.filter(r => r.wins === maxWins);
-    if(leaders.length === 1) champion = leaders[0]; else tied = true;
-  }
-  return { rows, champion, tied };
-}
-
-// Orders one set of Round Robin standings rows: wins, then head-to-head
-// among the pairs tied on wins, then quotient. Head-to-head is a mini-league
-// over the tied pairs' played matches against each other, so a two-way tie is
-// settled by the one match between them, and a three-way cycle (A beat B,
-// B beat C, C beat A) falls through to quotient. Rows still level after all
-// three keep their STANDINGSCSV order. This is the site's ranking only — the
-// sheet's SORTBYWINS, which picks the playoff feeders, ranks wins then
-// quotient, so the two can disagree on a head-to-head tie.
-function rankStandings(rows){
-  const byWins = rows.slice().sort((a, b) => b.wins - a.wins);
-  const out = [];
-  for(let i = 0; i < byWins.length;){
-    let j = i;
-    while(j < byWins.length && byWins[j].wins === byWins[i].wins) j++;
-    const tied = byWins.slice(i, j);
-    const h2h = headToHeadWins(tied);
-    tied.sort((a, b) =>
-      (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
-      ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
-    out.push(...tied);
-    i = j;
-  }
-  return out;
-}
-
-// teamCode -> wins in played matches between two of the given rows.
-function headToHeadWins(tied){
-  const wins = new Map(tied.map(s => [s.teamCode, 0]));
-  if(tied.length < 2) return wins;
-  MATCHES.forEach(m => {
-    if(!m.played || m.t1Score === m.t2Score || !wins.has(m.t1) || !wins.has(m.t2)) return;
-    const winner = m.t1Score > m.t2Score ? m.t1 : m.t2;
-    wins.set(winner, wins.get(winner) + 1);
-  });
-  return wins;
-}
+function headToHeadWins(tied){ return Standings.headToHeadWins(tied, MATCHES); }
 
 function renderStageTables(rows){
   // A bye is never a real standings row — drop it wherever standings rows
@@ -5986,11 +5048,7 @@ window.addEventListener('resize', () => {
 // clubs/divisions/events never get merged together — including two pairs
 // with the same names on opposite clubs.
 let allTeams = [];
-function pairKey(code, p1, p2){
-  const { club, category } = parseCode(code);
-  const names = [p1.trim().toLowerCase(), p2.trim().toLowerCase()].sort().join('|');
-  return `${club||''}|${category||''}|${names}`;
-}
+function pairKey(code, p1, p2){ return Matches.pairKey(code, p1, p2, CURRENT_TYPE); }
 function rebuildTeamIndex(){
   if(CURRENT_TYPE === 'team'){ teamRebuildIndex(); return; }
   const byPair = new Map();
@@ -6182,7 +5240,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   liveChannel.follow(CURRENT_EVENT_KEY, DAYS[idx].key);
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
-  dayIsLive = computeDayIsLive(day);
+  dayIsLive = consoleDayIsLive(day);
 
   // Resolved fresh per day (not a fixed event-wide constant) — a day's
   // facility list comes straight from this event's config entry. sheetId
@@ -6968,11 +6026,6 @@ function courtSortKey(court){
   return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
-function courtNumberFrom(courtAssignment){
-  const m = String(courtAssignment || '').match(/(\d+)/);
-  return m ? m[1] : null;
-}
-
 function buildFacilityCourtGroups(){
   const groups = new Map();
   MATCHES_BY_FACILITY.forEach(({ name, matches }) => {
@@ -7083,128 +6136,9 @@ function facilityTableHTML(facility, rows){
 // length ÷ courts — floored at the busiest court's own queue.
 const facilityProgressEl = document.getElementById('facilityProgress');
 
-// Event-day minutes (spec §3.1): minutes since midnight PH at the start of the
-// selected day's date, so play that runs past midnight keeps counting up
-// (12:30 AM next morning = 1470) instead of wrapping to 0. Anything before
-// DAY_ROLLOVER_MIN belongs to the night after the event day, not its morning.
-const DAY_ROLLOVER_MIN = 6 * 60;
+function eventDayNowMinutes(){ return Progress.eventDayNowMinutes(currentDay(), Date.now()); }
 
-function eventScheduleMinutes(raw){
-  const t = parseScheduleTimeToMinutes(raw);
-  if(t === null) return null;
-  return t < DAY_ROLLOVER_MIN ? t + 1440 : t;
-}
-
-function eventDayNowMinutes(){
-  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
-  if(!day || !day.date) return null;
-  return Math.floor((Date.now() - Date.parse(`${day.date}T00:00:00+08:00`)) / 60000);
-}
-
-// From midnight at the start of day.date until DAY_ROLLOVER_MIN the next
-// morning — so an event running late keeps its estimate past midnight.
-// A snapshot timestamp (facility syncedAt) in the same event-day minutes the
-// rest of this block works in, or null if it falls outside the event day.
-function eventDayMinutesFromISO(iso){
-  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
-  if(!day || !day.date || !iso) return null;
-  const t = Date.parse(iso);
-  if(isNaN(t)) return null;
-  const mins = Math.floor((t - Date.parse(`${day.date}T00:00:00+08:00`)) / 60000);
-  return mins < 0 ? null : mins;
-}
-
-function isEventDayActive(nowMin){
-  return nowMin !== null && nowMin >= 0 && nowMin < 1440 + DAY_ROLLOVER_MIN;
-}
-
-// Event-day minutes → "4:40 PM", or "12:15 AM (+1 day)" once past the
-// event date's midnight. The offset is from the event's date, not from now.
-function eventClock(mins){
-  const r = Math.round(mins);
-  const dayOffset = Math.floor(r / 1440);
-  const label = formatMinutesAsClock(((r % 1440) + 1440) % 1440);
-  return dayOffset > 0 ? `${label} (+${dayOffset} day${dayOffset === 1 ? '' : 's'})` : label;
-}
-
-// Minutes → "20 min", "1 h", "1 h 15 min".
-function formatGap(mins){
-  const h = Math.floor(mins / 60), m = mins % 60;
-  if(h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
-}
-
-function computeFacilityProgress(matches, isEventDay, nowMin){
-  // A series final's games after the decider are never played (seriesGameOf).
-  const unneeded = unneededSeriesGames(matches);
-  const real = matches.filter(m => matchByeSide(m) === null && !unneeded.has(m));
-  const total = real.length;
-  const done = real.filter(m => m.played).length;
-  const left = total - done;
-  const inPlay = real.filter(m => !m.played && m.liveCourt).length;
-
-  const placed = [];
-  let unscheduledLeft = 0;
-  real.forEach(m => {
-    const c = courtNumberFrom(m.court);
-    const t = eventScheduleMinutes(m.time);
-    if(c === null || t === null){ if(!m.played) unscheduledLeft++; return; }
-    placed.push({ c, t, played: m.played });
-  });
-  const base = { total, done, left, inPlay, unscheduledLeft };
-  if(placed.length === 0){
-    return { ...base, slot: null, courts: 0, rows: 0, blanks: 0, blanksDone: 0,
-             plannedEnd: null, eta: null };
-  }
-
-  // Slot length: median positive gap between consecutive times on one court.
-  const timesByCourt = new Map();
-  placed.forEach(p => {
-    if(!timesByCourt.has(p.c)) timesByCourt.set(p.c, new Set());
-    timesByCourt.get(p.c).add(p.t);
-  });
-  const gaps = [];
-  timesByCourt.forEach(set => {
-    const sorted = Array.from(set).sort((a, b) => a - b);
-    for(let i = 1; i < sorted.length; i++) gaps.push(sorted[i] - sorted[i - 1]);
-  });
-  gaps.sort((a, b) => a - b);
-  const slot = gaps.length ? gaps[Math.floor((gaps.length - 1) / 2)] : 25;
-
-  // The grid: rows are slots from the day's first match, columns are courts.
-  const start = Math.min(...placed.map(p => p.t));
-  placed.forEach(p => { p.row = Math.round((p.t - start) / slot); });
-  const rows = Math.max(...placed.map(p => p.row)) + 1;
-  const courts = timesByCourt.size;
-  const occupied = new Set(placed.map(p => p.c + '|' + p.row));
-  const unplayedRows = placed.filter(p => !p.played).map(p => p.row);
-  const frontier = unplayedRows.length ? Math.min(...unplayedRows) : rows;
-  let blanks = 0, blanksDone = 0;
-  timesByCourt.forEach((_, c) => {
-    for(let r = 0; r < rows; r++){
-      if(occupied.has(c + '|' + r)) continue;
-      blanks++;
-      if(r < frontier) blanksDone++;
-    }
-  });
-  const plannedEnd = start + rows * slot;
-
-  const unitsLeft = (left - 0.5 * inPlay) + (blanks - blanksDone);
-  const queueByCourt = new Map();
-  real.forEach(m => {
-    const c = courtNumberFrom(m.court);
-    if(m.played || c === null || eventScheduleMinutes(m.time) === null) return;
-    queueByCourt.set(c, (queueByCourt.get(c) || 0) + (m.liveCourt ? 0.5 : 1));
-  });
-  const queue = queueByCourt.size ? Math.max(...queueByCourt.values()) : 0;
-
-  let eta = null;
-  if(isEventDay && left > 0){
-    eta = Math.max(nowMin, start) + Math.max(unitsLeft * slot / courts, queue * slot);
-  }
-
-  return { ...base, slot, courts, rows, blanks, blanksDone, plannedEnd, eta };
-}
+function eventDayMinutesFromISO(iso){ return Progress.eventDayMinutesFromISO(currentDay(), iso); }
 
 // Actual end. The snapshot answers this itself: SyncService stamps
 // facilities[].completedAt the first round a facility shows every match
@@ -7229,85 +6163,33 @@ function facilityEndKey(name){
   return `${CURRENT_EVENT_KEY}|${day ? day.key : '?'}|${name}`;
 }
 function facilityActualEnd(name, p, syncedAt, completedAt){
-  if(completedAt) return completedAt;
   const key = facilityEndKey(name);
+  const r = Progress.facilityActualEnd(p, syncedAt, completedAt, loadFacilityEnds()[key]);
+  rememberFacilityEnd(key, r.keep);
+  return r.end;
+}
+function rememberFacilityEnd(key, keep){
+  if(keep === undefined) return;
   const ends = loadFacilityEnds();
-  if(p.total === 0 || p.left > 0){
-    if(ends[key]){ delete ends[key]; saveFacilityEnds(ends); }
-    return null;
-  }
-  const seen = Date.parse(syncedAt || '');
-  const kept = Date.parse(ends[key] || '');
-  if(!isNaN(seen) && (isNaN(kept) || seen < kept)){
-    ends[key] = new Date(seen).toISOString();
-    saveFacilityEnds(ends);
-  }
-  return ends[key] || null;
+  if(keep === null) delete ends[key]; else ends[key] = keep;
+  saveFacilityEnds(ends);
 }
 
-// Same rule as renderOrganizerStatus's isWarn — keep the two in step.
-// STALE_WARNING_MS is declared further down the script; this only ever runs
-// from a poll or render, after the whole script has loaded.
-function facilityDataIsStale(name){
-  const entry = LAST_SNAPSHOT ? (LAST_SNAPSHOT.facilities || []).find(f => f.name === name) : null;
-  if(!entry) return false;
-  const failed = (LAST_SNAPSHOT.failedFacilities || []).includes(name);
-  const ageMs = Date.now() - new Date(entry.syncedAt || 0).getTime();
-  return failed || ageMs > STALE_WARNING_MS;
-}
+function facilityDataIsStale(name){ return Progress.facilityDataIsStale(LAST_SNAPSHOT, name, Date.now(), STALE_WARNING_MS); }
 
-// Everything both displays need for one facility, or null if it has no
-// matches loaded. `stale` already applies spec §2.3's event-day/left conditions.
 function facilityProgressFor(name){
-  const f = MATCHES_BY_FACILITY.find(x => x.name === name);
-  if(!f) return null;
-  const nowMin = eventDayNowMinutes();
-  const isEventDay = isEventDayActive(nowMin);
-  const p = computeFacilityProgress(f.matches, isEventDay, nowMin);
-  const entry = LAST_SNAPSHOT ? (LAST_SNAPSHOT.facilities || []).find(x => x.name === name) : null;
-  const syncedAt = entry ? entry.syncedAt || null : null;
-  return {
-    p, isEventDay, syncedAt,
-    stale: isEventDay && p.left > 0 && facilityDataIsStale(name),
-    actualEnd: facilityActualEnd(name, p, syncedAt, entry ? entry.completedAt || null : null)
-  };
+  const info = Progress.facilityProgressFor(name, {
+    matchesByFacility: new Map(MATCHES_BY_FACILITY.map(f => [f.name, f.matches])),
+    snapshot: LAST_SNAPSHOT, day: currentDay(), now: Date.now(),
+    kept: loadFacilityEnds()[facilityEndKey(name)], staleWarningMs: STALE_WARNING_MS,
+  });
+  if(!info) return null;
+  const { keep, ...rest } = info;
+  rememberFacilityEnd(facilityEndKey(name), keep);
+  return rest;
 }
 
-// The finish line (spec §2.1 line 4), shared by the card and Mission Control.
-// `sub` is the card's extra line (already whole), or null.
-//
-// A finished facility keeps both end times rather than collapsing to a bare
-// "All matches done": the schedule's own end, and when play actually wrapped.
-// Nothing in the feed timestamps a match, so the actual end is inferred from
-// the facility's last edit (see facilityActualEnd, which pins it to the first
-// such edit seen once the facility was complete).
-function facilityFinishParts(p, isEventDay, actualEnd){
-  const round5 = x => Math.round(x / 5) * 5;
-  if(p.left === 0){
-    const endMin = eventDayMinutesFromISO(actualEnd);
-    const finish = endMin === null
-      ? 'All matches done'
-      : `All matches done &middot; Actual end <b>${eventClock(round5(endMin))}</b>`;
-    if(p.plannedEnd === null) return { finish, sub: null };
-    const scheduled = `Scheduled end ${eventClock(p.plannedEnd)}`;
-    if(endMin === null) return { finish, sub: scheduled };
-    const diff = round5(endMin - p.plannedEnd);
-    const sub = diff > 0 ? `${scheduled} &middot; <span class="fp-behind">${formatGap(diff)} late</span>`
-      : diff < 0 ? `${scheduled} &middot; ${formatGap(-diff)} early`
-      : `${scheduled} &middot; on schedule`;
-    return { finish, sub };
-  }
-  if(p.plannedEnd === null) return { finish: 'No scheduled times yet', sub: null };
-  if(isEventDay && p.eta !== null){
-    const diff = round5(p.eta - p.plannedEnd);
-    const etaText = `Est. finish <b>${eventClock(round5(p.eta))}</b>`;
-    const finish = diff > 0 ? `${etaText} &middot; <span class="fp-behind">${formatGap(diff)} behind</span>`
-      : diff < 0 ? `${etaText} &middot; ${formatGap(-diff)} ahead`
-      : `${etaText} &middot; on schedule`;
-    return { finish, sub: diff !== 0 ? `Scheduled end ${eventClock(p.plannedEnd)}` : null };
-  }
-  return { finish: `Scheduled end <b>${eventClock(p.plannedEnd)}</b>`, sub: null };
-}
+function facilityFinishParts(p, isEventDay, actualEnd){ return Progress.facilityFinishParts(p, isEventDay, actualEnd, currentDay()); }
 
 function facilityProgressCardHTML(name, info){
   const { p, isEventDay, stale, syncedAt, actualEnd } = info;
@@ -8221,50 +7103,10 @@ const orgResyncBtn = document.getElementById('orgResyncBtn');
 const orgResultBox = document.getElementById('orgResultBox');
 const organizerDayLabelEl = document.getElementById('organizerDayLabel');
 
-// Per-facility resync buttons are generated from FACILITIES, which is now
-// resolved fresh per day (see selectDay), so this whole block moved from a
-// once-at-load setup into a function re-run on every day change instead. A
-// single-facility day has no need for this row at all — "Resync this day
-// now" above already covers its one venue.
-// ---- Go-live override (spec §4.1) ---------------------------------------
-// Auto-live threshold, at the user's direction this session: 4 hours before
-// the day's earliest scheduled match time (read straight from the synced
-// Schedule column, e.g. "3:00 PM" — no date, PH time assumed throughout).
-// Deliberately NOT a per-event config value (no LIVE_GO_LIVE_HOUR_PH here) —
-// it's derived from the same data every published snapshot already carries,
-// so there's nothing to hand-configure or drift out of sync. Shared by this
-// display-only computation and by the real gating logic in index.html.
-const GO_LIVE_LEAD_HOURS = 4;
-
-function parseScheduleTimeToMinutes(raw){
-  const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if(!m) return null;
-  let h = parseInt(m[1], 10) % 12;
-  if(/pm/i.test(m[3])) h += 12;
-  return h * 60 + parseInt(m[2], 10);
-}
-
-// Earliest parseable Schedule time across every match currently loaded for
-// this day (MATCHES spans every facility already). Returns null if none
-// parse — e.g. the day's spreadsheet has no Schedule values entered yet.
-function earliestScheduleMinutes(){
-  let earliest = null;
-  MATCHES.forEach(m => {
-    const mins = parseScheduleTimeToMinutes(m.time);
-    if(mins !== null && (earliest === null || mins < earliest)) earliest = mins;
-  });
-  return earliest;
-}
-
-function formatMinutesAsClock(mins){
-  const h24 = Math.floor(mins / 60), m = mins % 60;
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  const ampm = h24 < 12 ? 'AM' : 'PM';
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
+function earliestScheduleMinutes(){ return GoLive.earliestScheduleMinutes(LAST_SNAPSHOT); }
 
 // Describes what "auto" currently resolves to, for display only — the
-// console's own tabs ignore this entirely (computeDayIsLive above always
+// console's own tabs ignore this entirely (consoleDayIsLive above always
 // returns true). Mirrors the real gating logic index.html uses, so this
 // reads the same way an operator will see the public site behave.
 function describeAutoGoLive(){
@@ -9727,7 +8569,6 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   // type must be explicit and recognized — never inferred (spec §1/§2.1).
   CURRENT_TYPE = rawEvent && (rawEvent.type === 'dual-meet' || rawEvent.type === 'standard' || rawEvent.type === 'team') ? rawEvent.type : null;
   DISPLAY = (rawEvent && rawEvent.display) || {};
-  parseCodeCache.clear();
 
   if(eventPickerEl) eventPickerEl.value = eventKey;
   if(eventTitleLineEl) eventTitleLineEl.textContent = rawEvent && rawEvent.title ? rawEvent.title : eventKey;

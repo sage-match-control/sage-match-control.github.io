@@ -154,3 +154,32 @@ export function replaceConst(text, name, literal) {
 export function functionNames(text) {
   return [...text.matchAll(/^(?:async[ \t]+)?function[ \t]*\*?[ \t]*([A-Za-z_$][\w$]*)[ \t]*\(/gm)].map(m => m[1]);
 }
+
+/** `text` with comments removed (strings, templates and regexes are kept as written). */
+export function stripComments(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const skipped = skipNonCode(text, i);
+    if (skipped === -1) { out += text[i]; continue; }
+    const chunk = text.slice(i, skipped);
+    if (!(chunk.startsWith('//') || chunk.startsWith('/*'))) out += chunk;
+    else if (chunk.startsWith('//')) out += '';
+    i = skipped - 1;
+  }
+  return out;
+}
+
+/** `text` with comments removed and the inside of strings and templates blanked: the code and nothing else. */
+export function codeSkeleton(text) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const skipped = skipNonCode(text, i);
+    if (skipped === -1) { out += text[i]; continue; }
+    const chunk = text.slice(i, skipped);
+    if (chunk.startsWith('//') || chunk.startsWith('/*')) { /* dropped */ }
+    else if (/^["'`]/.test(chunk)) out += chunk[0] + chunk[0];
+    else out += chunk; // a regex literal
+    i = skipped - 1;
+  }
+  return out;
+}

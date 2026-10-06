@@ -291,7 +291,13 @@
 
 <div class="scorer-toast" id="scorerToast" role="status" aria-live="polite" hidden></div>
 
-<script>
+<script type="module">
+// The engine (lib/v1): the parsers and rules this page used to carry copies of.
+import { parseCSV } from '/lib/v1/domain/csv.js';
+import { rowsToMatches } from '/lib/v1/domain/matches.js';
+import { matchByeSide } from '/lib/v1/domain/byes.js';
+import { unneededSeriesGames } from '/lib/v1/domain/series.js';
+
 // ============================================================================
 // CONFIGURATION
 // The scorer page: staff enter scores with a scorer link, one link per event
@@ -403,138 +409,10 @@ function createLiveChannel({ enabled, onSnapshot }){
 // ============================================================================
 // HELPERS COPIED FROM tools/control-center.html
 // Copies, not shared blocks: each is unchanged from the console's. If the
-// console's rule changes, change it here too (the played/BYE and series rules
-// are kept in step by hand; see CLAUDE.md, "Things that must be kept in sync").
+// console's wording changes, change it here too. (The CSV parsers and the
+// played/BYE and series rules are no longer copies: they are imported from
+// lib/v1/domain, above.)
 // ============================================================================
-
-// parseCSV, rowsToMatches (tools/control-center.html)
-function parseCSV(text){
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for(let i=0;i<text.length;i++){
-    const c = text[i];
-    if(inQuotes){
-      if(c === '"'){
-        if(text[i+1] === '"'){ field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if(c === '"') inQuotes = true;
-      else if(c === ','){ row.push(field); field=''; }
-      else if(c === '\r'){ /* skip */ }
-      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
-      else field += c;
-    }
-  }
-  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
-  return rows.filter(r => r.length > 1 || r[0] !== '');
-}
-
-function rowsToMatches(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
-        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
-        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
-        iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
-        iLiveCourt = idx('court'), iMatchUp = idx('matchUp');
-
-  const out = [];
-  for(let r = 1; r < rows.length; r++){
-    const row = rows[r];
-    if(!row || row.length === 0) continue;
-    const num = parseInt(row[iNum], 10);
-    if(!num) continue;
-    const t1 = (row[iT1]||'').trim();
-    const t2 = (row[iT2]||'').trim();
-    let t1p1 = (row[iP1a]||'').trim();
-    let t1p2 = (row[iP1b]||'').trim();
-    let t2p1 = (row[iP2a]||'').trim();
-    let t2p2 = (row[iP2b]||'').trim();
-    // Placeholder bracket slots repeat the team code as the player name
-    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
-    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
-    // Scores are optional — only present once a match has been played
-    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
-    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
-    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
-    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
-    const played = t1Score !== null && t2Score !== null;
-    const court = iCourt > -1 ? (row[iCourt]||'').trim() : '';
-    // A value here means the match is currently being played on that court —
-    // separate from CourtAssignment above, which is just the scheduled court.
-    const liveCourt = iLiveCourt > -1 ? (row[iLiveCourt]||'').trim() : '';
-    out.push({
-      num,
-      time: (row[iSched]||'').trim(),
-      court,
-      liveCourt,
-      matchUp: iMatchUp > -1 ? (row[iMatchUp]||'').trim() : '', // team type only; '' elsewhere
-      t1, t1p1, t1p2, t2, t2p1, t2p2,
-      t1Score, t2Score, played
-    });
-  }
-  out.sort((a,b) => a.num - b.num);
-  return out;
-}
-
-// BYE_RE, sideIsBye, matchByeSide (tools/control-center.html, "Bye detection")
-const BYE_RE = /^bye$/i;
-function sideIsBye(code, p1, p2){
-  return BYE_RE.test((code || '').trim())
-      || BYE_RE.test((p1   || '').trim())
-      || BYE_RE.test((p2   || '').trim());
-}
-function matchByeSide(m){
-  const t1Bye = sideIsBye(m.t1, m.t1p1, m.t1p2);
-  const t2Bye = sideIsBye(m.t2, m.t2p1, m.t2p2);
-  if(t1Bye && t2Bye) return 'both'; // data error
-  if(t1Bye) return 't1';
-  if(t2Bye) return 't2';
-  return null;
-}
-
-// SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames (tools/control-center.html, "Series finals")
-const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
-function seriesGameOf(code){
-  const m = SERIES_GAME_RE.exec((code || '').trim());
-  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
-}
-// -> Map(series -> [{ m, game, seat1, seat2 }] in game order)
-function seriesGroups(matches){
-  const groups = new Map();
-  matches.forEach(m => {
-    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
-    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
-    if(!groups.has(a.series)) groups.set(a.series, []);
-    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
-  });
-  groups.forEach(list => list.sort((x, y) => x.game - y.game));
-  return groups;
-}
-// One series, in game order -> { decidedBy, tie, unneeded }
-function walkSeries(list){
-  const games = list[list.length - 1].game;
-  const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
-  const wins = { 1: 0, 2: 0 };
-  let decidedBy = null, tie = null;
-  const unneeded = [];
-  list.forEach(g => {
-    if(decidedBy){ unneeded.push(g.m); return; }
-    if(!g.m.played) return;
-    if(g.m.t1Score === g.m.t2Score){ tie = tie || g.m; return; }
-    const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
-    wins[seat] = (wins[seat] || 0) + 1;
-    if(wins[seat] >= (need[seat] ?? Infinity)) decidedBy = g.m;
-  });
-  return { decidedBy, tie, unneeded };
-}
-function unneededSeriesGames(matches){
-  const out = new Set();
-  seriesGroups(matches).forEach(list => walkSeries(list).unneeded.forEach(m => out.add(m)));
-  return out;
-}
 
 // HTTP_WORDS, httpWords, messageFromJson, friendlyApiMessage (tools/control-center.html, "Readable API messages")
 const HTTP_WORDS = {

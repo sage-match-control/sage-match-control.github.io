@@ -40,6 +40,7 @@ async function openScratch(browser, body, options = {}) {
 function mutatedTree(modify) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'mutated-'));
   fs.cpSync(path.join(SITE_ROOT, 'assets'), path.join(root, 'assets'), { recursive: true });
+  fs.cpSync(path.join(SITE_ROOT, 'lib'), path.join(root, 'lib'), { recursive: true }); // the page imports the engine
   const dir = path.join(root, '_templates', 'standard-tournament-template');
   fs.mkdirSync(dir, { recursive: true });
   const source = fs.readFileSync(path.join(SITE_ROOT, '_templates', 'standard-tournament-template', 'index.html'), 'utf8');

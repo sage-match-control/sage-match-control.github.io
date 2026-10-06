@@ -21,6 +21,7 @@ import { ACCEPTED } from './accepted.mjs';
 const filter = process.env.CASE ? new RegExp(process.env.CASE) : null;
 const cases = buildCases().filter(c => !filter || filter.test(c.id));
 const concurrency = Number(process.env.CONCURRENCY || 4);
+const RERUNS = 2;
 
 const safeName = id => id.replace(/[^\w.-]+/g, '__');
 
@@ -43,7 +44,15 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
 
   for (const c of cases) {
     it(c.id, async () => {
-      const [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
+      let [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
+
+      // Anti-aliasing can differ by 1/255 on a few pixels from one run to the next (the same tree twice
+      // does it too). A difference in the pixels alone is run again; a real one is still there.
+      for (let again = 0; again < RERUNS; again++) {
+        const r = compareResults(base, branch);
+        if (r.pixelsSame || !r.textSame || base.errors.length || branch.errors.length) break;
+        [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
+      }
 
       const problems = [];
       for (const [tree, r] of [['baseline', base], ['branch', branch]]) {

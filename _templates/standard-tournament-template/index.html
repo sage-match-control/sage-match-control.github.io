@@ -1422,7 +1422,21 @@
   Powered by S.A.G.E. Match Control Experts
 </footer>
 
-<script>
+<script type="module">
+// The engine (lib/v1): the rules and parsers every page shares, as modules. Where a function takes the
+// event's type, its display config or the clock as a parameter, this page keeps a one-line wrapper that
+// passes its own (site-engine-spec §7.1); the wrappers go when the views move into the engine.
+import { parseCSV } from '/lib/v1/domain/csv.js';
+import { sideIsBye, isByeStandingRow } from '/lib/v1/domain/byes.js';
+import { unneededSeriesGames } from '/lib/v1/domain/series.js';
+import { rowsToMatches, buildMatchByCodeIndex, matchInstanceOf } from '/lib/v1/domain/matches.js';
+import { rowsToStandings, fmtQ, isEmptyStanding } from '/lib/v1/domain/standings.js';
+import { STAGE_META, STAGE_ORDER, BADGE_CLASSES, roundLabel } from '/lib/v1/domain/codes.js';
+import * as Codes from '/lib/v1/domain/codes.js';
+import * as Matches from '/lib/v1/domain/matches.js';
+import * as Standings from '/lib/v1/domain/standings.js';
+import * as GoLive from '/lib/v1/domain/golive.js';
+
 // ============================================================================
 // CONFIGURATION — everything a tournament organizer would need to touch
 // lives here at the top. The rest of the file below is implementation and
@@ -1454,50 +1468,7 @@ const DAYS = [
   { key: '{{EVENT_KEY}}-day1', label: 'Day 1', date: '2026-01-01' }
 ];
 
-// Auto-live threshold: GO_LIVE_LEAD_HOURS before this day's earliest
-// scheduled match time, read straight from the synced Schedule column
-// (e.g. "3:00 PM") — not a hand-set hour. This removes the old per-event
-// LIVE_GO_LIVE_HOUR_PH knob entirely: there is nothing left here to keep
-// in sync by hand for an evening-only event or any other schedule shape.
-const GO_LIVE_LEAD_HOURS = 4;
-
-function parseScheduleTimeToMinutes(raw){
-  const m = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if(!m) return null;
-  let h = parseInt(m[1], 10) % 12;
-  if(/pm/i.test(m[3])) h += 12;
-  return h * 60 + parseInt(m[2], 10);
-}
-
-function earliestScheduleMinutesFrom(snapshot){
-  let earliest = null;
-  (snapshot.facilities || []).forEach(f => {
-    rowsToMatches(parseCSV(f.matchesCsv)).forEach(m => {
-      const mins = parseScheduleTimeToMinutes(m.time);
-      if(mins !== null && (earliest === null || mins < earliest)) earliest = mins;
-    });
-  });
-  return earliest;
-}
-
-// snapshot: the day's published snapshot, or null before the first fetch
-// resolves (selectDay's preliminary guess — always not-live until real
-// data says otherwise, same safe default as today's "no date configured").
-function computeDayIsLive(day, snapshot){
-  const raw = snapshot ? snapshot.isLive : undefined;
-  if(raw === true) return true;
-  if(raw === false) return false;
-  // 'auto' (or missing — an older snapshot published before this shipped):
-  // live once we're at/after GO_LIVE_LEAD_HOURS before the day's earliest
-  // scheduled match time, and permanently live after that point.
-  if(!snapshot || !day.date) return false;
-  const earliestMin = earliestScheduleMinutesFrom(snapshot);
-  if(earliestMin === null) return false; // no parseable Schedule values synced yet -> stays hidden
-  const hh = String(Math.floor(earliestMin / 60)).padStart(2, '0');
-  const mm = String(earliestMin % 60).padStart(2, '0');
-  const firstServe = new Date(`${day.date}T${hh}:${mm}:00+08:00`);
-  return Date.now() >= firstServe.getTime() - GO_LIVE_LEAD_HOURS * 60 * 60 * 1000;
-}
+function computeDayIsLive(day, snapshot){ return GoLive.computeDayIsLive(day, snapshot, Date.now()); }
 
 // ---- Venues / courts ---------------------------------------------------------
 // One entry per facility/venue. `courts` is the inclusive [min, max] range
@@ -1528,30 +1499,16 @@ const EVENTS = {
 // insertion order of DIVISIONS / EVENTS above — the normal case.
 const DIVISION_ORDER = null;
 const EVENT_ORDER    = null;
-const DIVISION_ORDER_RESOLVED = DIVISION_ORDER || Object.values(DIVISIONS).map(d => d.full);
-const EVENT_ORDER_RESOLVED    = EVENT_ORDER || Object.keys(EVENTS);
 
-// Auto-derived from DIVISIONS/EVENTS above — built once here rather than
-// recompiled on every call, since parseCode() runs for every match/standing
-// row on every render, and renders happen on every live-data update (a push, or the 10s poll).
-// Don't hand-edit this regex; add/rename entries in DIVISIONS/EVENTS instead.
-const CODE_REGEX = new RegExp(
-  `^(${Object.keys(DIVISIONS).join('|')})(${Object.keys(EVENTS).join('|')})_(.+)$`
-);
-
-// ---- Playoff stage display -------------------------------------------------
-// Controls the label, banner styling, and color-coding for each playoff
-// round wherever standings show a bracket (Round Robin rows aren't listed
-// here — they're always "RR" and rendered separately).
-const STAGE_META = {
-  R16:    { label: 'Round of 16',   banner:false },
-  QF:     { label: 'Quarterfinals', banner:false },
-  SF:     { label: 'Semifinals',    banner:false },
-  BRONZE: { label: 'Bronze Battle', banner:true },
-  FINAL:  { label: 'Finals',        banner:true }
+// ---- What the engine reads -----------------------------------------------------
+// The engine takes the event's type and its display config (code -> label, as events.json carries them for
+// Control Center) instead of this page's DIVISIONS/EVENTS/CLUBS, so they are derived from them here.
+const EVENT_TYPE = 'standard';
+const DISPLAY = {
+  divisions: Object.fromEntries(Object.entries(DIVISIONS).map(([code, d]) => [code, d.full])),
+  events: EVENTS,
 };
-const STAGE_ORDER = ['R16','QF','SF','BRONZE','FINAL'];
-const BADGE_CLASSES = ['badge-0','badge-1','badge-2','badge-3'];
+let CATEGORY_ORDER_INDEX = new Map(); // rebuilt at the top of every Standings render
 
 // ---- Data source --------------------------------------------------------------
 // Fixed for every event — one shared repo, one folder per event, keyed by
@@ -1689,112 +1646,7 @@ let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) �
 
 let MATCHES = [];
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
-function buildMatchByCodeIndex(matches){
-  const idx = new Map();
-  matches.forEach(m => {
-    if(m.t1) idx.set(m.t1, m);
-    if(m.t2) idx.set(m.t2, m);
-  });
-  return idx;
-}
 let STANDINGS = [];
-
-function parseCSV(text){
-  const rows = [];
-  let row = [], field = '', inQuotes = false;
-  for(let i=0;i<text.length;i++){
-    const c = text[i];
-    if(inQuotes){
-      if(c === '"'){
-        if(text[i+1] === '"'){ field += '"'; i++; }
-        else inQuotes = false;
-      } else field += c;
-    } else {
-      if(c === '"') inQuotes = true;
-      else if(c === ','){ row.push(field); field=''; }
-      else if(c === '\r'){ /* skip */ }
-      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
-      else field += c;
-    }
-  }
-  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
-  return rows.filter(r => r.length > 1 || r[0] !== '');
-}
-
-function rowsToMatches(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iNum = idx('matchNumber'), iT1 = idx('teamCode1'), iP1a = idx('team1Player1'),
-        iP1b = idx('team1Player2'), iT2 = idx('teamCode2'), iP2a = idx('team2Player1'),
-        iP2b = idx('team2Player2'), iSched = idx('Schedule'),
-        iS1 = idx('team1Score'), iS2 = idx('team2Score'), iCourt = idx('CourtAssignment'),
-        iLiveCourt = idx('court');
-
-  const out = [];
-  for(let r = 1; r < rows.length; r++){
-    const row = rows[r];
-    if(!row || row.length === 0) continue;
-    const num = parseInt(row[iNum], 10);
-    if(!num) continue;
-    const t1 = (row[iT1]||'').trim();
-    const t2 = (row[iT2]||'').trim();
-    let t1p1 = (row[iP1a]||'').trim();
-    let t1p2 = (row[iP1b]||'').trim();
-    let t2p1 = (row[iP2a]||'').trim();
-    let t2p2 = (row[iP2b]||'').trim();
-    // Placeholder bracket slots repeat the team code as the player name
-    if(t1p1 === t1 || t1p1 === '') { t1p1 = 'TBD'; t1p2 = 'TBD'; }
-    if(t2p1 === t2 || t2p1 === '') { t2p1 = 'TBD'; t2p2 = 'TBD'; }
-    // Scores are optional — only present once a match has been played
-    const rawS1 = iS1 > -1 ? (row[iS1]||'').trim() : '';
-    const rawS2 = iS2 > -1 ? (row[iS2]||'').trim() : '';
-    const t1Score = rawS1 !== '' && !isNaN(rawS1) ? parseInt(rawS1, 10) : null;
-    const t2Score = rawS2 !== '' && !isNaN(rawS2) ? parseInt(rawS2, 10) : null;
-    const played = t1Score !== null && t2Score !== null;
-    const court = iCourt > -1 ? (row[iCourt]||'').trim() : '';
-    // A value here means the match is currently being played on that court —
-    // separate from CourtAssignment above, which is just the scheduled court.
-    const liveCourt = iLiveCourt > -1 ? (row[iLiveCourt]||'').trim() : '';
-    out.push({
-      num,
-      time: (row[iSched]||'').trim(),
-      court,
-      liveCourt,
-      t1, t1p1, t1p2, t2, t2p1, t2p2,
-      t1Score, t2Score, played
-    });
-  }
-  out.sort((a,b) => a.num - b.num);
-  return out;
-}
-
-function rowsToStandings(rows){
-  if(rows.length < 2) return [];
-  const header = rows[0].map(h => h.trim());
-  const idx = name => header.indexOf(name);
-  const iCode = idx('teamCode'), iP1 = idx('player1'), iP2 = idx('player2'),
-        iW = idx('wins'), iL = idx('loss'), iQ = idx('quotient'), iB = idx('bracket');
-
-  const out = [];
-  for(let r = 1; r < rows.length; r++){
-    const row = rows[r];
-    if(!row || row.length === 0) continue;
-    const teamCode = (row[iCode]||'').trim();
-    if(!teamCode) continue;
-    const player1 = iP1 > -1 ? (row[iP1]||'').trim() : '';
-    const player2 = iP2 > -1 ? (row[iP2]||'').trim() : '';
-    const rawW = iW > -1 ? (row[iW]||'').trim() : '';
-    const rawL = iL > -1 ? (row[iL]||'').trim() : '';
-    const rawQ = iQ > -1 ? (row[iQ]||'').trim() : '';
-    const wins = rawW !== '' && !isNaN(rawW) ? parseInt(rawW, 10) : 0;
-    const loss = rawL !== '' && !isNaN(rawL) ? parseInt(rawL, 10) : 0;
-    const quotient = rawQ !== '' && !isNaN(rawQ) ? parseFloat(rawQ) : null;
-    const bracket = iB > -1 ? (row[iB]||'').trim() : '';
-    out.push({ teamCode, player1, player2, wins, loss, quotient, bracket });
-  }
-  return out;
-}
 
 // jsDelivr/GitHub can hang on a bad connection (likely at a live event on
 // venue wifi) rather than failing outright — cap every request so a stalled
@@ -1964,30 +1816,21 @@ function revealLiveTabsAfterLoad(){
   showView(savedShowing ? saved : 'finder');
 }
 
-// Looks up a division's display info, falling back to the raw code for any
-// division that isn't explicitly listed above instead of breaking.
-// (DIVISIONS/EVENTS/DIVISION_ORDER/EVENT_ORDER/CODE_REGEX are all set in the
-// CONFIGURATION block up top.)
-function divisionMeta(divCode){
-  if(!divCode) return null;
-  if(DIVISIONS[divCode]) return DIVISIONS[divCode];
-  return { name: divCode, full: divCode };
-}
-
 // Parsed-result cache: the same teamCodes get parsed repeatedly across
 // renderStandings, ticketHTML, liveTableRowsHTML, renderIntro, etc. in a
 // single render pass, and renders happen on every 15s live-data poll.
 const parseCodeCache = new Map();
 
-function parseCode(code) {
+// The Hub's parsed code: division, event and the rest. The engine reads the code by position and the
+// division/event from display; a code that is not a known division and event, with something after them,
+// is "not parsed", as it was when this was a regex built from the config.
+function parseCode(code){
   let cached = parseCodeCache.get(code);
   if(cached) return cached;
-
-  const m = code.match(CODE_REGEX);
-
-  const result = !m
+  const p = Codes.parseCode(code, EVENT_TYPE), split = Codes.splitCategory(p.category, DISPLAY);
+  const result = !split || !p.rest
     ? { division: null, event: null, rest: code }
-    : { division: m[1], event: m[2], rest: m[3] || '' };
+    : { division: split.divCode, event: split.evCode, rest: p.rest };
   parseCodeCache.set(code, result);
   return result;
 }
@@ -2003,145 +1846,17 @@ function facilityForCourt(court){
   return facility ? facility.name : '';
 }
 
-// Twice-to-beat playoff slots encode which meeting they belong to as a
-// trailing "(1)"/"(2)" on the team code — e.g. B35XD_F_1_(1) vs
-// B35XD_F_2_(1) for the first Final, with B35XD_F_1_(2)/B35XD_F_2_(2) as
-// the decider if the challenger forces a second match. Works the same on
-// either a full team code or just its "rest" portion, since the
-// parenthesized part is always at the very end either way. Returns null
-// for any code without one (i.e. every normal, non-twice-to-beat match).
-function matchInstanceOf(str){
-  const m = str.match(/\((\d+)\)\s*$/);
-  return m ? parseInt(m[1], 10) : null;
-}
+function divisionLabel(code){ return parseCode(code).division ? Codes.divisionLabel(code, EVENT_TYPE, DISPLAY) : null; }
 
-// Raw stage keyword only — no display text, no twice-to-beat "Match N"
-// suffix. standingsStageKey() (and anything else that needs to bucket a
-// row by stage) should use this rather than string-matching roundLabel()'s
-// output, since that carries a suffix that breaks exact-equality checks.
-function roundKeyword(rest){
-  if(/^\d+$/.test(rest)) return null; // plain pool team number -> no special tag
-  if(/(^|_)R16(_|\d|$)/.test(rest)) return 'R16';
-  if(/(^|_)QF(_|\d|$)/.test(rest)) return 'QF';
-  if(/(^|_)SF(_|\d|$)/.test(rest)) return 'SF';
-  if(/(^|_)F(_|\d|$)/.test(rest)) return 'F';
-  if(/(^|_)B(_|\d|$)/.test(rest)) return 'B';
-  return null;
-}
+function divisionEventLabel(code){ return parseCode(code).division ? Codes.divisionEventLabel(code, EVENT_TYPE, DISPLAY) : 'Other'; }
 
-const ROUND_KEYWORD_LABELS = { R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', F: 'Final', B: 'Bronze Match' };
+function categorySortKey(sampleRow){ return Codes.categorySortKey(sampleRow, CATEGORY_ORDER_INDEX, EVENT_TYPE); }
 
-function roundLabel(rest){
-  const keyword = roundKeyword(rest);
-  if(!keyword) return null;
-  const instance = matchInstanceOf(rest);
-  const suffix = instance ? ` \u00b7 Match ${instance}` : '';
-  return ROUND_KEYWORD_LABELS[keyword] + suffix;
-}
+function standingsStageKey(teamCode){ return Codes.standingsStageKey(teamCode, EVENT_TYPE); }
 
-function divisionLabel(code){
-  const p = parseCode(code);
-  if(!p.division) return null;
-  const div = divisionMeta(p.division);
-  const ev = EVENTS[p.event] || '';
-  return `${div.full} ${ev}`;
-}
-
-function divisionEventLabel(code){
-  const p = parseCode(code);
-  if(!p.division) return 'Other';
-  const div = divisionMeta(p.division);
-  const ev = EVENTS[p.event] || '';
-  return `${div.full} ${ev}`;
-}
-
-function categorySortKey(sampleRow){
-  const p = parseCode(sampleRow.teamCode);
-  const div = divisionMeta(p.division);
-  const divRank = div ? DIVISION_ORDER_RESOLVED.indexOf(div.full) : -1;
-  const eventRank = EVENT_ORDER_RESOLVED.indexOf(p.event);
-  return (divRank === -1 ? 999 : divRank) * 10 + (eventRank === -1 ? 9 : eventRank);
-}
-
-// (STAGE_META/STAGE_ORDER/BADGE_CLASSES are set in the CONFIGURATION block
-// up top.)
-function fmtQ(q){ return q === null ? '0.0000' : q.toFixed(4); }
-
-const STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD = { R16: 'R16', QF: 'QF', SF: 'SF', B: 'BRONZE', F: 'FINAL' };
-
-function standingsStageKey(teamCode){
-  const { rest } = parseCode(teamCode);
-  if(!rest) return 'RR';
-  return STANDINGS_STAGE_KEY_BY_ROUND_KEYWORD[roundKeyword(rest)] || 'RR';
-}
-
-// A slot whose names aren't in yet: the sheet fills the name cells with the
-// slot's own code. A twice-to-beat game's code carries its game number
-// ("IXD_F_1_(2)", see matchInstanceOf) but its placeholder name doesn't
-// ("IXD_F_1"), so the name is also checked against the code without it.
-function isEmptyStanding(s){
-  const slotCode = s.teamCode.replace(/_?\(\d+\)\s*$/, '');
-  return !s.player1 || s.player1 === s.teamCode || s.player1 === slotCode;
-}
-
-// A slot held by a bye: the operator types BYE into its code or first name
-// cell. Never a real pair. A bronze slot like this is a walkover — the
-// twice-to-beat round robin's #3 takes bronze without playing.
-const BYE_RE = /^bye$/i;
-function isByeStandingRow(s){
-  return BYE_RE.test((s.teamCode || '').trim()) || BYE_RE.test((s.player1 || '').trim());
-}
-
-// ---- Series finals (twice-to-beat, best-of-3) ----
-// A final played as a series of games carries its seat and game in each team
-// code: "<prefix>_F_<seat>_(<game>)", e.g. IXD_F_1_(2). Two games is
-// twice-to-beat: seat 1 (the round robin's #1) needs one win, seat 2 two.
-// Three is best-of-3: two wins each. Every game after the one where a seat
-// reaches its wins is never played. A tied game counts for neither seat. The
-// same rule as control-center.html's and sage-tools-api's
-// facilityCompletion.mjs (seriesGameOf, unneededSeriesGames).
-const SERIES_GAME_RE = /^(.*_F)_(\d+)_\((\d+)\)$/;
-function seriesGameOf(code){
-  const m = SERIES_GAME_RE.exec((code || '').trim());
-  return m ? { series: m[1], seat: parseInt(m[2], 10), game: parseInt(m[3], 10) } : null;
-}
-// matches: [{ t1, t2, t1Score, t2Score, played }] -> Set of the ones never played
-function unneededSeriesGames(matches){
-  const groups = new Map();
-  matches.forEach(m => {
-    const a = seriesGameOf(m.t1), b = seriesGameOf(m.t2);
-    if(!a || !b || a.series !== b.series || a.game !== b.game) return;
-    if(!groups.has(a.series)) groups.set(a.series, []);
-    groups.get(a.series).push({ m, game: a.game, seat1: a.seat, seat2: b.seat });
-  });
-  const out = new Set();
-  groups.forEach(list => {
-    list.sort((x, y) => x.game - y.game);
-    const games = list[list.length - 1].game;
-    const need = games === 2 ? { 1: 1, 2: 2 } : { 1: Math.ceil(games / 2), 2: Math.ceil(games / 2) };
-    const wins = { 1: 0, 2: 0 };
-    let decided = false;
-    list.forEach(g => {
-      if(decided){ out.add(g.m); return; }
-      if(!g.m.played || g.m.t1Score === g.m.t2Score) return;
-      const seat = g.m.t1Score > g.m.t2Score ? g.seat1 : g.seat2;
-      wins[seat] = (wins[seat] || 0) + 1;
-      if(wins[seat] >= (need[seat] ?? Infinity)) decided = true;
-    });
-  });
-  return out;
-}
 let UNNEEDED_GAMES = new Set(); // rebuilt with MATCHES
 
-// A Round Robin pair whose names aren't in yet: its name cells still hold its
-// own code. Shown in the RR table under that code, so standings read before
-// the rosters are pasted in. Only when the code is on the schedule, though —
-// hand-built workbooks had fixed-size rosters, and an unused slot has no
-// match, which is what isEmptyStanding() was hiding. Playoff slots are
-// excluded: they keep reading TBD until they're seeded.
-function isUnnamedScheduledPair(s){
-  return isEmptyStanding(s) && standingsStageKey(s.teamCode) === 'RR' && MATCH_BY_CODE.has(s.teamCode);
-}
+function isUnnamedScheduledPair(s){ return Matches.isUnnamedScheduledPair(s, MATCH_BY_CODE, EVENT_TYPE); }
 
 function standingRowClass(s){
   if(s.wins === 0 && s.loss === 0) return '';
@@ -2160,42 +1875,9 @@ function pairCell(s){
   return `<td class="pair" title="${p1} / ${p2}"><span>${p1}</span><span>${p2}</span></td>`;
 }
 
-// Orders one set of Round Robin standings rows: wins, then head-to-head
-// among the pairs tied on wins, then quotient. Head-to-head is a mini-league
-// over the tied pairs' played matches against each other, so a two-way tie is
-// settled by the one match between them, and a three-way cycle (A beat B,
-// B beat C, C beat A) falls through to quotient. Rows still level after all
-// three keep their STANDINGSCSV order. This is the site's ranking only — the
-// sheet's SORTBYWINS, which picks the playoff feeders, ranks wins then
-// quotient, so the two can disagree on a head-to-head tie.
-function rankStandings(rows){
-  const byWins = rows.slice().sort((a, b) => b.wins - a.wins);
-  const out = [];
-  for(let i = 0; i < byWins.length;){
-    let j = i;
-    while(j < byWins.length && byWins[j].wins === byWins[i].wins) j++;
-    const tied = byWins.slice(i, j);
-    const h2h = headToHeadWins(tied);
-    tied.sort((a, b) =>
-      (h2h.get(b.teamCode) - h2h.get(a.teamCode)) ||
-      ((b.quotient ?? -Infinity) - (a.quotient ?? -Infinity)));
-    out.push(...tied);
-    i = j;
-  }
-  return out;
-}
+function rankStandings(rows){ return Standings.rankStandings(rows, MATCHES); }
 
-// teamCode -> wins in played matches between two of the given rows.
-function headToHeadWins(tied){
-  const wins = new Map(tied.map(s => [s.teamCode, 0]));
-  if(tied.length < 2) return wins;
-  MATCHES.forEach(m => {
-    if(!m.played || m.t1Score === m.t2Score || !wins.has(m.t1) || !wins.has(m.t2)) return;
-    const winner = m.t1Score > m.t2Score ? m.t1 : m.t2;
-    wins.set(winner, wins.get(winner) + 1);
-  });
-  return wins;
-}
+function headToHeadWins(tied){ return Standings.headToHeadWins(tied, MATCHES); }
 
 function renderStageTables(rows){
   // Playoff stage comes from teamCode (SF/QF/F/B pattern); bracket column only
@@ -2487,6 +2169,7 @@ function renderStandings(){
     if(!categories.has(cat)) categories.set(cat, []);
     categories.get(cat).push(s);
   });
+  CATEGORY_ORDER_INDEX = Codes.buildCategoryOrderIndex(Array.from(new Set(STANDINGS.map(s => Codes.parseCode(s.teamCode, EVENT_TYPE).category))), DISPLAY);
   const sortedCats = Array.from(categories.keys())
     .sort((a, b) => categorySortKey(categories.get(a)[0]) - categorySortKey(categories.get(b)[0]));
 
@@ -2595,11 +2278,7 @@ window.addEventListener('resize', () => {
 // shows up as a single entry, while same-named pairs in different
 // divisions/events never get merged together.
 let allTeams = [];
-function pairKey(code, p1, p2){
-  const { division, event } = parseCode(code);
-  const names = [p1.trim().toLowerCase(), p2.trim().toLowerCase()].sort().join('|');
-  return `${division||''}|${event||''}|${names}`;
-}
+function pairKey(code, p1, p2){ return Matches.pairKey(code, p1, p2, EVENT_TYPE); }
 function rebuildTeamIndex(){
   const byPair = new Map();
   const addSide = (code, p1, p2) => {
@@ -3224,15 +2903,9 @@ function renderIntro(){
     ${allMatchesHTML()}`;
 }
 
-// Before anyone searches, Match Finder lists every match of the day as a
-// ticket, in schedule order (a bye is never a real match, so it's left out).
-// No "Next Up": that only means something for one pair.
-function matchSideIsBye(code, p1, p2){
-  return [code, p1, p2].some(v => BYE_RE.test((v || '').trim()));
-}
 function allMatchesHTML(){
   const all = MATCHES
-    .filter(m => !matchSideIsBye(m.t1, m.t1p1, m.t1p2) && !matchSideIsBye(m.t2, m.t2p1, m.t2p2))
+    .filter(m => !sideIsBye(m.t1, m.t1p1, m.t1p2) && !sideIsBye(m.t2, m.t2p1, m.t2p2))
     .sort((a, b) => a.num - b.num);
   if(!all.length) return '';
   return `<div class="results-meta">All ${all.length} matches, by match number. Search a name above for one pair's.</div>
