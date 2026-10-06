@@ -18,4 +18,9 @@ export const ACCEPTED = [
     case: /^cc\/piggleball-2026\/finder\/[^/]+\/desktop$/, kind: 'pixels', row: 1,
     reason: 'a series final’s game that is never played is greyed out (“Not needed”) on Control Center’s tickets too',
   },
+  // ---- Phase 3, Match Finder (views/finder.js) ----
+  {
+    case: /^cc\/(piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder\//, kind: 'both', row: 3,
+    reason: 'the Teams count on the first screen counts real pairs only (codes ending in a bare number), as the Hub does',
+  },
 ];

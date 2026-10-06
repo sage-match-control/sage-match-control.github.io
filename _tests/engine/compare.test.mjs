@@ -22,8 +22,17 @@ const filter = process.env.CASE ? new RegExp(process.env.CASE) : null;
 const cases = buildCases().filter(c => !filter || filter.test(c.id));
 const concurrency = Number(process.env.CONCURRENCY || 4);
 const RERUNS = 2;
-// Windows briefly running out of socket buffers is the machine's, not the page's.
-const TRANSIENT = /ERR_NO_BUFFER_SPACE|ERR_CONNECTION_(RESET|CLOSED|REFUSED)/;
+// Windows briefly running out of socket buffers is the machine's, not the page's, and so is a step that
+// times out while many pages share the CPU. A page that really is broken fails every rerun too.
+const TRANSIENT = /ERR_NO_BUFFER_SPACE|ERR_CONNECTION_(RESET|CLOSED|REFUSED)|locator\.\w+: Timeout \d+ms exceeded/;
+
+// A step that timed out is run again from the start; a page that really is broken throws every time.
+async function run(browser, site, c){
+  for(let attempt = 1; ; attempt++){
+    try { return await runCase(browser, site, c); }
+    catch(err){ if(attempt >= 3 || !TRANSIENT.test(err.message)) throw err; }
+  }
+}
 
 const safeName = id => id.replace(/[^\w.-]+/g, '__');
 
@@ -46,7 +55,7 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
 
   for (const c of cases) {
     it(c.id, async () => {
-      let [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
+      let [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
 
       // Anti-aliasing can differ by 1/255 on a few pixels from one run to the next (the same tree twice
       // does it too). A difference in the pixels alone is run again; a real one is still there.
@@ -55,7 +64,7 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
         const errors = [...base.errors, ...branch.errors];
         if (errors.some(e => !TRANSIENT.test(e))) break;               // a real page error
         if (!errors.length && (r.pixelsSame || !r.textSame || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry, or a real text difference
-        [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
+        [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
       }
 
       const problems = [];
