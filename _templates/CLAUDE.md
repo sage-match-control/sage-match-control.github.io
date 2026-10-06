@@ -1,6 +1,6 @@
 # Event site templates — instantiation runbook
 
-This directory holds two reusable event-site templates. Instantiating one
+This directory holds three reusable event-site templates. Instantiating one
 for a real event is a copy-and-fill job: copy the folder, replace every
 `{{TOKEN}}`, fill in a handful of example config arrays, and wire up the
 backend. This file is the checklist for doing that. It assumes you're
@@ -61,12 +61,16 @@ gcloud run services describe sage-tools-api --region us-central1 --format="value
 ## 1. Choosing a template
 
 - Two clubs facing off (a "dual meet") → `dual-meet-template/`.
+- Named teams meeting in matchups (a team tournament) → `team-tournament-template/`.
 - Everything else (an open-entry bracket tournament) → `standard-tournament-template/`.
 
-Day count and category count do **not** affect this choice — both
-templates handle any number of tournament days and any number of
-divisions/events. `dual-meet-template/` additionally handles exactly two
-clubs; it is not a general multi-club template.
+Day count and category count do **not** affect this choice — all three
+templates handle any number of tournament days. The standard and dual-meet
+templates handle any number of divisions/events. `dual-meet-template/`
+additionally handles exactly two clubs; it is not a general multi-club
+template. `team-tournament-template/` is for teams of several pairs, each
+meeting another team in a matchup won on total points, with a bracket stage
+and playoffs; its pages are the team views of the engine (§8).
 
 ## 2. The steps
 
@@ -96,7 +100,8 @@ clubs; it is not a general multi-club template.
    cp -r _templates/standard-tournament-template events/<event-key>/
    ```
 
-   (or `_templates/dual-meet-template`, per §1 above). `<event-key>` must
+   (or `_templates/dual-meet-template` or `_templates/team-tournament-template`,
+   per §1 above; the team template is the third choice). `<event-key>` must
    be a good folder-name-safe slug — it will also become this event's
    `EVENT_KEY` and its folder name in the `event-data` repo (step 9 below),
    so pick it once and keep it identical in all three places.
@@ -124,7 +129,8 @@ clubs; it is not a general multi-club template.
 4. **There is no config to fill in.** The pages are shells (§8): the days,
    the facilities and the division, event and club labels come from
    `event-data/config/events.json` at run time (step 7), the same file
-   Control Center reads. The one setting a dual meet's `index.html` adds is
+   Control Center reads. A team event's labels are its pair labels,
+   `display.pairs` (step 7). The one setting a dual meet's `index.html` adds is
    `CLUB_LOGOS`, filled from tokens (§3). The schedule board's `CAT_META`
    is step 6.
 
@@ -165,9 +171,14 @@ clubs; it is not a general multi-club template.
      to that day's key in `events.json` (step 7). For a multi-day event, point
      it at whichever day is being played; there is no day picker on the board.
    - **`CAT_META`** — one entry per `<DIVISION><EVENT>` code, giving each
-     category its chip label and the hue that tints its cells.
+     category its chip label and the hue that tints its cells. For a team
+     event it is one hue per bracket (`G<n>`, `G1` is Bracket 1) plus `PO`
+     for every playoff match. We choose these colours ourselves, because
+     the team workbook's `SCHEDULE` tab is uncoloured. Keep each hue dark
+     enough that navy text stays readable on its 40% tint. A bracket with no
+     entry still gets a `BR <n>` chip in grey.
 
-   > **`CAT_META`'s colours are the organiser's, not ours.** Read them off
+   > **A standard or dual-meet event's `CAT_META` colours are the organiser's, not ours.** Read them off
    > the colour-coded SCHEDULE tab of the source spreadsheet so the wall
    > display and the organiser's own printed schedule agree. They are **not
    > exportable** — cell fills are formatting, so they appear in neither the
@@ -220,7 +231,7 @@ clubs; it is not a general multi-club template.
 
    ```jsonc
    "<event-key>": {
-     "type": "dual-meet",              // or "standard" — picks the layout
+     "type": "dual-meet",              // or "standard", or "team" — picks the layout
      "title": "PNF × BUP Dual Meet",   // masthead
      "days": { ... },                  // as above
      "display": {                      // optional — see below
@@ -231,8 +242,8 @@ clubs; it is not a general multi-club template.
    }
    ```
 
-   - **`type` is required and must be explicit** (`"dual-meet"` or
-     `"standard"`, matching which template you copied in step 1). It decides
+   - **`type` is required and must be explicit** (`"dual-meet"`,
+     `"standard"` or `"team"`, matching which template you copied in step 1). It decides
      both the standings layout and how team codes are split. It is deliberately
      not inferred from the data: guessing from code shape works most of the
      time and fails *silently*, and an unmatched code currently disappears into
@@ -241,7 +252,25 @@ clubs; it is not a general multi-club template.
      shows raw codes (`LIWD`, `PNF`) instead of "Low Intermediate Women's
      Doubles" and the full club name. Fill it in when convenient; a newly
      registered event is usable immediately either way.
-   - All three maps are the same shape: **code → label**. Only codes that
+   - A team event adds `display.pairs`, the label of each pair in a
+     matchup, keyed by the pair number in a team code (the `3` of `A_3`):
+
+     ```jsonc
+     "display": {
+       "pairs": {
+         "1": { "full": "Men's Doubles",   "short": "MD" },
+         "2": { "full": "Women's Doubles", "short": "WD" },
+         "3": { "full": "Mixed Doubles",   "short": "XD" },
+         "4": { "full": "Mixed Doubles",   "short": "XD" }
+       }
+     }
+     ```
+
+     A type that repeats is numbered ("XD 1", "XD 2"). Without `pairs` the
+     labels are MD, WD, XD 1, XD 2; a pair number the event doesn't list
+     reads "Pair <n>". A facility whose roster tab isn't named `Teams` sets
+     `rosterSheetName` on that facility (`event-data/config/README.md`).
+   - All three maps (`divisions`, `events`, `clubs`) are the same shape: **code → label**. Only codes that
      actually appear in `teamCode1`/`teamCode2` matter.
    - **Order comes from key order.** Categories are displayed in the order the
      division and event keys appear in the JSON, so there is no separate
@@ -270,6 +299,68 @@ clubs; it is not a general multi-club template.
    > makes a newly registered event usable there immediately; leaving them
    > out (or leaving `type` unset/wrong) shows a visible error there rather
    > than guessing — see §1 above.
+
+**Team events: the workbook.** The Team Tournament Master does not exist yet
+(`sage-docs/docs/specs/.../team-tournament-master-spec.md`),
+so for now a team event's workbook is made by copying PickleDrive's and
+clearing it. **Only an event of PickleDrive's shape can be made this
+way:** 15 teams `A`–`O` in three brackets of five, four pairs per matchup, a
+group-stage round robin, eight quarterfinalists then semifinals, Bronze and
+Final, 152 matches, one facility and 10 courts. The team codes are generic
+(`A_3`, `QF-3_4`), so copying carries over no other event's names; that is
+why the other formats are never made by copying. **Any other shape waits for
+the master.**
+
+1. **Source:** the live PickleDrive workbook, Drive file
+   `1Bk3iAqB6Fdt6t-EiI8MrU0Or8UZc4MAZcnWcMUOCkOA` ("2026-10-03 PickleDrive
+   Club One Year Celebration"). It carries the optimised calculation (the
+   hidden `StackCache` tab;
+   `sage-docs/docs/specs/.../team-workbook-stack-cache-spec.md`). **Never
+   edit the source:** **File → Make a copy**, named
+   `<date> <title> - <FACILITY>` like a generated workbook.
+2. **Its tabs:**
+   - **input:** `Title`, `Teams`, `MatchUps`, `SCHEDULE`, `Court Control`,
+     `ATTENDANCE`, `Raffle`;
+   - **computed:** `Standings`, `FINAL RANK`, `Awards`, `CSV`,
+     `STANDINGSCSV`, `MatchLookup`, `StackCache`, `Variables`,
+     `Variables V2`, `Reference for Players`, `Timeline`,
+     `Timeline (Individual}`, `Pairings Guide`;
+   - **`Brackets`** is a leftover from another event; ignore it.
+3. **Clear the inputs. Clear values only, and never a cell holding a
+   formula:** turn on **View → Show → Formulas** first, and leave any cell
+   that starts with `=`.
+   - **`Teams`:** type the new event's team names and players over the old
+     ones.
+   - **`MatchUps`:**
+     - clear every lineup;
+     - type each playoff seed cell back to its seed number: quarterfinal
+       seeds 3, 6, 1, 8, 2, 7, 4, 5 in `D604`, `D614`, `D624`, `D634`,
+       `D644`, `D654`, `D664`, `D674`; semifinal seeds 1–4 in `D684`,
+       `D694`, `D704`, `D714`; Bronze 1–2 in `D724`, `D734`; Final 1–2 in
+       `D744`, `D754`.
+   - **`SCHEDULE`:** clear every typed score. A score must be a truly empty
+     cell (**Delete**, not a space), because the formulas test for an
+     empty cell.
+   - **`Court Control`:** clear every match number on a court.
+   - **`ATTENDANCE`:** clear rows 2 down in `A:G`. **Update roster**
+     refills them.
+   - **`Title`:** the new event's title and date.
+   - **`Raffle`:** clear it.
+   - The scorers' **slot times** are `SCHEDULE!B6:B`: retype them if the
+     new event starts at another time and they are typed values.
+4. **Check before wiring it up:**
+   - `STANDINGSCSV` lists the 15 new team names with zero points;
+   - `CSV` has 152 rows with every score empty;
+   - every quarterfinal and later row reads its seed (`QF-3_1` …).
+5. **Then step 8 as usual.** The copy keeps the bound `sheets-sync.gs` but
+   not its trigger. Run **SAGE → Set up live sync** with the new day key
+   and facility; that creates the trigger and replaces the copied day key.
+   Then share it with the service account (step 13).
+
+The team checks of steps 10–14 are in the shared dry-run template
+(step 10); the other steps apply as written. When the Team Tournament
+Master exists its spec replaces this subsection with "generate it from the
+master", and the site needs no change.
 
 8. **Install the sync script.** Once per facility spreadsheet for this
    event (this is the Apps Script side of things — `apps-script/sheets-sync.gs`
@@ -388,7 +479,8 @@ clubs; it is not a general multi-club template.
 
 ## 3. Required `{{TOKEN}}` replacements
 
-**Both templates** (`index.html`):
+**All three templates** (`index.html`; the team template uses the standard
+set, and its `schedule.html` the board's set):
 
 | Token | Meaning |
 | --- | --- |
@@ -449,6 +541,14 @@ most common cause. Exact, case-sensitive:
 - `dual-meet-template/`: `<CLUB>_<DIVISION><EVENT>_<REST>`
   (e.g. `{{CLUB_A_CODE}}_B18MD_1` in the raw template — with a real code
   filled in, something like `PPA_B18MD_1`).
+- `team-tournament-template/`: `<SIDE>_<PAIR>` (`A_3`, `QF-3_4`,
+  `SF-A_2`, `Fi-J_1`). `PAIR` is the pair number in the matchup (the key
+  of `display.pairs`). `SIDE` is a team letter (`A`) in the bracket stage,
+  or `<STAGE>-<SLOT>` in a playoff, where `STAGE` is `QF`, `SF`, `Br` or
+  `Fi` and `SLOT` is a seed number (`3`) until the organiser types a team
+  letter over it (`A`). The board reads a team match's stage from the
+  side's prefix; the bracket comes from the team's `bracket` column in
+  `STANDINGSCSV`.
 
 `_(N)` suffixes mark a twice-to-beat playoff instance (see the
 `matchInstanceOf`/`pairUpMatchups` comments in `index.html` if you need the
@@ -474,6 +574,9 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | club codes | `index.html`'s `CLUB_LOGOS`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
 | theme `:root` | `index.html` and `schedule.html` — plus the two non-CSS palettes noted in §2 step 5 |
 | `LIVE_BASE_URL` | each shell, as a literal: `''` turns push off for that page (§7) |
+
+Nothing new is kept in sync by hand for a team event: pair labels live only
+in `events.json` (`display.pairs`), and the colour key only in the board.
 
 The `ATTENDANCE CLIENT`, `SCORE CLIENT` and `LIVE CHANNEL` blocks this table
 used to list are modules of the engine now (§8), so there is nothing to

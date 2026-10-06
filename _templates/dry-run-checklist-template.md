@@ -25,6 +25,13 @@ section can reference them without guessing at what's actually in the sheet:
 - [ ] Match A — set `team1Score` and `team2Score` to any two different numbers (e.g. 11 and 7)
 - [ ] Match B — using the **Court Control** tab (not the matches tab directly), enter Match B's number against any court this facility actually uses, the same way you'd mark a match live for real
 - [ ] Match C — change one of its team codes so its division/event prefix no longer matches anything in this event's `display.divisions`/`display.events` config (e.g. tack on an extra letter) — this is what should trigger the console's unmapped-category warning instead of a silent "Other"
+- [ ] **Lineup and playoff slots (team events).** Enter one matchup's
+  lineup on `MatchUps`. Within about 30 seconds the site shows those
+  players' names in place of *Lineup not set*; if not, check `MatchUps`
+  is ticked in **SAGE → Set up live sync**. Then type a team letter into
+  one quarterfinal seed cell on `MatchUps`. That quarterfinal card
+  switches from *Seed n · TBD* to the team's name, and the team gets an
+  *Advances* label. Put the seed number back afterwards.
 
 ### 1.2 Console verification (operator device only — nothing public yet)
 
@@ -99,6 +106,12 @@ Each edit syncs within a few seconds and reaches open pages by push — you
 don't need to do anything else for it to publish. Everything below is just
 watching for when that pipeline needs a nudge:
 
+- [ ] **Playoff teams (team events).** When the bracket stage ends,
+  enter each qualifier's letter against its seed on `MatchUps`; after
+  each playoff round, enter the next round's teams the same way. The
+  site takes every playoff team from these cells and never picks them
+  itself. The seed cells are listed in `_templates/CLAUDE.md` (the
+  team workbook step).
 - [ ] If Mission Control reads *Live updates: polling GitHub (push not connected)*, updates still arrive, just 30–60s slower — keep going and tell whoever maintains the system
 - [ ] Periodically glance at Mission Control's Facility Sync Status. It should read "Synced" a few seconds to a couple minutes ago, continuously
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
