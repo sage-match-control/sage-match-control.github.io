@@ -275,6 +275,19 @@ body{
   border-color:var(--navy);
 }
 
+/* A team event's pair (MD, WD, XD 1): the same quiet outline as the stage. */
+.cell-pair{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-soft);
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:100px; padding:0 6px;
+}
+/* A team cell keeps its chips on one line, as the prototype's do. Another type's chips may still wrap, so
+   .cell-cat and .cell-stage are held only inside .cell.team (the board adds the class for type 'team'). */
+.cell-pair, .cell.team .cell-cat, .cell.team .cell-stage{ white-space:nowrap; }
+
 .cell-live{
   margin-left:auto;
   display:inline-flex; align-items:center; gap:4px;
@@ -315,6 +328,12 @@ body{
 .fo-name{ min-height:1.3em; }
 
 .fo-name.unknown{ color:var(--ink-soft); font-weight:500; font-style:italic; }
+
+/* A team event: the team's name above its two players; one line, ellipsis on overflow. */
+.fo-team{
+  font-weight:700; font-size:12px; line-height:1.3; color:var(--navy);
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 
 .fo-center{
   flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
@@ -451,6 +470,8 @@ body{
 
   .fo-name{ font-size:11.5px; line-height:1.2; }
 
+  .fo-team{ font-size:11.5px; }
+
   .fo-center{ align-self:center; min-width:0; padding:1px 0; }
 
   .fo-score{ font-size:14px; }
@@ -525,6 +546,10 @@ body{
      every shape tested — 1, 3, 4 and 9 courts, 15 to 40 slots — with no extra
      sheets. 6pt buys nothing further, so this is the largest that works. */
   .print-grid .fo-name{ font-size:6.5pt; line-height:1.15; }
+
+  .print-grid .cell-pair{ font-size:5.5pt; }
+
+  .print-grid .fo-team{ font-size:6.5pt; line-height:1.15; }
 
   .print-grid .fo-score{ font-size:10pt; }
 

@@ -356,6 +356,55 @@ test('the board reads the category from the right segment of a code', () => {
   assert.deepEqual(G.parseFacilityCsv('', 'standard'), []);
 });
 
+// ---- the board on a team day (team-tournament-template-spec §4.2) ------------------------------------------------
+
+test('ladderStageForTeam maps a team code’s side to the board’s stage', () => {
+  for (const [code, stage] of [['A_1', 'RR'], ['QF-3_1', 'QF'], ['SF-A_2', 'SF'], ['Br-1_1', 'B'], ['Fi-J_4', 'F'], ['ZZ-1_1', 'RR']]) {
+    assert.equal(G.ladderStageForTeam(code), stage, code);
+  }
+});
+
+test('buildScheduleData for a team day: team names, pair, stage and category per match', () => {
+  const snap = loadSnapshot('team-demo-2026');
+  const pairs = eventConfig('team-demo-2026').pairs;
+  const data = G.buildScheduleData(snap, null, 'team', { pairs });
+  const all = data.rows.flatMap(r => [...r.courts.filter(Boolean), ...r.unplaced]).sort((a, b) => a.num - b.num);
+  assert.equal(all.length, 48);
+  const at = n => all.find(m => m.num === n);
+  assert.deepEqual(
+    ['matchUp', 'team1', 'team2', 'pair', 'stage', 'cat'].map(k => at(1)[k]),
+    ['A v B', 'Aces', 'Bandits', 'MD', 'RR', 'G1']);
+  assert.equal(at(2).pair, 'WD');
+  assert.equal(at(3).pair, 'XD', 'the demo has one mixed pair, so it is not numbered');
+  assert.equal(at(19).cat, 'G2');
+  assert.equal(at(19).team1, 'Eagles');
+  assert.deepEqual(['matchUp', 'team1', 'team2', 'stage', 'cat'].map(k => at(37)[k]), ['SF-A v SF-4', 'Aces', 'Seed 4 · TBD', 'SF', 'PO']);
+  assert.deepEqual([at(40).team1, at(43).stage, at(46).stage, at(46).cat], ['Seed 2 · TBD', 'B', 'F', 'PO']);
+  assert.equal(at(11).p2a, 'D_2', 'the lineup is left as the sheet has it; the view decides "Lineup TBD"');
+  assert.equal(at(1).p1a, 'Abel Tan');
+  // the fields the standard and dual-meet boards read are still on a team row
+  assert.deepEqual([at(1).slot, at(1).c1, at(1).c2, at(1).court, at(1).liveCourt], ['9:00 AM', 'A_1', 'B_1', 1, '']);
+  assert.equal(data.courts, 4);
+});
+
+test('a team day with no pairs argument uses the default pair labels, and a pair the event lacks is "Pair n"', () => {
+  const snap = loadSnapshot('team-demo-2026');
+  const rows = data => data.rows.flatMap(r => r.courts.filter(Boolean));
+  const dflt = rows(G.buildScheduleData(snap, null, 'team'));
+  assert.equal(dflt.find(m => m.num === 3).pair, 'XD 1');
+  const two = { 1: { full: 'A', short: 'A' }, 2: { full: 'B', short: 'B' } };
+  assert.equal(rows(G.buildScheduleData(snap, null, 'team', { pairs: two })).find(m => m.num === 3).pair, 'Pair 3');
+});
+
+test('the standard and dual-meet boards carry no team fields', () => {
+  for (const event of ['piggleball-2026', 'pnf-x-bup-dual-meet']) {
+    const type = eventConfig(event).type;
+    const data = G.buildScheduleData(loadSnapshot(event), null, type, { pairs: eventConfig(event).pairs });
+    const sample = data.rows.flatMap(r => r.courts.filter(Boolean))[0];
+    for (const k of ['matchUp', 'team1', 'team2', 'pair', 'stage']) assert.equal(k in sample, false, k);
+  }
+});
+
 // ---- the day model -----------------------------------------------------------------------------------------------
 
 for (const event of Object.keys(SNAPSHOTS)) {
