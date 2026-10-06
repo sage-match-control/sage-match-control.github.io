@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/lib/v1/css/ticket.css">
 <style>
   /* ============================ THEME ============================
      S.A.G.E. house palette — navy structure, green accent, off-white
@@ -512,23 +513,7 @@
   .day-picker select:hover, .day-picker select:focus{border-color:rgba(124,185,44,.6); outline:none;}
   .day-picker select option{color:var(--ink);}
 
-  /* ---------- LIVE MATCHES (Court Control) ---------- */
-  .live-dot{
-    display:inline-block;
-    width:9px; height:9px;
-    border-radius:50%;
-    background:var(--green-dark);
-    margin-right:8px;
-    vertical-align:middle;
-    box-shadow:0 0 0 0 rgba(92,143,31,.5);
-    animation:live-pulse 1.8s infinite;
-  }
-  @keyframes live-pulse{
-    0%{ box-shadow:0 0 0 0 rgba(92,143,31,.45); }
-    70%{ box-shadow:0 0 0 8px rgba(92,143,31,0); }
-    100%{ box-shadow:0 0 0 0 rgba(92,143,31,0); }
-  }
-  .live-board-meta{
+    .live-board-meta{
     display:flex;
     align-items:center;
     justify-content:center;
@@ -1081,10 +1066,6 @@
   .badge-3{background:#6C5CE0;}
   .badge-x{background:var(--muted);}
 
-  /* Playoff matchups: each stage's teams grouped into explicit head-to-head
-     cards (instead of a flat list) so it's obvious who's facing whom. */
-  /* A series final's game that is never played (unneededSeriesGames). */
-  .matchup.not-needed, .ticket.not-needed{ opacity:.4; filter:grayscale(1); }
   .matchup{
     display:flex;
     flex-direction:column;
@@ -1283,75 +1264,7 @@
   }
   .stat span{font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft);}
 
-  /* ---------- TICKET CARD ---------- */
-  .ticket{
-    background:var(--white);
-    border-radius:16px;
-    box-shadow:var(--card-shadow);
-    margin-bottom:16px;
-    overflow:hidden;
-    position:relative;
-    border-left:6px solid var(--court);
-  }
-  .ticket-body{
-    padding:18px 20px 20px;
-  }
-
-  .time-row{
-    text-align:center;
-    margin-bottom:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .center-pill{
-    display:inline-block;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:15px;
-    font-weight:700;
-    color:var(--court);
-    background:var(--ink);
-    border-radius:100px;
-    padding:6px 16px;
-  }
-  .court-pill{
-    display:inline-block;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:15px;
-    font-weight:700;
-    color:var(--cork);
-    background:var(--paper-dim);
-    border-radius:100px;
-    padding:6px 16px;
-  }
-  .live-pill{
-    display:inline-flex;
-    align-items:center;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:12px;
-    font-weight:700;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    color:var(--white);
-    background:var(--green-dark);
-    border:1px solid var(--green-dark);
-    border-radius:100px;
-    padding:6px 13px 6px 10px;
-  }
-  .live-pill .live-dot{margin-right:6px;}
-
-  .names-row{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
-    align-items:start;
-    column-gap:12px;
-    margin-bottom:14px;
-  }
-  .team-block{flex:1; min-width:0; text-align:left;}
-  .team-block.right{text-align:right;}
-  .score-logo{
+                    .score-logo{
     display:inline-block;
     width:88px; height:88px;
     border-radius:50%;
@@ -1359,121 +1272,7 @@
     border:2px solid rgba(20,27,44,.12);
     margin-bottom:6px;
   }
-  .team-block .team-name{
-    font-family:'Barlow Condensed',sans-serif;
-    font-weight:700;
-    font-size:9.5px;
-    letter-spacing:.06em;
-    text-transform:uppercase;
-    color:var(--muted);
-  }
-  .team-block .players{
-    font-size:16px;
-    font-weight:600;
-    color:var(--ink);
-    margin-top:4px;
-    line-height:1.45;
-  }
-  .team-block .players .p{display:block;}
-  /* Both sides share the names-row grid's rows: the team codes on the first,
-     then one row per player name, each as tall as the taller side's name. A
-     name that wraps moves both sides' next name down together, so codes and
-     names stay level whatever the line count. */
-  .names-row .team-block, .names-row .team-block .players{display:contents;}
-  .names-row .team-block .team-name{grid-column:1; grid-row:1;}
-  .names-row .team-block .p{grid-column:1;}
-  .names-row .team-block .p:first-child{grid-row:2; margin-top:4px;}
-  .names-row .team-block .p:nth-child(2){grid-row:3;}
-  .names-row .team-block.right .team-name,
-  .names-row .team-block.right .p{grid-column:3;}
-  .names-row .team-block.tbd .players{display:block; grid-column:1; grid-row:2 / span 2; margin-top:4px;}
-  .names-row .team-block.right.tbd .players{grid-column:3;}
-  .names-row .score-col{grid-column:2; grid-row:1 / span 3; align-self:center;}
-  .team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
-  .you-badge{
-    display:inline-block;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:9.5px;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    background:var(--cork);
-    color:#fff;
-    padding:1px 6px;
-    border-radius:4px;
-    margin-left:6px;
-    vertical-align:middle;
-  }
-
-  .score-col{
-    flex-shrink:0;
-    text-align:center;
-    font-family:'Archivo Black',sans-serif;
-    font-weight:400;
-    font-size:32px;
-    color:var(--ink);
-    letter-spacing:.02em;
-    padding:0 6px;
-  }
-  .score-col .score-colon{color:var(--muted); margin:0 8px; font-size:26px;}
-  .score-col .score-num{color:var(--cork);}
-  .score-col .score-num.win{color:var(--ink);}
-  .score-col .vs-text{
-    font-size:14px;
-    color:var(--muted);
-    letter-spacing:.1em;
-  }
-
-  .meta-row{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:8px;
-  }
-  .meta-chip{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    color:var(--muted);
-    background:rgba(20,27,44,.06);
-    padding:4px 10px;
-    border-radius:100px;
-  }
-  .tag{
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:.06em;
-    padding:4px 10px;
-    border-radius:100px;
-  }
-  .tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
-  .tag.round{background:var(--cork); color:#fff;}
-  .tag.pool{background:rgba(124,185,44,.18); color:var(--navy);}
-
-  /* Flags a searched pair's next unplayed, not-yet-live match so it stands
-     out from the rest of their schedule at a glance. */
-  .ticket.next{
-    border-left:6px solid var(--amber);
-    box-shadow:var(--card-shadow), 0 0 0 2px var(--green);
-  }
-  .next-pill{
-    display:inline-flex;
-    align-items:center;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:12px;
-    font-weight:700;
-    letter-spacing:.08em;
-    text-transform:uppercase;
-    color:var(--navy);
-    background:var(--green);
-    border:1px solid var(--green);
-    border-radius:100px;
-    padding:6px 13px;
-  }
-
-  footer{
+                                                    footer{
     text-align:center;
     color:var(--ink-soft);
     font-size:12px;
@@ -1491,18 +1290,8 @@
   }
 
   @media (max-width:480px){
-    .ticket-body{padding:16px 16px 18px;}
-    .center-pill{font-size:13px; padding:5px 14px;}
-    .court-pill{font-size:13px; padding:5px 14px;}
-    .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
-    .next-pill{font-size:11px; padding:5px 11px;}
-    .names-row{column-gap:6px; margin-bottom:14px;}
-    .team-block .players{font-size:13px;}
-    .score-logo{width:64px; height:64px; margin-bottom:4px;}
-    .score-col{font-size:26px; padding:0 2px;}
-    .meta-row{justify-content:center;}
-
-    .live-table-wrap{overflow-x:visible;}
+                                .score-logo{width:64px; height:64px; margin-bottom:4px;}
+            .live-table-wrap{overflow-x:visible;}
     table.live-table{min-width:0;}
     table.live-table th, table.live-table td{padding:6px 5px;}
     td.live-court-cell{font-size:13px;}
@@ -1518,6 +1307,16 @@
 
   :focus-visible{outline:3px solid var(--amber); outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+/* ==== THIS TEMPLATE'S OWN TOUCHES, where it differs from lib/v1/css — site-engine-spec §12 ==== */
+/* §12 row 11: the base margin-bottom, kept by this page (the shared one is the standard Hub's 12px) */
+.names-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:start;
+  column-gap:12px;
+  margin-bottom:14px;
+}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
@@ -1614,6 +1413,13 @@ import { createLiveChannel } from '/lib/v1/data/live-channel.js';
 import { createPoller } from '/lib/v1/data/snapshot.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
 
+// The engine's views (lib/v1/views) and the day model every view reads.
+import { buildDayModel } from '/lib/v1/domain/model.js';
+import { escapeHtml } from '/lib/v1/views/html.js';
+import { captureScrollPositions, restoreScrollPositions } from '/lib/v1/views/scroll.js';
+import { standingRowClass } from '/lib/v1/views/ticket.js';
+import * as Ticket from '/lib/v1/views/ticket.js';
+
 // ============================================================================
 // CONFIGURATION — everything a tournament organizer would need to touch
 // lives here at the top. The rest of the file below is implementation and
@@ -1696,6 +1502,11 @@ const DISPLAY = {
   clubs: Object.fromEntries(Object.entries(CLUBS).map(([code, c]) => [code, c.full])),
 };
 let CATEGORY_ORDER_INDEX = new Map(); // rebuilt at the top of every Standings render
+// The event as the engine's DayModel wants it: this page's own config until Phase 4 reads events.json.
+const EVENT_CONFIG = {
+  key: EVENT_KEY, type: EVENT_TYPE, title: '', display: DISPLAY,
+  days: DAYS.map(d => ({ ...d, facilities: FACILITIES.map(f => f.name) })),
+};
 
 // ---- Browser storage keys -------------------------------------------------
 // Namespaced off EVENT_KEY, so a new event can never read or clobber
@@ -1729,6 +1540,7 @@ let dayIsLive = false; // resolved via computeDayIsLive(DAYS[currentDayIndex]) �
 let MATCHES = [];
 let MATCH_BY_CODE = new Map(); // teamCode -> match, rebuilt whenever MATCHES loads
 let STANDINGS = [];
+let MODEL = null; // the day's DayModel (domain/model.js), rebuilt with every snapshot; the views read it
 
 function fetchDaySnapshot(dayKey){
   return Snapshot.fetchDaySnapshot(EVENT_KEY, dayKey, { liveChannel, fixture: FIXTURE });
@@ -1763,17 +1575,14 @@ async function loadLiveData(){
     // just re-assembling what it published — no per-facility network calls
     // happen here anymore. matchNumber/teamCode are unique across a day's
     // facilities, so combining is just a concatenation.
-    const matches = snapshot.facilities
-      .flatMap(f => rowsToMatches(parseCSV(f.matchesCsv)))
-      .sort((a, b) => a.num - b.num);
-    const standings = snapshot.facilities.flatMap(f => rowsToStandings(parseCSV(f.standingsCsv)));
+    const model = buildDayModel(EVENT_CONFIG, EVENT_CONFIG.days[dayIndexAtStart], snapshot, { now: Date.now() });
+    if(model.matches.length === 0) throw new Error('No rows parsed from any facility');
 
-    if(matches.length === 0) throw new Error('No rows parsed from any facility');
-
-    MATCHES = matches;
-    MATCH_BY_CODE = buildMatchByCodeIndex(MATCHES);
-    UNNEEDED_GAMES = unneededSeriesGames(MATCHES);
-    STANDINGS = standings;
+    MODEL = model;
+    MATCHES = model.matches;
+    MATCH_BY_CODE = model.matchByCode;
+    UNNEEDED_GAMES = model.unneededGames;
+    STANDINGS = model.standings;
 
     // Re-checked every poll (not just on day-select) so a page left open
     // across the go-live threshold flips over on its own, without needing
@@ -1781,7 +1590,7 @@ async function loadLiveData(){
     // though — calling this on every update regardless would yank the person off
     // whatever tab they're currently looking at.
     const wasLive = dayIsLive;
-    dayIsLive = computeDayIsLive(day, snapshot);
+    dayIsLive = model.isLive;
     if(dayIsLive !== wasLive) revealLiveTabsAfterLoad();
 
     rebuildTeamIndex(); // also re-renders the Match Finder panel (search results or intro)
@@ -1898,22 +1707,7 @@ let UNNEEDED_GAMES = new Set(); // rebuilt with MATCHES
 
 function isUnnamedScheduledPair(s){ return Matches.isUnnamedScheduledPair(s, MATCH_BY_CODE, EVENT_TYPE); }
 
-function standingRowClass(s){
-  if(s.wins === 0 && s.loss === 0) return '';
-  return s.wins > s.loss ? 'win' : 'loss';
-}
-
-function pairCell(s){
-  if(isUnnamedScheduledPair(s)){
-    return `<td class="pair tbd"><span>${escapeHtml(s.teamCode)}</span></td>`;
-  }
-  if(isEmptyStanding(s)){
-    return `<td class="pair tbd"><span>TBD</span></td>`;
-  }
-  const p1 = s.player1 ? escapeHtml(s.player1) : '';
-  const p2 = s.player2 ? escapeHtml(s.player2) : '';
-  return `<td class="pair" title="${p1} / ${p2}"><span>${p1}</span><span>${p2}</span></td>`;
-}
+function pairCell(s){ return Ticket.pairCell(s, MODEL); }
 
 function rankStandings(rows){ return Standings.rankStandings(rows, MATCHES); }
 
@@ -2183,56 +1977,6 @@ function renderCategoryColumn(cat, rows, clubOrder, styleAttr){
 const DESKTOP_STANDINGS_QUERY = '(min-width:900px) and (min-height:600px)';
 function isDesktopStandings(){
   return window.matchMedia(DESKTOP_STANDINGS_QUERY).matches;
-}
-
-// Capture/restore scroll positions of any scrolled-down elements inside a
-// container. Used so re-rendering standings (which rebuilds the whole
-// innerHTML on every live-data sync) doesn't snap the view back to the top.
-// Scoped to the actual scrollable containers (the desktop board + each
-// category column, or its inner per-club clubs row) rather than every
-// descendant node — this panel can hold hundreds of nodes (rows, cells,
-// spans) once several categories are shown, and only a couple of them are
-// ever scrollable.
-// Covers both the Standings board (per-category vertical scroll on desktop)
-// and the Live Matches board (per-facility horizontal table scroll on
-// mobile) — both fully rebuild their HTML on every refresh, so without this
-// their scroll position would silently reset every 15 seconds.
-const SCROLLABLE_SELECTOR = '.standings-col, .category-clubs-row, .live-table-wrap';
-
-// Stable identity for a scrollable node, preferred over raw className/
-// tagName matching — the same category or facility can render in a
-// different slot after a reload (categories/courts added, removed, or
-// re-sorted), and position-based matching would hand its scroll offset to
-// whatever unrelated element now occupies that slot instead.
-function scrollNodeIdentity(node){
-  const key = node.dataset && (node.dataset.catKey || node.dataset.facilityKey);
-  return key ? `id:${key}` : (node.className || node.tagName);
-}
-
-function captureScrollPositions(root){
-  const positions = [];
-  const counts = {};
-  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
-    if(node.scrollTop > 0 || node.scrollLeft > 0){
-      const key = scrollNodeIdentity(node);
-      counts[key] = (counts[key] || 0) + 1;
-      positions.push({ key, occurrence: counts[key], top: node.scrollTop, left: node.scrollLeft });
-    }
-  });
-  return positions;
-}
-function restoreScrollPositions(root, positions){
-  if(!positions.length) return;
-  const counts = {};
-  root.querySelectorAll(SCROLLABLE_SELECTOR).forEach(node => {
-    const key = scrollNodeIdentity(node);
-    counts[key] = (counts[key] || 0) + 1;
-    const match = positions.find(p => p.key === key && p.occurrence === counts[key]);
-    if(match){
-      node.scrollTop = match.top;
-      node.scrollLeft = match.left;
-    }
-  });
 }
 
 // Club win-totals summary bar: sums wins across Round Robin rows only, per
@@ -2627,84 +2371,13 @@ input.addEventListener('keydown', (e) => {
 });
 document.getElementById('searchBtn').addEventListener('click', runSearch);
 
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
 function teamLogoHTML(teamCode){
   const club = CLUBS[parseCode(teamCode).club];
   return club && club.logo ? `<img class="score-logo" src="${escapeHtml(club.logo)}" alt="${escapeHtml(club.name)} logo">` : '';
 }
 
 function ticketHTML(m, teamCode, isNext){
-  // No teamCode: a neutral ticket (the all-matches list), team 1 on the left
-  // and no "You" badge.
-  const neutral = !teamCode;
-  const isT1 = neutral || m.t1 === teamCode;
-  const you = isT1 ? {code:m.t1, p1:m.t1p1, p2:m.t1p2} : {code:m.t2, p1:m.t2p1, p2:m.t2p2};
-  const opp = isT1 ? {code:m.t2, p1:m.t2p1, p2:m.t2p2} : {code:m.t1, p1:m.t1p1, p2:m.t1p2};
-  const youTBD = you.p1 === 'TBD';
-  const oppTBD = opp.p1 === 'TBD';
-  const oppRound = roundLabel(parseCode(opp.code).rest);
-  const tag = oppRound
-    ? `<span class="tag round">${oppRound}</span>`
-    : `<span class="tag pool">Round Robin</span>`;
-
-  const youScore = isT1 ? m.t1Score : m.t2Score;
-  const oppScore = isT1 ? m.t2Score : m.t1Score;
-  const youWon = m.played && youScore > oppScore;
-  const oppWon = m.played && oppScore > youScore;
-
-  const scoreHTML = (dayIsLive && m.played)
-    ? `<span class="score-num ${youWon?'win':''}">${escapeHtml(String(youScore))}</span><span class="score-colon">:</span><span class="score-num ${oppWon?'win':''}">${escapeHtml(String(oppScore))}</span>`
-    : `<span class="vs-text">VS</span>`;
-
-  const isLive = dayIsLive && !!m.liveCourt;
-  const displayCourt = isLive ? m.liveCourt : m.court;
-  const displayCourtLabel = isLive ? `Court ${displayCourt}` : displayCourt;
-  // A single-facility event has nothing to disambiguate, so naming it on
-  // every card would just be noise (see facilityTableHTML's identical check).
-  const facility = FACILITIES.length > 1 ? facilityForCourt(displayCourt) : null;
-  const courtHTML = displayCourt
-    ? `<span class="court-pill">${escapeHtml(displayCourtLabel)}${facility ? ` &middot; ${escapeHtml(facility)}` : ''}</span>`
-    : '';
-  const livePillHTML = isLive
-    ? `<span class="live-pill"><span class="live-dot" aria-hidden="true"></span>Live</span>`
-    : '';
-  // Only flag as "Next Up" if it isn't already live — a match in progress
-  // is covered by the Live pill above, so showing both would be redundant.
-  const nextPillHTML = dayIsLive && isNext && !isLive
-    ? `<span class="next-pill">Next Up</span>`
-    : '';
-
-  return `
-  <div class="ticket${dayIsLive && isNext && !isLive ? ' next' : ''}${UNNEEDED_GAMES.has(m) ? ' not-needed' : ''}"${UNNEEDED_GAMES.has(m) ? ' title="Not needed"' : ''}>
-    <div class="ticket-body">
-      <div class="time-row">
-        <span class="center-pill">${escapeHtml(m.time)}</span>
-        ${livePillHTML}
-        ${nextPillHTML}
-        ${courtHTML}
-      </div>
-      <div class="names-row">
-        <div class="team-block ${youTBD ? 'tbd':''}">
-          ${teamLogoHTML(you.code)}
-          <div class="team-name">${escapeHtml(you.code)}${neutral ? '' : '<span class="you-badge">You</span>'}</div>
-          <div class="players">${youTBD ? 'To be determined' : `<span class="p">${escapeHtml(you.p1)}</span><span class="p">${escapeHtml(you.p2)}</span>`}</div>
-        </div>
-        <div class="score-col">${scoreHTML}</div>
-        <div class="team-block right ${oppTBD ? 'tbd':''}">
-          ${teamLogoHTML(opp.code)}
-          <div class="team-name">${escapeHtml(opp.code)}</div>
-          <div class="players">${oppTBD ? 'To be determined' : `<span class="p">${escapeHtml(opp.p1)}</span><span class="p">${escapeHtml(opp.p2)}</span>`}</div>
-        </div>
-      </div>
-      <div class="meta-row">
-        <span class="meta-chip">Match #${m.num}</span>
-        ${tag}
-      </div>
-    </div>
-  </div>`;
+  return Ticket.ticketHTML(m, MODEL, { teamCode, isNext, teamLogoHTML });
 }
 
 // ---------- Live Matches (Court Control) ----------

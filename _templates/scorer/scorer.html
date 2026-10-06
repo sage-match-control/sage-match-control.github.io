@@ -306,6 +306,7 @@ import { createLiveChannel } from '/lib/v1/data/live-channel.js';
 import { friendlyApiMessage } from '/lib/v1/data/api.js';
 import { scorerDecode, scorerLoadToken, scorerStorageKey } from '/lib/v1/data/tokens.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
+import { escapeHtml } from '/lib/v1/views/html.js';
 
 // ============================================================================
 // CONFIGURATION
@@ -331,11 +332,6 @@ const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 // played/BYE and series rules are no longer copies: they are imported from
 // lib/v1/domain, above.)
 // ============================================================================
-
-// escapeHtml (tools/control-center.html)
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 // ==== SCORE CLIENT — identical in tools/control-center.html, ====
 // ==== _templates/scorer/scorer.html and every events/<key>/scorer.html; ====

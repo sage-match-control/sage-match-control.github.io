@@ -1,0 +1,257 @@
+/* The ticket: one match as Match Finder shows it (lib/v1/views/ticket.js).
+   Colour, radius and shadow come from the page's theme properties (site-engine-spec §4.7). */
+
+/* The pulsing dot of a match in play: on its ticket, and in the Live Matches table. */
+.live-dot{
+  display:inline-block;
+  width:9px; height:9px;
+  border-radius:50%;
+  background:var(--green-dark);
+  margin-right:8px;
+  vertical-align:middle;
+  box-shadow:0 0 0 0 rgba(92,143,31,.5);
+  animation:live-pulse 1.8s infinite;
+}
+
+@keyframes live-pulse{
+  0%{ box-shadow:0 0 0 0 rgba(92,143,31,.45); }
+  70%{ box-shadow:0 0 0 8px rgba(92,143,31,0); }
+  100%{ box-shadow:0 0 0 0 rgba(92,143,31,0); }
+}
+
+/* A series final's game that is never played (unneededSeriesGames): greyed out, on a ticket
+   and in a playoff matchup card (views/standings.js). */
+.matchup.not-needed, .ticket.not-needed{ opacity:.4; filter:grayscale(1); }
+
+/* ---------- TICKET CARD ---------- */
+.ticket{
+  background:var(--white);
+  border-radius:16px;
+  box-shadow:var(--card-shadow);
+  margin-bottom:16px;
+  overflow:hidden;
+  position:relative;
+  border-left:6px solid var(--court);
+}
+
+.ticket-body{
+  padding:18px 20px 20px;
+}
+
+.time-row{
+  text-align:center;
+  margin-bottom:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.center-pill{
+  display:inline-block;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;
+  font-weight:700;
+  color:var(--court);
+  background:var(--ink);
+  border-radius:100px;
+  padding:6px 16px;
+}
+
+.court-pill{
+  display:inline-block;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;
+  font-weight:700;
+  color:var(--cork);
+  background:var(--paper-dim);
+  border-radius:100px;
+  padding:6px 16px;
+}
+
+.live-pill{
+  display:inline-flex;
+  align-items:center;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--white);
+  background:var(--green-dark);
+  border:1px solid var(--green-dark);
+  border-radius:100px;
+  padding:6px 13px 6px 10px;
+}
+
+.live-pill .live-dot{margin-right:6px;}
+
+.names-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:start;
+  column-gap:12px;
+  margin-bottom:12px;
+}
+
+.team-block{flex:1; min-width:0; text-align:left;}
+
+.team-block.right{text-align:right;}
+
+.team-block .team-name{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:9.5px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.team-block .players{
+  font-size:16px;
+  font-weight:600;
+  color:var(--ink);
+  margin-top:4px;
+  line-height:1.45;
+}
+
+.team-block .players .p{display:block;}
+
+/* Both sides share the names-row grid's rows: the team codes on the first,
+   then one row per player name, each as tall as the taller side's name. A
+   name that wraps moves both sides' next name down together, so codes and
+   names stay level whatever the line count. */
+.names-row .team-block, .names-row .team-block .players{display:contents;}
+
+.names-row .team-block .team-name{grid-column:1; grid-row:1;}
+
+.names-row .team-block .p{grid-column:1;}
+
+.names-row .team-block .p:first-child{grid-row:2; margin-top:4px;}
+
+.names-row .team-block .p:nth-child(2){grid-row:3;}
+
+.names-row .team-block.right .team-name,
+.names-row .team-block.right .p{grid-column:3;}
+
+.names-row .team-block.tbd .players{display:block; grid-column:1; grid-row:2 / span 2; margin-top:4px;}
+
+.names-row .team-block.right.tbd .players{grid-column:3;}
+
+.names-row .score-col{grid-column:2; grid-row:1 / span 3; align-self:center;}
+
+.team-block.tbd .players{color:var(--muted); font-weight:500; font-style:italic;}
+
+.you-badge{
+  display:inline-block;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9.5px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:var(--cork);
+  color:#fff;
+  padding:1px 6px;
+  border-radius:4px;
+  margin-left:6px;
+  vertical-align:middle;
+}
+
+.score-col{
+  flex-shrink:0;
+  text-align:center;
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:32px;
+  color:var(--ink);
+  letter-spacing:.02em;
+  padding:0 6px;
+}
+
+.score-col .score-colon{color:var(--muted); margin:0 8px; font-size:26px;}
+
+.score-col .score-num{color:var(--cork);}
+
+.score-col .score-num.win{color:var(--ink);}
+
+.score-col .vs-text{
+  font-size:14px;
+  color:var(--muted);
+  letter-spacing:.1em;
+}
+
+.meta-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.meta-chip{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--muted);
+  background:rgba(20,27,44,.06);
+  padding:4px 10px;
+  border-radius:100px;
+}
+
+.tag{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  padding:4px 10px;
+  border-radius:100px;
+}
+
+.tag.match-no{background:rgba(20,27,44,.08); color:var(--muted);}
+
+.tag.round{background:var(--cork); color:#fff;}
+
+.tag.pool{background:rgba(124,185,44,.18); color:var(--navy);}
+
+/* Flags a searched pair's next unplayed, not-yet-live match so it stands
+   out from the rest of their schedule at a glance. */
+.ticket.next{
+  border-left:6px solid var(--amber);
+  box-shadow:var(--card-shadow), 0 0 0 2px var(--green);
+}
+
+.next-pill{
+  display:inline-flex;
+  align-items:center;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--navy);
+  background:var(--green);
+  border:1px solid var(--green);
+  border-radius:100px;
+  padding:6px 13px;
+}
+
+@media (max-width:480px) {
+  .ticket-body{padding:16px 16px 18px;}
+
+  .center-pill{font-size:13px; padding:5px 14px;}
+
+  .court-pill{font-size:13px; padding:5px 14px;}
+
+  .live-pill{font-size:11px; padding:5px 11px 5px 8px;}
+
+  .next-pill{font-size:11px; padding:5px 11px;}
+
+  .names-row{column-gap:8px; margin-bottom:14px;}
+
+  .team-block .players{font-size:14px;}
+
+  .meta-row{justify-content:center;}
+
+  .score-col{font-size:26px; padding:0 2px;}
+}

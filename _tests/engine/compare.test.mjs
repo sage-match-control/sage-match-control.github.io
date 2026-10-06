@@ -22,6 +22,8 @@ const filter = process.env.CASE ? new RegExp(process.env.CASE) : null;
 const cases = buildCases().filter(c => !filter || filter.test(c.id));
 const concurrency = Number(process.env.CONCURRENCY || 4);
 const RERUNS = 2;
+// Windows briefly running out of socket buffers is the machine's, not the page's.
+const TRANSIENT = /ERR_NO_BUFFER_SPACE|ERR_CONNECTION_(RESET|CLOSED|REFUSED)/;
 
 const safeName = id => id.replace(/[^\w.-]+/g, '__');
 
@@ -50,7 +52,9 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
       // does it too). A difference in the pixels alone is run again; a real one is still there.
       for (let again = 0; again < RERUNS; again++) {
         const r = compareResults(base, branch);
-        if (r.pixelsSame || !r.textSame || base.errors.length || branch.errors.length) break;
+        const errors = [...base.errors, ...branch.errors];
+        if (errors.some(e => !TRANSIENT.test(e))) break;               // a real page error
+        if (!errors.length && (r.pixelsSame || !r.textSame || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry, or a real text difference
         [base, branch] = await Promise.all([runCase(browser, baseSite, c), runCase(browser, branchSite, c)]);
       }
 
@@ -61,8 +65,8 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
 
       const { textSame, pixelsSame, png } = compareResults(base, branch);
 
-      const accepted = ACCEPTED.find(a => a.case.test(c.id));
-      const kindOk = k => !!accepted && (accepted.kind === 'both' || accepted.kind === k);
+      const accepted = ACCEPTED.filter(a => a.case.test(c.id));
+      const kindOk = k => accepted.some(a => a.kind === 'both' || a.kind === k);
       if (!textSame && !kindOk('text')) problems.push('the text differs');
       if (!pixelsSame && !kindOk('pixels')) problems.push(png.differing === -1 ? `the screenshots differ in size: ${JSON.stringify(png.size)}` : `${png.differing} pixels differ`);
 
@@ -78,7 +82,7 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
         fs.writeFileSync(path.join(dir, 'text.diff'), textDiff(base.text, branch.text));
         assert.fail(`${problems.join('; ')}\n  written to ${dir}`);
       }
-      if (accepted && (!textSame || !pixelsSame)) console.log(`accepted: ${c.id} (§12 row ${accepted.row}: ${accepted.reason})`);
+      if (accepted.length && (!textSame || !pixelsSame)) console.log(`accepted: ${c.id} (§12 rows ${accepted.map(a => a.row).join(', ')})`);
     });
   }
 });

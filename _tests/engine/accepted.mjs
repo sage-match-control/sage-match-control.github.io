@@ -4,4 +4,18 @@
 // records the decision. Keep this list short.
 //
 //   { case: <RegExp over the case id>, kind: 'text' | 'pixels' | 'both', reason, row }
-export const ACCEPTED = [];
+export const ACCEPTED = [
+  // ---- Phase 3, the ticket (views/ticket.js, css/ticket.css) ----
+  {
+    case: /^std-index\/[^/]+\/(finder|finder-search)\//, kind: 'pixels', row: 8,
+    reason: 'the pair code on a ticket is Control Center’s small muted label, on the Hub too',
+  },
+  {
+    case: /^(cc\/[^/]+|dm-index\/[^/]+)\/(finder|finder-by-number|finder-search)\/[^/]+\/phone$|^cc-signed-in\/[^/]+\/score-entry-save\/[^/]+\/phone$/, kind: 'pixels', row: 10,
+    reason: 'at phone sizes a ticket has the standard Hub’s names gap and players size, in Control Center and the dual-meet Hub too',
+  },
+  {
+    case: /^cc\/piggleball-2026\/finder\/[^/]+\/desktop$/, kind: 'pixels', row: 1,
+    reason: 'a series final’s game that is never played is greyed out (“Not needed”) on Control Center’s tickets too',
+  },
+];
