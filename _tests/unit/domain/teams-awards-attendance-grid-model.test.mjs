@@ -39,8 +39,18 @@ test('pairs are numbered when a doubles type repeats', () => {
   assert.equal(T.pairLabel('A_1', true), 'MD');
   assert.equal(T.pairLabel('A_3', true), 'XD 1');
   assert.equal(T.pairLabel('A_4', false), 'Mixed Doubles 2');
-  assert.equal(T.pairLabel('A_9', true), '');
+  assert.equal(T.pairLabel('A_9', true), 'Pair 9', 'an unknown pair number is never blank');
+  assert.equal(T.pairLabel('A', true), '', 'no pair number, no label');
   assert.equal(T.STAGES.Fi.order, 4);
+});
+
+test("pairLabel reads the event's own pairs when given them", () => {
+  const three = T.numberRepeatedPairs({ 1: { full: "Men's Doubles", short: 'MD' }, 2: { full: "Women's Doubles", short: 'WD' }, 3: { full: 'Mixed Doubles', short: 'XD' } });
+  assert.equal(T.pairLabel('A_3', true, three), 'XD');
+  assert.equal(T.pairLabel('A_3', false, three), 'Mixed Doubles');
+  assert.equal(T.pairLabel('A_4', true, three), 'Pair 4');
+  assert.equal(T.pairLabel('A_4', true, undefined), 'XD 2', 'undefined means the default pairs');
+  assert.equal(T.pairLabel('A_7', true), 'Pair 7');
 });
 
 const TEAM_ROWS = [

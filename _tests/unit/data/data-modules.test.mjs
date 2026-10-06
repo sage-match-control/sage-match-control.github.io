@@ -2,6 +2,7 @@
 // location, history, document, WebSocket).
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { PAIRS } from '../../../lib/v1/domain/teams.js';
 import { registryUrl, loadRegistry, eventConfigFrom, REGISTRY_LAST_GOOD_KEY } from '../../../lib/v1/data/registry.js';
 import { snapshotUrlFor, fetchDaySnapshotFromPages, fetchDaySnapshot, createPoller } from '../../../lib/v1/data/snapshot.js';
 import { createLiveChannel, LIVE_PING_MS, LIVE_PONG_TIMEOUT_MS, LIVE_SAFETY_POLL_MS, LIVE_RETRY_MAX_MS } from '../../../lib/v1/data/live-channel.js';
@@ -104,6 +105,27 @@ test('eventConfigFrom reads an event the way Control Center does', () => {
   assert.deepEqual([eventConfigFrom(registry, 'bare').days, eventConfigFrom(registry, 'bare').display], [[], {}]);
   assert.equal(eventConfigFrom(registry, 'nope'), null);
   assert.equal(eventConfigFrom(null, 'e'), null);
+});
+
+test('eventConfigFrom gives a team event its pair labels from display.pairs', () => {
+  const pairs = { 1: { full: "Men's Doubles", short: 'MD' }, 2: { full: 'Mixed Doubles', short: 'XD' }, 3: { full: 'Mixed Doubles', short: 'XD' } };
+  const registry = { events: { t: { type: 'team', display: { pairs } }, plain: { type: 'team' } } };
+  const cfg = eventConfigFrom(registry, 't');
+  assert.deepEqual(cfg.pairs, { 1: { full: "Men's Doubles", short: 'MD' }, 2: { full: 'Mixed Doubles 1', short: 'XD 1' }, 3: { full: 'Mixed Doubles 2', short: 'XD 2' } }, 'repeats are numbered');
+  assert.deepEqual(eventConfigFrom(registry, 'plain').pairs, PAIRS, 'without the map, the default pairs');
+});
+
+test('eventConfigFrom falls back to the default pairs, and warns once, for a malformed display.pairs', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const bad = [{ x: { full: 'A', short: 'a' } }, { 1: { full: 'A' } }, { 1: { full: '', short: 'a' } }, { 1: 'MD' }, 'MD'];
+  for (const pairs of bad) {
+    warn.mock.resetCalls();
+    const cfg = eventConfigFrom({ events: { t: { type: 'team', display: { pairs } } } }, 't');
+    assert.deepEqual(cfg.pairs, PAIRS, JSON.stringify(pairs));
+    assert.equal(warn.mock.callCount(), 1);
+    assert.equal(warn.mock.calls[0].arguments[0], 'events.json: display.pairs for t is malformed; using the default pair labels');
+  }
 });
 
 test('eventConfigFrom agrees with the fixture events', () => {

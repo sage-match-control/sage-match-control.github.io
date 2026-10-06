@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { FIXTURES_DIR } from './paths.mjs';
+import { numberRepeatedPairs, PAIRS } from '../../lib/v1/domain/teams.js';
 
 /** The fixture snapshots, by event key. `day` is the day key, `date` its date in config.json. */
 export const SNAPSHOTS = {
@@ -124,6 +125,7 @@ export function eventConfig(eventKey) {
     title: e.title,
     days: Object.entries(e.days).map(([key, d]) => ({ key, label: d.label, date: d.date, facilities: d.facilities.map(f => f.name) })),
     display: e.display || {},
+    pairs: e.display && e.display.pairs ? numberRepeatedPairs(e.display.pairs) : PAIRS,
     scoreEntry: e.scoreEntry,
     attendance: e.attendance,
   };
