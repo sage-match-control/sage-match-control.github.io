@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{EVENT_TITLE}} — Tournament Hub</title>
+<meta name="description" content="Find your team's matchups, live scores, and standings.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{EVENT_TITLE}} — Tournament Hub">
+<meta property="og:description" content="Find your team's matchups, live scores, and standings.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/lib/v1/css/ticket.css">
+<link rel="stylesheet" href="/lib/v1/css/finder.css">
+<link rel="stylesheet" href="/lib/v1/css/live-matches.css">
+<link rel="stylesheet" href="/lib/v1/css/standings.css">
+<link rel="stylesheet" href="/lib/v1/css/teams.css">
+<link rel="stylesheet" href="/lib/v1/css/hub.css">
+<style>
+  /* ============================ THEME ============================
+     S.A.G.E. house palette — navy structure, green accent, off-white
+     paper — taken from /assets/logo.png and shared verbatim with
+     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
+     and this event's own schedule.html, so every S.A.G.E. surface reads
+     as one product.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect — the green is a *fill*
+     colour, not a text colour:
+       - --green on white is ~2.3:1 and fails AA at any size. Use it as a
+         background (with --navy text on top, ~5.4:1) or on a navy panel.
+       - --green-dark on white is ~4.0:1 — still under the 4.5:1 body
+         floor, so keep it for large/display text only.
+       - Small text on paper is --ink (~13.8:1) or --ink-soft (~5.9:1).
+     ================================================================ */
+  :root{
+    --navy:#14263C;
+    --navy-deep:#0B1826;
+    --green:#7CB92C;
+    --green-dark:#5C8F1F;
+    --paper:#F6F7F2;
+    --paper-dim:#ECEEE6;
+    --line:#D9DED2;
+    --ink:#14263C;
+    --ink-soft:#5B6B74;
+    --white:#FFFFFF;
+    --radius:14px;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
+  }
+
+                                                    /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
+
+                                              /* Mobile (below the same breakpoint as isDesktopStandings) stacks
+     the brackets in one column — two side by side don't fit a phone-width
+     category card without squeezing every table. */
+                                                /* Desktop: break the standings board out of the page's narrow .wrap
+     max-width so it can actually use the screen. Each category becomes
+     its own column, and the whole row of categories scrolls horizontally. */
+
+
+           /* the all-matches list under the stats */
+
+
+
+/* ==== THIS TEMPLATE'S OWN TOUCHES, where it differs from lib/v1/css — site-engine-spec §12 ==== */
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  td.live-vs-cell{font-size:11px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  td.live-cat-cell{font-size:8.5px; padding:6px 5px 2px;}
+}
+/* four tabs fit a 375px phone (the prototype's rule) */
+@media (max-width:480px){ .view-tabs{gap:6px;} .view-tab{font-size:11px; padding:9px 12px;} }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="qr-panel" aria-hidden="false">
+  <img src="{{QR_IMAGE}}" alt="QR code linking to this Tournament Hub site" />
+  <div class="qr-link-text">{{QR_URL}}</div>
+  <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
+</div>
+
+<header class="hero">
+  <div class="hero-logos">
+    <img src="{{EVENT_LOGO}}" alt="{{EVENT_TITLE}} logo" />
+    <span class="hero-logos-sep">&times;</span>
+    <img src="/assets/logo.png" alt="S.A.G.E." />
+  </div>
+  <div class="tagline-script">{{EVENT_TAGLINE}}</div>
+  <div class="eyebrow">{{EVENT_DATE_RANGE}} &nbsp;·&nbsp; {{VENUE}}</div>
+  <h1 class="title">{{EVENT_TITLE}}</h1>
+  <div class="domination-line">{{EVENT_HEADLINE}}</div>
+  <p class="subtitle">Follow every team, every matchup and every court — live.</p>
+
+  <div class="day-picker" id="dayPickerWrap">
+    <label for="dayPicker">Select tournament day</label>
+    <select id="dayPicker"></select>
+  </div>
+
+  <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
+    <button class="view-tab active" data-view="finder" type="button">Match Finder</button>
+    <button class="view-tab" data-view="live" type="button">Live Matches</button>
+    <button class="view-tab" data-view="standings" type="button">Standings</button>
+    <button class="view-tab" data-view="teams" type="button" hidden style="display:none;">Teams</button>
+  </div>
+
+  <div class="regal-rule"><span class="diamond"></span></div>
+
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
+</header>
+
+<div class="wrap">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
+    <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div id="liveBoard"></div>
+  </div>
+  <div class="search-panel" id="searchPanel" style="display:none;">
+    <label class="search-label" for="teamInput">Search a team or a player</label>
+    <div class="search-row autocomplete">
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="e.g. a team name or a player's name" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
+  </div>
+  <div id="results" style="display:none;"></div>
+  <div id="standingsResults" style="display:none;">
+    <div id="standingsBody"></div>
+  </div>
+  <div id="teamsResults" style="display:none;"><div id="teamsBody"></div></div>
+</div>
+
+<footer>
+  {{EVENT_TITLE}} &middot; {{EVENT_DATE_RANGE}} &middot; {{VENUE}}<br>
+  Powered by S.A.G.E. Match Control Experts
+</footer>
+
+<script type="module">
+// ============================================================================
+// SETTINGS — the only script in this page. The days, facilities and labels come from
+// event-data/config/events.json (sage-docs/docs/specs/.../site-engine-spec.md §4.6); the rest of the
+// Hub is lib/v1/apps/hub.js.
+// ============================================================================
+import { mountHub } from '/lib/v1/apps/hub.js';
+
+// Does triple duty: the event's key in events.json, its folder in the shared data repo, and its folder under
+// events/ in this repo. Keep all three identical.
+const EVENT_KEY = '{{EVENT_KEY}}';
+
+// The live Worker's address: '' turns push off for this page, as a finished event's pages do
+// (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
+
+mountHub({ eventKey: EVENT_KEY, liveBaseUrl: LIVE_BASE_URL });
+</script>
+</body>
+</html>
