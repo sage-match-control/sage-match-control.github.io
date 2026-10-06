@@ -58,12 +58,13 @@ describe('engine compare: baseline vs branch', { concurrency }, () => {
       let [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
 
       // Anti-aliasing can differ by 1/255 on a few pixels from one run to the next (the same tree twice
-      // does it too). A difference in the pixels alone is run again; a real one is still there.
+      // does it too), and a page caught still loading under load shows other text. Any difference is run
+      // again; a real one is still there.
       for (let again = 0; again < RERUNS; again++) {
         const r = compareResults(base, branch);
         const errors = [...base.errors, ...branch.errors];
         if (errors.some(e => !TRANSIENT.test(e))) break;               // a real page error
-        if (!errors.length && (r.pixelsSame || !r.textSame || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry, or a real text difference
+        if (!errors.length && ((r.pixelsSame && r.textSame) || ACCEPTED.some(a => a.case.test(c.id)))) break;    // nothing to retry; a real difference is still there on the reruns
         [base, branch] = await Promise.all([run(browser, baseSite, c), run(browser, branchSite, c)]);
       }
 
