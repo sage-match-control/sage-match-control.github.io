@@ -35,6 +35,7 @@ const FINISHED_PAGES = {
   'piggleball-2026': 'events/piggleball-2026',
   'pickle-for-sight-2026': 'events/pickle-for-sight-2026',
   'pnf-x-bup-dual-meet': 'events/pnf-x-bup-dual-meet',
+  'pickledrive-anniversary-2026': 'events/pickledrive-anniversary-2026',
 };
 
 // A fixture-only event has no finished pages to read its settings from.
@@ -158,12 +159,26 @@ function* hubCases(registry) {
   const pages = [
     { label: 'std-index', path: '/_templates/standard-tournament-template/index.html', events: ['piggleball-2026', 'pickle-for-sight-2026'] },
     { label: 'dm-index', path: '/_templates/dual-meet-template/index.html', events: ['pnf-x-bup-dual-meet'] },
+    // A team event's Hub has its own views: the finder's teams and players, the bracket tables, the Teams tab.
+    {
+      label: 'team-index', path: '/_templates/team-tournament-template/index.html', events: ['pickledrive-anniversary-2026', 'team-demo-2026'],
+      views: word => [
+        ['finder', []],
+        ['finder-team', [ifPresent('.team-chip-btn', click('.team-chip-btn'))]],
+        ['finder-player', [type('#teamInput', word), ifPresent('#acList .ac-item', click('#acList .ac-item:last-child'))]],
+        ['live', [tab('Live Matches')]],
+        ['standings', [tab('Standings')]],
+        ['standings-bracket-open', [tab('Standings'), ifPresent('[data-tm-group]', click('[data-tm-group]'))]],
+        ['teams', [tab('Teams')]],
+        ['teams-expanded', [tab('Teams'), ifPresent('[data-roster-all]', click('[data-roster-all]'))]],
+      ],
+    },
   ];
   for (const p of pages) {
     for (const event of p.events) {
       const day = SNAPSHOTS[event].day;
       const word = firstPlayerWord(event);
-      const views = [
+      const views = p.views ? p.views(word) : [
         ['finder', []],
         ['finder-search', [type('#teamInput', word), click('#acList .ac-item')]],
         ['live', [tab('Live Matches')]],
@@ -185,6 +200,7 @@ function* scheduleCases(registry) {
   const pages = [
     { label: 'std-schedule', path: '/_templates/standard-tournament-template/schedule.html', events: ['piggleball-2026', 'pickle-for-sight-2026'] },
     { label: 'dm-schedule', path: '/_templates/dual-meet-template/schedule.html', events: ['pnf-x-bup-dual-meet'] },
+    { label: 'team-schedule', path: '/_templates/team-tournament-template/schedule.html', events: ['pickledrive-anniversary-2026', 'team-demo-2026'] },
   ];
   for (const p of pages) {
     for (const event of p.events) {
@@ -195,6 +211,7 @@ function* scheduleCases(registry) {
         ['compact', '?compact=1', []],
         ['print', '', [printMedia()]],
       ];
+      if (p.label === 'team-schedule') views.push(['courts-1-2', '?courts=1-2', []]);
       if (p.label === 'std-schedule') {
         views.push(['courts-1-2', '?courts=1-2', []]);
         if (facilities.length > 1) views.push(['venue-2', `?venue=${encodeURIComponent(facilities[1])}`, []]);

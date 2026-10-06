@@ -60,3 +60,39 @@ describe('fixture mode on the templates', () => {
     });
   }
 });
+
+// A team event's Hub and board (team-tournament-template-spec §10.1): the same, on the team demo's fixture.
+describe('fixture mode on the team templates', () => {
+  const TEAM = 'team-demo-2026';
+  const TEAM_DAY = 'team-demo-2026-day1';
+  const teamSettings = {
+    EVENT_KEY: TEAM, DAY_KEY: TEAM_DAY,
+    CAT_META: { G1: { short: 'BR 1', color: '#1155CC' }, G2: { short: 'BR 2', color: '#B45F06' }, PO: { short: 'PLAYOFFS', color: '#14263C' } },
+  };
+  const teamTokens = {
+    EVENT_KEY: TEAM, EVENT_TITLE: 'Team Demo', EVENT_TAGLINE: 'x', EVENT_HEADLINE: '', EVENT_DATE_RANGE: 'Oct 10', VENUE: 'Demo Courts',
+    QR_IMAGE: '/assets/logo.png', QR_URL: 'x', EVENT_LOGO: '/assets/logo.png', SCHEDULE_DAY_KEY: TEAM_DAY,
+  };
+  let browser, site;
+  before(async () => {
+    browser = await launchBrowser();
+    site = await startSite({ root: SITE_ROOT, instantiate: { tokens: teamTokens, settings: teamSettings } });
+  });
+  after(async () => { await browser.close(); await site.close(); });
+
+  for (const [label, page, expected] of [
+    ['Hub', 'team-tournament-template/index.html', /Abel Tan[\s\S]*Aces/],
+    ['schedule board', 'team-tournament-template/schedule.html', /Aces[\s\S]*Abel Tan/],
+  ]) {
+    it(`the team ${label} reads the fixture snapshot and the fixture registry, with no console error`, async () => {
+      const h = await openPage(browser, `${site.baseUrl}/_templates/${page}?fixture=finished`, { time: '2026-10-10T13:00:00+08:00' });
+      try {
+        await settle(h.page);
+        assert.deepEqual(h.errors, []);
+        const text = await h.page.locator('body').innerText();
+        assert.match(text, expected);
+        assert.doesNotMatch(text, /Couldn.t load|isn.t published yet|isn.t loaded yet|isn.t in the schedule settings|type isn.t set up/);
+      } finally { await h.close(); }
+    });
+  }
+});

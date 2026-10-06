@@ -36,3 +36,10 @@ for (const [name, mount, valid, required] of MOUNTS) {
     assert.match(errors[0], new RegExp(`${name}: .*"${required}"`));
   });
 }
+
+test('mountScheduleBoard knows "type", and names a type it does not know', async () => {
+  const errors = await errorsFrom(() => mountScheduleBoard({ eventKey: 'e', dayKey: 'd', type: 'nope' }));
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /mountScheduleBoard: unknown type "nope" \(known: standard, dual-meet, team\)/);
+  assert.doesNotMatch(errors[0], /unknown setting/, '"type" is a known setting');
+});
