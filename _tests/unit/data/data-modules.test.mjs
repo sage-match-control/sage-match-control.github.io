@@ -418,6 +418,26 @@ test('tokens: a payload is read for display only, and each kind has its own shap
   assert.equal(deskStorageKey('e'), 'sage.attendance.desk.e');
 });
 
+// A link issued to someone carries `to` and `note` in its payload (link-attribution-spec.md §5.1). The API encodes the
+// payload as UTF-8, so a name with an accent or a dash has to decode as UTF-8 too, not one character per byte.
+test('tokens: who a link was issued to comes back intact, accents and dashes included', () => {
+  const scorer = scorerDecode(token({ scope: 'score-desk', day: 'd', exp: 5, to: 'Niño', note: 'Courts 3–4' }));
+  assert.equal(scorer.to, 'Niño');
+  assert.equal(scorer.note, 'Courts 3–4');
+  assert.deepEqual(scorer, { scope: 'score-desk', day: 'd', exp: 5, to: 'Niño', note: 'Courts 3–4' });
+  const desk = deskDecode(token({ scope: 'attendance-desk', day: 'd', exp: 7, to: 'Zoë 😀', note: 'Gate A' }));
+  assert.equal(desk.to, 'Zoë 😀');
+  assert.equal(desk.note, 'Gate A');
+});
+
+test('tokens: a link issued before labels existed still decodes, with nothing to show', () => {
+  const scorer = scorerDecode(token({ scope: 'score-desk', day: 'd', exp: 5 }));
+  assert.deepEqual(scorer, { scope: 'score-desk', day: 'd', exp: 5 });
+  assert.equal(scorer.to, undefined);
+  assert.equal(scorer.note, undefined);
+  assert.deepEqual(deskDecode(token({ scope: 'attendance-desk', day: 'd', exp: 7 })), { scope: 'attendance-desk', day: 'd', exp: 7 });
+});
+
 test('tokens: a link’s token is kept, dropped from the address bar, and read back later', t => {
   const link = token({ scope: 'score-desk', day: 'd', exp: 5 });
   const env = browser(t, { search: `?scorer=${link}&fixture=x`, pathname: '/events/e/scorer' });

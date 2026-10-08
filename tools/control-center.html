@@ -544,6 +544,10 @@
   }
   .organizer-text-input:focus{border-color:var(--court);}
   .organizer-text-input + .organizer-text-input{ margin-top:8px; }
+  /* Issued to / Note, above the two link buttons (link-attribution-spec.md §5.3): side by side, stacked on a phone. */
+  .link-issue-fields{ display:flex; gap:8px; margin-bottom:10px; }
+  .link-issue-fields .organizer-text-input + .organizer-text-input{ margin-top:0; }
+  @media (max-width:480px){ .link-issue-fields{ flex-direction:column; } .link-issue-fields .organizer-text-input + .organizer-text-input{ margin-top:0; } }
   .organizer-auth-status{
     font-size:12px;
     color:var(--muted);
@@ -1214,6 +1218,10 @@
       <div class="attendance-actions">
         <button type="button" id="attendanceRosterBtn" class="organizer-primary-btn">Update roster</button>
         <div id="attendanceRosterResult" class="organizer-result" style="display:none;"></div>
+        <div class="link-issue-fields" id="deskLinkFields" style="display:none;">
+          <input id="deskLinkTo" type="text" class="organizer-text-input" maxlength="40" placeholder="Issued to (optional)" autocomplete="off" aria-label="Issued to, optional" />
+          <input id="deskLinkNote" type="text" class="organizer-text-input" maxlength="40" placeholder="Note, e.g. Gate A (optional)" autocomplete="off" aria-label="Note, optional" />
+        </div>
         <button type="button" id="attendanceDeskBtn" class="organizer-secondary-btn" style="display:none;">Issue desk link</button>
         <div id="attendanceDeskResult" class="organizer-result" style="display:none;"></div>
       </div>
@@ -1305,6 +1313,10 @@
         <div class="switch-row" id="scorerSwitchRow" style="display:none;">
           <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
           <span class="switch-label" id="scorerSwitchLabel">Accepting</span>
+        </div>
+        <div class="link-issue-fields" id="scorerLinkFields" style="display:none;">
+          <input id="scorerLinkTo" type="text" class="organizer-text-input" maxlength="40" placeholder="Issued to (optional)" autocomplete="off" aria-label="Issued to, optional" />
+          <input id="scorerLinkNote" type="text" class="organizer-text-input" maxlength="40" placeholder="Note, e.g. Courts 3–4 (optional)" autocomplete="off" aria-label="Note, optional" />
         </div>
         <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
         <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
@@ -3256,6 +3268,7 @@ function renderScorerLinks(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   const issueBtn = document.getElementById('scorerLinkBtn');
   issueBtn.style.display = canAct && mode === 'links' && day ? '' : 'none';
+  document.getElementById('scorerLinkFields').style.display = issueBtn.style.display;
   issueBtn.disabled = pageOk !== true;
   issueBtn.title = pageOk === false ? 'This event has no scorer page' : '';
   if(day) issueBtn.textContent = `Issue scorer link for ${day.label}`;
@@ -3315,7 +3328,7 @@ function renderScorerLink(day, issued){
   box.textContent = '';
   const title = document.createElement('div');
   title.className = 'result-title';
-  title.textContent = `Scorer link for ${day.label}`;
+  title.textContent = `Scorer link for ${day.label}` + (issuedLabel(issued) ? ` · ${issuedLabel(issued)}` : '');
   const input = document.createElement('input');
   input.type = 'text';
   input.readOnly = true;
@@ -3356,6 +3369,30 @@ function renderScorerLink(day, issued){
   revealResultBox(box);
 }
 
+// What an operator typed into Issued to and Note, as the body of an issue request: only the non-empty
+// fields (link-attribution-spec.md §5.3). The API cleans and checks them again.
+function linkIssueFields(toId, noteId){
+  const fields = {};
+  const to = document.getElementById(toId).value.trim();
+  const note = document.getElementById(noteId).value.trim();
+  if(to) fields.issuedTo = to;
+  if(note) fields.note = note;
+  return fields;
+}
+
+// A fixture link's token, with a real payload so the page it opens can decode it: UTF-8 JSON, base64url,
+// the way the API writes one ("Niño" must survive).
+function fixtureLinkToken(payload){
+  let binary = '';
+  new TextEncoder().encode(JSON.stringify(payload)).forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '') + '.fixture';
+}
+
+// "Ana (Gate A)", "Ana", "Gate A" or '' — who a link was issued to, from an issue response.
+function issuedLabel(issued){
+  return issued.issuedTo && issued.note ? `${issued.issuedTo} (${issued.note})` : (issued.issuedTo || issued.note || '');
+}
+
 async function issueScorerLink(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day) return;
@@ -3367,17 +3404,20 @@ async function issueScorerLink(){
   if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
   const epoch = resultEpoch;
   const btn = document.getElementById('scorerLinkBtn');
+  const fields = linkIssueFields('scorerLinkTo', 'scorerLinkNote');
   btn.disabled = true;
   try{
     let issued;
     if(FIXTURE){
       // A token whose payload is real, so the scorer page can decode it.
-      const b64url = v => btoa(v).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-      issued = { token: b64url(JSON.stringify({ exp: Date.now() + 864e5, scope: 'score-desk', day: day.key })) + '.fixture',
-                 expiresAt: Date.now() + 864e5, day: day.key };
+      const expiresAt = Date.now() + 864e5;
+      issued = { token: fixtureLinkToken({ exp: expiresAt, scope: 'score-desk', day: day.key,
+                   ...(fields.issuedTo ? { to: fields.issuedTo } : {}), ...(fields.note ? { note: fields.note } : {}) }),
+                 expiresAt, day: day.key, issuedTo: fields.issuedTo || null, note: fields.note || null };
     }else{
       const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/scores/scorer-links`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
       });
       const body = await res.json().catch(() => null);
       if(!res.ok){
@@ -3393,6 +3433,9 @@ async function issueScorerLink(){
       return;
     }
     renderScorerLink(day, issued);
+    // Cleared once the link is shown, so the next link isn't labelled with this one's name.
+    document.getElementById('scorerLinkTo').value = '';
+    document.getElementById('scorerLinkNote').value = '';
   }catch(err){
     showToast('error', unreachableMessage(err), 'scorerlinks');
   }finally{
@@ -3845,6 +3888,7 @@ function attConsoleRenderChrome(){
   attConsoleSignInEl.style.display = signedIn ? 'none' : '';
   attConsoleRosterBtn.style.display = signedIn ? '' : 'none';
   attConsoleDeskBtn.style.display = signedIn && desks ? '' : 'none';
+  document.getElementById('deskLinkFields').style.display = attConsoleDeskBtn.style.display;
 }
 
 function attConsoleOnData(data){
@@ -4002,13 +4046,15 @@ async function attConsoleShowQr(url, holder, btn, label = 'desk link'){
 }
 
 function attConsoleRenderDeskLink(day, issued){
-  const url = `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/attendance?desk=${issued.token}`;
+  const url = FIXTURE
+    ? `${location.origin}/events/${CURRENT_EVENT_KEY}/attendance.html?desk=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
+    : `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/attendance?desk=${issued.token}`;
   const box = attConsoleDeskBox;
   box.className = 'organizer-result ok rich';
   box.textContent = '';
   const title = document.createElement('div');
   title.className = 'result-title';
-  title.textContent = `Desk link for ${day.label}`;
+  title.textContent = `Desk link for ${day.label}` + (issuedLabel(issued) ? ` · ${issuedLabel(issued)}` : '');
   const input = document.createElement('input');
   input.type = 'text';
   input.readOnly = true;
@@ -4053,14 +4099,24 @@ async function attConsoleIssueDeskLink(){
   const token = currentAuthToken();
   if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return; }
   const epoch = resultEpoch;
+  const fields = linkIssueFields('deskLinkTo', 'deskLinkNote');
   attConsoleDeskBtn.disabled = true;
   try{
     let issued;
     if(FIXTURE){
-      issued = { token: 'fixture.desk-token', expiresAt: Date.parse(`${day.date || '2026-10-03'}T23:59:59.999+08:00`), day: day.key };
+      // A token whose payload is real, so the desk page can decode it and show who it is for. Like a real
+      // desk link it lasts to the end of a Manila day: the event's, or today's once that has passed, so a
+      // fixture link opens now, as a fixture scorer link does.
+      const endOfDay = date => Date.parse(`${date}T23:59:59.999+08:00`);
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+      const expiresAt = Math.max(endOfDay(day.date || today), endOfDay(today));
+      issued = { token: fixtureLinkToken({ exp: expiresAt, scope: 'attendance-desk', day: day.key,
+                   ...(fields.issuedTo ? { to: fields.issuedTo } : {}), ...(fields.note ? { note: fields.note } : {}) }),
+                 expiresAt, day: day.key, issuedTo: fields.issuedTo || null, note: fields.note || null };
     }else{
       const res = await fetch(`${CLOUD_RUN_BASE_URL}/v3/days/${encodeURIComponent(day.key)}/attendance/desk-links`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}` },
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
       });
       const body = await res.json().catch(() => null);
       if(!res.ok){
@@ -4076,6 +4132,9 @@ async function attConsoleIssueDeskLink(){
       return;
     }
     attConsoleRenderDeskLink(day, issued);
+    // Cleared once the link is shown, so the next link isn't labelled with this one's name.
+    document.getElementById('deskLinkTo').value = '';
+    document.getElementById('deskLinkNote').value = '';
   }catch(err){
     showToast('error', unreachableMessage(err), 'attendance');
   }finally{
