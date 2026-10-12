@@ -41,7 +41,8 @@ Follow §2.1–§2.2 below to get signed in and resynced, then check:
 - [ ] **Standings** tab: a visible warning banner naming Match C's unmapped code — not a silent "Other" bucket
 - [ ] **Match Finder** tab: search a real player name from any match → returns their matches in schedule order, correct opponent/score state
 - [ ] **Awards** tab: loads without errors and lists every category — before any Final/Bronze match is played, every placing reads "Pending," not a fabricated winner
-- [ ] **Live/Hide** toggle: set to `false`, then back to `auto` → a confirmation prompt appears before `false` takes effect; the console's own tabs stay visible throughout either way; it flips back cleanly to `auto`
+- [ ] **Public site status**: click **Force hidden**, then **Auto** → a confirmation prompt appears before **Force hidden** takes effect; the console's own tabs stay visible throughout either way; it returns cleanly to **Auto**
+- [ ] **Scorer link (events with `"scoreEntry": "links"`)**: under Mission Control's **Scorer links**, fill in **Issued to** and **Note**, press **Issue scorer link**, and open the link on a phone. The page's title line names the day, the venue and who it was issued to. Change Match A's score from the phone → the console shows the new score within a few seconds, and both of Match A's score cells in `SCHEDULE` get a note naming that label
 
 Don't move on until every check above passes.
 
@@ -50,12 +51,12 @@ Don't move on until every check above passes.
 Follow §2.3 below (screen setup), then:
 
 - [ ] Screen 1 (Schedule board): courts/times render, Match B's court shows as in-progress
-- [ ] Screen 2 (Live Matches): matches what the console showed (same score, same live court); if `false` was active at any point in §1.2, confirm this screen goes to hidden/idle instead of showing scores, since that's what actually happens publicly
+- [ ] Screen 2 (Live Matches): matches what the console showed (same score, same live court); if **Force hidden** was active at any point in §1.2, confirm this screen goes to hidden/idle instead of showing scores, since that's what actually happens publicly
 - [ ] Screen 3 (Standings): same unmapped-code warning, same standings as the console
 
 ### 1.4 Cleanup
 
-- [ ] Revert `team1Score`/`team2Score` on Match A (clear both)
+- [ ] Revert `team1Score`/`team2Score` on Match A (clear both), and delete the note the scorer link left on those two cells, if any
 - [ ] Clear `court` on Match B
 - [ ] Restore Match C's original team code
 - [ ] Resync once more to publish the reverted state
@@ -74,19 +75,20 @@ Follow §2.3 below (screen setup), then:
 - [ ] Sign in with the operator username and password in Mission Control
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
 - [ ] Each facility workbook's **Share** dialog lists `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com` as Editor, and **General access** reads **Restricted** (not "Anyone with the link")
-- [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, press **Issue desk link** and send the link (or QR) to each desk
+- [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, issue one desk link per desk (fill in **Issued to** with the person's name and **Note** with the gate, then press **Issue desk link**) and send the link (or QR) to that desk with the desk handout
+- [ ] If this event has scorer links (`"scoreEntry": "links"`): confirm Mission Control's **Scorer links** reads **Accepting**, then issue one link per scorer (fill in **Issued to** and **Note** with their name and courts, then press **Issue scorer link**) and send the link (or QR) with the scorer handout. A scorer link lasts 24 hours, so issue them that morning
 - [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and confirms Cloud Run can read every facility's sheet. It doesn't involve the sheet's Apps Script: only the first real edit in the **Court Control** tab publishing on its own (§2.4) proves that
 - [ ] Confirm **Facility Sync Status** shows a fresh "Synced" for every venue this event uses
 - [ ] Confirm Mission Control reads **Live updates: push connected**
 
 ### 2.2 Decide on go-live timing
 
-- [ ] Check Mission Control's **Public Site Status** line — under `auto`, the day goes live 4 hours before its earliest scheduled match time, computed automatically from the sheet's Schedule column (no config to set). If you want it live earlier than that — e.g. so players can check schedules from the moment they arrive — click **Force Live** now. Otherwise leave it on `auto`.
+- [ ] Check Mission Control's **Public site status** line — under **Auto**, the day goes live 4 hours before its earliest scheduled match time, computed automatically from the sheet's Schedule column (no config to set). If you want it live earlier than that — e.g. so players can check schedules from the moment they arrive — click **Force live** now. Otherwise leave it on **Auto**.
 
 ### 2.3 Bring up the public screens
 
 - [ ] Connect the venue's displays (HDMI/casting), then, from the operator device, click **Open schedule** and load that on Screen 1
-- [ ] Click **Open match finder**, load that same URL on Screen 2, click its **Live Matches** tab
+- [ ] Click **Open Tournament Hub**, load that URL on Screen 2, click its **Live Matches** tab
 - [ ] Load the same public URL again on Screen 3, click its **Standings** tab
 - [ ] On a phone (not the console — the console always shows live data regardless of the switch above), open the public page and confirm it looks like what a player would actually see
 - [ ] The hub board is up with **this** event's QR panel on it, and scanning it with a phone opens `{{EVENT_TITLE}}`'s Tournament Hub
@@ -118,13 +120,14 @@ watching for when that pipeline needs a nudge:
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
 - [ ] If a score or court entry hasn't appeared on the site within about **2 minutes**, click **Resync this day now**. A sync can lose a race with another venue's sync, or with another event's on the same day, and Facility Sync Status only turns amber after 5 minutes without one
 - [ ] If Sheets API trouble persists, check **Use CSV export fallback instead of Sheets API** and resync again
-- [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Live/Hide** to `false`, correct the sheet, resync, then set it back to `auto` (or `true`) — remember this hides the *public* page only, the console keeps showing everything the whole time
+- [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Public site status** to **Force hidden**, correct the sheet, resync, then set it back to **Auto** (or **Force live**) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board updates on its own (pushed within seconds, with a ~10s poll as the fallback) — no action needed, just glance at it occasionally to confirm it's still moving
 - [ ] Use **Match Finder** on the console directly if a player asks where their match is
+- [ ] If scorer links must stop (one sent to the wrong person, say): set **Scorer links** to **Stopped**. Within about a minute every scorer save is refused; enter scores in Match Finder meanwhile, and set it back to **Accepting** when ready
 
 ### 2.5 End of day
 
 - [ ] After the last match, check **Standings** on the console look complete and correct
 - [ ] Once the day's Finals and Bronze matches are scored, check the **Awards** tab — every category should show its gold/silver/bronze (or a named-match warning if a score looks wrong); use **Export image** per category, or **Export whole tournament**, to hand results to the emcee/ceremony
-- [ ] No action needed on the go-live switch — `auto` stays live permanently once it's triggered, so there's nothing to turn off
+- [ ] No action needed on the go-live switch — **Auto** stays live permanently once it's triggered, so there's nothing to turn off
 - [ ] If anything broke mid-day, note the rough time — `event-data`'s git history (both `config/events.json` and the day's published JSON) has a timestamped commit for every sync and every override, so it's reconstructable after the fact
