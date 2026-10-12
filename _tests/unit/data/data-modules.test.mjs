@@ -6,6 +6,7 @@ import { PAIRS } from '../../../lib/v1/domain/teams.js';
 import { registryUrl, loadRegistry, eventConfigFrom, REGISTRY_LAST_GOOD_KEY } from '../../../lib/v1/data/registry.js';
 import { snapshotUrlFor, fetchDaySnapshotFromPages, fetchDaySnapshot, createPoller } from '../../../lib/v1/data/snapshot.js';
 import { createLiveChannel, LIVE_PING_MS, LIVE_PONG_TIMEOUT_MS, LIVE_SAFETY_POLL_MS, LIVE_RETRY_MAX_MS } from '../../../lib/v1/data/live-channel.js';
+import { createAttendanceSignal, ATTENDANCE_NUDGE_GAP_MS, ATTENDANCE_SETTLE_MS } from '../../../lib/v1/data/attendance-signal.js';
 import { httpWords, messageFromJson, friendlyApiMessage, fetchJson } from '../../../lib/v1/data/api.js';
 import { scorerDecode, deskDecode, scorerLoadToken, deskLoadToken, scorerStorageKey, deskStorageKey } from '../../../lib/v1/data/tokens.js';
 import { loadRegistry as loadFixtureRegistry, eventConfig } from '../../helpers/fixtures.mjs';
@@ -359,6 +360,236 @@ test('live channel: disabled (no address, or a fixture) never connects', t => {
   channel.follow('e', 'd');
   assert.equal(FakeSocket.instances.length, 0);
   assert.equal(channel.isOpen(), false);
+});
+
+// ---- attendance signal ----------------------------------------------------------------------------------------------------------
+// sage-docs/docs/specs/.../attendance-push-spec.md §5.1
+
+function signalSetup(t, options = {}) {
+  mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'], now: Date.parse('2026-10-03T00:00:00Z') });
+  FakeSocket.instances = [];
+  Object.defineProperty(globalThis, 'WebSocket', { value: FakeSocket, configurable: true, writable: true });
+  mock.method(Math, 'random', () => 0);
+  t.after(() => { mock.restoreAll(); mock.timers.reset(); delete globalThis.WebSocket; });
+  const changes = [], statuses = [];
+  const signal = createAttendanceSignal({
+    baseUrl: 'wss://live.example', enabled: true, event: 'e', day: 'd',
+    onChange: f => changes.push(f), onStatus: open => statuses.push(open), ...options,
+  });
+  return { signal, changes, statuses };
+}
+const nudge = (ws, facility) => ws.push({ type: 'attendance', facility });
+
+test('attendance signal: connects to the day\'s attendance socket, with both keys URL-encoded', t => {
+  const { signal } = signalSetup(t, { event: 'e x', day: 'd/1' });
+  assert.equal(FakeSocket.instances.length, 1);
+  assert.equal(FakeSocket.instances[0].url, 'wss://live.example/attendance/e%20x/d%2F1');
+  assert.equal(signal.isOpen(), false, 'connecting');
+});
+
+test('attendance signal: isOpen follows the socket', t => {
+  const { signal } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  assert.equal(signal.isOpen(), false);
+  ws.open();
+  assert.equal(signal.isOpen(), true);
+  ws.close();
+  assert.equal(signal.isOpen(), false);
+});
+
+test('attendance signal: disabled never connects, and says so once, on the next tick', t => {
+  const { signal, statuses } = signalSetup(t, { enabled: false });
+  assert.equal(FakeSocket.instances.length, 0);
+  assert.deepEqual(statuses, [], 'the caller has its view by the next tick');
+  mock.timers.tick(1);
+  assert.deepEqual(statuses, [false]);
+  mock.timers.tick(60000);
+  assert.deepEqual(statuses, [false]);
+  assert.equal(FakeSocket.instances.length, 0);
+  assert.equal(signal.isOpen(), false);
+});
+
+test('attendance signal: a nudge calls onChange with the facility at once', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  assert.deepEqual(changes, ['Gym']);
+});
+
+test('attendance signal: a second nudge inside the gap waits for the gap to end, and a third joins it', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  mock.timers.tick(500);
+  nudge(ws, 'Gym');
+  nudge(ws, 'Gym');
+  assert.deepEqual(changes, ['Gym'], 'not yet');
+  mock.timers.tick(ATTENDANCE_NUDGE_GAP_MS - 500 - 1);
+  assert.deepEqual(changes, ['Gym']);
+  mock.timers.tick(1);
+  assert.deepEqual(changes, ['Gym', 'Gym'], 'once, when 2 s have passed since the first');
+});
+
+test('attendance signal: a nudge after the gap is called at once', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  mock.timers.tick(ATTENDANCE_NUDGE_GAP_MS);
+  nudge(ws, 'Gym');
+  assert.deepEqual(changes, ['Gym', 'Gym']);
+});
+
+test('attendance signal: two facilities do not share a gap', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  nudge(ws, 'Court');
+  assert.deepEqual(changes, ['Gym', 'Court']);
+  mock.timers.tick(100);
+  nudge(ws, 'Gym');
+  nudge(ws, 'Court');
+  assert.deepEqual(changes, ['Gym', 'Court'], 'each is inside its own gap');
+});
+
+test('attendance signal: asks again ATTENDANCE_SETTLE_MS after the last nudge, and a nudge in between pushes that back', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  mock.timers.tick(5000);
+  nudge(ws, 'Gym');                                              // 5 s in: its own immediate call
+  assert.deepEqual(changes, ['Gym', 'Gym']);
+  mock.timers.tick(ATTENDANCE_SETTLE_MS - 1);
+  assert.deepEqual(changes, ['Gym', 'Gym'], '11 s after the first is not yet 11 s after the last');
+  mock.timers.tick(1);
+  assert.deepEqual(changes, ['Gym', 'Gym', 'Gym']);
+  mock.timers.tick(60000);
+  assert.deepEqual(changes, ['Gym', 'Gym', 'Gym'], 'one settle call per run of nudges, then nothing');
+});
+
+test('attendance signal: ignores pongs, junk, other types and a nudge without a facility', t => {
+  const { changes } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  ws.push('pong'); ws.push('not json'); ws.push('null'); ws.push({ type: 'snapshot', snapshot: {} }); ws.push({ type: 'hello' });
+  ws.push({ type: 'attendance' }); ws.push({ type: 'attendance', facility: 5 }); ws.push({ facility: 'Gym' });
+  mock.timers.tick(60000);
+  assert.deepEqual(changes, []);
+});
+
+test('attendance signal: pings, and treats a missing pong as a dead socket', t => {
+  signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  mock.timers.tick(LIVE_PING_MS);
+  assert.deepEqual(ws.sent, ['ping']);
+  mock.timers.tick(LIVE_PONG_TIMEOUT_MS);
+  assert.equal(ws.closed, true);
+});
+
+test('attendance signal: a pong keeps the socket', t => {
+  signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  mock.timers.tick(LIVE_PING_MS);
+  ws.push('pong');
+  mock.timers.tick(LIVE_PONG_TIMEOUT_MS);
+  assert.equal(ws.closed, false);
+});
+
+test('attendance signal: retries with a growing delay, and a successful open starts the count again', t => {
+  signalSetup(t);
+  FakeSocket.instances[0].close();
+  mock.timers.tick(999);
+  assert.equal(FakeSocket.instances.length, 1);
+  mock.timers.tick(1);
+  assert.equal(FakeSocket.instances.length, 2, 'after 1 s');
+  FakeSocket.instances[1].close();
+  mock.timers.tick(2000);
+  assert.equal(FakeSocket.instances.length, 3, 'then 2 s');
+  FakeSocket.instances[2].open();
+  FakeSocket.instances[2].close();
+  mock.timers.tick(1000);
+  assert.equal(FakeSocket.instances.length, 4, 'back to 1 s once it connected');
+  for (let i = 0; i < 12; i++) { FakeSocket.instances.at(-1).close(); mock.timers.tick(LIVE_RETRY_MAX_MS); }
+  const before = FakeSocket.instances.length;
+  FakeSocket.instances.at(-1).close();
+  mock.timers.tick(LIVE_RETRY_MAX_MS);
+  assert.equal(FakeSocket.instances.length, before + 1, 'never waits longer than LIVE_RETRY_MAX_MS');
+});
+
+test('attendance signal: onStatus fires once per change of state, not once per retry', t => {
+  const { statuses } = signalSetup(t);
+  assert.deepEqual(statuses, [], 'unknown until the first open or failure');
+  FakeSocket.instances[0].close();                                // the first attempt fails
+  assert.deepEqual(statuses, [false]);
+  mock.timers.tick(1000);
+  FakeSocket.instances[1].close();                                // and again
+  mock.timers.tick(2000);
+  FakeSocket.instances[2].close();
+  assert.deepEqual(statuses, [false], 'still down: nothing new to say');
+  mock.timers.tick(4000);
+  FakeSocket.instances[3].open();
+  assert.deepEqual(statuses, [false, true]);
+  FakeSocket.instances[3].close();
+  assert.deepEqual(statuses, [false, true, false]);
+});
+
+test('attendance signal: the first open is reported, even before any failure', t => {
+  const { statuses } = signalSetup(t);
+  FakeSocket.instances[0].open();
+  assert.deepEqual(statuses, [true]);
+});
+
+test('attendance signal: a socket that cannot be made counts as down and is retried', t => {
+  mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'], now: Date.parse('2026-10-03T00:00:00Z') });
+  mock.method(Math, 'random', () => 0);
+  let attempts = 0;
+  Object.defineProperty(globalThis, 'WebSocket', { value: class { constructor() { attempts++; throw new Error('SecurityError'); } }, configurable: true, writable: true });
+  t.after(() => { mock.restoreAll(); mock.timers.reset(); delete globalThis.WebSocket; });
+  const statuses = [];
+  createAttendanceSignal({ baseUrl: 'ws://x', enabled: true, event: 'e', day: 'd', onChange: () => {}, onStatus: o => statuses.push(o) });
+  assert.deepEqual(statuses, [false]);
+  mock.timers.tick(1000);
+  assert.equal(attempts, 2);
+  assert.deepEqual(statuses, [false]);
+});
+
+test('attendance signal: close stops the socket, the retries and every pending call, for good', t => {
+  const { signal, changes, statuses } = signalSetup(t);
+  const [ws] = FakeSocket.instances;
+  ws.open();
+  nudge(ws, 'Gym');
+  mock.timers.tick(100);
+  nudge(ws, 'Gym');                                               // a call waiting for the gap to end
+  signal.close();
+  assert.equal(ws.closed, true);
+  assert.equal(ws.onmessage, null, 'handlers detached before closing');
+  assert.equal(ws.onclose, null);
+  mock.timers.tick(120000);
+  assert.deepEqual(changes, ['Gym'], 'neither the gap call nor the settle call fires');
+  assert.deepEqual(statuses, [true], 'closing it does not report a drop');
+  assert.equal(FakeSocket.instances.length, 1, 'no reconnect');
+  assert.equal(signal.isOpen(), false);
+});
+
+test('attendance signal: close while a retry is waiting means no retry', t => {
+  const { signal } = signalSetup(t);
+  FakeSocket.instances[0].close();
+  signal.close();
+  mock.timers.tick(60000);
+  assert.equal(FakeSocket.instances.length, 1);
+});
+
+test('attendance signal: close before the disabled signal has spoken means it never speaks', t => {
+  const { signal, statuses } = signalSetup(t, { enabled: false });
+  signal.close();
+  mock.timers.tick(10);
+  assert.deepEqual(statuses, []);
 });
 
 // ---- api -------------------------------------------------------------------------------------------------------------------------

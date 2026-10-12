@@ -21,6 +21,7 @@
 .att-jump{flex:none;max-width:42%;font-size:14px;font-family:inherit;padding:6px 8px;border-radius:10px;border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
 .att-status{min-height:18px;margin-top:6px;font-size:13px;color:var(--att-soft);}
 .att-status.att-error{color:var(--att-red);font-weight:600;}
+.att-live-off{margin-top:6px;font-size:13px;color:var(--att-red);}
 .att-list{padding:14px 0 60px;}
 .att-sec{margin:0 0 22px;}
 .att-sec h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;font-size:16px;margin:0 0 8px;}
