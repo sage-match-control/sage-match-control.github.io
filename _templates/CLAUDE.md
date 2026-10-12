@@ -355,7 +355,7 @@ the master.**
 5. **Then step 8 as usual.** The copy keeps the bound `sheets-sync.gs` but
    not its trigger. Run **SAGE → Set up live sync** with the new day key
    and facility; that creates the trigger and replaces the copied day key.
-   Then share it with the service account (step 13).
+   Then share it with the service account and close it to link access (step 13).
 
 The team checks of steps 10–14 are in the shared dry-run template
 (step 10); the other steps apply as written. When the Team Tournament
@@ -453,12 +453,24 @@ master", and the site needs no change.
     `sage-docs/docs/specs/.../control-center-score-entry-spec.md`.
 
 13. **Share every facility workbook with the API's service account** as
-    **Editor**, for an event with any `attendance` or `scoreEntry` setting:
-    `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com`. Without it
-    the roster update, every mark and every score save fail with a message naming the account.
-    A workbook copied into a Drive folder already shared with the account is
-    expected to inherit the share, but that is not confirmed yet: check the
-    workbook's Share dialog lists the account.
+    **Editor**, then close it to link access. Every event, whatever its
+    `attendance` and `scoreEntry` settings:
+    1. Share it with
+       `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com` as
+       **Editor**. The account reads the workbook for every sync, the
+       attendance list and score entry, and writes it for attendance and
+       score entry. Without the share each of those fails with a message
+       naming the account.
+    2. Set **General access** to **Restricted**, so only people added by name
+       and the account can open it. The `ATTENDANCE` tab (names, teams, shirt
+       sizes) and every tab the sync does not publish then stay inside the
+       workbook.
+
+    Do this before step 8's **Set up live sync**, whose test sync reads the
+    workbook as the account. A workbook copied into a Drive folder already
+    shared with the account is expected to inherit the share, but that is not
+    confirmed yet: check the workbook's Share dialog lists the account and
+    General access reads Restricted.
 
 14. **Make the hub board's QR panel.** The venue's Tournament Hub board is a
     24 × 36 in sintra print, `_templates/hub-pubmat/`, that's the same for
