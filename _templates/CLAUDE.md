@@ -631,11 +631,13 @@ added prefix. Not a concern today.)
 
 Once the event's last day is over, turn live push off for its pages: set
 `LIVE_BASE_URL = ''` in the settings script of its `index.html`,
-`schedule.html` and `scorer.html` (if it has one). Nothing is published
-for the event any more, so a socket would only hold a Worker connection open
-(and ping it every 50 s) for every visitor, against the Worker's daily
-request cap. With the constant empty the page never connects and reads its
-snapshot from GitHub instead, so the final results still show. Leave the
+`schedule.html`, `scorer.html` (if it has one) and `attendance.html` (if it
+has one). Nothing is published for the event any more, so a socket would only
+hold a Worker connection open (and ping it every 50 s) for every visitor,
+against the Worker's daily request cap. With the constant empty the page never
+connects and reads its snapshot from GitHub instead, so the final results
+still show; a desk page says live updates are off, and **Refresh** still reads
+its list. Leave the
 shell's `import` lines alone, and leave the event in `config/events.json`
 (§2 step 7): the shells read it.
 
