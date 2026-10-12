@@ -42,4 +42,9 @@ export const ACCEPTED = [
     case: /^scorer\/team-demo-2026\//, kind: 'both', row: 'team §17 row 10',
     reason: 'a playoff side shows its team’s name (or Seed n · TBD), and the dialog’s sub line reads the stage and the pair',
   },
+  // ---- code and access protection (sage-docs/docs/specs/.../code-and-access-protection-spec.md §9.8) ----
+  {
+    case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,
+    reason: 'signed out, the Attendance tab asks to sign in instead of showing the list (code-and-access-protection-spec §9.3 D7)',
+  },
 ];

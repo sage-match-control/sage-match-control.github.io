@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SITE_ROOT } from '../helpers/paths.mjs';
+import { parseAttendanceCsv } from '../../lib/v1/domain/attendance.js';
 import { constValue } from '../helpers/extract.mjs';
 import { loadRegistry, loadSnapshot, deriveState, parseCsv, toCsv, SNAPSHOTS, STATES } from '../helpers/fixtures.mjs';
 import { click, clickNth, choose, enterScores, ifPresent, ifVisible, printMedia, saveScores, tab, type } from './steps.mjs';
@@ -138,6 +139,7 @@ const scoreConflict = {
     return { status: 409, body: { error: 'The sheet changed since you opened this match.', code: 'score-conflict', current: { ...expected, team1Score: 11, team2Score: 9 } } };
   },
 };
+const attendancePeople = { method: 'GET', path: /\/v3\/days\/[^/]+\/facilities\/([^/]+)\/people$/ };
 const attendanceOk = { method: 'PUT', path: /\/v3\/days\/[^/]+\/facilities\/[^/]+\/people\/[^/]+\/attendance$/, reply: () => ({ status: 200, body: { ok: true } }) };
 
 // Control Center's signed-in Mission Control asks the API for these.
@@ -266,6 +268,7 @@ function* controlCenterSignedInCases(registry) {
   const csv = read(SITE_FIXTURES, 'attendance-demo-2026', 'attendance-main-pre.csv');
   const views = [
     ['mission-control', []],
+    ['attendance', [tab('Attendance')]],
     ['score-entry-save', [tab('Match Finder'), type('#teamInput', '1'), click('#searchBtn'), click('.ticket.scoreable'), enterScores(11, 5), saveScores()]],
   ];
   for (const state of STATES) for (const [vname, steps] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
@@ -273,7 +276,10 @@ function* controlCenterSignedInCases(registry) {
       id: `cc-signed-in/${event}/${vname}/${state}/${vp}`, page: 'cc', path: '/tools/control-center', event, day, state, viewport,
       time, instantiate: null, registry, snapshots: snapshotsFor(allEvents, state), storage,
       external: [{ match: /docs\.google\.com\/spreadsheets\/d\/test\//, contentType: 'text/csv', body: csv }],
-      cloudRun: [...signedInApi, scoreOk],
+      cloudRun: [...signedInApi, scoreOk, {
+        ...attendancePeople,
+        reply: () => ({ status: 200, body: parseAttendanceCsv(csv) }),
+      }],
       allowErrors: [CONSOLE_404],
       steps: [choose('#eventPicker', event), ...steps],
     });
@@ -322,7 +328,15 @@ function attendanceBackend(event, venueList) {
       contentType: 'text/csv',
       body: () => csvOf(v.name.toLowerCase()),
     }));
+    // The branch reads the list through the API (the baseline still reads the CSV above): the same people from
+    // the same CSV, so a mark changes both.
     const cloudRun = [{
+      ...attendancePeople,
+      reply: request => {
+        const [, facility] = request.pathname.match(attendancePeople.path).map(decodeURIComponent);
+        return { status: 200, body: parseAttendanceCsv(csvOf(facility.toLowerCase())) };
+      },
+    }, {
       method: 'PUT',
       path: attendanceOk.path,
       reply: request => {
