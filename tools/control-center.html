@@ -1385,10 +1385,11 @@ import * as Teams from '/lib/v1/domain/teams.js';
 import * as Awards from '/lib/v1/domain/awards.js';
 
 // The engine's data layer: constants, the registry, the snapshot and its poll, the live channel, readable API errors.
-import { CLOUD_RUN_BASE_URL, ATTENDANCE_POLL_MS, fixtureName } from '/lib/v1/platform.js';
+import { CLOUD_RUN_BASE_URL, fixtureName } from '/lib/v1/platform.js';
 import { loadRegistry, eventConfigFrom } from '/lib/v1/data/registry.js';
 import { createPoller } from '/lib/v1/data/snapshot.js';
 import { createLiveChannel } from '/lib/v1/data/live-channel.js';
+import { createAttendanceSignal } from '/lib/v1/data/attendance-signal.js';
 import { friendlyApiMessage } from '/lib/v1/data/api.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
 
@@ -3821,6 +3822,7 @@ const attConsoleWithdrawnToggleEl = document.getElementById('attendanceShowWithd
 const attConsoleWithdrawnLabelEl = document.getElementById('attendanceShowWithdrawnLabel');
 const ATT_CONSOLE_FIX_HINT = 'Fix the spelling in the category tab; the roster follows on the next sync.';
 let attConsoleView = null;
+let attConsoleSignal = null;       // the nudges that say another device marked someone (attendance-push-spec.md)
 let attConsoleData = [];            // [{ name, people, loaded }] — the view's latest, every facility
 let attConsoleAttentionCount = -1;  // so the section opens only when the count changes
 let attConsoleQrLoad = null;
@@ -3846,6 +3848,7 @@ function syncAttendanceTab(){
 }
 
 function attConsoleDestroy(){
+  if(attConsoleSignal){ attConsoleSignal.close(); attConsoleSignal = null; }
   if(attConsoleView){ attConsoleView.destroy(); attConsoleView = null; }
   attConsoleData = [];
   attConsoleAttentionCount = -1;
@@ -3865,7 +3868,6 @@ function attConsoleMount(){
     root: attConsoleListEl,
     mode: 'console',
     apiBase: CLOUD_RUN_BASE_URL,
-    pollMs: ATTENDANCE_POLL_MS,
     getToken: currentAuthToken,
     event: CURRENT_EVENT_KEY,
     day: day.key,
@@ -3877,6 +3879,17 @@ function attConsoleMount(){
     onData: attConsoleOnData,
     showWithdrawn: false,
     fixture: FIXTURE,
+  });
+  // Nothing polls: a mark on another device arrives as a nudge, and the view re-reads that facility. The tab's own
+  // teardown (attConsoleDestroy) closes the signal. Signing out leaves it open: a nudge's load finds no token and the
+  // view asks to sign in, as it does today. The day's liveChannel is separate and untouched.
+  attConsoleSignal = createAttendanceSignal({
+    baseUrl: LIVE_BASE_URL,
+    enabled: !!LIVE_BASE_URL && !FIXTURE,
+    event: CURRENT_EVENT_KEY,
+    day: day.key,
+    onChange: f => attConsoleView && attConsoleView.changed && attConsoleView.changed(f),
+    onStatus: open => !FIXTURE && attConsoleView && attConsoleView.setLive && attConsoleView.setLive(open),
   });
 }
 

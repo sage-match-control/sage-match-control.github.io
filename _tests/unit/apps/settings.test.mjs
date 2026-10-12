@@ -43,3 +43,9 @@ test('mountScheduleBoard knows "type", and names a type it does not know', async
   assert.match(errors[0], /mountScheduleBoard: unknown type "nope" \(known: standard, dual-meet, team\)/);
   assert.doesNotMatch(errors[0], /unknown setting/, '"type" is a known setting');
 });
+
+test('mountAttendanceDesk knows "liveBaseUrl"', async () => {
+  // Past the settings check the mount reads `location`, which Node lacks, so it rejects; only the check is under test.
+  const errors = await errorsFrom(() => mountAttendanceDesk({ eventKey: 'e', liveBaseUrl: 'wss://x' }).catch(() => {}));
+  assert.equal(errors.filter(e => /unknown setting/.test(e)).length, 0);
+});

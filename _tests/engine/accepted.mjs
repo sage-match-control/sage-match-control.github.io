@@ -47,4 +47,14 @@ export const ACCEPTED = [
     case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,
     reason: 'signed out, the Attendance tab asks to sign in instead of showing the list (code-and-access-protection-spec §9.3 D7)',
   },
+  // ---- push for attendance (sage-docs/docs/specs/.../attendance-push-spec.md §1 D8) ----
+  // The harness closes every sage-live socket at once, so the page has no live updates and says so.
+  {
+    case: /^attendance\//, kind: 'both', row: 'attendance-push D8',
+    reason: 'with the live Worker unreachable the list says live updates are off',
+  },
+  {
+    case: /^cc-signed-in\/[^/]+\/attendance\//, kind: 'both', row: 'attendance-push D8',
+    reason: 'with the live Worker unreachable the list says live updates are off',
+  },
 ];
