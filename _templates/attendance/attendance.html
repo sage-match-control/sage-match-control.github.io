@@ -55,8 +55,11 @@
 import { mountAttendanceDesk } from '/lib/v1/apps/attendance-desk.js';
 
 const EVENT_KEY = '{{EVENT_KEY}}';
+// The live Worker's address, for the nudges that say another device marked someone. A literal, the same as
+// Control Center's, not a token. '' turns it off: the page then says live updates are off.
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
-mountAttendanceDesk({ eventKey: EVENT_KEY });
+mountAttendanceDesk({ eventKey: EVENT_KEY, liveBaseUrl: LIVE_BASE_URL });
 </script>
 </body>
 </html>
