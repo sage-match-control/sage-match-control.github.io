@@ -49,6 +49,9 @@ const CASES = {
   'a row with no match number': csvOf(row(1, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 5), ',,,,A_3,e,f,,A_4,g,h,'),
   'header only': csvOf(),
   'empty': '',
+  'a decimal score in a series final': csvOf(
+    row(1, 'X_F_1_(1)', 'a', 'b', '11.5', 'X_F_2_(1)', 'c', 'd', '11'),
+    row(2, 'X_F_1_(2)', 'a', 'b', '', 'X_F_2_(2)', 'c', 'd', '')),
 };
 
 test('the played and BYE rules: the card and completedAt agree on every case', options, () => {
