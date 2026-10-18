@@ -544,10 +544,9 @@
   }
   .organizer-text-input:focus{border-color:var(--court);}
   .organizer-text-input + .organizer-text-input{ margin-top:8px; }
-  /* Issued to / Note, above the two link buttons (link-attribution-spec.md §5.3): side by side, stacked on a phone. */
-  .link-issue-fields{ display:flex; gap:8px; margin-bottom:10px; }
-  .link-issue-fields .organizer-text-input + .organizer-text-input{ margin-top:0; }
-  @media (max-width:480px){ .link-issue-fields{ flex-direction:column; } .link-issue-fields .organizer-text-input + .organizer-text-input{ margin-top:0; } }
+  /* Issued to / Note, in the dialog the two link buttons open (link-attribution-spec.md §5.3). */
+  .link-dialog-label{ display:block; margin:12px 0 4px; font-size:13px; font-weight:600; color:var(--ink-soft); }
+  .link-dialog .score-head{ margin-bottom:2px; }
   .organizer-auth-status{
     font-size:12px;
     color:var(--muted);
@@ -1218,10 +1217,6 @@
       <div class="attendance-actions">
         <button type="button" id="attendanceRosterBtn" class="organizer-primary-btn">Update roster</button>
         <div id="attendanceRosterResult" class="organizer-result" style="display:none;"></div>
-        <div class="link-issue-fields" id="deskLinkFields" style="display:none;">
-          <input id="deskLinkTo" type="text" class="organizer-text-input" maxlength="40" placeholder="Issued to (optional)" autocomplete="off" aria-label="Issued to, optional" />
-          <input id="deskLinkNote" type="text" class="organizer-text-input" maxlength="40" placeholder="Note, e.g. Gate A (optional)" autocomplete="off" aria-label="Note, optional" />
-        </div>
         <button type="button" id="attendanceDeskBtn" class="organizer-secondary-btn" style="display:none;">Issue desk link</button>
         <div id="attendanceDeskResult" class="organizer-result" style="display:none;"></div>
       </div>
@@ -1314,10 +1309,6 @@
           <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
           <span class="switch-label" id="scorerSwitchLabel">Accepting</span>
         </div>
-        <div class="link-issue-fields" id="scorerLinkFields" style="display:none;">
-          <input id="scorerLinkTo" type="text" class="organizer-text-input" maxlength="40" placeholder="Issued to (optional)" autocomplete="off" aria-label="Issued to, optional" />
-          <input id="scorerLinkNote" type="text" class="organizer-text-input" maxlength="40" placeholder="Note, e.g. Courts 3–4 (optional)" autocomplete="off" aria-label="Note, optional" />
-        </div>
         <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
         <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
         <p class="organizer-hint">A scorer link opens this event's scorer page, where staff enter scores for any venue on that day and do nothing else. Each link works for 24 hours, and only while this is set to <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder. Takes effect within about a minute.</p>
@@ -1359,6 +1350,29 @@
   <p id="scoreDialogNote" class="score-note" hidden></p>
   <div id="scoreDialogError" class="score-error" role="alert" hidden></div>
   <div id="scoreDialogActions" class="score-actions"></div>
+</dialog>
+
+<!-- Issue link dialog (link-attribution-spec.md §5.3): Issue desk link and Issue scorer link both open it,
+     to say who the link is for before it is issued. Styled like the score dialog. -->
+<dialog id="linkDialog" class="score-dialog link-dialog" aria-labelledby="linkDialogTitle">
+  <form id="linkDialogForm" novalidate>
+    <div class="score-head">
+      <div>
+        <h2 id="linkDialogTitle" class="score-title"></h2>
+        <div class="score-sub">Both optional. They are signed into the link and name its holder in the workbook.</div>
+      </div>
+      <button type="button" class="score-x" id="linkDialogClose" aria-label="Close">&times;</button>
+    </div>
+    <label class="link-dialog-label" for="linkDialogTo">Issued to</label>
+    <input id="linkDialogTo" type="text" class="organizer-text-input" maxlength="40" placeholder="e.g. Ana" autocomplete="off" />
+    <label class="link-dialog-label" for="linkDialogNote">Note</label>
+    <input id="linkDialogNote" type="text" class="organizer-text-input" maxlength="40" autocomplete="off" />
+    <div id="linkDialogError" class="score-error" role="alert" hidden></div>
+    <div class="score-actions">
+      <button type="button" class="score-btn secondary" id="linkDialogCancel">Cancel</button>
+      <button type="submit" class="score-btn primary" id="linkDialogIssue">Issue link</button>
+    </div>
+  </form>
 </dialog>
 
 <!-- Short outcomes (go-live, sync method, sign-in, "pick a day first") show
@@ -1837,6 +1851,7 @@ const syncStatusEl = document.getElementById('syncStatus');
 // previously-saved search is brought back afterwards.
 async function selectDay(idx, { isInitialLoad = false } = {}){
   scoreDialog.close();
+  closeLinkDialog();
   clearResultBoxes();
   currentDayIndex = idx;
   renderScorerLinks();
@@ -3269,7 +3284,6 @@ function renderScorerLinks(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   const issueBtn = document.getElementById('scorerLinkBtn');
   issueBtn.style.display = canAct && mode === 'links' && day ? '' : 'none';
-  document.getElementById('scorerLinkFields').style.display = issueBtn.style.display;
   issueBtn.disabled = pageOk !== true;
   issueBtn.title = pageOk === false ? 'This event has no scorer page' : '';
   if(day) issueBtn.textContent = `Issue scorer link for ${day.label}`;
@@ -3370,16 +3384,79 @@ function renderScorerLink(day, issued){
   revealResultBox(box);
 }
 
-// What an operator typed into Issued to and Note, as the body of an issue request: only the non-empty
-// fields (link-attribution-spec.md §5.3). The API cleans and checks them again.
-function linkIssueFields(toId, noteId){
+// What an operator typed into the issue link dialog's Issued to and Note, as the body of an issue
+// request: only the non-empty fields (link-attribution-spec.md §5.3). The API cleans and checks them again.
+function linkIssueFields(){
   const fields = {};
-  const to = document.getElementById(toId).value.trim();
-  const note = document.getElementById(noteId).value.trim();
+  const to = linkDialogToEl.value.trim();
+  const note = linkDialogNoteEl.value.trim();
   if(to) fields.issuedTo = to;
   if(note) fields.note = note;
   return fields;
 }
+
+// The issue link dialog, shared by Issue desk link and Issue scorer link. It opens empty, so a link
+// is never labelled with the last one's name. onIssue(fields) issues the link and resolves true once it
+// is shown; on false the dialog stays open with what was typed, to try again. A toast would sit under
+// the dialog's backdrop, so while it is issuing showToast puts a warning or error in the dialog instead.
+const linkDialogEl = document.getElementById('linkDialog');
+const linkDialogToEl = document.getElementById('linkDialogTo');
+const linkDialogNoteEl = document.getElementById('linkDialogNote');
+const linkDialogIssueBtn = document.getElementById('linkDialogIssue');
+const linkDialogCancelBtn = document.getElementById('linkDialogCancel');
+const linkDialogCloseBtn = document.getElementById('linkDialogClose');
+const linkDialogErrorEl = document.getElementById('linkDialogError');
+let linkDialogIssue = null;   // the open dialog's onIssue; null when closed
+let linkDialogBusy = false;
+
+function openLinkDialog({ title, notePlaceholder, onIssue }){
+  linkDialogIssue = onIssue;
+  document.getElementById('linkDialogTitle').textContent = title;
+  linkDialogToEl.value = '';
+  linkDialogNoteEl.value = '';
+  linkDialogNoteEl.placeholder = notePlaceholder;
+  setLinkDialogError('');
+  setLinkDialogBusy(false);
+  if(!linkDialogEl.open) linkDialogEl.showModal();
+  linkDialogToEl.focus();
+}
+
+function closeLinkDialog(){
+  linkDialogIssue = null;
+  if(linkDialogEl.open) linkDialogEl.close();
+}
+
+function setLinkDialogError(text){
+  linkDialogErrorEl.textContent = text;
+  linkDialogErrorEl.hidden = !text;
+}
+
+function setLinkDialogBusy(busy){
+  linkDialogBusy = busy;
+  if(busy) linkDialogEl.dataset.busy = '1'; else delete linkDialogEl.dataset.busy;
+  linkDialogIssueBtn.disabled = busy;
+  linkDialogIssueBtn.textContent = busy ? 'Issuing…' : 'Issue link';
+  linkDialogToEl.disabled = linkDialogNoteEl.disabled = busy;
+}
+
+document.getElementById('linkDialogForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if(linkDialogBusy || !linkDialogIssue) return;
+  const onIssue = linkDialogIssue;
+  setLinkDialogError('');
+  setLinkDialogBusy(true);
+  let ok = false;
+  try{ ok = await onIssue(linkIssueFields()); }
+  finally{ setLinkDialogBusy(false); }
+  // Closed (or reopened for another link) while the request was out: leave it be.
+  if(linkDialogIssue !== onIssue) return;
+  if(ok) closeLinkDialog();
+  else linkDialogToEl.focus();
+});
+linkDialogCancelBtn.addEventListener('click', closeLinkDialog);
+linkDialogCloseBtn.addEventListener('click', closeLinkDialog);
+// Esc closes it too; the dialog's own close covers that, so forget onIssue then as well.
+linkDialogEl.addEventListener('close', () => { linkDialogIssue = null; });
 
 // A fixture link's token, with a real payload so the page it opens can decode it: UTF-8 JSON, base64url,
 // the way the API writes one ("Niño" must survive).
@@ -3394,18 +3471,28 @@ function issuedLabel(issued){
   return issued.issuedTo && issued.note ? `${issued.issuedTo} (${issued.note})` : (issued.issuedTo || issued.note || '');
 }
 
-async function issueScorerLink(){
+// Issue scorer link: the checks that need no input, then the dialog that asks who the link is for.
+function issueScorerLink(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   if(!day) return;
   if(scorerPageKnown(CURRENT_EVENT_KEY) !== true){
     showToast('error', 'This event has no scorer page, so there is nothing for a scorer link to open.', 'scorerlinks');
     return;
   }
+  if(!currentAuthToken() && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
+  openLinkDialog({
+    title: `Issue scorer link for ${day.label}`,
+    notePlaceholder: 'e.g. Courts 3–4',
+    onIssue: fields => sendScorerLink(day, fields),
+  });
+}
+
+// Issues the scorer link and shows it; true once it is shown.
+async function sendScorerLink(day, fields){
   const token = currentAuthToken();
-  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return; }
+  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'scorerlinks'); return false; }
   const epoch = resultEpoch;
   const btn = document.getElementById('scorerLinkBtn');
-  const fields = linkIssueFields('scorerLinkTo', 'scorerLinkNote');
   btn.disabled = true;
   try{
     let issued;
@@ -3425,20 +3512,19 @@ async function issueScorerLink(){
         let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
         if(res.status === 401) msg += ' Sign in again.';
         showToast('error', `Couldn't issue a scorer link: ${msg}`, 'scorerlinks');
-        return;
+        return false;
       }
       issued = body;
     }
     if(resultEpoch !== epoch){
       showToast('warn', `A scorer link for ${day.label} was issued, but you've moved on. Issue it again from that day.`, 'scorerlinks');
-      return;
+      return false;
     }
     renderScorerLink(day, issued);
-    // Cleared once the link is shown, so the next link isn't labelled with this one's name.
-    document.getElementById('scorerLinkTo').value = '';
-    document.getElementById('scorerLinkNote').value = '';
+    return true;
   }catch(err){
     showToast('error', unreachableMessage(err), 'scorerlinks');
+    return false;
   }finally{
     btn.disabled = false;
   }
@@ -3697,6 +3783,13 @@ const TOAST_MS = { ok: 4500, warn: 7000, error: 9000 }; // 'loading' stays until
 // kind: 'ok' | 'warn' | 'error' | 'loading'. key: a later toast with the same
 // key replaces this one (so "Setting…" is replaced by its outcome).
 function showToast(kind, text, key){
+  // An open issue link dialog that is issuing shows its own warnings and errors (see openLinkDialog).
+  const linkDlg = document.getElementById('linkDialog');
+  if(kind !== 'ok' && linkDlg && linkDlg.open && linkDlg.dataset.busy){
+    linkDlg.querySelector('#linkDialogError').textContent = text;
+    linkDlg.querySelector('#linkDialogError').hidden = false;
+    return;
+  }
   if(!toastStackEl) return;
   if(key){
     toastStackEl.querySelectorAll('.toast').forEach(t => { if(t.dataset.key === key) t.remove(); });
@@ -3901,7 +3994,6 @@ function attConsoleRenderChrome(){
   attConsoleSignInEl.style.display = signedIn ? 'none' : '';
   attConsoleRosterBtn.style.display = signedIn ? '' : 'none';
   attConsoleDeskBtn.style.display = signedIn && desks ? '' : 'none';
-  document.getElementById('deskLinkFields').style.display = attConsoleDeskBtn.style.display;
 }
 
 function attConsoleOnData(data){
@@ -4106,13 +4198,23 @@ function attConsoleRenderDeskLink(day, issued){
   revealResultBox(box);
 }
 
-async function attConsoleIssueDeskLink(){
+// Issue desk link: the sign-in check, then the dialog that asks who the link is for.
+function attConsoleIssueDeskLink(){
   const day = attConsoleDay();
   if(!day) return;
+  if(!currentAuthToken() && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return; }
+  openLinkDialog({
+    title: `Issue desk link for ${day.label}`,
+    notePlaceholder: 'e.g. Gate A',
+    onIssue: fields => attConsoleSendDeskLink(day, fields),
+  });
+}
+
+// Issues the desk link and shows it; true once it is shown.
+async function attConsoleSendDeskLink(day, fields){
   const token = currentAuthToken();
-  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return; }
+  if(!token && !FIXTURE){ showToast('error', 'Sign in at the top of Mission Control first.', 'attendance'); return false; }
   const epoch = resultEpoch;
-  const fields = linkIssueFields('deskLinkTo', 'deskLinkNote');
   attConsoleDeskBtn.disabled = true;
   try{
     let issued;
@@ -4136,20 +4238,19 @@ async function attConsoleIssueDeskLink(){
         let msg = friendlyApiMessage((body && body.error) || `HTTP ${res.status}`);
         if(res.status === 401) msg += ' Sign in again.';
         showToast('error', `Couldn't issue a desk link: ${msg}`, 'attendance');
-        return;
+        return false;
       }
       issued = body;
     }
     if(resultEpoch !== epoch){
       showToast('warn', `A desk link for ${day.label} was issued, but you've moved on. Issue it again from that day's Attendance tab.`, 'attendance');
-      return;
+      return false;
     }
     attConsoleRenderDeskLink(day, issued);
-    // Cleared once the link is shown, so the next link isn't labelled with this one's name.
-    document.getElementById('deskLinkTo').value = '';
-    document.getElementById('deskLinkNote').value = '';
+    return true;
   }catch(err){
     showToast('error', unreachableMessage(err), 'attendance');
+    return false;
   }finally{
     attConsoleDeskBtn.disabled = false;
   }
@@ -4334,6 +4435,7 @@ function renderEventPicker(){
 // it, same as a manual day switch always has.
 async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = null } = {}){
   scoreDialog.close();
+  closeLinkDialog();
   clearResultBoxes();
   const rawEvent = EVENTS_REGISTRY.get(eventKey);
   CURRENT_EVENT_KEY = eventKey;

@@ -42,7 +42,7 @@ Follow §2.1–§2.2 below to get signed in and resynced, then check:
 - [ ] **Match Finder** tab: search a real player name from any match → returns their matches in schedule order, correct opponent/score state
 - [ ] **Awards** tab: loads without errors and lists every category — before any Final/Bronze match is played, every placing reads "Pending," not a fabricated winner
 - [ ] **Public site status**: click **Force hidden**, then **Auto** → a confirmation prompt appears before **Force hidden** takes effect; the console's own tabs stay visible throughout either way; it returns cleanly to **Auto**
-- [ ] **Scorer link (events with `"scoreEntry": "links"`)**: under Mission Control's **Scorer links**, fill in **Issued to** and **Note**, press **Issue scorer link**, and open the link on a phone. The page's title line names the day, the venue and who it was issued to. Change Match A's score from the phone → the console shows the new score within a few seconds, and both of Match A's score cells in `SCHEDULE` get a note naming that label
+- [ ] **Scorer link (events with `"scoreEntry": "links"`)**: under Mission Control's **Scorer links**, press **Issue scorer link**, fill in **Issued to** and **Note** in the dialog, press **Issue link**, and open the link on a phone. The page's title line names the day, the venue and who it was issued to. Change Match A's score from the phone → the console shows the new score within a few seconds, and both of Match A's score cells in `SCHEDULE` get a note naming that label
 
 Don't move on until every check above passes.
 
@@ -75,8 +75,8 @@ Follow §2.3 below (screen setup), then:
 - [ ] Sign in with the operator username and password in Mission Control
 - [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
 - [ ] Each facility workbook's **Share** dialog lists `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com` as Editor, and **General access** reads **Restricted** (not "Anyone with the link")
-- [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, issue one desk link per desk (fill in **Issued to** with the person's name and **Note** with the gate, then press **Issue desk link**) and send the link (or QR) to that desk with the desk handout
-- [ ] If this event has scorer links (`"scoreEntry": "links"`): confirm Mission Control's **Scorer links** reads **Accepting**, then issue one link per scorer (fill in **Issued to** and **Note** with their name and courts, then press **Issue scorer link**) and send the link (or QR) with the scorer handout. A scorer link lasts 24 hours, so issue them that morning
+- [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, issue one desk link per desk (press **Issue desk link**, fill in **Issued to** with the person's name and **Note** with the gate in the dialog, then press **Issue link**) and send the link (or QR) to that desk with the desk handout
+- [ ] If this event has scorer links (`"scoreEntry": "links"`): confirm Mission Control's **Scorer links** reads **Accepting**, then issue one link per scorer (press **Issue scorer link**, fill in **Issued to** and **Note** with their name and courts in the dialog, then press **Issue link**) and send the link (or QR) with the scorer handout. A scorer link lasts 24 hours, so issue them that morning
 - [ ] Click **Resync this day now** → pulls the day's real schedule fresh, and confirms Cloud Run can read every facility's sheet. It doesn't involve the sheet's Apps Script: only the first real edit in the **Court Control** tab publishing on its own (§2.4) proves that
 - [ ] Confirm **Facility Sync Status** shows a fresh "Synced" for every venue this event uses
 - [ ] Confirm Mission Control reads **Live updates: push connected**
