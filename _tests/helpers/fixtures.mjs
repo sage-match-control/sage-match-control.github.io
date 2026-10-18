@@ -131,6 +131,7 @@ export function eventConfig(eventKey) {
     pairs: e.display && e.display.pairs ? numberRepeatedPairs(e.display.pairs) : PAIRS,
     scoreEntry: e.scoreEntry,
     attendance: e.attendance,
+    teamScoring: e.teamScoring === 'games' ? 'games' : 'points',
   };
 }
 
