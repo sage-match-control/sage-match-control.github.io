@@ -63,6 +63,7 @@
       "attendance": "desks",
       "scoreEntry": "links",
       "display": {
+        "teamColors": { "A": "#D55E00", "B": "#E69F00", "C": "#F0E442", "D": "#009E73", "E": "#0072B2", "F": "#6F3FA0", "G": "#56B4E9", "H": "#CC79A7" },
         "pairs": {
           "1": {
             "full": "Men's Doubles",

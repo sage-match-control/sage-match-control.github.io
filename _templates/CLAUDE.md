@@ -270,6 +270,15 @@ and playoffs; its pages are the team views of the engine (§8).
      labels are MD, WD, XD 1, XD 2; a pair number the event doesn't list
      reads "Pair <n>". A facility whose roster tab isn't named `Teams` sets
      `rosterSheetName` on that facility (`event-data/config/README.md`).
+   - A team event whose teams have colours adds `display.teamColors`, keyed
+     by the group-stage team code, with hex values:
+     `"teamColors": { "Red": "#D55E00", "Sky": "#56B4E9" }`. Each coloured
+     team gets a mark (its colour on a shape of its own, the n-th team the
+     n-th shape) before its name on the Hub, the board and Control Center, and
+     its cards shade between the two teams' colours; a team the map lacks gets
+     none. Pick colours that stay apart for colour-blind readers (the
+     Millennium Invitational's are Okabe–Ito). Anything but `#RGB` or
+     `#RRGGBB` is dropped with a console warning.
    - A team event scored on games won rather than total points sets
      `"teamScoring": "games"` on the event (not under `display`). A matchup is
      then won on matches won, then total points, and the bracket is ranked by

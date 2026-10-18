@@ -387,6 +387,13 @@ test('buildScheduleData for a team day: team names, pair, stage and category per
   assert.equal(data.courts, 4);
 });
 
+test('a team day carries each side’s group-stage team: a playoff side once its team is typed in, else null', () => {
+  const all = G.buildScheduleData(loadSnapshot('team-demo-2026'), null, 'team').rows.flatMap(r => [...r.courts.filter(Boolean), ...r.unplaced]);
+  const at = n => all.find(m => m.num === n);
+  assert.deepEqual([at(1).base1, at(1).base2], ['A', 'B'], 'A v B');
+  assert.deepEqual([at(37).base1, at(37).base2], ['A', null], 'SF-A is Aces; SF-4 has no team yet');
+});
+
 test('a team day with no pairs argument uses the default pair labels, and a pair the event lacks is "Pair n"', () => {
   const snap = loadSnapshot('team-demo-2026');
   const rows = data => data.rows.flatMap(r => r.courts.filter(Boolean));

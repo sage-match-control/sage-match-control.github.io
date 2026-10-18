@@ -132,6 +132,7 @@ export function eventConfig(eventKey) {
     scoreEntry: e.scoreEntry,
     attendance: e.attendance,
     teamScoring: e.teamScoring === 'games' ? 'games' : 'points',
+    teamColors: (e.display && e.display.teamColors) || {},
   };
 }
 

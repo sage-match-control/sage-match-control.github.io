@@ -42,6 +42,11 @@ export const ACCEPTED = [
     case: /^scorer\/team-demo-2026\//, kind: 'both', row: 'team §17 row 10',
     reason: 'a playoff side shows its team’s name (or Seed n · TBD), and the dialog’s sub line reads the stage and the pair',
   },
+  // ---- team colours (display.teamColors; the owner's request of 2026-10-19) ----
+  {
+    case: /^(team-index|team-schedule|cc-signed-in)\/team-demo-2026\//, kind: 'pixels', row: 'team colours',
+    reason: 'the demo lists team colours: each team name has its mark (colour and shape) and each card shades between the two teams’ colours',
+  },
   // ---- code and access protection (sage-docs/docs/specs/.../code-and-access-protection-spec.md §9.8) ----
   {
     case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,

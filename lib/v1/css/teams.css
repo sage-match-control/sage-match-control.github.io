@@ -525,3 +525,17 @@ table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2
 }
 
 .live-team-code .chip{ margin-left:0; }
+
+/* A team's mark (views/team-mark.js): its colour on a shape of its own, before its name. The thin dark outline
+   keeps a pale colour (yellow, sky) visible on paper and on a tint. */
+.team-mark{ display:inline-block; flex:none; width:1em; height:1em; margin-right:.35em; vertical-align:-.15em; overflow:visible; }
+.team-mark path{ stroke:rgba(3,37,25,.55); stroke-width:.9; stroke-linejoin:round; }
+
+/* A team event whose teams have colours: the card runs from the left team's colour to the right team's
+   (--team-a, --team-b, set by teamTintStyle), each a 25% tint over white so navy and soft text stay readable
+   (4.5:1 or better on the darkest, purple). A side with no colour fades to white. */
+.tm-headline.team-tint{
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--team-a, var(--white)) 25%, var(--white)),
+    color-mix(in srgb, var(--team-b, var(--white)) 25%, var(--white)));
+}

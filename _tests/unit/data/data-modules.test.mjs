@@ -129,6 +129,20 @@ test('eventConfigFrom falls back to the default pairs, and warns once, for a mal
   }
 });
 
+test('eventConfigFrom gives a team event its colours from display.teamColors, hex only, {} without them', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const teamColors = { Red: '#D62828', Sky: '#4cc9f0', Short: '#abc', Word: 'red', Bad: 'url(x)', Num: 7 };
+  const registry = { events: { t: { type: 'team', display: { teamColors } }, plain: { type: 'team' }, list: { type: 'team', display: { teamColors: ['#fff'] } } } };
+  assert.deepEqual(eventConfigFrom(registry, 't').teamColors, { Red: '#D62828', Sky: '#4cc9f0', Short: '#abc' });
+  assert.deepEqual(warn.mock.calls.map(c => c.arguments[0]), ['Word', 'Bad', 'Num'].map(k => `events.json: display.teamColors.${k} for t is not a hex colour; ignoring it`));
+  warn.mock.resetCalls();
+  assert.deepEqual(eventConfigFrom(registry, 'plain').teamColors, {}, 'without the map, none');
+  assert.equal(warn.mock.callCount(), 0);
+  assert.deepEqual(eventConfigFrom(registry, 'list').teamColors, {});
+  assert.equal(warn.mock.calls[0].arguments[0], 'events.json: display.teamColors for list must be an object of team code -> hex colour; ignoring it');
+});
+
 test('eventConfigFrom agrees with the fixture events', () => {
   const registry = loadFixtureRegistry();
   for (const key of Object.keys(registry.events)) assert.deepEqual(JSON.parse(JSON.stringify(eventConfigFrom(registry, key))), JSON.parse(JSON.stringify(eventConfig(key))), key);

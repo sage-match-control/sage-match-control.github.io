@@ -234,3 +234,41 @@ test('teamScoring "games": the matchup card and the Live row lead with games', (
   assert.match(matchupCardHTML(p, p.team.matchups[0]), /<div class="tm-score">35 – 38<\/div><div class="tm-pairs">pairs 3–1<\/div>/);
   assert.match(liveRowHTML(p, 'Court 1', p.matches[0]), /Matchup 35 – 38/);
 });
+
+test('teamColors: every team name has its mark and a matchup card is tinted between the two; none without them', () => {
+  const demo = 'team-demo-2026';
+  const cm = buildDayModel(eventConfig(demo), eventConfig(demo).days[0], loadSnapshot(demo), { now: caseTime(demo), alwaysLive: true });
+  // A is the first team in the demo's teamColors: a circle, in its colour.
+  const ACES = /<svg class="team-mark team-mark-circle" viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="[^"]+" fill="#D55E00"\/><\/svg>Aces/;
+  const index = buildTeamIndex(cm);
+  const aces = index.find(e => e.kind === 'team' && e.base === 'A');
+  const mu = cm.team.matchups.find(x => x.stage === null && x.group !== null && x.side1 === 'A' && x.side2 === 'B');
+  const live = cm.matches.find(x => x.t1p1 !== 'TBD' && x.t1.startsWith('A_'));
+  for (const [what, html] of [
+    ['matchup card', matchupCardHTML(cm, mu, {}, new Set(), {})],
+    ['bracket table', teamStandingsHTML(cm, {}, {})],
+    ['live row', liveRowHTML(cm, 'Court 1', live)],
+    ['team result', teamResultHTML(cm, aces, new Set(), {})],
+    ['autocomplete', autocompleteHTML([aces])],
+    ['intro', introHTML(cm, index, 'x', new Set(), {})],
+    ['roster card', rosterCardHTML(cm, 'A', {})],
+  ]) assert.match(html, ACES, what);
+  assert.deepEqual(aces.mark, { color: '#D55E00', shape: 'circle' });
+  assert.deepEqual(index.find(e => e.kind === 'team' && e.base === 'B').mark, { color: '#E69F00', shape: 'square' });
+  assert.match(matchupCardHTML(cm, mu, {}, new Set(), {}), /<div class="tm-headline team-tint" style="--team-a:#D55E00;--team-b:#E69F00">/);
+  // Focused on B, B moves to the left and so does its colour.
+  assert.match(matchupCardHTML(cm, mu, { focusBase: 'B' }, new Set(), {}), /style="--team-a:#E69F00;--team-b:#D55E00"/);
+  // A playoff side takes its team's mark once the organiser has typed the team in, and none before.
+  const sf = cm.team.matchups.find(x => x.side1 === 'SF-A' && x.side2 === 'SF-4');
+  const sfHTML = matchupCardHTML(cm, sf, {}, new Set(), {});
+  assert.equal((sfHTML.match(/class="team-mark /g) || []).length, 1, 'SF-A is Aces; SF-4 is still TBD');
+  assert.match(sfHTML, /class="tm-headline team-tint" style="--team-a:#D55E00">/, 'the TBD side fades to white');
+  // No teamColors: nothing drawn, anywhere.
+  for (const event of [{ ...cm.event, teamColors: {} }, { ...cm.event, teamColors: undefined }]) {
+    const plainModel = { ...cm, event };
+    const html = [teamStandingsHTML(plainModel, {}, {}), introHTML(plainModel, buildTeamIndex(plainModel), 'x', new Set(), {}),
+      rosterCardHTML(plainModel, 'A', {}), matchupCardHTML(plainModel, mu, {}, new Set(), {})].join('');
+    assert.doesNotMatch(html, /team-mark|team-tint/, String(event.teamColors));
+  }
+  assert.doesNotMatch(teamStandingsHTML(model, {}, {}), /team-mark/, 'PickleDrive lists no colours');
+});
