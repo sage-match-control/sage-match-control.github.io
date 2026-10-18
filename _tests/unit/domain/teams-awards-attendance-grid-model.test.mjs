@@ -433,3 +433,56 @@ test('buildDayModel: alwaysLive overrides the day’s setting; no snapshot gives
   const empty = buildDayModel(cfg, cfg.days[0], null, { now: 0 });
   assert.deepEqual([empty.matches.length, empty.standings.length, empty.isLive, empty.matchesByFacility.size, empty.snapshot], [0, 0, false, 0, null]);
 });
+
+// ---- teamScoring "games" (sage-docs/docs/specs/.../millennium-invitational-spec.md §4) ------------------------------
+
+test('teamScoring "games": a matchup is won on matches won, then total points', () => {
+  // Side 1 wins three matches but scores fewer points: it wins on games, and would lose on points.
+  const ms = [tm('A_1', 11, 'B_1', 9), tm('A_2', 11, 'B_2', 9), tm('A_3', 11, 'B_3', 9), tm('A_4', 2, 'B_4', 11)];
+  const g = T.teamMatchupResult(ms, 'games');
+  assert.deepEqual([g.pts1, g.pts2, g.pairs1, g.pairs2, g.state, g.winner, g.scoring], [35, 38, 3, 1, 'final', 1, 'games']);
+  const p = T.teamMatchupResult(ms);
+  assert.deepEqual([p.winner, p.scoring], [2, 'points'], 'the default still decides on points');
+  // 2–2 on games: more total points wins.
+  const split = T.teamMatchupResult([tm('A_1', 11, 'B_1', 0), tm('A_2', 11, 'B_2', 0), tm('A_3', 9, 'B_3', 11), tm('A_4', 9, 'B_4', 11)], 'games');
+  assert.deepEqual([split.pairs1, split.pairs2, split.pts1, split.pts2, split.state, split.winner], [2, 2, 40, 22, 'final', 1]);
+  // Level on games and on points: a tie.
+  assert.equal(T.teamMatchupResult([tm('A_1', 11, 'B_1', 5), tm('A_2', 5, 'B_2', 11)], 'games').state, 'tie');
+  assert.equal(T.teamMatchupResult([tm('A_1', 11, 'B_1', 3), tm('A_2', null, 'B_2', null)], 'games').state, 'in-progress');
+  assert.equal(T.teamMatchupResult([tm('A_1', null, 'B_1', null)], 'games').state, 'not-started');
+});
+
+test('teamGameRecords: W, L, PF and PA from played group matches only', () => {
+  const recs = T.teamGameRecords([
+    tm('A_1', 11, 'B_1', 7), tm('A_2', 4, 'B_2', 11),
+    tm('A_3', 9, 'B_3', 9),                         // equal scores: points count, no W or L
+    tm('A_4', null, 'B_4', null),                   // not played
+    tm('Fi-A_1', 11, 'Fi-B_1', 0),                  // a playoff match
+  ]);
+  assert.deepEqual(recs.get('A'), { won: 1, lost: 1, pf: 24, pa: 27 });
+  assert.deepEqual(recs.get('B'), { won: 1, lost: 1, pf: 27, pa: 24 });
+  assert.equal(recs.has('Fi-A'), false);
+});
+
+test('teamScoring "games": bracket ranking by wins, total points, head-to-head wins, head-to-head points', () => {
+  const rows = (...codes) => codes.map(teamCode => ({ teamCode, pf: 0, quotient: null }));
+  const rank = (codes, matches) => T.teamRankBracket(rows(...codes), matches, 'games').map(r => r.teamCode);
+  // 1–2. C wins two; A and B one each, and B has more total points (16 to 14).
+  assert.deepEqual(rank(['A', 'B', 'C'], [
+    tm('C_1', 11, 'A_1', 0), tm('C_2', 11, 'B_2', 0), tm('A_3', 11, 'B_3', 5), tm('B_4', 11, 'A_4', 3),
+  ]), ['C', 'B', 'A']);
+  // 3. A, B and C each win two and score 32; among themselves A won two, B one, C none.
+  assert.deepEqual(rank(['C', 'B', 'A', 'D'], [
+    tm('A_1', 11, 'B_1', 9), tm('A_2', 11, 'C_2', 1), tm('B_3', 11, 'C_3', 0),
+    tm('D_1', 12, 'A_3', 10), tm('B_4', 12, 'D_2', 10), tm('C_4', 11, 'D_3', 9), tm('C_1', 20, 'D_4', 18),
+  ]), ['A', 'B', 'C', 'D']);
+  // 4. A and B each win one, score 23 and beat each other once: A won more points against B (20 to 13).
+  assert.deepEqual(rank(['B', 'A', 'C'], [
+    tm('A_1', 11, 'B_1', 2), tm('B_2', 11, 'A_2', 9), tm('C_3', 11, 'A_3', 3), tm('C_4', 12, 'B_4', 10),
+  ]), ['C', 'A', 'B']);
+  // Level on all four, or nothing played: the sheet's order. A playoff match counts for nothing.
+  assert.deepEqual(rank(['B', 'A'], []), ['B', 'A']);
+  assert.deepEqual(rank(['A', 'B'], [tm('Fi-A_1', 0, 'Fi-B_1', 11)]), ['A', 'B']);
+  // The default ranking is unchanged by the new parameter.
+  assert.deepEqual(T.teamRankBracket([{ teamCode: 'A', pf: 1, quotient: 1 }, { teamCode: 'B', pf: 2, quotient: 1 }], []).map(r => r.teamCode), ['B', 'A']);
+});

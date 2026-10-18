@@ -694,3 +694,18 @@ test('tokens: storage that throws is survived', t => {
   Object.defineProperty(globalThis, 'localStorage', { value: { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } }, configurable: true, writable: true });
   assert.equal(scorerLoadToken('e'), null);
 });
+
+// ---- teamScoring (sage-docs/docs/specs/.../millennium-invitational-spec.md §4) -------------------------------------
+
+test('eventConfigFrom reads teamScoring: "points" unless the event says "games"', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const registry = { events: { g: { type: 'team', teamScoring: 'games' }, p: { type: 'team', teamScoring: 'points' }, none: { type: 'team' }, odd: { type: 'team', teamScoring: 'wins' } } };
+  assert.equal(eventConfigFrom(registry, 'g').teamScoring, 'games');
+  assert.equal(eventConfigFrom(registry, 'p').teamScoring, 'points');
+  assert.equal(eventConfigFrom(registry, 'none').teamScoring, 'points');
+  assert.equal(warn.mock.calls.length, 0);
+  assert.equal(eventConfigFrom(registry, 'odd').teamScoring, 'points');
+  assert.equal(warn.mock.calls.length, 1);
+  assert.equal(warn.mock.calls[0].arguments[0], 'events.json: teamScoring for odd must be "points" or "games"; using "points"');
+});
