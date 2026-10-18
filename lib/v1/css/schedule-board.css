@@ -587,16 +587,22 @@ body{
    keeps a pale colour (yellow, sky) visible on paper and on a tint. */
 .team-mark{ display:inline-block; flex:none; width:1em; height:1em; margin-right:.35em; vertical-align:-.15em; overflow:visible; }
 .team-mark path{ stroke:rgba(3,37,25,.55); stroke-width:.9; stroke-linejoin:round; }
+/* On a deep tint of its own colour a mark needs a light halo to stand off the card. */
+.team-tint .team-mark{ filter:drop-shadow(0 0 1.2px var(--white)) drop-shadow(0 0 .6px var(--white)); }
 
 /* A team event whose teams have colours: the card's left part is the left team's colour and its right part the
-   right team's (--team-a, --team-b, set by teamTintStyle), each a 40% tint over white, meeting in a short blend
+   right team's (--team-a, --team-b, set by teamTintStyle), each a 60% tint over white, meeting in a short blend
    across the middle fifth so the two colours read as two. A side with no colour is white.
    The left edge and the chip keep the bracket's colour.
-   On a tint this deep the theme's soft grey text falls under 4.5:1 on the darker colours (purple, blue), so
-   inside the card --ink-soft is a near-ink (85% ink): still lighter than the names, 5:1 or better on every tint. */
+   On a tint this deep the theme's soft grey text falls well under 4.5:1 on the darker colours (purple, blue),
+   so inside the card --ink-soft is the ink itself: 5.5:1 on the darkest tint (purple). What it muted (a losing
+   score, a lineup not set) still reads by weight or italics. */
 .cell.team-tint{
-  --tint-a:color-mix(in srgb, var(--team-a, var(--white)) 40%, var(--white));
-  --tint-b:color-mix(in srgb, var(--team-b, var(--white)) 40%, var(--white));
-  --ink-soft:color-mix(in srgb, var(--ink) 85%, var(--white));
+  --tint-a:color-mix(in srgb, var(--team-a, var(--white)) 60%, var(--white));
+  --tint-b:color-mix(in srgb, var(--team-b, var(--white)) 60%, var(--white));
+  --ink-soft:var(--ink);
   background:linear-gradient(90deg, var(--tint-a) 0 40%, var(--tint-b) 60% 100%);
 }
+
+/* A finished match dims less on a team tint: .84 would take the ink under 4.5:1 on purple; .92 keeps 5:1. */
+.cell.team-tint.done{ opacity:.92; }
