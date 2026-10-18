@@ -486,3 +486,27 @@ test('teamScoring "games": bracket ranking by wins, total points, head-to-head w
   // The default ranking is unchanged by the new parameter.
   assert.deepEqual(T.teamRankBracket([{ teamCode: 'A', pf: 1, quotient: 1 }, { teamCode: 'B', pf: 2, quotient: 1 }], []).map(r => r.teamCode), ['B', 'A']);
 });
+
+// A team day with one Final: Alpha wins three games on fewer points (35 to 38).
+const TEAM_MATCH_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+const finalDay = teamScoring => buildDayModel(
+  { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring },
+  { key: 'd', date: '2026-10-24' },
+  { isLive: true, facilities: [{ name: 'Main',
+    matchesCsv: [TEAM_MATCH_HEADER,
+      '1,Fi-A v Fi-B,,8:30 PM,Court 1,Fi-A_1,a1,a2,11,Fi-B_1,b1,b2,9',
+      '2,Fi-A v Fi-B,,8:30 PM,Court 2,Fi-A_2,a3,a4,11,Fi-B_2,b3,b4,9',
+      '3,Fi-A v Fi-B,,8:30 PM,Court 3,Fi-A_3,a5,a6,11,Fi-B_3,b5,b6,9',
+      '4,Fi-A v Fi-B,,8:30 PM,Court 4,Fi-A_4,a7,a8,2,Fi-B_4,b7,b8,11'].join('\n'),
+    standingsCsv: 'teamCode,teamName,totalPoints,totalOpponentPoints,quotient,bracket\nA,Alpha,0,0,-,1\nB,Beta,0,0,-,1\nFi-1,,0,0,-,\nFi-2,,0,0,-,' }] },
+  { now: 0, alwaysLive: true },
+);
+
+test('teamScoring reaches the day model and decides the podium', () => {
+  const games = finalDay('games');
+  assert.equal(games.team.scoring, 'games');
+  assert.deepEqual([A.buildTeamPodium(games).gold.teamName, A.buildTeamPodium(games).silver.teamName], ['Alpha', 'Beta']);
+  const points = finalDay('points');
+  assert.equal(points.team.scoring, 'points');
+  assert.equal(A.buildTeamPodium(points).gold.teamName, 'Beta');
+});
