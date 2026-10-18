@@ -270,6 +270,12 @@ and playoffs; its pages are the team views of the engine (§8).
      labels are MD, WD, XD 1, XD 2; a pair number the event doesn't list
      reads "Pair <n>". A facility whose roster tab isn't named `Teams` sets
      `rosterSheetName` on that facility (`event-data/config/README.md`).
+   - A team event scored on games won rather than total points sets
+     `"teamScoring": "games"` on the event (not under `display`). A matchup is
+     then won on matches won, then total points, and the bracket is ranked by
+     games won, total points, head-to-head wins and head-to-head points, with
+     the table showing W, L and Pts. Without it the event scores as PickleDrive
+     did (`"points"`).
    - All three maps (`divisions`, `events`, `clubs`) are the same shape: **code → label**. Only codes that
      actually appear in `teamCode1`/`teamCode2` matter.
    - **Order comes from key order.** Categories are displayed in the order the

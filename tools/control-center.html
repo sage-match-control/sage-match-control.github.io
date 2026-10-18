@@ -2040,7 +2040,7 @@ const scoreDialog = createScoreDialog({
   onFixtureSave(s, a, b){
     const m = MATCHES.find(x => x.num === s.num && x.facility === s.facility);
     if(m){ m.t1Score = a; m.t2Score = b; m.played = a !== null; }
-    if(CURRENT_TYPE === 'team') MODEL.team = { ...MODEL.team, ...Teams.buildTeamData(MODEL.matches, MODEL.standings) };
+    if(CURRENT_TYPE === 'team') MODEL.team = { ...MODEL.team, ...Teams.buildTeamData(MODEL.matches, MODEL.standings, { scoring: CURRENT_EVENT_CONFIG && CURRENT_EVENT_CONFIG.teamScoring }) };
     finder.refresh();
   },
 });

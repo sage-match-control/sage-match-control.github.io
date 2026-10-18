@@ -191,3 +191,46 @@ test('pair labels follow the event’s own pairs, and a model without them uses 
   assert.match(noPairs, /tm-plabel">MD</);
   assert.match(noPairs, /tm-plabel">XD 2</);
 });
+
+// ---- teamScoring "games" (sage-docs/docs/specs/.../millennium-invitational-spec.md §4) ------------------------------
+
+// Alpha beats Beta three games to one on fewer points (35 to 38); Gamma hasn't played.
+const GAMES_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+const gamesModel = teamScoring => buildDayModel(
+  { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring },
+  { key: 'd', date: '2026-10-24' },
+  { isLive: true, facilities: [{ name: 'Main',
+    matchesCsv: [GAMES_HEADER,
+      '1,A v B,Court 1,1:00 PM,Court 1,A_1,a1,a2,11,B_1,b1,b2,9',
+      '2,A v B,,1:00 PM,Court 2,A_2,a3,a4,11,B_2,b3,b4,9',
+      '3,A v B,,1:00 PM,Court 3,A_3,a5,a6,11,B_3,b5,b6,9',
+      '4,A v B,,1:00 PM,Court 4,A_4,a7,a8,2,B_4,b7,b8,11'].join('\n'),
+    standingsCsv: 'teamCode,teamName,totalPoints,totalOpponentPoints,quotient,bracket\nG,Gamma,0,0,-,1\nB,Beta,38,35,1.0857,1\nA,Alpha,35,38,0.9211,1' }] },
+  { now: 0, alwaysLive: true },
+);
+
+test('teamScoring "games": the bracket table shows W, L and Pts, ranked on games', () => {
+  const m = gamesModel('games');
+  const html = groupTableHTML(m, '1', m.standings);
+  assert.match(html, /<th class="num">W<\/th><th class="num">L<\/th><th class="num">Pts<\/th>/);
+  assert.doesNotMatch(html, /Quotient/);
+  const names = [...html.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]);
+  assert.deepEqual(names, ['Alpha', 'Beta', 'Gamma']);
+  assert.match(html, /<td class="rk">1<\/td>\s*<td class="tm">Alpha[\s\S]*?<td class="num">3<\/td>\s*<td class="num">1<\/td>\s*<td class="num">35<\/td>/);
+  // Before any game, no rank numbers and the sheet's order.
+  const fresh = buildDayModel(m.event, m.day, { isLive: true, facilities: [{ name: 'Main', matchesCsv: GAMES_HEADER, standingsCsv: 'teamCode,teamName,bracket\nG,Gamma,1\nA,Alpha,1' }] }, { now: 0, alwaysLive: true });
+  const freshHtml = groupTableHTML(fresh, '1', fresh.standings);
+  assert.doesNotMatch(freshHtml, /<td class="rk">1<\/td>/);
+  assert.deepEqual([...freshHtml.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]), ['Gamma', 'Alpha']);
+});
+
+test('teamScoring "games": the matchup card and the Live row lead with games', () => {
+  const m = gamesModel('games');
+  const card = matchupCardHTML(m, m.team.matchups[0]);
+  assert.match(card, /<div class="tm-score">3 – 1<\/div><div class="tm-pairs">points 35–38<\/div>/);
+  assert.match(liveRowHTML(m, 'Court 1', m.matches[0]), /Matchup 3 – 1/);
+  // The default leads with points, as before.
+  const p = gamesModel(undefined);
+  assert.match(matchupCardHTML(p, p.team.matchups[0]), /<div class="tm-score">35 – 38<\/div><div class="tm-pairs">pairs 3–1<\/div>/);
+  assert.match(liveRowHTML(p, 'Court 1', p.matches[0]), /Matchup 35 – 38/);
+});
