@@ -588,12 +588,15 @@ body{
 .team-mark{ display:inline-block; flex:none; width:1em; height:1em; margin-right:.35em; vertical-align:-.15em; overflow:visible; }
 .team-mark path{ stroke:rgba(3,37,25,.55); stroke-width:.9; stroke-linejoin:round; }
 
-/* A team event whose teams have colours: the card runs from the left team's colour to the right team's
-   (--team-a, --team-b, set by teamTintStyle), each a 25% tint over white so navy and soft text stay readable
-   (4.5:1 or better on the darkest, purple). A side with no colour fades to white.
-   The left edge and the chip keep the bracket's colour. */
+/* A team event whose teams have colours: the card's left part is the left team's colour and its right part the
+   right team's (--team-a, --team-b, set by teamTintStyle), each a 40% tint over white, meeting in a short blend
+   across the middle fifth so the two colours read as two. A side with no colour is white.
+   The left edge and the chip keep the bracket's colour.
+   On a tint this deep the theme's soft grey text falls under 4.5:1 on the darker colours (purple, blue), so
+   inside the card --ink-soft is a near-ink (85% ink): still lighter than the names, 5:1 or better on every tint. */
 .cell.team-tint{
-  background:linear-gradient(90deg,
-    color-mix(in srgb, var(--team-a, var(--white)) 25%, var(--white)),
-    color-mix(in srgb, var(--team-b, var(--white)) 25%, var(--white)));
+  --tint-a:color-mix(in srgb, var(--team-a, var(--white)) 40%, var(--white));
+  --tint-b:color-mix(in srgb, var(--team-b, var(--white)) 40%, var(--white));
+  --ink-soft:color-mix(in srgb, var(--ink) 85%, var(--white));
+  background:linear-gradient(90deg, var(--tint-a) 0 40%, var(--tint-b) 60% 100%);
 }
