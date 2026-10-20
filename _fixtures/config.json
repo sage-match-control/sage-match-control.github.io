@@ -62,6 +62,7 @@
       "title": "Team Demo (fixture only)",
       "attendance": "desks",
       "scoreEntry": "links",
+      "lineupRules": { "pairs": { "1": "mens-high", "2": "womens", "3": "mixed" }, "advancedLevels": ["3.5"], "captainNotMixed": true },
       "display": {
         "teamColors": { "A": "#D55E00", "B": "#E69F00", "C": "#F0E442", "D": "#009E73", "E": "#0072B2", "F": "#6F3FA0", "G": "#56B4E9", "H": "#CC79A7" },
         "pairs": {

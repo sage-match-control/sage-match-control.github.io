@@ -545,6 +545,19 @@
   .organizer-text-input:focus{border-color:var(--court);}
   .organizer-text-input + .organizer-text-input{ margin-top:8px; }
   /* Issued to / Note, in the dialog the two link buttons open (link-attribution-spec.md §5.3). */
+  /* The lineup check (renderLineupCheck): a warning on a match line, and the Teams tab's list. */
+  .tm-row-meta{ flex-wrap:wrap; }
+  .lineup-warn{
+    flex-basis:100%; display:block; margin-top:2px; padding:3px 8px; border-radius:6px;
+    background:#FDEDEF; border:1px solid rgba(255,90,110,.45); color:#9A2A3A;
+    font-size:12px; font-weight:600; letter-spacing:0; text-transform:none;
+  }
+  .lineup-check{ margin:0 0 16px; padding:12px 14px; border-radius:var(--radius); background:var(--white); border:1px solid var(--line); font-size:14px; }
+  .lineup-check.has-issues{ border-color:rgba(255,90,110,.55); background:#FFF7F8; }
+  .lineup-check-title{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:4px; }
+  .lineup-check-list{ margin:8px 0; padding-left:20px; color:#9A2A3A; }
+  .lineup-check-list li{ margin:2px 0; }
+  .lineup-check-rules, .lineup-check-note{ margin-top:6px; font-size:12px; color:var(--ink-soft); }
   .link-dialog-label{ display:block; margin:12px 0 4px; font-size:13px; font-weight:600; color:var(--ink-soft); }
   .link-dialog .score-head{ margin-bottom:2px; }
   .organizer-auth-status{
@@ -1208,6 +1221,7 @@
     <div class="awards-grid" id="awardsGrid"></div>
   </div>
   <div id="teamsResults" style="display:none;">
+    <div id="lineupCheck" class="lineup-check" style="display:none;"></div>
     <div id="teamsBody"></div>
   </div>
   <div id="attendanceResults" style="display:none;">
@@ -1405,6 +1419,7 @@ import { createPoller } from '/lib/v1/data/snapshot.js';
 import { createLiveChannel } from '/lib/v1/data/live-channel.js';
 import { createAttendanceSignal } from '/lib/v1/data/attendance-signal.js';
 import { friendlyApiMessage } from '/lib/v1/data/api.js';
+import { lineupRulesFrom, lineupIssues } from '/lib/v1/domain/lineup-rules.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
 
 // The engine's views (lib/v1/views) and the day model every view reads.
@@ -1532,6 +1547,7 @@ async function loadLiveData(){
     if(model.matches.length === 0) throw new Error('No rows parsed from any facility');
 
     MODEL = model;
+    refreshLineupCheck();
     MATCHES = model.matches;
     MATCHES_BY_FACILITY = [...model.matchesByFacility].map(([name, matches]) => ({ name, matches }));
     MATCH_BY_CODE = model.matchByCode;
@@ -1981,10 +1997,65 @@ if(jumpToTodayBtn){
 }
 
 // Control Center's own additions to a ticket: click to enter the match's score, with a hint (extension point
-// `decorate`, lib/v1/views/ticket.js).
+// `decorate`, lib/v1/views/ticket.js), and a team event's lineup warnings.
 function ticketDecorate(m){
   const attrs = scoreAttrs(m);
-  return attrs ? { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) } : {};
+  const warn = lineupWarnHTML(m);
+  if(!attrs) return warn ? { metaHTML: warn } : {};
+  return { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) + warn };
+}
+
+// ---- Lineup check (events.json lineupRules; lib/v1/domain/lineup-rules.js) ----
+// A team event's lineup rules, checked against the roster: a warning on each match line in Match Finder and in
+// the score dialog, and the day's list on the Teams tab. Only operators see them; the public pages show none.
+// A warning never blocks anything: an emergency substitution may break a rule on purpose.
+let LINEUP_ISSUES = new Map();   // match number -> [{ side, team, text }]
+
+function currentLineupRules(){
+  if(CURRENT_TYPE !== 'team') return null;
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  return lineupRulesFrom(ev && ev.lineupRules);
+}
+
+function refreshLineupCheck(){
+  const rules = currentLineupRules();
+  LINEUP_ISSUES = rules && MODEL.team
+    ? lineupIssues(MODEL.matches, MODEL.team.rosterByCode, MODEL.team.rowByCode, rules)
+    : new Map();
+  renderLineupCheck(rules);
+}
+
+function lineupWarnHTML(m){
+  return (LINEUP_ISSUES.get(m.num) || []).map(i => `<span class="lineup-warn">⚠ ${escapeHtml(i.text)}</span>`).join('');
+}
+
+function renderLineupCheck(rules){
+  const el = document.getElementById('lineupCheck');
+  if(!el) return;
+  if(!rules || !MODEL.team){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const pairs = MODEL.event.pairs || {};
+  const pairList = Object.keys(rules.pairs).sort((a, b) => a - b)
+    .map(n => `${n} ${escapeHtml((pairs[n] && pairs[n].full) || 'Pair ' + n)}`).join(', ');
+  const entered = MODEL.matches.filter(m => m.t1p1 !== 'TBD' || m.t2p1 !== 'TBD').length;
+  const notes = [];
+  if(!MODEL.team.roster.length) notes.push('The roster isn’t published yet, so the gender, level and captain checks wait for it.');
+  if(Object.values(rules.pairs).includes('mens-high') && !rules.advancedLevels.length) notes.push('No advanced levels are set (<code>lineupRules.advancedLevels</code> in events.json), so Men’s High’s level isn’t checked.');
+  const nums = [...LINEUP_ISSUES.keys()].sort((a, b) => a - b);
+  const count = nums.reduce((n, k) => n + LINEUP_ISSUES.get(k).length, 0);
+  const status = count
+    ? `<b>${count} issue${count === 1 ? '' : 's'}</b> in ${nums.length} match${nums.length === 1 ? '' : 'es'}.`
+    : entered ? `Every lineup entered so far (${entered} match${entered === 1 ? '' : 'es'}) follows the rules.` : 'No lineups entered yet.';
+  const items = nums.flatMap(num => {
+    const m = MODEL.matches.find(x => x.num === num);
+    return LINEUP_ISSUES.get(num).map(i => `<li><b>#${num}</b> ${m && m.matchUp ? escapeHtml(m.matchUp) + ' · ' : ''}${escapeHtml(i.text)}</li>`);
+  }).join('');
+  el.className = `lineup-check${count ? ' has-issues' : ''}`;
+  el.innerHTML = `<div class="lineup-check-title">Lineup check</div>
+    <div class="lineup-check-status">${status}</div>
+    ${items ? `<ul class="lineup-check-list">${items}</ul>` : ''}
+    <div class="lineup-check-rules">Pairs: ${pairList}. One game per player per round. Shown to operators only.</div>
+    ${notes.map(n => `<div class="lineup-check-note">${n}</div>`).join('')}`;
+  el.style.display = '';
 }
 function consoleTicketHTML(m, teamCode, isNext){
   return Ticket.ticketHTML(m, MODEL, {
@@ -2044,6 +2115,7 @@ const scoreDialog = createScoreDialog({
       out.push('This series game isn’t needed: the series is already decided.');
     }
     if(CURRENT_TYPE === 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD')) out.push('Lineup not set for this match.');
+    (LINEUP_ISSUES.get(m.num) || []).forEach(i => out.push(`Lineup: ${i.text}.`));
     return out;
   },
   findMatch: (f, n) => MATCHES.find(x => x.num === n && x.facility === f) || null,
@@ -2056,6 +2128,7 @@ const scoreDialog = createScoreDialog({
     const m = MATCHES.find(x => x.num === s.num && x.facility === s.facility);
     if(m){ m.t1Score = a; m.t2Score = b; m.played = a !== null; }
     if(CURRENT_TYPE === 'team') MODEL.team = { ...MODEL.team, ...Teams.buildTeamData(MODEL.matches, MODEL.standings, { scoring: CURRENT_EVENT_CONFIG && CURRENT_EVENT_CONFIG.teamScoring }) };
+    refreshLineupCheck();
     finder.refresh();
   },
 });
@@ -4454,6 +4527,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   liveChannel.follow(null, null);
   MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
   MODEL = buildDayModel(eventConfig || { key: eventKey, type: CURRENT_TYPE, title: '', days: [], display: DISPLAY }, { key: '', facilities: [] }, null, { now: 0, alwaysLive: true });
+  refreshLineupCheck();
   teams.reset();
   finder.selection = null;
   FACILITIES = [];

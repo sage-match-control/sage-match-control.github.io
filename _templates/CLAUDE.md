@@ -279,6 +279,10 @@ and playoffs; its pages are the team views of the engine (§8).
      none. Pick colours that stay apart for colour-blind readers (the
      Millennium Invitational's are Okabe–Ito). Anything but `#RGB` or
      `#RRGGBB` is dropped with a console warning.
+   - A team event with lineup rules (which pair is which kind, who counts as
+     advanced, captains out of Mixed) adds `lineupRules` on the event; Control
+     Center then warns about each lineup that breaks one. The shape is in
+     `event-data/config/README.md`.
    - A team event scored on games won rather than total points sets
      `"teamScoring": "games"` on the event (not under `display`). A matchup is
      then won on matches won, then total points, and the bracket is ranked by
