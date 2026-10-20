@@ -335,6 +335,14 @@ body{
   max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
+/* A team cell's players read larger than its team name, and a side whose lineup isn't set yet keeps both
+   player lines' height ("Lineup TBD" in the first), so the board doesn't grow as lineups come in. Screen
+   only: the PDF's cells keep their own sizes (PRINT / PDF, below). */
+@media screen {
+  .cell.team .fo-name{ font-size:14px; }
+  .cell.team .fo-team + .fo-name.unknown{ font-size:12px; min-height:calc(2 * 14px * 1.3); }
+}
+
 .fo-center{
   flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
   padding:0 2px; min-width:52px;
@@ -471,6 +479,10 @@ body{
   .fo-name{ font-size:11.5px; line-height:1.2; }
 
   .fo-team{ font-size:11.5px; }
+
+  .cell.team .fo-name{ font-size:13px; }
+
+  .cell.team .fo-team + .fo-name.unknown{ font-size:11.5px; min-height:calc(2 * 13px * 1.3); }
 
   .fo-center{ align-self:center; min-width:0; padding:1px 0; }
 
