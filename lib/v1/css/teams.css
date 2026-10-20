@@ -552,6 +552,7 @@ table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2
    phone it wraps at the separators (each label is held to its number), so it never runs under the score. */
 .tm-stats{ margin-top:3px; font-size:10.5px; font-weight:600; line-height:1.35; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
 
-/* A bracket that is the only one (the Millennium Invitational has one) keeps a table's width instead of
-   stretching across the page, where its numbers drift far from the team names. */
-.group-grid > .group-card:only-child{ max-width:640px; }
+/* An event with a single bracket (the Millennium Invitational) keeps its whole Standings view, the bracket
+   table and the playoff cards, at a readable width instead of stretching across the page, where the numbers
+   drift far from the team names. Several brackets keep the full width their grid needs. */
+.team-standings.one-bracket{ max-width:720px; margin:0 auto; }
