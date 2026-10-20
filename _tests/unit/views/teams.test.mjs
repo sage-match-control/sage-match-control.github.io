@@ -308,3 +308,18 @@ test('cardBadges: a page’s badges go in each matchup card’s header, in every
   assert.match(teamStandingsHTML(model, { openGroups: new Set([mu.group]) }, badge), /<span class="b">/);
   assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), {}), /class="b"/);
 });
+
+test('rowNotes: a page’s note goes on every match line, the Standings tab’s read-only cards included', () => {
+  const mu = model.team.matchups.find(x => x.stage === null && x.group !== null);
+  const notes = { rowNotes: m => `<span class="n">#${m.num}</span>` };
+  const count = html => (html.match(/<span class="n">/g) || []).length;
+  // A bracket matchup in Standings, expanded: one note per match.
+  const standings = teamStandingsHTML(model, { openGroups: new Set([mu.group]), expanded: new Set([mu.matchUp]) }, notes);
+  assert.match(standings, new RegExp(`<span class="n">#${mu.matches[0].num}</span>`));
+  // Read-only and interactive cards alike, beside decorateRow's own meta in the interactive one.
+  assert.equal(count(matchupCardHTML(model, mu, {}, new Set(), notes)), mu.matches.length);
+  const both = matchupCardHTML(model, mu, { interactive: true }, new Set(), { ...notes, decorateRow: () => ({ metaHTML: '<i>hint</i>' }) });
+  assert.equal(count(both), mu.matches.length);
+  assert.match(both, /<i>hint<\/i><span class="n">/);
+  assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), {}), /class="n"/);
+});

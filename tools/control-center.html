@@ -553,7 +553,10 @@
     background:#FDEDEF; border:1px solid rgba(255,90,110,.45); color:#9A2A3A;
     font-size:12px; font-weight:600; letter-spacing:0; text-transform:none;
   }
-  .tm-pill.lineup-issues{ background:#FDEDEF; color:#9A2A3A; border:1px solid rgba(255,90,110,.45); }
+  .tm-pill.lineup-issues{ background:#C8283E; color:#fff; border:1px solid #C8283E; }
+  /* A matchup card with a lineup issue (its badge, lineupCardBadges) stands out in every view: a red edge and header. */
+  .tm-card:has(.tm-pill.lineup-issues){ border-color:#E05A6C; border-left-color:#C8283E; box-shadow:var(--card-shadow), 0 0 0 2px rgba(200,40,62,.28); }
+  .tm-card:has(.tm-pill.lineup-issues) .tm-head{ background:#FDEDEF; padding-bottom:10px; }
   .tm-pill.lineup-hidden{ background:var(--paper-dim); color:var(--ink-soft); border:1px dashed var(--line); }
   .lineup-check{ margin:0 0 16px; padding:12px 14px; border-radius:var(--radius); background:var(--white); border:1px solid var(--line); font-size:14px; }
   .lineup-check.has-issues{ border-color:rgba(255,90,110,.55); background:#FFF7F8; }
@@ -1696,8 +1699,9 @@ const teams = createTeams({
   rostersEl: document.getElementById('teamsBody'),
   saveSearch: saveSearchState,
   renderStandings: () => renderStandings(),
-  decorateRow: ticketDecorate,
+  decorateRow: teamRowDecorate,
   cardBadges: lineupCardBadges,
+  rowNotes: lineupWarnHTML,
   expandAllClass: 'organizer-secondary-btn',
   onTabsChanged: () => { if(typeof syncViewTabsScroll === 'function') syncViewTabsScroll(); },
 });
@@ -2007,6 +2011,13 @@ function ticketDecorate(m){
   const warn = lineupWarnHTML(m);
   if(!attrs) return warn ? { metaHTML: warn } : {};
   return { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) + warn };
+}
+
+// A team match line's click-to-score (Match Finder only); its lineup warnings come through rowNotes instead, so
+// they show on every matchup card, the Standings tab's included.
+function teamRowDecorate(m){
+  const attrs = scoreAttrs(m);
+  return attrs ? { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) } : {};
 }
 
 // ---- Lineup check (events.json lineupRules; lib/v1/domain/lineup-rules.js) ----
