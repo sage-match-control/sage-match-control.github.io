@@ -209,14 +209,14 @@ const gamesModel = teamScoring => buildDayModel(
   { now: 0, alwaysLive: true },
 );
 
-test('teamScoring "games": the bracket table shows W, L and Pts, ranked on games', () => {
+test('teamScoring "games": the bracket table shows W, L, PF, PA and the quotient, ranked on games', () => {
   const m = gamesModel('games');
   const html = groupTableHTML(m, '1', m.standings);
-  assert.match(html, /<th class="num">W<\/th><th class="num">L<\/th><th class="num">Pts<\/th>/);
-  assert.doesNotMatch(html, /Quotient/);
+  assert.match(html, /<th class="num">W<\/th><th class="num">L<\/th><th class="num">PF<\/th><th class="num">PA<\/th><th class="num">Quotient<\/th>/);
   const names = [...html.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]);
   assert.deepEqual(names, ['Alpha', 'Beta', 'Gamma']);
-  assert.match(html, /<td class="rk">1<\/td>\s*<td class="tm">Alpha[\s\S]*?<td class="num">3<\/td>\s*<td class="num">1<\/td>\s*<td class="num">35<\/td>/);
+  assert.match(html, /<td class="rk">1<\/td>\s*<td class="tm">Alpha[\s\S]*?<td class="num">3<\/td>\s*<td class="num">1<\/td>\s*<td class="num">35<\/td>\s*<td class="num">38<\/td>\s*<td class="q">0\.9211<\/td>/);
+  assert.match(html, /<td class="tm">Gamma[\s\S]*?<td class="num">0<\/td>\s*<td class="num">0<\/td>\s*<td class="q">—<\/td>/, 'no games yet: no quotient');
   // Before any game, no rank numbers and the sheet's order.
   const fresh = buildDayModel(m.event, m.day, { isLive: true, facilities: [{ name: 'Main', matchesCsv: GAMES_HEADER, standingsCsv: 'teamCode,teamName,bracket\nG,Gamma,1\nA,Alpha,1' }] }, { now: 0, alwaysLive: true });
   const freshHtml = groupTableHTML(fresh, '1', fresh.standings);
@@ -228,10 +228,13 @@ test('teamScoring "games": the matchup card and the Live row lead with games', (
   const m = gamesModel('games');
   const card = matchupCardHTML(m, m.team.matchups[0]);
   assert.match(card, /<div class="tm-score">3 – 1<\/div><div class="tm-pairs">points 35–38<\/div>/);
+  // Each side's points for, points against and quotient in the matchup, under its name.
+  assert.match(card, /Alpha[\s\S]*?<div class="tm-stats">PF&nbsp;35 · PA&nbsp;38 · Q&nbsp;0\.9211<\/div>[\s\S]*?Beta[\s\S]*?<div class="tm-stats">PF&nbsp;38 · PA&nbsp;35 · Q&nbsp;1\.0857<\/div>/);
   assert.match(liveRowHTML(m, 'Court 1', m.matches[0]), /Matchup 3 – 1/);
-  // The default leads with points, as before.
+  // The default leads with points, as before, and its card carries no per-side line.
   const p = gamesModel(undefined);
   assert.match(matchupCardHTML(p, p.team.matchups[0]), /<div class="tm-score">35 – 38<\/div><div class="tm-pairs">pairs 3–1<\/div>/);
+  assert.doesNotMatch(matchupCardHTML(p, p.team.matchups[0]), /tm-stats/);
   assert.match(liveRowHTML(p, 'Court 1', p.matches[0]), /Matchup 35 – 38/);
 });
 

@@ -517,3 +517,20 @@ test('teamScoring reaches the day model and decides the podium', () => {
   assert.equal(points.team.scoring, 'points');
   assert.equal(A.buildTeamPodium(points).gold.teamName, 'Beta');
 });
+
+test('a playoff side with no team yet reads its event’s own placeholder when it has one, else "Seed n"', () => {
+  const rows = new Map([['Red', { teamCode: 'Red', teamName: 'Red' }]]);
+  const labels = { 'Fi-1': 'Rank 1', 'Br-1': 'Rank 3' };
+  assert.equal(T.sideLabel('Fi-1', rows, labels), 'Rank 1 · TBD');
+  assert.equal(T.sideLabel('Br-1', rows, labels), 'Rank 3 · TBD');
+  assert.equal(T.sideLabel('Br-2', rows, labels), 'Seed 2 · TBD', 'a slot the map lacks keeps "Seed n"');
+  assert.equal(T.sideLabel('Fi-1', rows), 'Seed 1 · TBD', 'no map, as before');
+  assert.equal(T.sideLabel('Red', rows, labels), 'Red');
+  // Once the organiser types a team into the slot, its name wins.
+  const seeded = new Map([...rows, ['Fi-1', { teamCode: 'Fi-1', teamName: 'Red' }]]);
+  assert.equal(T.sideLabel('Fi-1', seeded, labels), 'Red');
+  // The board carries the same placeholders.
+  const snap = loadSnapshot('team-demo-2026');
+  const all = G.buildScheduleData(snap, null, 'team', { seedLabels: { 'SF-4': 'Rank 4' } }).rows.flatMap(r => [...r.courts.filter(Boolean), ...r.unplaced]);
+  assert.equal(all.find(m => m.num === 37).team2, 'Rank 4 · TBD');
+});

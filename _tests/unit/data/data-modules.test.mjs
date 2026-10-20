@@ -723,3 +723,15 @@ test('eventConfigFrom reads teamScoring: "points" unless the event says "games"'
   assert.equal(warn.mock.calls.length, 1);
   assert.equal(warn.mock.calls[0].arguments[0], 'events.json: teamScoring for odd must be "points" or "games"; using "points"');
 });
+
+test('eventConfigFrom gives a team event its playoff placeholders from display.seedLabels, labels only', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const registry = { events: {
+    t: { type: 'team', display: { seedLabels: { 'Fi-1': 'Rank 1', 'Br-1': ' Rank 3 ', 'Br-2': '', 'Fi-2': 2 } } },
+    plain: { type: 'team' },
+  } };
+  assert.deepEqual(eventConfigFrom(registry, 't').seedLabels, { 'Fi-1': 'Rank 1', 'Br-1': 'Rank 3' });
+  assert.equal(warn.mock.callCount(), 2, 'the empty and the numeric label each warn');
+  assert.deepEqual(eventConfigFrom(registry, 'plain').seedLabels, {});
+});
