@@ -330,6 +330,7 @@
     color:var(--ink-soft);
   }
   .day-picker select{
+    max-width:100%;
     font-family:'Barlow Condensed',sans-serif;
     font-size:12.5px;
     font-weight:600;
@@ -2099,7 +2100,7 @@ const scoreDialog = createScoreDialog({
       ? [m.matchUp, pairLabel(m.t1, true, MODEL.event.pairs || undefined)].filter(Boolean).join(' · ')
       : [Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES), roundLabel(Codes.parseCode(code, CURRENT_TYPE).rest) || 'Round Robin'].filter(Boolean).join(' · ');
     const side = (c, p1, p2) => ({
-      name: team ? (teams.nameOf(sideOf(c)) || c) : c,
+      name: team ? (teams.nameOf(sideOf(c)) || (Teams.stageOf(sideOf(c)) !== null ? Teams.sideLabel(sideOf(c), MODEL.team.rowByCode, MODEL.event && MODEL.event.seedLabels) : c)) : c,
       code: c,
       players: p1 === 'TBD' ? null : [p1, p2],
       missing: team ? 'Lineup not set' : 'To be decided',
@@ -4478,8 +4479,18 @@ function eventStartDate(ev){
 function eventPickerLabel(key){
   const ev = EVENTS_REGISTRY.get(key) || {};
   const start = eventStartDate(ev);
-  const title = ev.title || key;
+  const title = shortTitle(ev.title || key);
   return start ? `${start} ${title}` : title;
+}
+
+// A title as the event picker shows it: at most EVENT_PICKER_TITLE_MAX characters, cut at a word with "…", so a
+// long name doesn't widen the picker. The option's tooltip keeps the full name (renderEventPicker).
+const EVENT_PICKER_TITLE_MAX = 28;
+function shortTitle(title){
+  if(title.length <= EVENT_PICKER_TITLE_MAX) return title;
+  const cut = title.slice(0, EVENT_PICKER_TITLE_MAX + 1);
+  const atWord = cut.lastIndexOf(' ');
+  return (atWord > 12 ? cut.slice(0, atWord) : cut.slice(0, EVENT_PICKER_TITLE_MAX)).replace(/[\s,·-]+$/, '') + '…';
 }
 
 // Newest event first; events with no date go last. Array.sort is stable, so
@@ -4498,7 +4509,7 @@ function renderEventPicker(){
   if(!eventPickerEl) return;
   const keys = Array.from(EVENTS_REGISTRY.keys());
   eventPickerEl.innerHTML = keys.length
-    ? keys.map(k => `<option value="${escapeHtml(k)}">${escapeHtml(eventPickerLabel(k))}</option>`).join('')
+    ? keys.map(k => `<option value="${escapeHtml(k)}" title="${escapeHtml((EVENTS_REGISTRY.get(k) || {}).title || k)}">${escapeHtml(eventPickerLabel(k))}</option>`).join('')
     : '<option value="">No registered events</option>';
 }
 

@@ -551,3 +551,7 @@ table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2
 /* teamScoring "games": a side's points for, points against and quotient in its matchup, under its name. On a
    phone it wraps at the separators (each label is held to its number), so it never runs under the score. */
 .tm-stats{ margin-top:3px; font-size:10.5px; font-weight:600; line-height:1.35; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+/* A bracket that is the only one (the Millennium Invitational has one) keeps a table's width instead of
+   stretching across the page, where its numbers drift far from the team names. */
+.group-grid > .group-card:only-child{ max-width:640px; }
