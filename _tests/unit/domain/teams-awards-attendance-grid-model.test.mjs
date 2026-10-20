@@ -471,23 +471,38 @@ test('teamGameRecords: W, L, PF and PA from played group matches only', () => {
   assert.equal(recs.has('Fi-A'), false);
 });
 
-test('teamScoring "games": bracket ranking by wins, total points, head-to-head wins, head-to-head points', () => {
+test('teamScoring "games": bracket ranking by wins, then the organiser two-team and three-team tiebreakers', () => {
   const rows = (...codes) => codes.map(teamCode => ({ teamCode, pf: 0, quotient: null }));
-  const rank = (codes, matches) => T.teamRankBracket(rows(...codes), matches, 'games').map(r => r.teamCode);
-  // 1–2. C wins two; A and B one each, and B has more total points (16 to 14).
-  assert.deepEqual(rank(['A', 'B', 'C'], [
-    tm('C_1', 11, 'A_1', 0), tm('C_2', 11, 'B_2', 0), tm('A_3', 11, 'B_3', 5), tm('B_4', 11, 'A_4', 3),
-  ]), ['C', 'B', 'A']);
-  // 3. A, B and C each win two and score 32; among themselves A won two, B one, C none.
-  assert.deepEqual(rank(['C', 'B', 'A', 'D'], [
-    tm('A_1', 11, 'B_1', 9), tm('A_2', 11, 'C_2', 1), tm('B_3', 11, 'C_3', 0),
-    tm('D_1', 12, 'A_3', 10), tm('B_4', 12, 'D_2', 10), tm('C_4', 11, 'D_3', 9), tm('C_1', 20, 'D_4', 18),
-  ]), ['A', 'B', 'C', 'D']);
-  // 4. A and B each win one, score 23 and beat each other once: A won more points against B (20 to 13).
+  const ranked = (codes, matches) => T.teamRankBracket(rows(...codes), matches, 'games');
+  const rank = (codes, matches) => ranked(codes, matches).map(r => r.teamCode);
+  // Two level on wins: head-to-head wins first, though B has more points and the better quotient.
   assert.deepEqual(rank(['B', 'A', 'C'], [
-    tm('A_1', 11, 'B_1', 2), tm('B_2', 11, 'A_2', 9), tm('C_3', 11, 'A_3', 3), tm('C_4', 12, 'B_4', 10),
-  ]), ['C', 'A', 'B']);
-  // Level on all four, or nothing played: the sheet's order. A playoff match counts for nothing.
+    tm('A_1', 11, 'B_1', 9), tm('A_2', 11, 'C_1', 10), tm('B_2', 11, 'C_2', 0), tm('B_3', 11, 'C_3', 0),
+  ]), ['A', 'B', 'C']);
+  // Two level on wins and head-to-head wins (1–1): head-to-head quotient (A 20–13 over B), not the overall one.
+  assert.deepEqual(rank(['B', 'A', 'C'], [
+    tm('A_1', 11, 'B_1', 2), tm('B_2', 11, 'A_2', 9), tm('B_3', 11, 'C_3', 0), tm('A_3', 11, 'C_4', 10),
+  ]), ['A', 'B', 'C']);
+  // Three level on wins (a cycle): the overall quotient, C 24–15, B 24–24, A 11–20, though B and C have equal points.
+  assert.deepEqual(rank(['A', 'B', 'C'], [
+    tm('A_1', 11, 'B_1', 9), tm('B_2', 15, 'C_2', 13), tm('C_3', 11, 'A_3', 0),
+  ]), ['C', 'B', 'A']);
+  // Three level on wins, two of them on the quotient too (B and C, 27–16): those two go to head-to-head, B beat C.
+  const fourth = [
+    tm('A_1', 11, 'B_1', 5), tm('B_2', 11, 'C_2', 5), tm('C_3', 11, 'A_3', 5),
+    tm('A_4', 11, 'D_1', 4), tm('B_4', 11, 'D_2', 0), tm('C_4', 11, 'D_3', 0),
+  ];
+  assert.deepEqual(rank(['C', 'A', 'B', 'D'], fourth), ['B', 'C', 'A', 'D']);
+  assert.deepEqual(ranked(['C', 'A', 'B', 'D'], fourth).ties, [], 'every tie settled');
+  // Three level on everything, the round robin over: the sheet's order, flagged for a round-robin playoff.
+  const cycle = [tm('A_1', 11, 'B_1', 0), tm('B_2', 11, 'C_2', 0), tm('C_3', 11, 'A_3', 0)];
+  assert.deepEqual(rank(['B', 'C', 'A'], cycle), ['B', 'C', 'A']);
+  assert.deepEqual(ranked(['B', 'C', 'A'], cycle).ties, [{ codes: ['B', 'C', 'A'], playoff: 'round-robin' }]);
+  // Two level on everything: flagged for a one-game playoff, but only once all their group matches are played.
+  const split = [tm('A_1', 11, 'B_1', 5), tm('B_2', 11, 'A_2', 5)];
+  assert.deepEqual(ranked(['B', 'A'], split).ties, [{ codes: ['B', 'A'], playoff: 'game' }]);
+  assert.deepEqual(ranked(['B', 'A'], [...split, tm('A_3', null, 'B_3', null)]).ties, [], 'mid-bracket: no flag');
+  // Nothing played: the sheet's order. A playoff match counts for nothing.
   assert.deepEqual(rank(['B', 'A'], []), ['B', 'A']);
   assert.deepEqual(rank(['A', 'B'], [tm('Fi-A_1', 0, 'Fi-B_1', 11)]), ['A', 'B']);
   // The default ranking is unchanged by the new parameter.

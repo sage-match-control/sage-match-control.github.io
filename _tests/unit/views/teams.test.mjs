@@ -224,6 +224,31 @@ test('teamScoring "games": the bracket table shows W, L, PF, PA and the quotient
   assert.deepEqual([...freshHtml.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]), ['Gamma', 'Alpha']);
 });
 
+test('teamScoring "games": a tie no tiebreaker settles shares its rank and reads Tied', () => {
+  const day = matchesCsv => buildDayModel(
+    { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games' },
+    { key: 'd', date: '2026-10-24' },
+    { isLive: true, facilities: [{ name: 'Main', matchesCsv,
+      standingsCsv: 'teamCode,teamName,bracket\nA,Alpha,1\nB,Beta,1\nC,Gamma,1' }] },
+    { now: 0, alwaysLive: true },
+  );
+  // A beats B, B beats C, C beats A, each 11–0: level on wins and on the quotient.
+  const cycle = [GAMES_HEADER,
+    '1,A v B,,1:00 PM,Court 1,A_1,a1,a2,11,B_1,b1,b2,0',
+    '2,B v C,,1:20 PM,Court 1,B_1,b1,b2,11,C_1,c1,c2,0',
+    '3,A v C,,1:40 PM,Court 1,C_1,c1,c2,11,A_1,a1,a2,0'];
+  const ranks = html => [...html.matchAll(/<td class="rk">(\d+)<\/td>/g)].map(x => x[1]);
+  const m = day(cycle.join('\n'));
+  const html = groupTableHTML(m, '1', m.standings);
+  assert.deepEqual(ranks(html), ['1', '1', '1']);
+  assert.equal((html.match(/<span class="tie-pill"[^>]*>Tied · playoff round robin<\/span>/g) || []).length, 3);
+  // Before the last game the same standings carry no flag, and the ranks run on.
+  const mid = day([...cycle.slice(0, 3), '3,A v C,,1:40 PM,Court 1,C_1,c1,c2,,A_1,a1,a2,'].join('\n'));
+  const midHtml = groupTableHTML(mid, '1', mid.standings);
+  assert.doesNotMatch(midHtml, /tie-pill/);
+  assert.deepEqual(ranks(midHtml), ['1', '2', '3']);
+});
+
 test('teamScoring "games": the matchup card and the Live row lead with games', () => {
   const m = gamesModel('games');
   const card = matchupCardHTML(m, m.team.matchups[0]);
