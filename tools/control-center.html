@@ -553,6 +553,8 @@
     background:#FDEDEF; border:1px solid rgba(255,90,110,.45); color:#9A2A3A;
     font-size:12px; font-weight:600; letter-spacing:0; text-transform:none;
   }
+  .tm-pill.lineup-issues{ background:#FDEDEF; color:#9A2A3A; border:1px solid rgba(255,90,110,.45); }
+  .tm-pill.lineup-hidden{ background:var(--paper-dim); color:var(--ink-soft); border:1px dashed var(--line); }
   .lineup-check{ margin:0 0 16px; padding:12px 14px; border-radius:var(--radius); background:var(--white); border:1px solid var(--line); font-size:14px; }
   .lineup-check.has-issues{ border-color:rgba(255,90,110,.55); background:#FFF7F8; }
   .lineup-check-title{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:4px; }
@@ -1695,6 +1697,7 @@ const teams = createTeams({
   saveSearch: saveSearchState,
   renderStandings: () => renderStandings(),
   decorateRow: ticketDecorate,
+  cardBadges: lineupCardBadges,
   expandAllClass: 'organizer-secondary-btn',
   onTabsChanged: () => { if(typeof syncViewTabsScroll === 'function') syncViewTabsScroll(); },
 });
@@ -2024,6 +2027,17 @@ function refreshLineupCheck(){
     ? lineupIssues(MODEL.matches, MODEL.team.rosterByCode, MODEL.team.rowByCode, rules)
     : new Map();
   renderLineupCheck(rules);
+}
+
+// A matchup card's lineup badges: how many lineup issues its matches have, and, for an event with lineupReveal,
+// "Lineup hidden" while a lineup that is in isn't ticked to show on the public pages (lineupShown).
+function lineupCardBadges(mu){
+  const issues = mu.matches.reduce((n, m) => n + (LINEUP_ISSUES.get(m.num) || []).length, 0);
+  const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
+  const reveal = !!(ev && ev.lineupReveal === true);
+  const hidden = reveal && mu.matches.some(m => m.lineupShown !== true && (m.t1p1 !== 'TBD' || m.t2p1 !== 'TBD'));
+  return (issues ? `<span class="tm-pill lineup-issues" title="See each match below, or the Teams tab's Lineup check">⚠ ${issues} lineup issue${issues === 1 ? '' : 's'}</span>` : '') +
+    (hidden ? '<span class="tm-pill lineup-hidden" title="Not shown on the Hub or the board until its row is ticked in the workbook">Lineup hidden</span>' : '');
 }
 
 function lineupWarnHTML(m){

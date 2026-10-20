@@ -735,3 +735,8 @@ test('eventConfigFrom gives a team event its playoff placeholders from display.s
   assert.equal(warn.mock.callCount(), 2, 'the empty and the numeric label each warn');
   assert.deepEqual(eventConfigFrom(registry, 'plain').seedLabels, {});
 });
+
+test('eventConfigFrom: lineupReveal is true only when events.json says true', () => {
+  const registry = { events: { on: { type: 'team', lineupReveal: true }, odd: { type: 'team', lineupReveal: 'yes' }, off: { type: 'team' } } };
+  assert.deepEqual(['on', 'odd', 'off'].map(k => eventConfigFrom(registry, k).lineupReveal), [true, false, false]);
+});

@@ -275,3 +275,11 @@ test('teamColors: every team name has its mark and a matchup card is tinted betw
   }
   assert.doesNotMatch(teamStandingsHTML(model, {}, {}), /team-mark/, 'PickleDrive lists no colours');
 });
+
+test('cardBadges: a page’s badges go in each matchup card’s header, in every view', () => {
+  const mu = model.team.matchups.find(x => x.stage === null && x.group !== null);
+  const badge = { cardBadges: m => `<span class="b">${m.matchUp}</span>` };
+  assert.match(matchupCardHTML(model, mu, {}, new Set(), badge), new RegExp(`<div class="tm-badges"><span class="b">${mu.matchUp}</span>`));
+  assert.match(teamStandingsHTML(model, { openGroups: new Set([mu.group]) }, badge), /<span class="b">/);
+  assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), {}), /class="b"/);
+});

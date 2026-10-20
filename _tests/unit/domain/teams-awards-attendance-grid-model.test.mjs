@@ -534,3 +534,40 @@ test('a playoff side with no team yet reads its event’s own placeholder when i
   const all = G.buildScheduleData(snap, null, 'team', { seedLabels: { 'SF-4': 'Rank 4' } }).rows.flatMap(r => [...r.courts.filter(Boolean), ...r.unplaced]);
   assert.equal(all.find(m => m.num === 37).team2, 'Rank 4 · TBD');
 });
+
+// ---- lineupReveal: a public page shows a lineup only once its row is ticked (lineupShown) ----
+const REVEAL_CSV = [
+  'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score,lineupShown',
+  '1,Red v Orange,,1:00 PM,Court 1,Red_1,JR,Donn,,Orange_1,Bato,Bruce,,TRUE',
+  '2,Red v Orange,,1:00 PM,Court 2,Red_2,Mac,Tey,,Orange_2,Martin,Tina,,FALSE',
+  '3,Red v Orange,,1:30 PM,Court 1,Red_3,Anj,Kookee,,Orange_3,Inday,Angelika,,',
+].join('\n');
+const revealSnap = { isLive: true, facilities: [{ name: 'Main', matchesCsv: REVEAL_CSV, standingsCsv: 'teamCode,teamName,bracket\nRed,Red,1\nOrange,Orange,1' }] };
+const revealEvent = { key: 'e', type: 'team', title: 'E', display: {}, days: [], lineupReveal: true };
+
+test('lineupShown: read from the matches tab, true only for a ticked box; null without the column', () => {
+  const ms = rowsToMatches(parseCSV(REVEAL_CSV));
+  assert.deepEqual(ms.map(m => m.lineupShown), [true, false, false]);
+  for (const v of ['TRUE', 'true', 'Yes', 'y', '1', 'x', '✓']) assert.equal(rowsToMatches(parseCSV(REVEAL_CSV.replace(',TRUE', ',' + v))).find(m => m.num === 1).lineupShown, true, v);
+  const noColumn = 'matchNumber,teamCode1,team1Player1,team1Player2,teamCode2,team2Player1,team2Player2\n1,Red_1,JR,Donn,Orange_1,Bato,Bruce';
+  assert.equal(rowsToMatches(parseCSV(noColumn))[0].lineupShown, null);
+});
+
+test('hideUnshownLineups: the model hides each unticked lineup, in every list; without it, nothing changes', () => {
+  const pub = buildDayModel(revealEvent, { key: 'd' }, revealSnap, { alwaysLive: true, hideUnshownLineups: true });
+  const at = (list, n) => list.find(m => m.num === n);
+  assert.deepEqual([at(pub.matches, 1).t1p1, at(pub.matches, 1).t2p2], ['JR', 'Bruce'], 'ticked: shown');
+  for (const n of [2, 3]) assert.deepEqual(['t1p1', 't1p2', 't2p1', 't2p2'].map(k => at(pub.matches, n)[k]), ['TBD', 'TBD', 'TBD', 'TBD'], `#${n}`);
+  assert.equal(at(pub.matchesByFacility.get('Main'), 2).t1p1, 'TBD', 'Live Matches reads the same');
+  const cc = buildDayModel(revealEvent, { key: 'd' }, revealSnap, { alwaysLive: true });
+  assert.equal(at(cc.matches, 2).t1p1, 'Mac', 'Control Center sees every lineup');
+  assert.equal(at(cc.matches, 2).lineupShown, false);
+});
+
+test('hideUnshownLineups: the board hides each unticked lineup too', () => {
+  const rows = data => data.rows.flatMap(r => [...r.courts.filter(Boolean), ...r.unplaced]);
+  const shown = rows(G.buildScheduleData(revealSnap, null, 'team', { hideUnshownLineups: true }));
+  assert.equal(shown.find(m => m.num === 1).p1a, 'JR');
+  assert.deepEqual(['p1a', 'p1b', 'p2a', 'p2b'].map(k => shown.find(m => m.num === 2)[k]), [null, null, null, null]);
+  assert.equal(rows(G.buildScheduleData(revealSnap, null, 'team')).find(m => m.num === 2).p1a, 'Mac', 'off: as before');
+});

@@ -134,6 +134,7 @@ export function eventConfig(eventKey) {
     teamScoring: e.teamScoring === 'games' ? 'games' : 'points',
     teamColors: (e.display && e.display.teamColors) || {},
     seedLabels: (e.display && e.display.seedLabels) || {},
+    lineupReveal: e.lineupReveal === true,
   };
 }
 
