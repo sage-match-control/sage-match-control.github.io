@@ -62,4 +62,9 @@ export const ACCEPTED = [
     case: /^cc-signed-in\/[^/]+\/attendance\//, kind: 'both', row: 'attendance-push D8',
     reason: 'with the live Worker unreachable the list says live updates are off',
   },
+  // ---- playoff bracket chart (sage-docs/docs/specs/.../standings-bracket-chart-spec.md D4, D11) ----
+  {
+    case: /^(std-index|cc)\/(piggleball-2026|pickle-for-sight-2026)\/standings(-category-2)?\//, kind: 'both', row: 'bracket-chart D11',
+    reason: 'a category with two or more playoff rounds has a List / Bracket switch under its title',
+  },
 ];

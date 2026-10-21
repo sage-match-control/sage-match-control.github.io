@@ -608,3 +608,240 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
     gap:20px;
   }
 }
+
+/* ---- bracket chart (standings-bracket-chart-spec) ---- */
+/* The List / Bracket switch under a category's title. */
+.standings-view-switch{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  margin-top:6px;
+}
+
+.standings-view-btn{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:3px 9px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--navy);
+  cursor:pointer;
+}
+
+.standings-view-btn:hover{border-color:var(--navy);}
+
+.standings-view-btn[aria-pressed="true"]{background:var(--navy); color:var(--white); border-color:var(--navy);}
+
+/* The chart: cards placed in pixels (views/bracket.js's BRACKET_DIMS), joined by lines. */
+.bk{position:relative;}
+
+.bk-lines{position:absolute; inset:0;}
+
+.bk-lines path{fill:none; stroke:var(--line); stroke-width:1.5;}
+
+.bk-caption{
+  position:absolute;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+}
+
+.bk-node{position:absolute; width:172px;}
+
+.bk-card{
+  box-sizing:border-box;
+  height:80px;
+  background:var(--white);
+  border-radius:10px;
+  box-shadow:var(--card-shadow);
+  overflow:hidden;
+}
+
+.bk-node .bk-card:not(:last-child){margin-bottom:8px;}
+
+.bk-head{
+  box-sizing:border-box;
+  height:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:6px;
+  padding:0 8px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:9.5px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+.bk-card--final .bk-head{background:var(--navy); color:var(--white);}
+
+.bk-seat{
+  box-sizing:border-box;
+  height:30px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:0 8px;
+  border-top:1px solid var(--line);
+  font-family:'Inter',sans-serif;
+  font-weight:700;
+  font-size:11.5px;
+  color:var(--ink);
+}
+
+.bk-seat.win{background:rgba(52,199,120,.16);}
+
+.bk-seat.loss{background:rgba(255,90,110,.11);}
+
+.bk-names{flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+.bk-short{display:none;}
+
+.bk-seat--open .bk-names{color:var(--muted); font-style:italic; font-weight:600;}
+
+.bk-tag{
+  flex:none;
+  font-size:10px;
+  font-weight:600;
+  color:var(--muted);
+  background:var(--paper-dim);
+  border-radius:4px;
+  padding:0 4px;
+  white-space:nowrap;
+}
+
+.bk-score{font-family:'Archivo Black',sans-serif; min-width:18px; text-align:right;}
+
+.bk-card--live{outline:2px solid var(--court); outline-offset:-2px;}
+
+.bk-card.not-needed{opacity:.4; filter:grayscale(1);}
+
+/* A chart wider than the default column widens its column (the shells give .standings-col its width). */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop .standings-col.standings-col--bracket{flex:0 0 var(--bk-col-w); max-width:none;}
+}
+
+/* The same cards one round at a time, for a screen the chart does not fit. */
+.bk-chips{display:flex; gap:6px; overflow-x:auto; margin-bottom:8px; padding-bottom:2px;}
+
+.bk-chip,
+.bk-full-open{
+  flex:none;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--navy);
+  cursor:pointer;
+}
+
+.bk-chip.active{background:var(--navy); color:var(--white); border-color:var(--navy);}
+
+.bk-track{
+  position:relative;
+  display:flex;
+  gap:12px;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* The next round peeking in is the cue to scroll; a scrollbar under each strip is not needed. */
+.bk-chips, .bk-track{scrollbar-width:none;}
+
+.bk-chips::-webkit-scrollbar, .bk-track::-webkit-scrollbar{display:none;}
+
+.bk-round{flex:0 0 82%; scroll-snap-align:start;}
+
+.bk-rounds .bk-card{position:relative; margin-bottom:10px;}
+
+.bk-round-caption{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+  margin:4px 0 6px;
+}
+
+.bk-full-open{display:block; margin:6px 0 0 auto;}
+
+/* Full tree: the whole chart on a layer over the page, zoomed and panned by views/bracket-full.js.
+   The layer is a div: bk-full is also the class of the span holding a pair's full names. */
+div.bk-full{
+  position:fixed;
+  inset:0;
+  height:100dvh;
+  z-index:1000;
+  background:var(--paper);
+  display:flex;
+  flex-direction:column;
+}
+
+.bk-full-bar{
+  flex:none;
+  box-sizing:border-box;
+  height:48px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:0 10px;
+  background:var(--white);
+  border-bottom:1px solid var(--line);
+}
+
+.bk-full-title{
+  flex:1;
+  min-width:0;
+  text-align:center;
+  font-family:'Archivo Black',sans-serif;
+  font-size:13px;
+  text-transform:uppercase;
+  color:var(--navy);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.bk-full-close,
+.bk-full-fit{
+  flex:none;
+  min-width:36px;
+  min-height:32px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--white);
+  color:var(--navy);
+  cursor:pointer;
+}
+
+.bk-full-stage{flex:1; position:relative; overflow:hidden; touch-action:none;}
+
+.bk-full-canvas{position:absolute; left:0; top:0; transform-origin:0 0; padding:16px;}
+
+/* Zoomed out far enough that the names would be unreadable: surnames, larger. */
+.bk-full--compact .bk-full,
+.bk-full--compact .bk-tag{display:none;}
+
+.bk-full--compact .bk-short{display:inline; font-size:20px;}
+
+.bk-full--compact .bk-head{font-size:16px;}

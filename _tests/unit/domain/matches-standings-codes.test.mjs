@@ -97,6 +97,13 @@ test('rowsToStandings reads wins, loss, quotient and bracket; quotient is null w
   assert.deepEqual([rows[0].teamName, rows[0].pf, rows[0].pa], ['', 0, 0]);
 });
 
+test('rowsToStandings reads the bracket chart columns match and from; both are empty without them', () => {
+  const [a] = rowsToStandings(parseCSV('teamCode,player1,player2,wins,loss,quotient,bracket,match,from\nND_QF_3,Ann,Bo,0,0,,,QF-2, W:R16-3 '));
+  assert.deepEqual([a.match, a.from], ['QF-2', 'W:R16-3']);
+  const [b] = rowsToStandings(parseCSV('teamCode,player1,player2,wins,loss,quotient,bracket\nND_1,Ann,Bo,2,1,1.5,1'));
+  assert.deepEqual([b.match, b.from], ['', '']);
+});
+
 test('rowsToStandings reads the team columns when they exist', () => {
   const [r] = rowsToStandings(parseCSV('teamCode,teamName,wins,loss,quotient,bracket,totalPoints,totalOpponentPoints\nA,Aces,1,0,1.2,1,30,25'));
   assert.deepEqual([r.teamName, r.pf, r.pa], ['Aces', 30, 25]);

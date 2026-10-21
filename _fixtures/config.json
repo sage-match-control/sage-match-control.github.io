@@ -93,6 +93,49 @@
           ]
         }
       }
+    },
+    "bracket-demo-2026": {
+      "type": "standard",
+      "title": "Bracket Demo (fixture only)",
+      "scoreEntry": "console",
+      "display": {
+        "divisions": {
+          "": ""
+        },
+        "events": {
+          "TMD": "Three-bracket Doubles",
+          "FXD": "Four-bracket Mixed",
+          "CWD": "Crossover Doubles",
+          "LXD": "Legacy Mixed"
+        },
+        "playoffSeats": {
+          "TMD": {
+            "SF_1": "Bracket winner",
+            "SF_2": "Bracket winner",
+            "SF_3": "Bracket winner",
+            "QF_4": "Best runner-up",
+            "R16_5": "2nd-best runner-up",
+            "R16_6": "3rd-best runner-up"
+          }
+        }
+      },
+      "days": {
+        "bracket-demo-2026-day1": {
+          "label": "Nov 1",
+          "date": "2026-11-01",
+          "isLive": "auto",
+          "facilities": [
+            {
+              "name": "Main",
+              "sheetId": "FIXTUREBRACKETMAINSHEETID00000000"
+            },
+            {
+              "name": "Annex",
+              "sheetId": "FIXTUREBRACKETANNEXSHEETID0000000"
+            }
+          ]
+        }
+      }
     }
   }
 }

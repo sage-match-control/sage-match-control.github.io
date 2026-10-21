@@ -740,3 +740,26 @@ test('eventConfigFrom: lineupReveal is true only when events.json says true', ()
   const registry = { events: { on: { type: 'team', lineupReveal: true }, odd: { type: 'team', lineupReveal: 'yes' }, off: { type: 'team' } } };
   assert.deepEqual(['on', 'odd', 'off'].map(k => eventConfigFrom(registry, k).lineupReveal), [true, false, false]);
 });
+
+test('eventConfigFrom reads display.playoffSeats by category code or shape key, keeping only the valid entries', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const registry = { events: {
+    e: { type: 'standard', display: { playoffSeats: {
+      HIMD: { SF_1: 'Bracket winner', QF_4: ' Best runner-up ', R16_5: '', nope: 'x', SF_2: 7 },
+      '2x2': { SF_1: 'Bracket 1 · 1st' },
+      BAD: 'not an object',
+    } } },
+    plain: { type: 'standard' },
+    notObject: { type: 'standard', display: { playoffSeats: ['x'] } },
+  } };
+  assert.deepEqual(eventConfigFrom(registry, 'e').playoffSeats, {
+    HIMD: { SF_1: 'Bracket winner', QF_4: 'Best runner-up' },
+    '2x2': { SF_1: 'Bracket 1 · 1st' },
+  });
+  assert.equal(warn.mock.callCount(), 4, 'an empty label, a bad slot key, a numeric label and a non-object category each warn');
+  assert.deepEqual(eventConfigFrom(registry, 'plain').playoffSeats, {});
+  assert.equal(warn.mock.callCount(), 4, 'no setting, no warning');
+  assert.deepEqual(eventConfigFrom(registry, 'notObject').playoffSeats, {});
+  assert.equal(warn.mock.callCount(), 5);
+});

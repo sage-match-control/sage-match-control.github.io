@@ -1743,6 +1743,8 @@ const standings = createStandings({
   getModel: () => MODEL,
   dualMeetDesktopLayout: 'row',
   unresolved: UNRESOLVED_CATEGORIES,
+  // A playoff bracket card with a scheduled match opens the score dialog, like a ticket (scoreAttrs; the listeners below).
+  decorateBracketMatch: m => { const attrs = scoreAttrs(m); return attrs ? { className: ' scoreable', attrs } : {}; },
 });
 
 function renderStandings(){
@@ -2097,9 +2099,9 @@ function consoleTicketHTML(m, teamCode, isNext){
 }
 
 // ---- Score entry in Match Finder (spec §5.7) ----
-// Only Match Finder's tickets and team match lines open the dialog; Live
-// Matches, Standings and Awards stay read-only (D8), so nothing there calls
-// scoreAttrs. Entry is on when the event's events.json entry carries
+// Only Match Finder's tickets and team match lines, and a standard event's Standings bracket cards
+// (decorateBracketMatch), open the dialog; Live Matches, the rest of Standings and Awards stay
+// read-only (D8), so nothing else there calls scoreAttrs. Entry is on when the event's events.json entry carries
 // "scoreEntry": "console" | "links" and the operator is signed in.
 function scoreEntryAvailable(){
   const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
@@ -2162,6 +2164,7 @@ const scoreDialog = createScoreDialog({
     if(CURRENT_TYPE === 'team') MODEL.team = { ...MODEL.team, ...Teams.buildTeamData(MODEL.matches, MODEL.standings, { scoring: CURRENT_EVENT_CONFIG && CURRENT_EVENT_CONFIG.teamScoring }) };
     refreshLineupCheck();
     finder.refresh();
+    if(CURRENT_VIEW === 'standings') renderStandings(); // a bracket card shows the new score at once (a live save waits for the snapshot)
   },
 });
 
@@ -2171,6 +2174,19 @@ resultsEl.addEventListener('click', (e) => {
   openScoreFromFinder(el.dataset.scoreFacility, Number(el.dataset.scoreNum));
 });
 resultsEl.addEventListener('keydown', (e) => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-score-num]')){
+    e.preventDefault();
+    openScoreFromFinder(e.target.dataset.scoreFacility, Number(e.target.dataset.scoreNum));
+  }
+});
+// The Standings tab's bracket cards (decorateBracketMatch) open it the same way, in the chart and in Full tree,
+// which standingsResultsEl holds. Nothing else in that panel carries data-score-num.
+standingsResultsEl.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-score-num]');
+  if(!el || e.target.closest('button, a, input')) return;
+  openScoreFromFinder(el.dataset.scoreFacility, Number(el.dataset.scoreNum));
+});
+standingsResultsEl.addEventListener('keydown', (e) => {
   if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-score-num]')){
     e.preventDefault();
     openScoreFromFinder(e.target.dataset.scoreFacility, Number(e.target.dataset.scoreNum));
