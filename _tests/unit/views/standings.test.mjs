@@ -212,10 +212,29 @@ test('a chart that does not fit its card is shown in a window that scrolls sidew
 
 test('a chart wider than the column widens it', () => {
   const m = linkedModel({ rows: [...RR_ROWS, ...TWO_BRACKETS] });
-  const wide = categoryCardHTML(CARD, m.standings, m, { view: 'bracket' });
+  const stacked = new Set([CARD]);
+  const wide = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', stacked });
   assert.match(wide, /<div class="standings-col[^"]*standings-col--bracket[^"]*" data-cat-key="Novice Open Doubles" style="--bk-col-w:408px">/);
-  assert.doesNotMatch(categoryCardHTML(CARD, m.standings, m, { view: 'bracket', availableWidth: 300 }), /standings-col--bracket|--bk-col-w/);
-  assert.doesNotMatch(categoryCardHTML(CARD, m.standings, m), /standings-col--bracket|--bk-col-w/);
+  assert.doesNotMatch(categoryCardHTML(CARD, m.standings, m, { view: 'bracket', stacked, availableWidth: 300 }), /standings-col--bracket|--bk-col-w/);
+  assert.doesNotMatch(categoryCardHTML(CARD, m.standings, m, { stacked }), /standings-col--bracket|--bk-col-w/);
+  // Side by side, the column is two columns wide already, and a chart narrower than that leaves it so.
+  assert.doesNotMatch(categoryCardHTML(CARD, m.standings, m, { view: 'bracket' }), /standings-col--bracket|--bk-col-w/);
+});
+
+test('on the desktop board a card keeps its 1 col / 2 col width in either view', () => {
+  const m = linkedModel({ rows: [...RR_ROWS, ...TWO_BRACKETS] });
+  const sideBySide = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', fixedColumn: true, availableWidth: 300 });
+  assert.match(sideBySide, /<div class="standings-col standings-col--wide" data-cat-key="Novice Open Doubles">/);
+  assert.match(sideBySide, /<div class="bk" style="width:380px;/, 'two columns hold the whole chart');
+  assert.doesNotMatch(sideBySide, /bk-rounds/);
+  const stacked = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', fixedColumn: true, stacked: new Set([CARD]) });
+  assert.match(stacked, /<div class="standings-col standings-col--stacked" data-cat-key="Novice Open Doubles">/);
+  assert.match(stacked, /class="bk-rounds"/, 'one column shows the chart a round at a time');
+  const oneBracket = linkedModel({ rows: [stand('NOD_1', 'Ann', 'Bo', 2, 0, 2) + ',,', stand('NOD_2', 'Cy', 'Di', 0, 2, 0.5) + ',,', ...TWO_BRACKETS] });
+  const single = categoryCardHTML(CARD, oneBracket.standings, oneBracket, { view: 'bracket', fixedColumn: true });
+  assert.match(single, /<div class="standings-col" data-cat-key="Novice Open Doubles">/);
+  assert.match(single, /class="bk-rounds"/);
+  assert.equal((single.match(/bk-full-open/g) || []).length, 1, 'Full tree is under the strip');
 });
 
 test('a card hands the decorate hook to its chart', () => {
