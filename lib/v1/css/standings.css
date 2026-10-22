@@ -730,7 +730,7 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
   .standings-board-desktop .standings-col.standings-col--bracket{flex:0 0 var(--bk-col-w); max-width:none;}
 }
 
-/* The same cards one round at a time, for a screen the chart does not fit. */
+/* A screen the chart does not fit: the chart in a window that scrolls sideways, under a chip per round. */
 .bk-chips{display:flex; gap:6px; overflow-x:auto; margin-bottom:8px; padding-bottom:2px;}
 
 .bk-chip,
@@ -751,32 +751,20 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .bk-chip.active{background:var(--navy); color:var(--white); border-color:var(--navy);}
 
+/* The chart in a window that scrolls sideways, settling on a round (.bk-snap sits at each round's left edge). */
 .bk-track{
   position:relative;
-  display:flex;
-  gap:12px;
   overflow-x:auto;
-  scroll-snap-type:x mandatory;
+  scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch;
 }
+
+.bk-snap{position:absolute; top:0; width:1px; height:1px; scroll-snap-align:start;}
 
 /* The next round peeking in is the cue to scroll; a scrollbar under each strip is not needed. */
 .bk-chips, .bk-track{scrollbar-width:none;}
 
 .bk-chips::-webkit-scrollbar, .bk-track::-webkit-scrollbar{display:none;}
-
-.bk-round{flex:0 0 82%; scroll-snap-align:start;}
-
-.bk-rounds .bk-card{position:relative; margin-bottom:10px;}
-
-.bk-round-caption{
-  font-family:'Barlow Condensed',sans-serif;
-  font-size:10.5px;
-  text-transform:uppercase;
-  letter-spacing:.1em;
-  color:var(--muted);
-  margin:4px 0 6px;
-}
 
 .bk-full-open{display:block; margin:6px 0 0 auto;}
 

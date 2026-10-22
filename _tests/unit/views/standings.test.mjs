@@ -196,14 +196,18 @@ test('the Bracket view keeps the Round Robin and draws the chart in place of the
   assert.match(stageTablesHTML(series.standings, series, { view: 'bracket' }).html, /class="matchup/, 'one playoff round stays as cards');
 });
 
-test('a chart that does not fit its card is the round strip', () => {
+test('a chart that does not fit its card is shown in a window that scrolls sideways, lines included', () => {
   const m = linkedModel({ rows: [...RR_ROWS, ...TWO_BRACKETS] });
   const fits = stageTablesHTML(m.standings, m, { view: 'bracket', availableWidth: 380 });
   assert.match(fits.html, /class="bk"/);
+  assert.match(fits.html, /<button type="button" class="bk-full-open" data-bk-full="NOD">Full tree<\/button>/, 'a tablet gets Full tree with the whole chart too');
+  assert.equal((fits.html.match(/bk-full-open/g) || []).length, 1);
   const narrow = stageTablesHTML(m.standings, m, { view: 'bracket', availableWidth: 300 });
   assert.match(narrow.html, /class="bk-rounds"/);
-  assert.doesNotMatch(narrow.html, /class="bk"/);
-  assert.equal(narrow.bracketWidth, 0);
+  assert.match(narrow.html, /<div class="bk-track"[^>]*><div class="bk" style="width:380px;/);
+  assert.match(narrow.html, /<path /);
+  assert.equal((narrow.html.match(/bk-full-open/g) || []).length, 1, 'one Full tree button, not two');
+  assert.equal(narrow.bracketWidth, 0, 'the column keeps its width');
 });
 
 test('a chart wider than the column widens it', () => {

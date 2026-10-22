@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDayModel } from '../../../lib/v1/domain/model.js';
 import { buildBracket } from '../../../lib/v1/domain/bracket.js';
-import { bracketChartHTML, roundStripHTML, startRound, BRACKET_DIMS } from '../../../lib/v1/views/bracket.js';
+import { bracketChartHTML, roundStripHTML, startRound, fullTreeButtonHTML, BRACKET_DIMS } from '../../../lib/v1/views/bracket.js';
 
 const MATCH_HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const STAND_HEADER = 'teamCode,player1,player2,wins,loss,quotient,bracket,match,from';
@@ -42,6 +42,12 @@ test('the chart has one card per game, with its match id, and the sheet\'s size'
   assert.equal((html.match(/<path /g) || []).length, 4, 'a line per feeder');
   assert.match(html, /<svg class="bk-lines" width="\d+" height="\d+" aria-hidden="true">/);
   assert.deepEqual([...html.matchAll(/<div class="bk-caption"[^>]*>([^<]*)</g)].map(x => x[1]), ['Round of 16', 'Quarterfinals', 'Semifinals', 'Finals', 'Bronze Battle']);
+});
+
+test('Full tree\'s button names the category, and the chart Full tree shows has none', () => {
+  assert.equal(fullTreeButtonHTML('A&B'), '<button type="button" class="bk-full-open" data-bk-full="A&amp;B">Full tree</button>');
+  const m = model([...RR, ...rowsFor()]);
+  assert.doesNotMatch(bracketChartHTML(bracketFor(m), m).html, /bk-full-open/);
 });
 
 test('an empty seat says where it comes from, and the Final reads as the Final', () => {
@@ -134,15 +140,17 @@ test('without links the cards are headed by their round and the empty seats read
   assert.doesNotMatch(html, /Winner of|Qualifier/);
 });
 
-test('the round strip has a chip and a round per round, the Bronze under the Final, and Full tree', () => {
+test('the strip is the whole chart, lines and all, in a window that scrolls sideways under a chip per round, with Full tree', () => {
   const m = model([...RR, ...rowsFor()]);
   const html = roundStripHTML(bracketFor(m), m);
-  assert.match(html, /^<div class="bk-rounds" data-bk-cat="HIMD" data-bk-start="0">/);
-  assert.deepEqual([...html.matchAll(/<button type="button" class="bk-chip[^"]*" data-bk-round="(\d)" role="tab" aria-selected="(true|false)">([^<]+)</g)].map(x => x.slice(1)),
-    [['0', 'true', 'Round of 16'], ['1', 'false', 'Quarterfinals'], ['2', 'false', 'Semifinals'], ['3', 'false', 'Finals']]);
-  assert.equal((html.match(/<div class="bk-round" data-bk-round="\d">/g) || []).length, 4);
-  const last = html.slice(html.indexOf('data-bk-round="3"'));
-  assert.ok(last.indexOf('data-bk-match="F"') < last.indexOf('Bronze Battle') && last.indexOf('Bronze Battle') < last.indexOf('data-bk-match="B"'));
+  assert.match(html, /^<div class="bk-rounds" data-bk-cat="HIMD" data-bk-start="0" data-bk-start-x="0">/);
+  const step = BRACKET_DIMS.cardW + BRACKET_DIMS.colGap;
+  assert.deepEqual([...html.matchAll(/<button type="button" class="bk-chip[^"]*" data-bk-round="(\d)" data-bk-x="(\d+)" role="tab" aria-selected="(true|false)">([^<]+)</g)].map(x => x.slice(1)),
+    [['0', '0', 'true', 'Round of 16'], ['1', String(step), 'false', 'Quarterfinals'], ['2', String(2 * step), 'false', 'Semifinals'], ['3', String(3 * step), 'false', 'Finals']]);
+  assert.match(html, /<div class="bk-track" data-group-key="HIMD"><div class="bk" /);
+  assert.equal((html.match(/<path /g) || []).length, 4, 'the lines are drawn');
+  assert.deepEqual(cards(html).map(c => c.match(/data-bk-match="([^"]+)"/)[1]), ['R16-3', 'QF-2', 'SF-1', 'SF-2', 'F', 'B']);
+  assert.deepEqual([...html.matchAll(/<i class="bk-snap" style="left:(\d+)px"><\/i>/g)].map(x => +x[1]), [0, step, 2 * step, 3 * step], 'a swipe settles on a round');
   assert.match(html, /<button type="button" class="bk-full-open" data-bk-full="HIMD">Full tree<\/button>/);
   assert.equal((html.match(/class="bk-chip active"/g) || []).length, 1);
 });
@@ -159,6 +167,6 @@ test('the strip opens on the round in play: the first with two named pairs still
     .map(([a, b], i) => mt(i + 1, 'Court 1', '9:00 AM', a, 11, b, 5));
   assert.equal(start(all, played), 3, 'everything played: the Final');
   const html = (() => { const m = model([...RR, ...rowsFor(mid)], [mt(1, 'Court 1', '9:00 AM', 'HIMD_R16_5', 11, 'HIMD_R16_6', 4)]); return roundStripHTML(bracketFor(m), m); })();
-  assert.match(html, /data-bk-start="1"/);
+  assert.match(html, /data-bk-start="1" data-bk-start-x="208"/);
   assert.match(html, /class="bk-chip active" data-bk-round="0"/, 'the first chip is active on render; the page moves it');
 });
