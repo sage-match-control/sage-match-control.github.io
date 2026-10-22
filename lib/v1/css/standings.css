@@ -761,6 +761,29 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .bk-snap{position:absolute; top:0; width:1px; height:1px; scroll-snap-align:start;}
 
+/* A window whose cards are stretched to hold whole rounds: a swipe always lands on one. */
+.bk-rounds--fit .bk-track{scroll-snap-type:x mandatory;}
+
+/* A standard category's sections, Round Robin and Playoffs: a title, a rule to the card's edge, and for the
+   Playoffs the List / Bracket switch at its end. The stage captions and bracket labels under them are the subtitles. */
+.standings-section-title{display:flex; align-items:center; gap:10px; margin:0 0 10px;}
+
+.standings-section-title::after{content:''; flex:1; order:1; height:2px; border-radius:2px; background:var(--line);}
+
+.standings-section-text{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:14px;
+  line-height:1.1;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--navy);
+}
+
+.stage-block + .standings-section-title{margin-top:22px;}
+
+.playoffs-head .standings-view-switch{order:2; margin-top:0;}
+
 /* The next round peeking in is the cue to scroll; a scrollbar under each strip is not needed. */
 .bk-chips, .bk-track{scrollbar-width:none;}
 

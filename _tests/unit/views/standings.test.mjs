@@ -145,12 +145,33 @@ const TWO_BRACKETS = [
 const SERIES = ['NOD_F_1_(1),Ann,Bo,0,0,,,F (1),', 'NOD_F_2_(1),Cy,Di,0,0,,,F (1),', 'NOD_F_1_(2),Ann,Bo,0,0,,,F (2),', 'NOD_F_2_(2),Cy,Di,0,0,,,F (2),'];
 const CARD = 'Novice Open Doubles';
 
+test('a standard category\'s Round Robin and Playoffs are section titles; the stages under them keep their captions', () => {
+  const title = text => `<div class="standings-section-title"><span class="standings-section-text">${text}</span></div>`;
+  const series = linkedModel({ rows: [...RR_ROWS, ...SERIES] });
+  const html = categoryCardHTML(CARD, series.standings, series);
+  assert.ok(html.includes(title('Round Robin')));
+  assert.ok(html.includes(title('Playoffs')), 'with no switch, the title stands alone');
+  assert.doesNotMatch(html, /stage-caption">(Round Robin|Playoffs)/);
+  assert.match(html, /class="rr-bracket-label[^"]*">Bracket 1</, 'a bracket keeps its label under the title');
+  const rrOnly = linkedModel({ rows: RR_ROWS });
+  assert.doesNotMatch(categoryCardHTML(CARD, rrOnly.standings, rrOnly), /Playoffs/, 'no playoffs, no Playoffs title');
+  assert.match(stageTablesHTML(series.standings, series).html, /stage-caption">Round Robin/, 'the stages alone (a dual meet\'s) are unchanged');
+  assert.doesNotMatch(stageTablesHTML(series.standings, series).html, /standings-section-title/);
+});
+
 test('the List / Bracket switch is on a standard category with two or more playoff rounds, and nowhere else', () => {
   const eligible = linkedModel({ rows: [...RR_ROWS, ...TWO_BRACKETS] });
   const html = categoryCardHTML(CARD, eligible.standings, eligible);
   assert.match(html, /<div class="standings-view-switch" role="group" aria-label="Playoff view">/);
   assert.match(html, /data-standings-view="list" aria-pressed="true">List</);
   assert.match(html, /data-standings-view="bracket" aria-pressed="false">Bracket</);
+  // It heads the playoffs, under the Round Robin, not the category's title.
+  const [head, body] = html.split('<div class="standings-col-body">');
+  assert.doesNotMatch(head, /standings-view-switch/);
+  assert.match(body, /<div class="standings-section-title playoffs-head"><span class="standings-section-text">Playoffs<\/span><div class="standings-view-switch"/);
+  assert.ok(body.indexOf('Round Robin') < body.indexOf('playoffs-head'));
+  const bracketView = categoryCardHTML(CARD, eligible.standings, eligible, { view: 'bracket' }).split('<div class="standings-col-body">')[1];
+  assert.ok(bracketView.indexOf('playoffs-head') < bracketView.indexOf('class="bk"'), 'above the chart too');
   const series = linkedModel({ rows: [...RR_ROWS, ...SERIES] });
   assert.doesNotMatch(categoryCardHTML(CARD, series.standings, series), /standings-view-switch/, 'one playoff round');
   const rrOnly = linkedModel({ rows: RR_ROWS });
@@ -203,8 +224,8 @@ test('a chart that does not fit its card is shown in a window that scrolls sidew
   assert.match(fits.html, /<button type="button" class="bk-full-open" data-bk-full="NOD">Full tree<\/button>/, 'a tablet gets Full tree with the whole chart too');
   assert.equal((fits.html.match(/bk-full-open/g) || []).length, 1);
   const narrow = stageTablesHTML(m.standings, m, { view: 'bracket', availableWidth: 300 });
-  assert.match(narrow.html, /class="bk-rounds"/);
-  assert.match(narrow.html, /<div class="bk-track"[^>]*><div class="bk" style="width:380px;/);
+  assert.match(narrow.html, /class="bk-rounds bk-rounds--fit"[^>]*data-bk-card-w="300" data-bk-per-view="1"/, 'one round fills the window');
+  assert.match(narrow.html, /<div class="bk-track"[^>]*><div class="bk" style="width:636px;/);
   assert.match(narrow.html, /<path /);
   assert.equal((narrow.html.match(/bk-full-open/g) || []).length, 1, 'one Full tree button, not two');
   assert.equal(narrow.bracketWidth, 0, 'the column keeps its width');
@@ -225,16 +246,31 @@ test('on the desktop board a card keeps its 1 col / 2 col width in either view',
   const m = linkedModel({ rows: [...RR_ROWS, ...TWO_BRACKETS] });
   const sideBySide = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', fixedColumn: true, availableWidth: 300 });
   assert.match(sideBySide, /<div class="standings-col standings-col--wide" data-cat-key="Novice Open Doubles">/);
-  assert.match(sideBySide, /<div class="bk" style="width:380px;/, 'two columns hold the whole chart');
-  assert.doesNotMatch(sideBySide, /bk-rounds/);
+  assert.match(sideBySide, /<div class="bk" style="width:704px;/, 'two columns hold both rounds, stretched across the card (inside its border and scrollbar)');
+  assert.match(sideBySide, /width:334px">/);
+  assert.doesNotMatch(sideBySide, /bk-rounds|bk-chip/, 'nothing to swipe, so no chips');
+  assert.equal((sideBySide.match(/bk-full-open/g) || []).length, 1);
   const stacked = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', fixedColumn: true, stacked: new Set([CARD]) });
   assert.match(stacked, /<div class="standings-col standings-col--stacked" data-cat-key="Novice Open Doubles">/);
-  assert.match(stacked, /class="bk-rounds"/, 'one column shows the chart a round at a time');
+  assert.match(stacked, /class="bk-rounds bk-rounds--fit"[^>]*data-bk-card-w="325" data-bk-per-view="1"/, 'one column shows one round at a time');
   const oneBracket = linkedModel({ rows: [stand('NOD_1', 'Ann', 'Bo', 2, 0, 2) + ',,', stand('NOD_2', 'Cy', 'Di', 0, 2, 0.5) + ',,', ...TWO_BRACKETS] });
   const single = categoryCardHTML(CARD, oneBracket.standings, oneBracket, { view: 'bracket', fixedColumn: true });
   assert.match(single, /<div class="standings-col" data-cat-key="Novice Open Doubles">/);
-  assert.match(single, /class="bk-rounds"/);
+  assert.match(single, /class="bk-rounds bk-rounds--fit"[^>]*data-bk-card-w="325" data-bk-per-view="1"/);
   assert.equal((single.match(/bk-full-open/g) || []).length, 1, 'Full tree is under the strip');
+});
+
+test('on the desktop board two columns show three rounds two at a time', () => {
+  const qf = [1, 2, 3, 4].flatMap(n => [slotRow(`NOD_QF_${2 * n - 1}`, `QF-${n}`, ''), slotRow(`NOD_QF_${2 * n}`, `QF-${n}`, '')]);
+  const later = [
+    ['NOD_SF_1', 'SF-1', 'W:QF-1'], ['NOD_SF_2', 'SF-1', 'W:QF-2'], ['NOD_SF_3', 'SF-2', 'W:QF-3'], ['NOD_SF_4', 'SF-2', 'W:QF-4'],
+    ['NOD_B_1', 'B', 'L:SF-1'], ['NOD_B_2', 'B', 'L:SF-2'], ['NOD_F_1', 'F', 'W:SF-1'], ['NOD_F_2', 'F', 'W:SF-2'],
+  ].map(r => slotRow(...r));
+  const m = linkedModel({ rows: [...RR_ROWS, ...qf, ...later] });
+  const html = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', fixedColumn: true });
+  assert.match(html, /<div class="standings-col standings-col--wide" data-cat-key="Novice Open Doubles">/);
+  assert.match(html, /class="bk-rounds bk-rounds--fit"[^>]*data-bk-card-w="334" data-bk-per-view="2"/, 'it would fit whole, but shows two rounds');
+  assert.equal((html.match(/data-bk-round=/g) || []).length, 3);
 });
 
 test('a card hands the decorate hook to its chart', () => {

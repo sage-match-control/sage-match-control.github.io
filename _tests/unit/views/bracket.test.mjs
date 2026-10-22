@@ -155,6 +155,30 @@ test('the strip is the whole chart, lines and all, in a window that scrolls side
   assert.equal((html.match(/class="bk-chip active"/g) || []).length, 1);
 });
 
+test('a chart can be drawn with wider cards, the lines following them', () => {
+  const m = model([...RR, ...rowsFor()]);
+  const wide = bracketChartHTML(bracketFor(m), m, { cardW: 300 });
+  assert.equal(wide.width, 4 * 300 + 3 * BRACKET_DIMS.colGap);
+  assert.match(wide.html, /<div class="bk-node" style="left:336px;top:\d+px;width:300px">/);
+  assert.match(wide.html, /<path d="M300 /, 'a line leaves a card at its right edge');
+  assert.doesNotMatch(bracketChartHTML(bracketFor(m), m).html, /width:172px"/, 'the default card size is the stylesheet\'s');
+});
+
+test('a strip given its window\'s width stretches its cards so the window holds whole rounds', () => {
+  const m = model([...RR, ...rowsFor()]);
+  const chips = html => [...html.matchAll(/data-bk-round="(\d)" data-bk-x="(\d+)"/g)].map(x => +x[2]);
+  const one = roundStripHTML(bracketFor(m), m, { width: 332 });
+  assert.match(one, /^<div class="bk-rounds bk-rounds--fit" data-bk-cat="HIMD" data-bk-start="0" data-bk-start-x="0" data-bk-card-w="332" data-bk-per-view="1">/);
+  assert.deepEqual(chips(one), [0, 368, 736, 1104]);
+  assert.match(one, /<div class="bk-track" data-group-key="HIMD" style="max-width:332px"><div class="bk" style="width:1436px;/, 'the window is exactly the rounds it holds');
+  assert.deepEqual([...one.matchAll(/<i class="bk-snap" style="left:(\d+)px"><\/i>/g)].map(x => +x[1]), [0, 368, 736, 1104]);
+  const two = roundStripHTML(bracketFor(m), m, { width: 712, perView: 2 });
+  assert.match(two, /data-bk-card-w="338" data-bk-per-view="2">/, 'two cards and the gap between them fill 712px');
+  assert.deepEqual(chips(two), [0, 374, 748, 1122]);
+  assert.match(two, /<div class="bk-track" data-group-key="HIMD" style="max-width:712px">/);
+  assert.match(roundStripHTML(bracketFor(m), m, { width: 150 }), /^<div class="bk-rounds" data-bk-cat="HIMD" data-bk-start="0" data-bk-start-x="0">/, 'never narrower than the stylesheet\'s card');
+});
+
 test('the strip opens on the round in play: the first with two named pairs still to play, else the last played, else the first', () => {
   const start = (names, matches) => { const m = model([...RR, ...rowsFor(names)], matches); return startRound(bracketFor(m), m); };
   assert.equal(start({}, []), 0, 'before the playoffs');
