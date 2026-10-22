@@ -194,6 +194,17 @@ test('seatText: a pair, a winner or loser link, a label, a qualifier, or TBD', (
   assert.deepEqual(seatText(seat({ empty: true }), { ...ctx, linked: false }), { kind: 'tbd', names: [], label: 'TBD', tag: '' });
 });
 
+test('seatText: the workbook\'s seat label beats the event\'s labels, and gives way to names and links', () => {
+  const ctx = { playoffSeats: { X: { SF_1: 'Category label' }, '3x2': { SF_1: 'Shape label' } }, category: 'X', shapeKey: '3x2', rrRows: [], linked: true };
+  const row = label => ({ teamCode: 'X_SF_1', player1: 'X_SF_1', player2: '', seat: label });
+  const seat = (r, over) => ({ row: r, code: 'X_SF_1', rest: 'SF_1', from: null, empty: true, ...over });
+  assert.deepEqual(seatText(seat(row('Bracket 1 · #1')), ctx), { kind: 'label', names: [], label: 'Bracket 1 · #1', tag: '' });
+  assert.equal(seatText(seat(row('')), ctx).label, 'Category label', 'a blank seat label falls back to events.json');
+  assert.equal(seatText(seat(row(undefined)), { ...ctx, playoffSeats: {} }).label, 'Qualifier');
+  assert.equal(seatText(seat(row('Bracket 1 · #1'), { from: { kind: 'W', match: 'QF-1' } }), ctx).label, 'Winner of QF-1');
+  assert.equal(seatText(seat({ ...row('Bracket 1 · #1'), player1: 'Ann', player2: 'Bo' }, { empty: false }), ctx).kind, 'pair');
+});
+
 test('seatText: a category label beats its shape key, and no label is used on a seat a match fills', () => {
   const ctx = { playoffSeats: { X: { SF_1: 'Category label' }, '3x2': { SF_1: 'Shape label', SF_2: 'Shape only' } }, category: 'X', shapeKey: '3x2', rrRows: [], linked: true };
   const seat = (rest, over) => ({ row: undefined, code: `X_${rest}`, rest, from: null, empty: true, ...over });

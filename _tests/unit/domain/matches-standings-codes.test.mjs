@@ -104,6 +104,13 @@ test('rowsToStandings reads the bracket chart columns match and from; both are e
   assert.deepEqual([b.match, b.from], ['', '']);
 });
 
+test('rowsToStandings reads the workbook\'s seat label (STANDINGSCSV J); empty without the column', () => {
+  const [a] = rowsToStandings(parseCSV('teamCode,player1,player2,wins,loss,quotient,bracket,match,from,seat\nND_QF_1,ND_QF_1,,0,0,,,QF-1,, Bracket 1 · #1 '));
+  assert.equal(a.seat, 'Bracket 1 · #1');
+  const [b] = rowsToStandings(parseCSV('teamCode,player1,player2,wins,loss,quotient,bracket,match,from\nND_QF_1,ND_QF_1,,0,0,,,QF-1,'));
+  assert.equal(b.seat, '');
+});
+
 test('rowsToStandings reads the team columns when they exist', () => {
   const [r] = rowsToStandings(parseCSV('teamCode,teamName,wins,loss,quotient,bracket,totalPoints,totalOpponentPoints\nA,Aces,1,0,1.2,1,30,25'));
   assert.deepEqual([r.teamName, r.pf, r.pa], ['Aces', 30, 25]);
