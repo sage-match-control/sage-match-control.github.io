@@ -119,8 +119,10 @@
 .roster-actions button:hover{ border-color:var(--green-dark); }
 
 /* ==== Millennium Invitational: the pubmat's hero ==== */
-/* The pubmat's grid-paper ground: faint lines on the field green. */
+/* The pubmat's grid-paper ground: faint lines on the field green. Kept compact, with
+   tighter padding than lib/v1's hero, so the tabs show on a phone without scrolling. */
 header.hero{
+  padding:28px 16px 20px;
   background-color:var(--field);
   background-image:
     linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
@@ -130,6 +132,10 @@ header.hero{
   box-shadow:0 24px 60px -28px rgba(18,33,15,.5);
   overflow:hidden;
 }
+.hero-logos{ margin-bottom:10px; }
+.hero-logos img{ width:42px; height:42px; border-radius:11px; }
+.hero .view-tabs{ margin-bottom:16px; }
+.hero .regal-rule{ margin-bottom:12px; }
 
 /* The club wordmark: chunky letters, each its own colour, black-outlined and
    tipped alternately left and right. Each line deals the four colours in its
@@ -138,10 +144,10 @@ header.hero{
    a drop, not -webkit-text-stroke, which eats into the glyphs. */
 .wordmark{
   font-family:'Luckiest Guy',cursive;
-  font-size:clamp(28px,8vw,48px);
+  font-size:clamp(20px,5.6vw,34px);
   line-height:1.02;
   letter-spacing:.01em;
-  margin:0 0 14px;
+  margin:0 0 8px;
 }
 .wm-line{ display:block; white-space:nowrap; }
 .wm-line > span{
@@ -165,9 +171,9 @@ header.hero{
 
 /* White block title with the pubmat's black outline and drop. */
 h1.title{
-  font-size:clamp(32px,8.4vw,64px);
+  font-size:clamp(24px,6.2vw,46px);
   line-height:1.06;
-  margin:0 0 8px;
+  margin:0 0 4px;
   text-shadow:
     -2px -2px 0 var(--outline),  2px -2px 0 var(--outline),
     -2px  2px 0 var(--outline),  2px  2px 0 var(--outline),
@@ -180,11 +186,11 @@ h1.title .accent{ color:var(--white); }
 /* "Paying It Forward!": lime brush lettering, outlined, tilted up. */
 .domination-line{
   font-family:'Permanent Marker',cursive;
-  font-size:clamp(24px,6.6vw,40px);
+  font-size:clamp(18px,4.8vw,28px);
   text-transform:uppercase;
   letter-spacing:.01em;
   color:var(--green);
-  margin:4px 0 2px;
+  margin:2px 0 0;
   transform:rotate(-3deg) skewX(-6deg);
   text-shadow:
     -2px -2px 0 var(--outline),  2px -2px 0 var(--outline),
@@ -198,13 +204,13 @@ h1.title .accent{ color:var(--white); }
   display:table;
   margin-left:auto; margin-right:auto;
   font-family:'Permanent Marker',cursive;
-  font-size:clamp(17px,4.6vw,26px);
+  font-size:clamp(13px,3.6vw,18px);
   text-transform:uppercase;
   letter-spacing:.03em;
   color:var(--white);
   background:var(--red);
-  padding:4px 34px 6px;
-  margin-top:2px; margin-bottom:18px;
+  padding:3px 26px 4px;
+  margin-top:2px; margin-bottom:12px;
   transform:rotate(-2deg);
   clip-path:polygon(3% 8%, 0 22%, 4% 40%, 1% 62%, 5% 84%, 2% 100%, 97% 94%, 100% 76%, 96% 56%, 99% 34%, 95% 14%, 99% 0, 12% 0);
   text-shadow:2px 2px 0 rgba(11,15,10,.45);
@@ -222,14 +228,14 @@ h1.title .accent{ color:var(--white); }
   font-size:13px;
   letter-spacing:.12em;
   line-height:1.5;
-  padding:8px 16px;
+  padding:6px 14px;
   border-radius:10px;
   box-shadow:3px 4px 0 var(--outline);
-  margin-top:0; margin-bottom:18px;
+  margin-top:0; margin-bottom:12px;
   text-wrap:balance;
 }
 @media (max-width:480px){ .hero .eyebrow{ font-size:12px; letter-spacing:.08em; padding:7px 12px; } }
-.subtitle{ color:rgba(255,255,255,.86); }
+.subtitle{ color:rgba(255,255,255,.86); font-size:14px; margin-bottom:16px; }
 
 /* ==== Millennium Invitational: lib/v1/css's raw house colours, in this palette ====
    Each rule repeats an engine selector with lime rgba(220,245,82), field
