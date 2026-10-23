@@ -11,7 +11,7 @@
 <meta property="og:image" content="/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Luckiest+Guy&family=Permanent+Marker&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/lib/v1/css/ticket.css">
 <link rel="stylesheet" href="/lib/v1/css/finder.css">
 <link rel="stylesheet" href="/lib/v1/css/live-matches.css">
@@ -20,48 +20,59 @@
 <link rel="stylesheet" href="/lib/v1/css/hub.css">
 <style>
   /* ============================ THEME ============================
-     S.A.G.E. house palette — navy structure, green accent, off-white
-     paper — taken from /assets/logo.png and shared verbatim with
-     /tools/scoresheet-generator.html, /tools/tournament-calculator.html
-     and this event's own schedule.html, so every S.A.G.E. surface reads
-     as one product.
-
      To re-skin an event, change the brand tokens below and nothing else:
      every rule in this file resolves through them or through the role
      aliases underneath.
 
-     Contrast rules this palette has to respect — the green is a *fill*
+     Millennium Invitational: palette sampled from the event pubmat
+     (assets/pubmat.webp) — the field green of its grid-paper ground
+     #346433 (--field, the hero's ground only), the lime of its info
+     panels #DCF552, the red of the "A Charity Event" brush stroke
+     #D71A1A, and the four colours of the club's wordmark. Paper is a pale tint of the lime so the page below the
+     hero still reads as the pubmat.
+
+     Contrast rules this palette has to respect — the lime is a *fill*
      colour, not a text colour:
-       - --green is GOLD (~1.4:1 on white — never text on a light
-         background). Put --navy text on it (~12.1:1), or use it as text on
-         a --navy/--navy-deep panel (~12.1 / 14.0:1).
-       - --green-dark is the logo's GREEN. Safe for text on white/--paper
-         (~7.3 / 6.0:1) and under white text (~7.3:1). Never on the hero
-         (~2.3:1 on --navy).
-       - Small text on paper is --ink (~13.4:1) or --ink-soft (~5.7:1).
-     Millennium Invitational: palette sampled from the event pubmat (panel
-     green #032519, gold #FCDC5B, lime #BDE25B) and the club logo (green
-     #455C4C, cream #EEE8DC). Fonts: Anton for the hero title, Permanent
-     Marker for the headline and slogan.
+       - --green is LIME (~1.2:1 on white — never text on a light
+         background). Put --ink (~13.8:1) or --navy (~11.7:1) text on it,
+         or use it as text on the --field hero (~5.7:1).
+       - --green-dark is a deep green. Safe for text on white/--paper
+         (~5.4 / 4.9:1) and under white text (~5.4:1).
+       - --navy is a deep green, darker than the pubmat's, because the
+         engine also sets text in it on team-tinted cards (~5.6:1 on the
+         60% Blue tint). White on it ~14:1.
+       - --field takes white (~7.0:1) and lime (~5.7:1) text; it is never
+         a text colour.
+       - Small text on paper is --ink (~15:1) or --ink-soft (~6.7:1).
+       - --red takes white text only (~5.2:1); never on the green.
+     Fonts: Luckiest Guy for the club wordmark, Archivo Black for the title,
+     Permanent Marker for the brush lines — as on the pubmat.
      ================================================================ */
   :root{
-    --navy:#032519;
-    --navy-deep:#01140C;
-    --green:#FCDC5B;
-    --green-dark:#455C4C;
-    --paper:#EEE8DC;
-    --paper-dim:#E3DCCD;
-    --line:#D3CAB8;
-    --ink:#032519;
-    --ink-soft:#4E5D54;
+    --navy:#173016;
+    --navy-deep:#0E1F0D;
+    --field:#346433;
+    --green:#DCF552;
+    --green-dark:#1E7A2C;
+    --paper:#F3F6E7;
+    --paper-dim:#E7EDD3;
+    --line:#CFD8B4;
+    --ink:#12210F;
+    --ink-soft:#4A5A45;
     --white:#FFFFFF;
     --radius:14px;
-    --lime:#BDE25B;
+    --red:#D71A1A;
+    /* The club wordmark's four letter colours, each outlined in --outline. */
+    --mpc-blue:#14A5F0;
+    --mpc-red:#EC2A2A;
+    --mpc-yellow:#F8C81A;
+    --mpc-green:#2CA84A;
+    --outline:#0B0F0A;
 
     /* Role aliases kept from the pre-SAGE palette so the rules below read
        by intent rather than by hue. --court* is the accent/structure pair,
-       --cork the emphasis colour (navy, not green — see the contrast note
-       above), --amber the "good/live" state. */
+       --cork the emphasis colour (deep green, not lime — see the contrast
+       note above), --amber the "good/live" state. */
     --court:var(--green);
     --court-dark:var(--navy);
     --court-line:var(--ink);
@@ -69,7 +80,7 @@
     --cork:var(--navy);
     --muted:var(--ink-soft);
     --navy-mid:var(--navy-deep);
-    --card-shadow: 0 18px 40px -20px rgba(1,20,12,.28);
+    --card-shadow: 0 18px 40px -20px rgba(18,33,15,.28);
   }
 
                                                     /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
@@ -98,49 +109,154 @@
 /* four tabs fit a 375px phone (the prototype's rule) */
 @media (max-width:480px){ .view-tabs{gap:6px;} .view-tab{font-size:11px; padding:9px 12px;} }
 
-/* ==== Millennium Invitational: the pubmat's hero type ==== */
-h1.title{ font-family:'Anton',sans-serif; font-weight:400; letter-spacing:.02em; line-height:1.02; }
-/* The pubmat's lime "Paying It Forward!" banner, as marker brush text. */
-.domination-line{ font-family:'Permanent Marker',cursive; text-transform:none; letter-spacing:0; color:var(--lime); }
-.slogan-script{
-  font-family:'Permanent Marker',cursive;
-  font-size:clamp(15px,3.8vw,19px);
-  line-height:1.35;
-  color:var(--white);
-  opacity:.92;
-  max-width:520px;
-  margin:2px auto 14px;
+/* The Teams tab's Expand all / Collapse all: lib/v1's Hub gives it no class, so it is styled here. */
+.roster-actions button{
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em;
+  padding:6px 14px; border-radius:100px; border:1px solid var(--line);
+  background:var(--white); color:var(--ink); cursor:pointer;
 }
-/* On a phone the slogan wraps; balance it so "tomorrows" isn't left alone. */
-.slogan-script{ text-wrap:balance; }
+.roster-actions button:hover{ border-color:var(--green-dark); }
+
+/* ==== Millennium Invitational: the pubmat's hero ==== */
+/* The pubmat's grid-paper ground: faint lines on the field green. */
+header.hero{
+  background-color:var(--field);
+  background-image:
+    linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+  background-size:34px 34px;
+  background-position:center -1px;
+  box-shadow:0 24px 60px -28px rgba(18,33,15,.5);
+  overflow:hidden;
+}
+
+/* The club wordmark: chunky letters, each its own colour, black-outlined and
+   tipped alternately left and right. Each line deals the four colours in its
+   own order, as the pubmat does. The letters are aria-hidden; the role="img"
+   label is what a screen reader reads. The outline is eight text-shadows plus
+   a drop, not -webkit-text-stroke, which eats into the glyphs. */
+.wordmark{
+  font-family:'Luckiest Guy',cursive;
+  font-size:clamp(28px,8vw,48px);
+  line-height:1.02;
+  letter-spacing:.01em;
+  margin:0 0 14px;
+}
+.wm-line{ display:block; white-space:nowrap; }
+.wm-line > span{
+  display:inline-block;
+  text-shadow:
+    -2px -2px 0 var(--outline),  2px -2px 0 var(--outline),
+    -2px  2px 0 var(--outline),  2px  2px 0 var(--outline),
+     0   -2px 0 var(--outline),  0    2px 0 var(--outline),
+    -2px  0   0 var(--outline),  2px  0   0 var(--outline),
+     3px  4px 0 var(--outline);
+}
+.wm-line > span:nth-child(odd){ transform:rotate(-4deg); }
+.wm-line > span:nth-child(even){ transform:rotate(4deg) translateY(1px); }
+.wm-line > span:nth-child(4n+1){ color:var(--c1); }
+.wm-line > span:nth-child(4n+2){ color:var(--c2); }
+.wm-line > span:nth-child(4n+3){ color:var(--c3); }
+.wm-line > span:nth-child(4n+4){ color:var(--c4); }
+.wm-1{ --c1:var(--mpc-blue);  --c2:var(--mpc-red);    --c3:var(--mpc-yellow); --c4:var(--mpc-green); }
+.wm-2{ --c1:var(--mpc-red);   --c2:var(--mpc-yellow); --c3:var(--mpc-blue);   --c4:var(--mpc-green); }
+.wm-3{ --c1:var(--mpc-red);   --c2:var(--mpc-blue);   --c3:var(--mpc-yellow); --c4:var(--mpc-green); }
+
+/* White block title with the pubmat's black outline and drop. */
+h1.title{
+  font-size:clamp(32px,8.4vw,64px);
+  line-height:1.06;
+  margin:0 0 8px;
+  text-shadow:
+    -2px -2px 0 var(--outline),  2px -2px 0 var(--outline),
+    -2px  2px 0 var(--outline),  2px  2px 0 var(--outline),
+     0   -2px 0 var(--outline),  0    2px 0 var(--outline),
+    -2px  0   0 var(--outline),  2px  0   0 var(--outline),
+     4px  5px 0 var(--outline);
+}
+h1.title .accent{ color:var(--white); }
+
+/* "Paying It Forward!": lime brush lettering, outlined, tilted up. */
+.domination-line{
+  font-family:'Permanent Marker',cursive;
+  font-size:clamp(24px,6.6vw,40px);
+  text-transform:uppercase;
+  letter-spacing:.01em;
+  color:var(--green);
+  margin:4px 0 2px;
+  transform:rotate(-3deg) skewX(-6deg);
+  text-shadow:
+    -2px -2px 0 var(--outline),  2px -2px 0 var(--outline),
+    -2px  2px 0 var(--outline),  2px  2px 0 var(--outline),
+     3px  4px 0 var(--outline);
+}
+
+/* "A Charity Event" on the pubmat's red brush stroke: a red band with ragged
+   ends, drawn with clip-path. */
+.charity-banner{
+  display:table;
+  margin-left:auto; margin-right:auto;
+  font-family:'Permanent Marker',cursive;
+  font-size:clamp(17px,4.6vw,26px);
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  color:var(--white);
+  background:var(--red);
+  padding:4px 34px 6px;
+  margin-top:2px; margin-bottom:18px;
+  transform:rotate(-2deg);
+  clip-path:polygon(3% 8%, 0 22%, 4% 40%, 1% 62%, 5% 84%, 2% 100%, 97% 94%, 100% 76%, 96% 56%, 99% 34%, 95% 14%, 99% 0, 12% 0);
+  text-shadow:2px 2px 0 rgba(11,15,10,.45);
+}
+
+/* The date/time/venue line as the pubmat's lime info panel. (render.mjs reads
+   this .eyebrow's text for the Hub board's QR panel, so it stays one div.) */
+.hero .eyebrow{
+  display:table;
+  margin-left:auto; margin-right:auto;
+  max-width:100%;
+  background:var(--green);
+  color:var(--ink);
+  font-weight:700;
+  font-size:13px;
+  letter-spacing:.12em;
+  line-height:1.5;
+  padding:8px 16px;
+  border-radius:10px;
+  box-shadow:3px 4px 0 var(--outline);
+  margin-top:0; margin-bottom:18px;
+  text-wrap:balance;
+}
+@media (max-width:480px){ .hero .eyebrow{ font-size:12px; letter-spacing:.08em; padding:7px 12px; } }
+.subtitle{ color:rgba(255,255,255,.86); }
 
 /* ==== Millennium Invitational: lib/v1/css's raw house colours, in this palette ====
-   Each rule repeats an engine selector with gold rgba(252,220,91), panel green
-   rgba(3,37,25)/rgba(1,20,12), logo green rgba(69,92,76) or cream
-   rgba(238,232,220) in place of the house values. The last three move the
-   logo green off the hero, where it fails (~2.3:1). */
-header.hero{ box-shadow:0 24px 60px -28px rgba(1,20,12,.45); }
-.regal-rule::before, .regal-rule::after{ background:linear-gradient(90deg, transparent, rgba(252,220,91,.7)); }
-.regal-rule::after{ background:linear-gradient(90deg, rgba(252,220,91,.7), transparent); }
-.view-tab:hover{ border-color:rgba(252,220,91,.6); }
-.day-picker select:hover, .day-picker select:focus{ border-color:rgba(252,220,91,.6); }
-.search-panel::before{ border-color:rgba(252,220,91,.35); }
-.ac-item:hover small, .ac-item.active small{ color:rgba(3,37,25,.75); }
-td.live-court-cell{ background:rgba(252,220,91,.16); }
-.cat-toggle-chip:hover{ border-color:rgba(252,220,91,.6); }
-.standings-col-head{ background:rgba(238,232,220,.94); }
+   Each rule repeats an engine selector with lime rgba(220,245,82), field
+   green rgba(52,100,51), ink rgba(18,33,15), deep green rgba(30,122,44) or
+   paper rgba(243,246,231) in place of the house values. The last three move
+   the deep green off the hero, where it fails on the field green. */
+.regal-rule::before, .regal-rule::after{ background:linear-gradient(90deg, transparent, rgba(220,245,82,.75)); }
+.regal-rule::after{ background:linear-gradient(90deg, rgba(220,245,82,.75), transparent); }
+.view-tab:hover{ border-color:rgba(52,100,51,.6); }
+.day-picker select:hover, .day-picker select:focus{ border-color:rgba(52,100,51,.6); }
+.search-panel::before{ border-color:rgba(220,245,82,.6); }
+.ac-item:hover small, .ac-item.active small{ color:rgba(18,33,15,.75); }
+td.live-court-cell{ background:rgba(220,245,82,.24); }
+.cat-toggle-chip:hover{ border-color:rgba(52,100,51,.6); }
+.standings-col-head{ background:rgba(243,246,231,.94); }
 .badge-2{ background:var(--green-dark); }
-table.gt td{ border-bottom-color:rgba(3,37,25,.07); }
-.tm-side.win{ background:rgba(252,220,91,.22); }
-.tm-row{ border-bottom-color:rgba(3,37,25,.07); }
-.tm-row.live{ background:rgba(252,220,91,.22); }
-.tm-row-meta .tm-plabel{ background:rgba(3,37,25,.08); }
-.tag.pool{ background:rgba(252,220,91,.18); }
-.live-dot{ box-shadow:0 0 0 0 rgba(69,92,76,.5); }
+table.gt td{ border-bottom-color:rgba(18,33,15,.07); }
+.tm-side.win{ background:rgba(220,245,82,.32); }
+.tm-row{ border-bottom-color:rgba(18,33,15,.07); }
+.tm-row.live{ background:rgba(220,245,82,.32); }
+.tm-row-meta .tm-plabel{ background:rgba(18,33,15,.08); }
+.tag.pool{ background:rgba(220,245,82,.28); }
+.live-dot{ box-shadow:0 0 0 0 rgba(30,122,44,.5); }
 @keyframes live-pulse{
-  0%{ box-shadow:0 0 0 0 rgba(69,92,76,.45); }
-  70%{ box-shadow:0 0 0 8px rgba(69,92,76,0); }
-  100%{ box-shadow:0 0 0 0 rgba(69,92,76,0); }
+  0%{ box-shadow:0 0 0 0 rgba(30,122,44,.45); }
+  70%{ box-shadow:0 0 0 8px rgba(30,122,44,0); }
+  100%{ box-shadow:0 0 0 0 rgba(30,122,44,0); }
 }
 .regal-rule .diamond{ background:var(--green); }
 .sync-status.ok{ color:var(--green); }
@@ -165,11 +281,15 @@ table.gt td{ border-bottom-color:rgba(3,37,25,.07); }
     <span class="hero-logos-sep">&times;</span>
     <img src="/assets/logo.png" alt="S.A.G.E." />
   </div>
-  <div class="tagline-script">Millennium Pickleball Club</div>
-  <div class="eyebrow">24 October 2026 &nbsp;·&nbsp; Plus 63 Pickleball Courts, Magalang</div>
+  <div class="wordmark" role="img" aria-label="Millennium Pickleball Club">
+    <span class="wm-line wm-1" aria-hidden="true"><span>M</span><span>I</span><span>L</span><span>L</span><span>E</span><span>N</span><span>N</span><span>I</span><span>U</span><span>M</span></span>
+    <span class="wm-line wm-2" aria-hidden="true"><span>P</span><span>I</span><span>C</span><span>K</span><span>L</span><span>E</span><span>B</span><span>A</span><span>L</span><span>L</span></span>
+    <span class="wm-line wm-3" aria-hidden="true"><span>C</span><span>L</span><span>U</span><span>B</span></span>
+  </div>
   <h1 class="title">2nd Invitational<br><span class="accent">Tournament</span></h1>
   <div class="domination-line">Paying It Forward!</div>
-  <div class="slogan-script">Good people, great games, brighter tomorrows</div>
+  <div class="charity-banner">A Charity Event</div>
+  <div class="eyebrow">24 October 2026 &nbsp;·&nbsp; 1:00–9:00 PM &nbsp;·&nbsp; Plus 63 Pickleball Club, Magalang</div>
   <p class="subtitle">Follow every team, every matchup and every court — live.</p>
 
   <div class="day-picker" id="dayPickerWrap">
@@ -214,8 +334,9 @@ table.gt td{ border-bottom-color:rgba(3,37,25,.07); }
 </div>
 
 <footer>
-  Millennium Pickleball Club &middot; 24 October 2026 &middot; Plus 63 Pickleball Courts, Magalang<br>
-  A charity event. All proceeds go to the Children's Home of Mary the Eucharist.<br>
+  Millennium Pickleball Club 2nd Invitational &middot; 24 October 2026 &middot; Plus 63 Pickleball Club, Magalang, Pampanga<br>
+  Paying it forward: proceeds go to the Children's Home of Mary the Eucharist.<br>
+  In partnership with KiYoJi, Soliman Paroli Eye Center and HUE<br>
   Powered by S.A.G.E. Match Control Experts
 </footer>
 

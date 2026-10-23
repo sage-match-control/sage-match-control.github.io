@@ -11,26 +11,30 @@
 <meta property="og:image" content="/assets/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Luckiest+Guy&display=swap" rel="stylesheet">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
 <link rel="manifest" href="/assets/favicons/site.webmanifest">
 <link rel="stylesheet" href="/lib/v1/css/schedule-board.css">
 <style>
-  /* Theme lifted from the SAGE tools (scoresheet-generator / tournament-calculator):
-     off-white paper, navy structure, SAGE green accent, Archivo Black display,
+  /* Millennium Invitational: the same palette as this event's index.html, sampled
+     from the event pubmat (assets/pubmat.webp) — see the contrast notes there.
+     The bezel stands on the pubmat's grid-paper field green (--field); --navy
+     stays a deep green because the board sets team names in it on the
+     team-tinted cards. Luckiest Guy (the club wordmark's face) for the title,
      Barlow Condensed labels, Inter body. */
   :root{
-    --navy:#032519;
-    --navy-deep:#01140C;
-    --green:#FCDC5B;
-    --green-dark:#455C4C;
-    --paper:#EEE8DC;
-    --paper-dim:#E3DCCD;
-    --line:#D3CAB8;
-    --ink:#032519;
-    --ink-soft:#4E5D54;
+    --navy:#173016;
+    --navy-deep:#0E1F0D;
+    --field:#346433;
+    --green:#DCF552;
+    --green-dark:#1E7A2C;
+    --paper:#F3F6E7;
+    --paper-dim:#E7EDD3;
+    --line:#CFD8B4;
+    --ink:#12210F;
+    --ink-soft:#4A5A45;
     --white:#FFFFFF;
     --radius:14px;
   }
@@ -54,9 +58,29 @@
      courts-as-columns and keeps scrolling horizontally at every size — that
      is the identity of the board, and it is what the print path shares. */
 
+  /* Millennium Invitational: the bezel on the pubmat's grid paper, and the event name in
+     the wordmark's face, white with a black outline. Screen only: the PDF's header keeps
+     lib/v1's own type. */
+  .bezel{
+    background-color:var(--field);
+    background-image:
+      linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
+    background-size:18px 18px;
+  }
+  .bezel h1{
+    font-family:'Luckiest Guy',cursive;
+    font-size:20px; letter-spacing:.03em; line-height:1.1;
+    text-shadow:-1px -1px 0 #0B0F0A, 1px -1px 0 #0B0F0A, -1px 1px 0 #0B0F0A, 1px 1px 0 #0B0F0A, 2px 2px 0 #0B0F0A;
+  }
+  .bezel.compact h1{ font-size:16px; }
+  /* The court and time headers on the same field green (white ~7.0:1, lime ~5.7:1 on it). */
+  .col-head, .time-cell{ background:var(--field); }
+
   /* Millennium Invitational: lib/v1/css/schedule-board.css's raw house colours, in this palette. */
-  .bezel{ box-shadow:0 10px 30px -14px rgba(1,20,12,.55); }
-  .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px rgba(252,220,91,.6); }
+  .bezel{ box-shadow:0 10px 30px -14px rgba(18,33,15,.55); }
+  .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px rgba(220,245,82,.7); }
+  .team-mark path{ stroke:rgba(18,33,15,.55); }
 
 
 </style>
@@ -117,14 +141,15 @@ const DAY_KEY = 'millennium-invitational-2026-day1';
 const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
 // A team event's colour key: one entry per bracket, keyed G<n> (G1 is Bracket 1), and one PO for every playoff
-// match. A team workbook's SCHEDULE tab is uncoloured, so these colours are ours to choose, not the organiser's.
+// match. A team workbook's SCHEDULE tab is uncoloured, so these colours are ours to choose, not the organiser's:
+// the pubmat's field green and lime.
 //
 // `short` is the chip label, `color` the hue that tints the whole cell. Cells apply the hue as a 40% tint over
-// white, so keep each hue dark enough that navy text stays readable on it (~6.9:1 on the darkest of these) —
-// go lighter and the names get hard to read. A bracket with no entry here still gets a "BR <n>" chip, in grey.
+// white, so keep each hue light enough that navy text stays readable on it (~7.5:1 on the darker of these) —
+// go darker and the names get hard to read. A bracket with no entry here still gets a "BR <n>" chip, in grey.
 const CAT_META = {
-  G1: { short:'ROUND ROBIN', color:'#455C4C' },
-  PO: { short:'PLAYOFFS',    color:'#FCDC5B' }
+  G1: { short:'ROUND ROBIN', color:'#346433' },
+  PO: { short:'PLAYOFFS',    color:'#DCF552' }
 };
 
 mountScheduleBoard({
