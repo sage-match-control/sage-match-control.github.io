@@ -47,6 +47,11 @@ export const ACCEPTED = [
     case: /^(team-index|team-schedule|cc-signed-in)\/team-demo-2026\//, kind: 'pixels', row: 'team colours',
     reason: 'the demo lists team colours: each team name has its mark (colour and shape) and each card shades between the two teams’ colours',
   },
+  // ---- a matchup on court reads In progress (the owner's request of 2026-10-24) ----
+  {
+    case: /^team-index\/team-demo-2026\/finder\/mid\//, kind: 'both', row: 'in progress on court',
+    reason: 'a matchup with a match on court and no score yet carries the In progress pill (Eagles v Giants)',
+  },
   // ---- code and access protection (sage-docs/docs/specs/.../code-and-access-protection-spec.md §9.8) ----
   {
     case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,

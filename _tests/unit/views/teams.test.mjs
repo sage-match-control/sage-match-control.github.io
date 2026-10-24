@@ -323,3 +323,17 @@ test('rowNotes: a page’s note goes on every match line, the Standings tab’s 
   assert.match(both, /<i>hint<\/i><span class="n">/);
   assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), {}), /class="n"/);
 });
+
+test('a matchup with a game on court reads "In progress" before any game has a score', () => {
+  const base = model.team.matchups.find(x => x.stage === null && x.group !== null);
+  // The same matchup with no game scored yet.
+  const mu = { ...base, result: { ...base.result, state: 'not-started', played: 0, winner: null } };
+  const onCourt = { ...mu, matches: mu.matches.map((m, i) => i === 0 ? { ...m, liveCourt: 'Court 1' } : { ...m, liveCourt: null }) };
+  const offCourt = { ...mu, matches: mu.matches.map(m => ({ ...m, liveCourt: null })) };
+  const pill = /<span class="tm-pill progress">In progress<\/span>/;
+  assert.match(matchupCardHTML(model, onCourt), pill);
+  assert.match(matchupCardHTML(model, onCourt), /<div class="tm-card is-progress/);
+  assert.doesNotMatch(matchupCardHTML(model, offCourt), pill);
+  // Before the day is live nothing is on court, whatever the sheet says.
+  assert.doesNotMatch(matchupCardHTML({ ...model, isLive: false }, onCourt), pill);
+});
