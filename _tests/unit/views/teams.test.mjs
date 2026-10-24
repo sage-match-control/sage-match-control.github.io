@@ -309,7 +309,7 @@ test('cardBadges: a page’s badges go in each matchup card’s header, in every
   assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), {}), /class="b"/);
 });
 
-test('rowNotes: a page’s note goes on every match line, the Standings tab’s read-only cards included', () => {
+test('rowNotes: a page’s note goes on every match line, the Standings tab’s cards included', () => {
   const mu = model.team.matchups.find(x => x.stage === null && x.group !== null);
   const notes = { rowNotes: m => `<span class="n">#${m.num}</span>` };
   const count = html => (html.match(/<span class="n">/g) || []).length;
@@ -336,4 +336,35 @@ test('a matchup with a game on court reads "In progress" before any game has a s
   assert.doesNotMatch(matchupCardHTML(model, offCourt), pill);
   // Before the day is live nothing is on court, whatever the sheet says.
   assert.doesNotMatch(matchupCardHTML({ ...model, isLive: false }, onCourt), pill);
+});
+
+test('Match Finder: a matchup card shows its matches with a "Hide matches" toggle, kept in hooks.collapsed', () => {
+  const mu = model.team.matchups.find(x => x.stage === null && x.group !== null);
+  const rows = html => (html.match(/class="tm-row[ "]/g) || []).length;
+  const open = matchupCardHTML(model, mu, { interactive: true, collapsed: new Set() }, new Set(), hooks);
+  assert.equal(rows(open), mu.matches.length);
+  assert.match(open, new RegExp(`<button type="button" class="tm-toggle" data-tm-collapse="${mu.matchUp}" aria-expanded="true">Hide matches</button>`));
+  const shut = matchupCardHTML(model, mu, { interactive: true, collapsed: new Set([mu.matchUp]) }, new Set(), hooks);
+  assert.equal(rows(shut), 0);
+  assert.match(shut, /data-tm-collapse="[^"]+" aria-expanded="false">Show matches<\/button>/);
+  // Without the set (a builder called on its own, the Standings' playoff cards) there is no toggle.
+  assert.doesNotMatch(matchupCardHTML(model, mu, {}, new Set(), hooks), /data-tm-collapse/);
+  // A team's result and the intro's list of every matchup pass the page's set on.
+  const collapsed = new Set([mu.matchUp]);
+  const entry = buildTeamIndex(model).find(e => e.kind === 'team' && (e.base === mu.side1 || e.base === mu.side2));
+  assert.match(teamResultHTML(model, entry, new Set(), { ...hooks, collapsed }), /aria-expanded="false">Show matches<\/button>/);
+  assert.match(introHTML(model, buildTeamIndex(model), 'x', new Set(), { ...hooks, collapsed }), /data-tm-collapse=/);
+  // A player's result shows the one match it's about, with nothing to hide.
+  const player = buildTeamIndex(model).find(e => e.kind === 'player');
+  assert.doesNotMatch(playerResultHTML(model, player, new Set(), { ...hooks, collapsed: new Set() }), /data-tm-collapse/);
+});
+
+test('Standings: a page’s decorateRow applies to the matchup cards’ match lines too (Control Center’s score entry)', () => {
+  const mu = model.team.matchups.find(x => x.stage === null && x.group !== null);
+  const html = teamStandingsHTML(model, { openGroups: new Set([mu.group]), expanded: new Set([mu.matchUp]) }, hooks);
+  assert.match(html, new RegExp(`clickable" data-n="${mu.matches[0].num}"`));
+  const po = model.team.matchups.find(x => x.stage !== null);
+  if(po) assert.match(teamStandingsHTML(model, {}, hooks), new RegExp(`data-n="${po.matches[0].num}"`));
+  // A page with no decorateRow (the Hub) draws them as before.
+  assert.doesNotMatch(teamStandingsHTML(model, { openGroups: new Set([mu.group]), expanded: new Set([mu.matchUp]) }, {}), /data-n=|clickable/);
 });

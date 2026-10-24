@@ -2018,8 +2018,8 @@ function ticketDecorate(m){
   return { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) + warn };
 }
 
-// A team match line's click-to-score (Match Finder only); its lineup warnings come through rowNotes instead, so
-// they show on every matchup card, the Standings tab's included.
+// A team match line's click-to-score (Match Finder's and the Standings tab's matchup cards); its lineup warnings
+// come through rowNotes instead, so they show on every matchup card.
 function teamRowDecorate(m){
   const attrs = scoreAttrs(m);
   return attrs ? { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) } : {};
@@ -2099,9 +2099,9 @@ function consoleTicketHTML(m, teamCode, isNext){
 }
 
 // ---- Score entry in Match Finder (spec §5.7) ----
-// Only Match Finder's tickets and team match lines, and a standard event's Standings bracket cards
-// (decorateBracketMatch), open the dialog; Live Matches, the rest of Standings and Awards stay
-// read-only (D8), so nothing else there calls scoreAttrs. Entry is on when the event's events.json entry carries
+// Only Match Finder's tickets and team match lines, a team event's Standings matchup cards, and a standard event's
+// Standings bracket cards (decorateBracketMatch), open the dialog; Live Matches, the rest of Standings and Awards
+// stay read-only (D8), so nothing else there calls scoreAttrs. Entry is on when the event's events.json entry carries
 // "scoreEntry": "console" | "links" and the operator is signed in.
 function scoreEntryAvailable(){
   const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
@@ -2179,8 +2179,8 @@ resultsEl.addEventListener('keydown', (e) => {
     openScoreFromFinder(e.target.dataset.scoreFacility, Number(e.target.dataset.scoreNum));
   }
 });
-// The Standings tab's bracket cards (decorateBracketMatch) open it the same way, in the chart and in Full tree,
-// which standingsResultsEl holds. Nothing else in that panel carries data-score-num.
+// The Standings tab's bracket cards (decorateBracketMatch), in the chart and in Full tree, and a team event's
+// matchup cards (teamRowDecorate) open it the same way; standingsResultsEl holds them all.
 standingsResultsEl.addEventListener('click', (e) => {
   const el = e.target.closest('[data-score-num]');
   if(!el || e.target.closest('button, a, input')) return;
