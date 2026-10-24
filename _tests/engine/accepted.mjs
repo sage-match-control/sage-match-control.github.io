@@ -52,6 +52,11 @@ export const ACCEPTED = [
     case: /^team-index\/team-demo-2026\/finder\/mid\//, kind: 'both', row: 'in progress on court',
     reason: 'a matchup with a match on court and no score yet carries the In progress pill (Eagles v Giants)',
   },
+  // ---- Hide matches in a team Match Finder (the owner's request of 2026-10-24) ----
+  {
+    case: /^(team-index\/[^/]+|cc\/(pickledrive-anniversary-2026|team-demo-2026))\/(finder|finder-team)\//, kind: 'both', row: 'hide matches',
+    reason: 'each matchup card in a team result and the all-matchups list ends in a Hide matches button, so the page is taller',
+  },
   // ---- code and access protection (sage-docs/docs/specs/.../code-and-access-protection-spec.md §9.8) ----
   {
     case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,
