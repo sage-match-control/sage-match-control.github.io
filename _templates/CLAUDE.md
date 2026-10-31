@@ -579,7 +579,11 @@ most common cause. Exact, case-sensitive:
   `Fi` and `SLOT` is a seed number (`3`) until the organiser types a team
   letter over it (`A`). The board reads a team match's stage from the
   side's prefix; the bracket comes from the team's `bracket` column in
-  `STANDINGSCSV`.
+  `STANDINGSCSV`, a number (`1`) or one letter (`A`; it reads "Bracket A").
+  A playoff matchup's tiebreaker game is coded `<SIDE>_TB` on both sides
+  (`QF-1_TB` v `QF-2_TB`) and shares the matchup's `matchUp` value; it isn't
+  counted once the matchup's other games settle it (`lib/v1/domain/deciders.js`,
+  mirrored by `sage-tools-api`'s `facilityCompletion.mjs`).
 
 `_(N)` suffixes mark a twice-to-beat playoff instance (see the
 `matchInstanceOf`/`pairUpMatchups` comments in `index.html` if you need the
