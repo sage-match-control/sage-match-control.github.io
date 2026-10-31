@@ -103,3 +103,84 @@ test('games whose two codes name different series or games are not a series', ()
   assert.equal(seriesGroups([odd, odd2]).size, 0);
   assert.equal(unneededSeriesGames([{ t1: 'ND_1', t2: 'ND_2', played: true, t1Score: 11, t2Score: 0 }]).size, 0);
 });
+
+// ---- a team playoff matchup's tiebreaker game (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §4) ----
+import { DECIDER_RE, isDeciderCode, isDecider, unneededDeciders } from '../../../lib/v1/domain/deciders.js';
+import * as DkTeams from '../../../lib/v1/domain/teams.js';
+import { computeFacilityProgress as dkProgress } from '../../../lib/v1/domain/progress.js';
+import { markUnneededGames as dkMarkUnneeded } from '../../../lib/v1/domain/schedule-grid.js';
+
+// One match of matchup `mu`: [code1, score1, code2, score2], a null score unplayed.
+const dkMatch = (mu, t1, s1, t2, s2) => ({ matchUp: mu, t1, t2, t1Score: s1, t2Score: s2, played: s1 !== null && s2 !== null });
+// QF 1: game 1, game 2 and the tiebreaker, with the scores given ([s1, s2] or null each).
+const dkQf = (g1, g2, tb = null, mu = 'QF-1 v QF-2') => [
+  dkMatch(mu, 'QF-1_1', g1 ? g1[0] : null, 'QF-2_1', g1 ? g1[1] : null),
+  dkMatch(mu, 'QF-1_2', g2 ? g2[0] : null, 'QF-2_2', g2 ? g2[1] : null),
+  dkMatch(mu, 'QF-1_TB', tb ? tb[0] : null, 'QF-2_TB', tb ? tb[1] : null),
+];
+const dkUnneeded = ms => Array.from(unneededDeciders(ms)).map(m => m.t1);
+
+test('isDeciderCode: a team code ending in _TB', () => {
+  assert.equal(DECIDER_RE.source, '_TB$');
+  for (const c of ['QF-1_TB', ' SF-2_TB ', 'Fi-A1_TB']) assert.equal(isDeciderCode(c), true, c);
+  for (const c of ['QF-1_1', 'A1_2', 'IXD_F_1_(2)', 'QF-1_tb', '', undefined, null]) assert.equal(isDeciderCode(c), false, String(c));
+  assert.equal(isDecider({ t1: 'QF-1_TB', t2: 'QF-2_TB' }), true);
+  assert.equal(isDecider({ t1: 'QF-1_TB', t2: 'QF-2_2' }), false);
+});
+
+test('unneededDeciders: the tiebreaker is not needed once the other games settle the matchup', () => {
+  assert.deepEqual(dkUnneeded(dkQf(null, null)), [], 'nothing played');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], null)), [], 'one game played');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], [11, 9])), ['QF-1_TB'], '2-0');
+  assert.deepEqual(dkUnneeded(dkQf([5, 11], [9, 11])), ['QF-1_TB'], '0-2');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], [9, 11])), [], '1-1: needed');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], [9, 9])), ['QF-1_TB'], '1-0 and a level game: one side won more');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], [9, 11], [7, 4])), [], '1-1 and played: it was needed');
+  assert.deepEqual(dkUnneeded(dkQf([11, 5], [11, 9], null, '')), [], 'no matchUp: always counted');
+  // Two matchups in one list are judged apart.
+  const two = [...dkQf([11, 5], [11, 9]), ...dkQf([11, 5], [9, 11], null, 'QF-3 v QF-4').map(m => ({ ...m, t1: m.t1.replace('QF-1', 'QF-3'), t2: m.t2.replace('QF-2', 'QF-4') }))];
+  assert.deepEqual(dkUnneeded(two), ['QF-1_TB']);
+  // A team typed over the seeds: the sides change, the rule doesn't.
+  const typed = dkQf([11, 5], [11, 9], null, 'QF-A1 v QF-B2').map(m => ({ ...m, t1: m.t1.replace('QF-1', 'QF-A1'), t2: m.t2.replace('QF-2', 'QF-B2') }));
+  assert.deepEqual(dkUnneeded(typed), ['QF-A1_TB']);
+});
+
+test('unneededSeriesGames also returns a tiebreaker that is not needed', () => {
+  const ms = dkQf([11, 5], [11, 9]);
+  assert.deepEqual(Array.from(unneededSeriesGames(ms)).map(m => m.t1), ['QF-1_TB']);
+  assert.deepEqual(Array.from(unneededSeriesGames(dkQf([11, 5], [9, 11]))), []);
+});
+
+test('teamMatchupResult: a settled matchup is final without its tiebreaker; 1-1 waits for it', () => {
+  const twoNil = DkTeams.teamMatchupResult(dkQf([11, 5], [11, 9]), 'games');
+  assert.deepEqual([twoNil.state, twoNil.winner, twoNil.total, twoNil.played, twoNil.pairs1, twoNil.pairs2], ['final', 1, 2, 2, 2, 0]);
+  const level = DkTeams.teamMatchupResult(dkQf([11, 5], [9, 11]), 'games');
+  assert.deepEqual([level.state, level.total, level.played], ['in-progress', 3, 2]);
+  const decided = DkTeams.teamMatchupResult(dkQf([11, 5], [9, 11], [4, 7]), 'games');
+  assert.deepEqual([decided.state, decided.winner, decided.pairs1, decided.pairs2, decided.total], ['final', 2, 1, 2, 3]);
+  // No tiebreaker rows: unchanged.
+  const plain = DkTeams.teamMatchupResult(dkQf([11, 5], [11, 9]).slice(0, 2), 'games');
+  assert.deepEqual([plain.state, plain.total], ['final', 2]);
+});
+
+test('pairLabel: a tiebreaker reads Tiebreaker / TB', () => {
+  assert.equal(DkTeams.pairLabel('QF-1_TB', true), 'TB');
+  assert.equal(DkTeams.pairLabel('QF-1_TB', false), 'Tiebreaker');
+  const pairs = { 1: { full: 'Pair 1', short: 'P1' }, 2: { full: 'Pair 2', short: 'P2' } };
+  assert.equal(DkTeams.pairLabel('QF-1_2', true, pairs), 'P2');
+  assert.equal(DkTeams.pairLabel('A1_3', true, pairs), 'Pair 3');
+});
+
+test('facility progress leaves out a tiebreaker that is not needed', () => {
+  const ms = dkQf([11, 5], [11, 9]).map((m, i) => ({ ...m, num: i + 1, time: '6:45 PM', court: 'Court 1', liveCourt: '', t1p1: 'a', t1p2: 'b', t2p1: 'c', t2p2: 'd' }));
+  const p = dkProgress(ms, false, null);
+  assert.deepEqual([p.total, p.done, p.left], [2, 2, 0]);
+  const open = dkQf([11, 5], [9, 11]).map((m, i) => ({ ...m, num: i + 1, time: '6:45 PM', court: 'Court 1', liveCourt: '', t1p1: 'a', t1p2: 'b', t2p1: 'c', t2p2: 'd' }));
+  assert.deepEqual([dkProgress(open, false, null).total, dkProgress(open, false, null).left], [3, 1]);
+});
+
+test('the schedule board marks a tiebreaker that is not needed', () => {
+  const rows = dkQf([11, 5], [11, 9]).map(m => ({ matchUp: m.matchUp, c1: m.t1, c2: m.t2, s1: m.t1Score, s2: m.t2Score }));
+  dkMarkUnneeded(rows);
+  assert.deepEqual(rows.map(r => r.notNeeded), [false, false, true]);
+});

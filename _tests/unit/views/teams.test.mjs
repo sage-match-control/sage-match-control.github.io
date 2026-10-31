@@ -368,3 +368,35 @@ test('Standings: a page’s decorateRow applies to the matchup cards’ match li
   // A page with no decorateRow (the Hub) draws them as before.
   assert.doesNotMatch(teamStandingsHTML(model, { openGroups: new Set([mu.group]), expanded: new Set([mu.matchUp]) }, {}), /data-n=|clickable/);
 });
+
+// ---- a team playoff matchup's tiebreaker game (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §4) ----
+const DK_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+// A day with one quarterfinal between Alpha (A1) and Beta (B2): game 1, game 2, then the tiebreaker row.
+const dkQfDay = (g2, tb = ['', '']) => buildDayModel(
+  { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games' },
+  { key: 'd', date: '2026-11-07' },
+  { isLive: true, facilities: [{ name: 'Main',
+    matchesCsv: [DK_HEADER,
+      '1,QF-A1 v QF-B2,,6:45 PM,Court 1,QF-A1_1,a1,a2,11,QF-B2_1,b1,b2,5',
+      `2,QF-A1 v QF-B2,,7:10 PM,Court 1,QF-A1_2,a3,a4,${g2[0]},QF-B2_2,b3,b4,${g2[1]}`,
+      `3,QF-A1 v QF-B2,,7:35 PM,Court 1,QF-A1_TB,,,${tb[0]},QF-B2_TB,,,${tb[1]}`].join('\n'),
+    standingsCsv: 'teamCode,teamName,bracket\nA1,Alpha,A\nB2,Beta,B\nQF-A1,Alpha,\nQF-B2,Beta,' }] },
+  { now: 0, alwaysLive: true },
+);
+
+test('a matchup card leaves out a tiebreaker that is not needed, and lists one that may be', () => {
+  const settled = dkQfDay([11, 9]);
+  const mu = settled.team.matchups[0];
+  const html = matchupCardHTML(settled, mu, {});
+  assert.match(html, /tm-pill final">Final/);
+  assert.doesNotMatch(html, /#3</);
+  assert.doesNotMatch(html, />TB</);
+  const level = dkQfDay([9, 11]);
+  const levelHtml = matchupCardHTML(level, level.team.matchups[0], {});
+  assert.match(levelHtml, /tm-pill progress">In progress/);
+  assert.match(levelHtml, /<span>#3<\/span><span class="tm-plabel">TB<\/span>/);
+  assert.match(levelHtml, /Lineup not set/);
+  const decided = dkQfDay([9, 11], [7, 4]);
+  assert.match(matchupCardHTML(decided, decided.team.matchups[0], {}), /tm-pill final">Final/);
+  assert.equal(decided.team.matchups[0].result.winner, 1);
+});

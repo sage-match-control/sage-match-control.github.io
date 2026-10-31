@@ -54,6 +54,32 @@ const CASES = {
     row(2, 'X_F_1_(2)', 'a', 'b', '', 'X_F_2_(2)', 'c', 'd', '')),
 };
 
+// A team playoff matchup's tiebreaker game (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §4):
+// game 1, game 2 and the tiebreaker of one quarterfinal, with the scores given ('' unplayed).
+const TEAM_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+const qfCsv = ([a1, a2], [b1, b2], [c1, c2], mu = 'QF-1 v QF-2') => [TEAM_HEADER,
+  `1,${mu},,6:45 PM,Court 1,QF-1_1,a,b,${a1},QF-2_1,c,d,${a2}`,
+  `2,${mu},,7:10 PM,Court 1,QF-1_2,e,f,${b1},QF-2_2,g,h,${b2}`,
+  `3,${mu},,7:35 PM,Court 1,QF-1_TB,,,${c1},QF-2_TB,,,${c2}`].join('\n');
+const DECIDER_CASES = {
+  'nothing played': [qfCsv(['', ''], ['', ''], ['', '']), false],
+  'one game played': [qfCsv([11, 5], ['', ''], ['', '']), false],
+  '2-0, tiebreaker blank': [qfCsv([11, 5], [11, 9], ['', '']), true],
+  '0-2, tiebreaker blank': [qfCsv([5, 11], [9, 11], ['', '']), true],
+  '1-1, tiebreaker blank': [qfCsv([11, 5], [9, 11], ['', '']), false],
+  '1-1, tiebreaker played': [qfCsv([11, 5], [9, 11], [7, 4]), true],
+  '1-0 and a level game, tiebreaker blank': [qfCsv([11, 5], [9, 9], ['', '']), true],
+  '2-0, no matchUp: the tiebreaker still counts': [qfCsv([11, 5], [11, 9], ['', ''], ''), false],
+  '2-0, decimal scores': [qfCsv(['11.5', 5], [11, '9.0'], ['', '']), true],
+};
+
+test('a playoff tiebreaker: the card and completedAt agree on every case', options, () => {
+  for (const [label, [csv, complete]] of Object.entries(DECIDER_CASES)) {
+    assert.equal(siteSaysComplete(csv), complete, `site: ${label}`);
+    assert.equal(server.facilityIsComplete(csv), complete, `server: ${label}`);
+  }
+});
+
 test('the played and BYE rules: the card and completedAt agree on every case', options, () => {
   for (const [label, csv] of Object.entries(CASES)) {
     assert.equal(siteSaysComplete(csv), server.facilityIsComplete(csv), label);
