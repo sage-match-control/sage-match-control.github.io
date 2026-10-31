@@ -1147,6 +1147,14 @@
 }
 /* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
 .br-table td.pair{ max-width:unset; width:unset; }
+/* A team event's Standings on a desktop screen: the shared rule breaks the board out to the full window width,
+   which suits categories side by side but leaves bracket tables running edge to edge. Keep a team event's board in
+   the page's own column, with margins either side, and its brackets two across (one bracket keeps its own width,
+   .team-standings.one-bracket). Other event types keep the full-width board. */
+@media (min-width:900px) and (min-height:600px){
+  #standingsResults:has(.team-standings){ width:auto; max-width:none; left:auto; margin-left:0; padding:0; }
+  #standingsResults .team-standings .group-grid{ grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); }
+}
 </style>
 <!-- after the page's styles, where the stylesheet this replaces was injected -->
 <link rel="stylesheet" href="/lib/v1/css/attendance.css">

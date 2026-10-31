@@ -57,6 +57,11 @@ export const ACCEPTED = [
     case: /^(team-index\/[^/]+|cc\/(pickledrive-anniversary-2026|team-demo-2026))\/(finder|finder-team)\//, kind: 'both', row: 'hide matches',
     reason: 'each matchup card in a team result and the all-matchups list ends in a Hide matches button, so the page is taller',
   },
+  // ---- a team event's Standings keeps to the page column on a desktop screen (the owner's request of 2026-11-01) ----
+  {
+    case: /^cc\/pickledrive-anniversary-2026\/standings\/[^/]+\/desktop$/, kind: 'pixels', row: 'team standings margins',
+    reason: 'Control Center’s team Standings sits in the page column with margins either side and its brackets two across, not the full window width, so the page is taller',
+  },
   // ---- code and access protection (sage-docs/docs/specs/.../code-and-access-protection-spec.md §9.8) ----
   {
     case: /^cc\/[^/]+\/attendance\//, kind: 'both', row: 28,
