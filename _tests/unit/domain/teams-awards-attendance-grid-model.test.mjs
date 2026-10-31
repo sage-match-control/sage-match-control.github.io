@@ -586,3 +586,28 @@ test('hideUnshownLineups: the board hides each unticked lineup too', () => {
   assert.deepEqual(['p1a', 'p1b', 'p2a', 'p2b'].map(k => shown.find(m => m.num === 2)[k]), [null, null, null, null]);
   assert.equal(rows(G.buildScheduleData(revealSnap, null, 'team')).find(m => m.num === 2).p1a, 'Mac', 'off: as before');
 });
+
+// ---- lettered brackets (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §5) ---------------------
+import { bracketKeyOf, compareBrackets } from '../../../lib/v1/domain/brackets.js';
+
+test('bracketKeyOf: a number or one letter; anything else is no bracket', () => {
+  assert.equal(bracketKeyOf('1'), 1);
+  assert.equal(bracketKeyOf(' 2 '), 2);
+  assert.equal(bracketKeyOf('A'), 'A');
+  assert.equal(bracketKeyOf('d'), 'D');
+  for (const raw of ['', '#N/A', 'AB', '1A', '-', undefined, null]) assert.equal(bracketKeyOf(raw), null, String(raw));
+});
+
+test('compareBrackets: no bracket first, then numbers, then letters', () => {
+  assert.deepEqual(['B', 2, null, 'A', 10, 1].sort(compareBrackets), [null, 1, 2, 10, 'A', 'B']);
+});
+
+test('groupOf and stageLabel read a lettered bracket', () => {
+  const rowByCode = new Map([['A1', { teamCode: 'A1', bracket: 'A' }], ['B', { teamCode: 'B', bracket: '1' }], ['X', { teamCode: 'X', bracket: '' }]]);
+  assert.equal(T.groupOf('A1', rowByCode), 'A');
+  assert.equal(T.groupOf('QF-A1', rowByCode), 'A');
+  assert.equal(T.groupOf('B', rowByCode), 1);
+  assert.equal(T.groupOf('X', rowByCode), null);
+  assert.equal(T.stageLabel('A1', rowByCode), 'Bracket A');
+  assert.equal(T.stageLabel('B', rowByCode), 'Bracket 1');
+});

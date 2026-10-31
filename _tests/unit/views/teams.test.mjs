@@ -400,3 +400,43 @@ test('a matchup card leaves out a tiebreaker that is not needed, and lists one t
   assert.match(matchupCardHTML(decided, decided.team.matchups[0], {}), /tm-pill final">Final/);
   assert.equal(decided.team.matchups[0].result.winner, 1);
 });
+
+// ---- lettered brackets (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §5) ---------------------
+// Two lettered brackets, listed B before A in the sheet, each with one played matchup of two games.
+const lettered = buildDayModel(
+  { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games' },
+  { key: 'd', date: '2026-11-07' },
+  { isLive: true, facilities: [{ name: 'Main',
+    matchesCsv: ['matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score',
+      '1,B1 v B2,,3:00 PM,Court 1,B1_1,p,q,11,B2_1,r,s,4',
+      '2,B1 v B2,,3:00 PM,Court 2,B1_2,p,q,11,B2_2,r,s,6',
+      '3,A1 v A2,,3:00 PM,Court 3,A1_1,p,q,3,A2_1,r,s,11',
+      '4,A1 v A2,,3:00 PM,Court 4,A1_2,p,q,11,A2_2,r,s,8'].join('\n'),
+    standingsCsv: 'teamCode,teamName,bracket\nB1,Bee One,B\nB2,Bee Two,B\nA1,Ay One,A\nA2,Ay Two,A' }] },
+  { now: 0, alwaysLive: true },
+);
+
+test('lettered brackets: Standings titles and orders them A, B', () => {
+  const html = teamStandingsHTML(lettered, {});
+  assert.deepEqual([...html.matchAll(/<h3 class="group-title">([^<]+)<\/h3>/g)].map(x => x[1]), ['Bracket A', 'Bracket B']);
+  assert.deepEqual([...html.matchAll(/data-tm-group="([^"]+)"/g)].map(x => x[1]), ['A', 'B']);
+  const open = teamStandingsHTML(lettered, { openGroups: new Set(['B']) });
+  assert.match(open, /data-tm-group="B" aria-expanded="true"/);
+  assert.match(open, /data-tm-group="A" aria-expanded="false"/);
+});
+
+test('lettered brackets: Match Finder groups the teams under Bracket A and Bracket B', () => {
+  const index = buildTeamIndex(lettered);
+  assert.deepEqual(index.filter(e => e.kind === 'team').map(e => [e.base, e.group]), [['B1', 'B'], ['B2', 'B'], ['A1', 'A'], ['A2', 'A']]);
+  const html = introHTML(lettered, index, '', new Set());
+  assert.deepEqual([...html.matchAll(/<h3>([^<]+)<\/h3>/g)].map(x => x[1]), ['Bracket A', 'Bracket B']);
+});
+
+test('numbered brackets still read as before', () => {
+  const html = teamStandingsHTML(model, {});
+  assert.match(html, /<h3 class="group-title">Bracket 1<\/h3>/);
+  assert.match(html, /data-tm-group="1"/);
+  const intro = introHTML(model, buildTeamIndex(model), '', new Set());
+  assert.match(intro, /<h3>Bracket 1<\/h3>/);
+  assert.doesNotMatch(intro, /<h3>Teams<\/h3>/);
+});
