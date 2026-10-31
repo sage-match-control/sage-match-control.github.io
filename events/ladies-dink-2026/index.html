@@ -150,6 +150,13 @@ h1.title{
   padding-bottom:4px;
   margin:4px 0 18px;
 }
+/* Standings on a desktop screen: the engine breaks the board out to the full window width, which suits
+   categories side by side but leaves four bracket tables running edge to edge. Keep it in the page's own
+   column, with margins either side, and the four brackets two by two. */
+@media (min-width:900px) and (min-height:600px){
+  #standingsResults{ width:auto; max-width:none; left:auto; margin-left:0; padding:0; }
+  #standingsResults .group-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+}
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
