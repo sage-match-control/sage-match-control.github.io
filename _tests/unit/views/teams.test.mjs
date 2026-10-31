@@ -241,7 +241,7 @@ test('teamScoring "games": a tie no tiebreaker settles shares its rank and reads
   const m = day(cycle.join('\n'));
   const html = groupTableHTML(m, '1', m.standings);
   assert.deepEqual(ranks(html), ['1', '1', '1']);
-  assert.equal((html.match(/<span class="tie-pill"[^>]*>Tied · playoff round robin<\/span>/g) || []).length, 3);
+  assert.equal((html.match(/<span class="tie-pill" title="Level on every tiebreaker: a playoff decides it">Tied · playoff<\/span>/g) || []).length, 3);
   // Before the last game the same standings carry no flag, and the ranks run on.
   const mid = day([...cycle.slice(0, 3), '3,A v C,,1:40 PM,Court 1,C_1,c1,c2,,A_1,a1,a2,'].join('\n'));
   const midHtml = groupTableHTML(mid, '1', mid.standings);
@@ -439,4 +439,24 @@ test('numbered brackets still read as before', () => {
   const intro = introHTML(model, buildTeamIndex(model), '', new Set());
   assert.match(intro, /<h3>Bracket 1<\/h3>/);
   assert.doesNotMatch(intro, /<h3>Teams<\/h3>/);
+});
+
+// ---- the Tied pill fits any event (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §6) -------------
+test('a two-team tie reads Tied · playoff game, with no point target', () => {
+  // A and B split 1-1 with the same points (11-5, 5-11), and each beats C 2-0: level on wins, head-to-head
+  // wins and head-to-head quotient.
+  const m = buildDayModel(
+    { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games' },
+    { key: 'd', date: '2026-11-07' },
+    { isLive: true, facilities: [{ name: 'Main',
+      matchesCsv: ['matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score',
+        '1,A v B,,3:00 PM,Court 1,A_1,p,q,11,B_1,r,s,5', '2,A v B,,3:00 PM,Court 2,A_2,p,q,5,B_2,r,s,11',
+        '3,A v C,,3:25 PM,Court 1,A_1,p,q,11,C_1,r,s,0', '4,A v C,,3:25 PM,Court 2,A_2,p,q,11,C_2,r,s,0',
+        '5,B v C,,3:50 PM,Court 1,B_1,p,q,11,C_1,r,s,0', '6,B v C,,3:50 PM,Court 2,B_2,p,q,11,C_2,r,s,0'].join('\n'),
+      standingsCsv: 'teamCode,teamName,bracket\nA,Alpha,1\nB,Beta,1\nC,Gamma,1' }] },
+    { now: 0, alwaysLive: true },
+  );
+  const html = groupTableHTML(m, '1', m.standings);
+  assert.equal((html.match(/<span class="tie-pill" title="Level on every tiebreaker: a playoff game decides it">Tied · playoff game<\/span>/g) || []).length, 2);
+  assert.doesNotMatch(html, /to 5/);
 });
