@@ -90,6 +90,49 @@
 }
 /* four tabs fit a 375px phone (the prototype's rule) */
 @media (max-width:480px){ .view-tabs{gap:6px;} .view-tab{font-size:11px; padding:9px 12px;} }
+/* ==== lib/v1/css's house colours, through this page's tokens ====
+   The engine writes these tints and shadows as literal S.A.G.E. colours, which a re-skinned event would
+   show unchanged (green winning sides on a pink page). Each rule repeats an engine selector with
+   color-mix(in srgb, var(--token) N%, transparent) in place of rgba(<house token>, N/100): the same pixels
+   on the house palette, the event's own colours on any other. Keep it whole when re-skinning;
+   _tests/unit/team-theme.test.mjs fails if an engine rule in a house colour is missing here. */
+.live-dot{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 50%, transparent); }
+@keyframes live-pulse{
+  0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 45%, transparent); }
+  70%{ box-shadow:0 0 0 8px color-mix(in srgb, var(--green-dark) 0%, transparent); }
+  100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 0%, transparent); }
+}
+.tag.pool{ background:color-mix(in srgb, var(--green) 18%, transparent); }
+.search-panel::before{ border:1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+.ac-item:hover small, .ac-item.active small{ color:color-mix(in srgb, var(--ink) 75%, transparent); }
+td.live-court-cell{ background:color-mix(in srgb, var(--green) 16%, transparent); }
+.cat-toggle-chip:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.standings-col-head{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary-item.leader{ box-shadow:0 0 26px -8px color-mix(in srgb, var(--green-dark) 45%, transparent); }
+@media (min-width:900px) and (min-height:600px){
+  .club-subhead{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+}
+table.gt td{ border-bottom:1px solid color-mix(in srgb, var(--ink) 7%, transparent); }
+.tm-side.win{ background:color-mix(in srgb, var(--green) 22%, transparent); }
+.tm-row{ border-bottom:1px solid color-mix(in srgb, var(--ink) 7%, transparent); }
+.tm-row.live{ background:color-mix(in srgb, var(--green) 22%, transparent); }
+.tm-row-meta .tm-plabel{ background:color-mix(in srgb, var(--ink) 8%, transparent); }
+header.hero{ box-shadow:0 24px 60px -28px color-mix(in srgb, var(--navy-deep) 45%, transparent); }
+.regal-rule::before, .regal-rule::after{ background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--green) 70%, transparent)); }
+.regal-rule::after{ background:linear-gradient(90deg, color-mix(in srgb, var(--green) 70%, transparent), transparent); }
+.view-tab:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.day-picker select:hover, .day-picker select:focus{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+
+/* The Teams tab's Expand all / Collapse all: lib/v1's Hub gives the button no class (Control Center passes
+   one), so it is styled here. */
+.roster-actions button{
+  font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:600;
+  text-transform:uppercase; letter-spacing:.08em;
+  padding:6px 14px; border-radius:100px; border:1px solid var(--line);
+  background:var(--white); color:var(--ink); cursor:pointer;
+}
+.roster-actions button:hover{ border-color:var(--green-dark); }
 /* ==== Ladies' Dink: the pubmat's hero ==== */
 /* The pubmat's horizontal stripes, faint teal on the charcoal hero. */
 header.hero{
@@ -98,8 +141,6 @@ header.hero{
 }
 /* The logo's own off-white ground, so the tile's edge doesn't show. */
 .hero-logos img{ background:#F7F7F0; }
-.regal-rule::before{ background:linear-gradient(90deg, transparent, rgba(227,103,151,.7)); }
-.regal-rule::after{ background:linear-gradient(90deg, rgba(227,103,151,.7), transparent); }
 /* Date and venue, in the pubmat's heavy sans. */
 .eyebrow{
   font-family:'Montserrat',sans-serif;

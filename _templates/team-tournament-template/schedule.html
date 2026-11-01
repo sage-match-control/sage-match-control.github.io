@@ -55,6 +55,12 @@
      is the identity of the board, and it is what the print path shares. */
 
 
+  /* ==== lib/v1/css/schedule-board.css's house colours, through this page's tokens ====
+     The same rules as the engine's, with color-mix(in srgb, var(--token) N%, transparent) in place of
+     rgba(<house token>, N/100): the same pixels on the house palette, the event's own colours on any
+     other. Keep it whole when re-skinning; _tests/unit/team-theme.test.mjs checks it. */
+  .bezel{ box-shadow:0 10px 30px -14px color-mix(in srgb, var(--navy-deep) 55%, transparent); }
+  .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px color-mix(in srgb, var(--green) 60%, transparent); }
 </style>
 </head>
 <body>
@@ -112,13 +118,15 @@ const DAY_KEY = '{{SCHEDULE_DAY_KEY}}';
 // (_templates/CLAUDE.md §7).
 const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
-// A team event's colour key: one entry per bracket, keyed G<n> (G1 is Bracket 1), and one PO for every playoff
+// A team event's colour key: one entry per bracket, keyed G and the bracket's number or letter (G1 is Bracket 1,
+// GA Bracket A), and one PO for every playoff
 // match. A team workbook's SCHEDULE tab is uncoloured, so these colours are ours to choose, not the organiser's.
 // EXAMPLE — replace with this event's own brackets.
 //
 // `short` is the chip label, `color` the hue that tints the whole cell. Cells apply the hue as a 40% tint over
 // white, so keep each hue dark enough that navy text stays readable on it (~6.9:1 on the darkest of these) —
-// go lighter and the names get hard to read. A bracket with no entry here still gets a "BR <n>" chip, in grey.
+// go lighter and the names get hard to read. A numbered bracket with no entry here still gets a "BR <n>" chip, in
+// grey; a lettered one gets a grey "?", so list every lettered bracket.
 const CAT_META = {
   G1: { short:'BR 1',     color:'#1155CC' },
   G2: { short:'BR 2',     color:'#B45F06' },

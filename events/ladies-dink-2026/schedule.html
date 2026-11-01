@@ -55,6 +55,12 @@
      is the identity of the board, and it is what the print path shares. */
 
 
+  /* ==== lib/v1/css/schedule-board.css's house colours, through this page's tokens ====
+     The same rules as the engine's, with color-mix(in srgb, var(--token) N%, transparent) in place of
+     rgba(<house token>, N/100): the same pixels on the house palette, the event's own colours on any
+     other. Keep it whole when re-skinning; _tests/unit/team-theme.test.mjs checks it. */
+  .bezel{ box-shadow:0 10px 30px -14px color-mix(in srgb, var(--navy-deep) 55%, transparent); }
+  .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px color-mix(in srgb, var(--green) 60%, transparent); }
 </style>
 </head>
 <body>
