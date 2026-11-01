@@ -1418,6 +1418,7 @@
 // (site-engine-spec §7.1); the wrappers go when the views move into the engine.
 import { matchByeSide } from '/lib/v1/domain/byes.js';
 import { unneededSeriesGames } from '/lib/v1/domain/series.js';
+import { isDecider } from '/lib/v1/domain/deciders.js';
 import { roundLabel } from '/lib/v1/domain/codes.js';
 import { GO_LIVE_LEAD_HOURS, formatMinutesAsClock } from '/lib/v1/domain/golive.js';
 import { sideOf, pairLabel } from '/lib/v1/domain/teams.js';
@@ -2154,7 +2155,7 @@ const scoreDialog = createScoreDialog({
   extraWarnings(m){
     const out = [];
     if([...unneededSeriesGames(MATCHES)].some(x => x.num === m.num && x.facility === m.facility)){
-      out.push('This series game isn’t needed: the series is already decided.');
+      out.push(isDecider(m) ? 'This tiebreaker isn’t needed: the matchup is already decided.' : 'This series game isn’t needed: the series is already decided.');
     }
     if(CURRENT_TYPE === 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD')) out.push('Lineup not set for this match.');
     (LINEUP_ISSUES.get(m.num) || []).forEach(i => out.push(`Lineup: ${i.text}.`));
