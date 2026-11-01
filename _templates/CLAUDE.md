@@ -69,8 +69,8 @@ templates handle any number of tournament days. The standard and dual-meet
 templates handle any number of divisions/events. `dual-meet-template/`
 additionally handles exactly two clubs; it is not a general multi-club
 template. `team-tournament-template/` is for teams of several pairs, each
-meeting another team in a matchup won on total points, with a bracket stage
-and playoffs; its pages are the team views of the engine (§8).
+meeting another team in a matchup won on total points (or on games won, with
+`teamScoring: "games"`, §2 step 7), with a bracket stage and playoffs; its pages are the team views of the engine (§8).
 
 ## 2. The steps
 
@@ -148,6 +148,17 @@ and playoffs; its pages are the team views of the engine (§8).
    underneath (`--court`, `--cork`, `--amber`, `--muted`, …, kept so the
    rules read by intent rather than by hue).
 
+   The team template's pages also carry a block headed **lib/v1/css's house
+   colours, through this page's tokens**: the engine writes some tints and
+   shadows (a winning side, a live row, the live dot's pulse, the dividers)
+   as literal house colours, and the block restates each through the tokens,
+   which is the same on the house palette and the event's own colours on any
+   other. Keep it whole when re-skinning; `_tests/unit/team-theme.test.mjs`
+   fails if an engine rule in a house colour is missing from it. The standard
+   and dual-meet templates have no such block yet, so a re-skinned event made
+   from one still shows the house green in those places unless its page
+   restates them the same way.
+
    > **The green is a fill colour, not a text colour.** `--green` on white
    > is ~2.3:1 and fails AA at any size; `--green-dark` is ~4.0:1 and still
    > misses the 4.5:1 body floor. Use green as a background with `--navy`
@@ -172,11 +183,12 @@ and playoffs; its pages are the team views of the engine (§8).
      it at whichever day is being played; there is no day picker on the board.
    - **`CAT_META`** — one entry per `<DIVISION><EVENT>` code, giving each
      category its chip label and the hue that tints its cells. For a team
-     event it is one hue per bracket (`G<n>`, `G1` is Bracket 1) plus `PO`
-     for every playoff match. We choose these colours ourselves, because
+     event it is one hue per bracket (`G` and the bracket's number or letter:
+     `G1` is Bracket 1, `GA` Bracket A) plus `PO` for every playoff match. We choose these colours ourselves, because
      the team workbook's `SCHEDULE` tab is uncoloured. Keep each hue dark
-     enough that navy text stays readable on its 40% tint. A bracket with no
-     entry still gets a `BR <n>` chip in grey.
+     enough that navy text stays readable on its 40% tint. A numbered bracket
+     with no entry still gets a `BR <n>` chip in grey; a lettered one gets a
+     grey `?`, so list every lettered bracket.
 
    > **A standard or dual-meet event's `CAT_META` colours are the organiser's, not ours.** Read them off
    > the colour-coded SCHEDULE tab of the source spreadsheet so the wall
@@ -283,12 +295,21 @@ and playoffs; its pages are the team views of the engine (§8).
      advanced, captains out of Mixed) adds `lineupRules` on the event; Control
      Center then warns about each lineup that breaks one. The shape is in
      `event-data/config/README.md`.
+   - A team event that keeps each lineup hidden until the organiser shows it
+     sets `"lineupReveal": true` on the event. The Hub and the board then show
+     a match's players only once the workbook's `CSV` tab has its
+     `lineupShown` column `TRUE` for it (the Millennium workbook fills that by
+     formula from a **Show lineup** tick box per matchup in `MatchUps`).
+     Control Center always shows every lineup. Ticking the box doesn't trigger
+     a sync: resync the day from Control Center after ticking.
    - A team event scored on games won rather than total points sets
      `"teamScoring": "games"` on the event (not under `display`). A matchup is
-     then won on matches won, then total points, and the bracket is ranked by
-     games won, total points, head-to-head wins and head-to-head points, with
-     the table showing W, L and Pts. Without it the event scores as PickleDrive
-     did (`"points"`).
+     then won on games won, then total points, and the bracket is ranked by
+     games won; two teams still level by their head-to-head wins, then the
+     head-to-head quotient; three or more by the overall quotient, with two
+     still level going to the two-team rules. A tie left after that reads
+     **Tied** for the organiser's playoff. The table shows W, L, PF, PA and the
+     quotient. Without it the event scores as PickleDrive did (`"points"`).
    - All three maps (`divisions`, `events`, `clubs`) are the same shape: **code → label**. Only codes that
      actually appear in `teamCode1`/`teamCode2` matter.
    - **Order comes from key order.** Categories are displayed in the order the
@@ -321,14 +342,15 @@ and playoffs; its pages are the team views of the engine (§8).
 
 **Team events: the workbook.** The Team Tournament Master does not exist yet
 (`sage-docs/docs/specs/.../team-tournament-master-spec.md`),
-so for now a team event's workbook is made by copying PickleDrive's and
-clearing it. **Only an event of PickleDrive's shape can be made this
-way:** 15 teams `A`–`O` in three brackets of five, four pairs per matchup, a
-group-stage round robin, eight quarterfinalists then semifinals, Bronze and
-Final, 152 matches, one facility and 10 courts. The team codes are generic
-(`A_3`, `QF-3_4`), so copying carries over no other event's names; that is
-why the other formats are never made by copying. **Any other shape waits for
-the master.**
+so for now a team event's workbook is a copy of a past team event's, cleared
+and, when the format differs, adapted by hand. **An event of PickleDrive's
+shape** — 15 teams `A`–`O` in three brackets of five, four pairs per matchup,
+a group-stage round robin, eight quarterfinalists then semifinals, Bronze and
+Final, 152 matches, one facility and 10 courts — copies PickleDrive's and only
+needs clearing: steps 1–5 below. Its team codes are generic (`A_3`,
+`QF-3_4`), so copying carries over no other event's names. **Any other
+shape** copies the nearest past event's workbook and is adapted by hand
+("Another shape", after step 5).
 
 1. **Source:** the live PickleDrive workbook, Drive file
    `1Bk3iAqB6Fdt6t-EiI8MrU0Or8UZc4MAZcnWcMUOCkOA` ("2026-10-03 PickleDrive
@@ -375,6 +397,30 @@ the master.**
    not its trigger. Run **SAGE → Set up live sync** with the new day key
    and facility; that creates the trigger and replaces the copied day key.
    Then share it with the service account and close it to link access (step 13).
+
+**Another shape.** The Millennium Invitational (8 teams with colour codes,
+one round robin, Bronze and Final) was adapted from a copy of PickleDrive's
+workbook, and Ladies' Dink (brackets A–D, playoff tiebreaker rows) from a copy
+of Millennium's. Copy whichever past workbook is closest, never editing the
+source. The site needs nothing from the workbook but the published tabs
+(`CSV`, `STANDINGSCSV` and the roster tab, in the columns of §4, with team
+codes as in §5), so write the event's spec first, with a table of how the new
+format differs from the copied event's and what the engine does with each
+difference; anything the engine doesn't handle yet is site work in that spec.
+List what the copy still holds of the old event in the spec, and tick each
+item off as it is fixed. Then step 4's checks become:
+
+- every team has a name in `Teams` (a team typed into a playoff slot reads
+  *Seed n · TBD* until it has one);
+- `STANDINGSCSV` has one row per team with zero points, a `bracket` that is
+  a number or one letter, and no row reading `-` (a reference that slid onto
+  a divider row when rows were moved);
+- `CSV` has every match with every score empty, every playoff row reading
+  its seed, and any tiebreaker rows coded `<SIDE>_TB` on both sides;
+- the format's rules are in `events.json` (`display.pairs`, `teamScoring`,
+  `lineupRules`, `lineupReveal`; step 7).
+
+Then step 5 as above.
 
 The team checks of steps 10–14 are in the shared dry-run template
 (step 10); the other steps apply as written. When the Team Tournament

@@ -32,6 +32,17 @@ section can reference them without guessing at what's actually in the sheet:
   one quarterfinal seed cell on `MatchUps`. That quarterfinal card
   switches from *Seed n · TBD* to the team's name, and the team gets an
   *Advances* label. Put the seed number back afterwards.
+- [ ] **Lineup reveal (team events with `lineupReveal`).** The lineup you
+  just entered stays hidden on the Hub and the board, while Control Center
+  shows it. Tick that matchup's **Show lineup** box, then click **Resync this
+  day now** (the tick doesn't sync by itself): the names appear on the Hub
+  and the board. Untick it and resync afterwards.
+- [ ] **Team colours (team events with `display.teamColors`).** Every team
+  shows its mark, a coloured shape, before its name on the Hub, the board and
+  Control Center, and no two marks look alike.
+- [ ] **Roster (team events).** Change one player's name on `Teams`. Edits
+  there don't sync by themselves: click **Resync this day now**, check the Hub's
+  Teams tab shows the change, then put the name back and resync.
 
 ### 1.2 Console verification (operator device only — nothing public yet)
 
@@ -115,6 +126,17 @@ watching for when that pipeline needs a nudge:
   site takes every playoff team from these cells and never picks them
   itself. The seed cells are listed in `_templates/CLAUDE.md` (the
   team workbook step).
+- [ ] **Playoff tiebreakers (team events whose workbook has `_TB` rows).**
+  A playoff matchup still level after its games plays its tiebreaker row:
+  type the two nominated players into that row's player cells, then enter
+  its score like any other. A matchup already settled needs nothing: its
+  tiebreaker row reads *Not needed* on the board and drops off the Hub's card.
+- [ ] **Show lineup (team events with `lineupReveal`).** Tick each matchup's
+  **Show lineup** box when the organiser says, then click **Resync this day
+  now**: the tick doesn't sync by itself.
+- [ ] **Roster changes (team events).** A change on `Teams` (a substitute,
+  a spelling fix) doesn't sync by itself either: click **Resync this day now**
+  after it.
 - [ ] If Mission Control reads *Live updates: polling GitHub (push not connected)*, updates still arrive, just 30–60s slower — keep going and tell whoever maintains the system
 - [ ] Periodically glance at Mission Control's Facility Sync Status. It should read "Synced" a few seconds to a couple minutes ago, continuously
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
