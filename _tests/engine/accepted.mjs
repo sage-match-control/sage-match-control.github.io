@@ -68,6 +68,10 @@ export const ACCEPTED = [
     reason: 'the template restates lib/v1/css’s house-coloured rules through its tokens (color-mix); the hero’s divider gradient rounds 1/255 differently on one pixel row',
   },
   {
+    case: /^dm-index\/[^/]+\/standings[^/]*\//, kind: 'pixels', row: 'template tokens',
+    reason: 'the dual-meet template restates lib/v1/css’s house-coloured rules through its tokens (color-mix); the hero’s divider gradient rounds 1/255 differently on one pixel row',
+  },
+  {
     case: /^team-index\/[^/]+\/standings[^/]*\/[^/]+\/desktop$/, kind: 'pixels', row: 'team standings margins',
     reason: 'the team Hub’s Standings sits in the page column with margins either side and its brackets two across, as Control Center’s does, so the page is taller',
   },

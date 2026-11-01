@@ -148,16 +148,14 @@ meeting another team in a matchup won on total points (or on games won, with
    underneath (`--court`, `--cork`, `--amber`, `--muted`, …, kept so the
    rules read by intent rather than by hue).
 
-   The team template's pages also carry a block headed **lib/v1/css's house
-   colours, through this page's tokens**: the engine writes some tints and
-   shadows (a winning side, a live row, the live dot's pulse, the dividers)
-   as literal house colours, and the block restates each through the tokens,
-   which is the same on the house palette and the event's own colours on any
-   other. Keep it whole when re-skinning; `_tests/unit/team-theme.test.mjs`
-   fails if an engine rule in a house colour is missing from it. The standard
-   and dual-meet templates have no such block yet, so a re-skinned event made
-   from one still shows the house green in those places unless its page
-   restates them the same way.
+   Every template's Hub, board and scorer page also carries a block headed
+   **lib/v1/css's house colours, through this page's tokens**: the engine
+   writes some tints and shadows (a winning side, a live row, the live dot's
+   pulse, the dividers) as literal house colours, and the block restates each
+   through the tokens, which is the same on the house palette and the event's
+   own colours on any other. Keep it whole when re-skinning;
+   `_tests/unit/house-colours.test.mjs` fails if an engine rule in a house
+   colour is missing from it.
 
    > **The green is a fill colour, not a text colour.** `--green` on white
    > is ~2.3:1 and fails AA at any size; `--green-dark` is ~4.0:1 and still

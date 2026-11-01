@@ -61,7 +61,7 @@
     --cork:var(--navy);
     --muted:var(--ink-soft);
     --navy-mid:var(--navy-deep);
-    --card-shadow: 0 18px 40px -20px rgba(11,24,38,.28);
+    --card-shadow: 0 18px 40px -20px color-mix(in srgb, var(--navy-deep) 28%, transparent);
   }
 
                                                     /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
@@ -142,6 +142,24 @@
     overflow-y:auto;
   }
 }
+/* ==== lib/v1/css's house colours, through this page's tokens: engine rules with color-mix(in srgb, var(--token) N%,
+   transparent) for rgba(<house token>, N/100), so a re-skin reaches them. Keep it whole; _tests/unit/house-colours.test.mjs checks it. */
+.live-dot{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 50%, transparent); }
+@keyframes live-pulse{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 45%, transparent); } 70%{ box-shadow:0 0 0 8px color-mix(in srgb, var(--green-dark) 0%, transparent); } 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 0%, transparent); } }
+.tag.pool{ background:color-mix(in srgb, var(--green) 18%, transparent); }
+.search-panel::before{ border:1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+.ac-item:hover small, .ac-item.active small{ color:color-mix(in srgb, var(--ink) 75%, transparent); }
+td.live-court-cell{ background:color-mix(in srgb, var(--green) 16%, transparent); }
+.cat-toggle-chip:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.standings-col-head{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary-item.leader{ box-shadow:0 0 26px -8px color-mix(in srgb, var(--green-dark) 45%, transparent); }
+@media (min-width:900px) and (min-height:600px){ .club-subhead{ background:color-mix(in srgb, var(--paper) 94%, transparent); } .club-summary{ background:none; } }
+header.hero{ box-shadow:0 24px 60px -28px color-mix(in srgb, var(--navy-deep) 45%, transparent); }
+.regal-rule::before, .regal-rule::after{ background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--green) 70%, transparent)); }
+.regal-rule::after{ background:linear-gradient(90deg, color-mix(in srgb, var(--green) 70%, transparent), transparent); }
+.view-tab:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.day-picker select:hover, .day-picker select:focus{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
 </style>
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">

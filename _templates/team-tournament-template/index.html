@@ -95,7 +95,7 @@
    show unchanged (green winning sides on a pink page). Each rule repeats an engine selector with
    color-mix(in srgb, var(--token) N%, transparent) in place of rgba(<house token>, N/100): the same pixels
    on the house palette, the event's own colours on any other. Keep it whole when re-skinning;
-   _tests/unit/team-theme.test.mjs fails if an engine rule in a house colour is missing here. */
+   _tests/unit/house-colours.test.mjs fails if an engine rule in a house colour is missing here. */
 .live-dot{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 50%, transparent); }
 @keyframes live-pulse{
   0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 45%, transparent); }
@@ -112,6 +112,7 @@ td.live-court-cell{ background:color-mix(in srgb, var(--green) 16%, transparent)
 .club-summary-item.leader{ box-shadow:0 0 26px -8px color-mix(in srgb, var(--green-dark) 45%, transparent); }
 @media (min-width:900px) and (min-height:600px){
   .club-subhead{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+  .club-summary{ background:none; }
 }
 table.gt td{ border-bottom:1px solid color-mix(in srgb, var(--ink) 7%, transparent); }
 .tm-side.win{ background:color-mix(in srgb, var(--green) 22%, transparent); }
