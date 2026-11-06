@@ -118,7 +118,8 @@ watching for when that pipeline needs a nudge:
   site takes every playoff team from these cells and never picks them
   itself. The seed cells are listed in `_templates/CLAUDE.md` (the
   team workbook step).
-- [ ] **Playoff tiebreakers.** A playoff matchup at 1–1 plays its **TB** row: type the two nominated players into that row's player cells, then enter its score like any other. A matchup won 2–0 needs nothing: its TB row reads *Not needed* on the board and drops off the Hub's card
+- [ ] **Bracket ties (before typing the qualifiers).** The site ranks level teams by head-to-head wins, then head-to-head quotient for two teams, or overall quotient for three or more, and shows **Tied** if they are still level. Tied teams play off court-side, and nothing on the site records it, so type the winners into the seed cells: two teams play one side-out game to 5; three or more play a round robin, one pair per team, side-out to 5, then first to 3, then a timed match. Two teams level for 3rd and 4th also read *Tied*, but neither qualifies, so they don't need to play off. The pill stays after a tie is settled
+- [ ] **Playoff tiebreakers.** Each team submits 3 pairs for a playoff matchup, the third for the tiebreaker. A matchup at 1–1 plays its **TB** row, side-out to 11: type that pair's players into the row's player cells, then enter its score like any other. Wait until 1–1 to type them, because the Hub shows them at once. A matchup won 2–0 needs nothing: its TB row reads *Not needed* on the board and drops off the Hub's card
 - [ ] **Roster changes (team events).** A change on `Teams` (a substitute,
   a spelling fix) doesn't sync by itself: click **Resync this day now**
   after it.
