@@ -985,7 +985,18 @@
         setStatus('Pick an event, day and venue that has matches in it.', 'err');
         return;
       }
-      csvPart = new Blob([fac.matchesCsv], { type: 'text/csv' });
+      let matchesCsv = fac.matchesCsv;
+      if (RAW_EVENTS[CURRENT_EVENT_KEY]?.type === 'team') {
+        // Only a team event's sheets print names (sage-docs/docs/specs/.../scoresheet-team-names-spec.md).
+        try {
+          const { withTeamNames } = await import('/lib/v1/domain/scoresheet-names.js');
+          matchesCsv = withTeamNames(fac.matchesCsv, fac.standingsCsv || '');
+        } catch (_) {
+          setStatus("Couldn't load the team names. Try again.", 'err');
+          return;
+        }
+      }
+      csvPart = new Blob([matchesCsv], { type: 'text/csv' });
       csvPartName = 'matches.csv';
     } else {
       csvPart = csvInput.files[0];
