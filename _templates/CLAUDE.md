@@ -391,10 +391,16 @@ shape** copies the nearest past event's workbook and is adapted by hand
    - `STANDINGSCSV` lists the 15 new team names with zero points;
    - `CSV` has 152 rows with every score empty;
    - every quarterfinal and later row reads its seed (`QF-3_1` …).
-5. **Then step 8 as usual.** The copy keeps the bound `sheets-sync.gs` but
-   not its trigger. Run **SAGE → Set up live sync** with the new day key
-   and facility; that creates the trigger and replaces the copied day key.
-   Then share it with the service account and close it to link access (step 13).
+5. **Replace the script, then step 8 as usual.** The copy keeps the source
+   workbook's `sheets-sync.gs`, however old, but not its trigger. In
+   **Extensions → Apps Script**, replace that file's whole contents with the
+   current `sage-tools-api/apps-script/sheets-sync.gs`, save and reload the
+   workbook; **SAGE → Help** then shows the version you pasted. An older copy
+   still syncs, through the frozen legacy URLs, but shows **Sync now**'s answer
+   as raw JSON and misses every later fix. Then run **SAGE → Set up live sync**
+   with the new day key and facility; that creates the trigger and replaces
+   the copied day key. Then share it with the service account and close it to
+   link access (step 13).
 
 **Another shape.** The Millennium Invitational (8 teams with colour codes,
 one round robin, Bronze and Final) was adapted from a copy of PickleDrive's
