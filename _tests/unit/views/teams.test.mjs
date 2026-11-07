@@ -277,6 +277,37 @@ test('headToHeadQuotient false: two teams at 1-1 share a rank and read Tied · p
   }
 });
 
+test('a group-stage tiebreaker: W, L and the quotient stay, the Tied pill waits for its score, and the card reads right', () => {
+  const NL = String.fromCharCode(10);
+  const day = (...tb) => buildDayModel(
+    { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games', headToHeadQuotient: false },
+    { key: 'd', date: '2026-11-07' },
+    { isLive: true, facilities: [{ name: 'Main',
+      matchesCsv: [GAMES_HEADER,
+        '1,A v B,,1:00 PM,Court 1,A_1,a1,a2,11,B_1,b1,b2,2',
+        '2,A v B,,1:00 PM,Court 2,A_2,a3,a4,9,B_2,b3,b4,11', ...tb].join(NL),
+      standingsCsv: ['teamCode,teamName,bracket', 'B,Beta,1', 'A,Alpha,1'].join(NL) }] },
+    { now: 0, alwaysLive: true },
+  );
+  const table = m => groupTableHTML(m, '1', m.standings);
+  const names = html => [...html.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]);
+  // Blank: still Tied, in the sheet's order.
+  const blank = table(day('3,A v B,,6:20 PM,Court 1,A_TB,a1,a2,,B_TB,b1,b2,'));
+  assert.equal((blank.match(/tie-pill"/g) || []).length, 2);
+  assert.deepEqual(names(blank), ['Beta', 'Alpha']);
+  // Listed the other way round, Alpha winning 5-3: settled, the same W, L, PF, PA and quotient as without it.
+  const m = day('3,A v B,,6:20 PM,Court 1,B_TB,b1,b2,3,A_TB,a1,a2,5');
+  const html = table(m);
+  assert.doesNotMatch(html, /tie-pill/);
+  assert.deepEqual(names(html), ['Alpha', 'Beta']);
+  assert.match(html, /Alpha[\s\S]*?<td class="num">1<\/td>\s*<td class="num">1<\/td>\s*<td class="num">20<\/td>\s*<td class="num">13<\/td>/);
+  // The card: Alpha 2-1 and the Winner, and the row's 5-3 on Alpha's side, under the TB label.
+  const card = matchupCardHTML(m, m.team.matchups[0], {}, new Set());
+  assert.match(card, /<div class="tm-score">2 – 1<\/div>/);
+  assert.match(card, /<span class="tm-plabel">TB<\/span>/);
+  assert.match(card, /<span class="tm-rscore"><b>5<\/b>–3<\/span>/);
+});
+
 test('teamScoring "games": the matchup card and the Live row lead with games', () => {
   const m = gamesModel('games');
   const card = matchupCardHTML(m, m.team.matchups[0]);

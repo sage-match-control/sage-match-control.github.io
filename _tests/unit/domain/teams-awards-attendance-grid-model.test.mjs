@@ -544,6 +544,67 @@ test('teamScoring "games", headToHeadQuotient false: two teams at 1-1 head-to-he
   assert.deepEqual(ranked(['A', 'B', 'C', 'D'], twoLeft, off).ties, [{ codes: ['A', 'B'], playoff: 'game' }]);
 });
 
+// A group-stage tiebreaker (codes ending _TB, sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §1.1).
+// A 4 wins; B and C 3 each, split 1-1; D 2. B beat A 2-0, so an extra win for B would put it above A.
+const gtRows = (...codes) => codes.map(teamCode => ({ teamCode, pf: 0, quotient: null }));
+const gtBracket = [
+  tm('A_1', 8, 'B_1', 11), tm('A_2', 8, 'B_2', 11), tm('A_3', 11, 'D_1', 4), tm('A_4', 11, 'D_2', 4), tm('A_5', 11, 'C_1', 6), tm('A_6', 11, 'C_2', 6),
+  tm('B_3', 9, 'D_3', 11), tm('B_4', 6, 'D_4', 11), tm('B_5', 11, 'C_3', 7), tm('B_6', 5, 'C_4', 11), tm('D_5', 9, 'C_5', 11), tm('D_6', 8, 'C_6', 11),
+];
+const gtRanked = matches => T.teamRankBracket(gtRows('C', 'B', 'A', 'D'), matches, 'games', { headToHeadQuotient: false });
+
+test('a group-stage tiebreaker never counts in W, L, PF or PA', () => {
+  const recs = T.teamGameRecords([...gtBracket, tm('B_TB', 5, 'C_TB', 3)]);
+  assert.deepEqual(recs.get('B'), T.teamGameRecords(gtBracket).get('B'));
+  assert.deepEqual(recs.get('C'), T.teamGameRecords(gtBracket).get('C'));
+});
+
+test('a group-stage tiebreaker settles the two teams it was played for, and moves nobody else', () => {
+  const codes = r => r.map(s => s.teamCode);
+  assert.deepEqual(gtRanked(gtBracket).ties, [{ codes: ['C', 'B'], playoff: 'game' }]);
+  // Blank: still tied, and still flagged although a group row is unplayed.
+  const blank = gtRanked([...gtBracket, tm('B_TB', null, 'C_TB', null)]);
+  assert.deepEqual(codes(blank), ['A', 'C', 'B', 'D']);
+  assert.deepEqual(blank.ties, [{ codes: ['C', 'B'], playoff: 'game' }]);
+  // Scored, in either order of the two teams: B stays below A and above C, with no flag.
+  for(const game of [tm('B_TB', 5, 'C_TB', 3), tm('C_TB', 3, 'B_TB', 5)]){
+    const done = gtRanked([...gtBracket, game]);
+    assert.deepEqual(codes(done), ['A', 'B', 'C', 'D']);
+    assert.deepEqual(done.ties, []);
+  }
+  // Level again (5-5): still flagged.
+  assert.deepEqual(gtRanked([...gtBracket, tm('B_TB', 5, 'C_TB', 5)]).ties, [{ codes: ['C', 'B'], playoff: 'game' }]);
+  // An unrelated group row left blank doesn't hide a flag, but a real game does.
+  assert.deepEqual(gtRanked([...gtBracket, tm('A_7', null, 'C_7', null)]).ties, []);
+  // A tiebreaker also settles a tie under the head-to-head quotient rule once that quotient is level.
+  const split = [tm('A_1', 11, 'B_1', 5), tm('B_2', 11, 'A_2', 5)];
+  assert.deepEqual(codes(T.teamRankBracket(gtRows('A', 'B'), [...split, tm('B_TB', 5, 'A_TB', 2)], 'games')), ['B', 'A']);
+});
+
+test('group-stage tiebreakers settle three teams level on wins and quotient', () => {
+  const codes = r => r.map(s => s.teamCode);
+  const three = [tm('A_1', 11, 'B_1', 0), tm('B_2', 11, 'C_2', 0), tm('C_3', 11, 'A_3', 0)];
+  const rank = extra => T.teamRankBracket(gtRows('A', 'B', 'C'), [...three, ...extra], 'games', { headToHeadQuotient: false });
+  assert.deepEqual(rank([]).ties, [{ codes: ['A', 'B', 'C'], playoff: 'round-robin' }]);
+  // Round robin, partly played: A has 1, the others none and level. Not settled, and B, C read as a tie of two.
+  assert.deepEqual(codes(rank([tm('A_TB', 5, 'B_TB', 2), tm('A_TB', null, 'C_TB', null), tm('B_TB', null, 'C_TB', null)])), ['A', 'B', 'C']);
+  // A cycle: still level, still flagged, and the quotient doesn't take the tiebreaker points.
+  const cycle = [tm('A_TB', 5, 'B_TB', 0), tm('B_TB', 5, 'C_TB', 4), tm('C_TB', 5, 'A_TB', 4)];
+  assert.deepEqual(codes(rank(cycle)), ['A', 'B', 'C']);
+  assert.deepEqual(rank(cycle).ties, [{ codes: ['A', 'B', 'C'], playoff: 'round-robin' }]);
+  // First to 3 between all three afterwards: one more win for C settles it, B and A then going to head-to-head.
+  const settled = rank([...cycle, tm('C_TB', 3, 'A_TB', 1), tm('C_TB', 3, 'B_TB', 1)]);
+  assert.equal(settled[0].teamCode, 'C');
+  assert.deepEqual(settled.ties, []);
+  assert.deepEqual(codes(settled), ['C', 'A', 'B'], 'A beat B head-to-head');
+});
+
+test('teamMatchupResult: a row listed the other way round counts for the right side', () => {
+  const ms = [tm('B_1', 11, 'C_1', 7), tm('B_2', 5, 'C_2', 11)];
+  const r = T.teamMatchupResult([...ms.map(m => ({ ...m, matchUp: 'B v C' })), { ...tm('C_TB', 3, 'B_TB', 5), matchUp: 'B v C' }], 'games');
+  assert.deepEqual([r.side1, r.side2, r.pairs1, r.pairs2, r.pts1, r.pts2, r.state, r.winner], ['B', 'C', 2, 1, 21, 21, 'final', 1]);
+});
+
 // A team day with one Final: Alpha wins three games on fewer points (35 to 38).
 const TEAM_MATCH_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const finalDay = teamScoring => buildDayModel(

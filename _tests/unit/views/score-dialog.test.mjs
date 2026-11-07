@@ -20,6 +20,13 @@ test('without a match the warnings are those of a game to 11', () => {
   assert.deepEqual(scoreBasicWarnings(11, 4), []);
 });
 
+test('a group-stage tiebreaker is to 5: 5 or more is not warned about, short of 5 is', () => {
+  const groupTiebreaker = { t1: 'A2_TB', t2: 'A4_TB' };
+  assert.deepEqual(scoreBasicWarnings(5, 3, groupTiebreaker), []);
+  assert.deepEqual(scoreBasicWarnings(2, 5, groupTiebreaker), []);
+  assert.deepEqual(scoreBasicWarnings(4, 2, groupTiebreaker), ['Neither side reached 5.']);
+});
+
 test('a tiebreaker is to 7: 7 or more is not warned about, short of 7 is', () => {
   assert.deepEqual(scoreBasicWarnings(7, 3, tiebreaker), []);
   assert.deepEqual(scoreBasicWarnings(4, 7, tiebreaker), []);
