@@ -509,6 +509,41 @@ test('teamScoring "games": bracket ranking by wins, then the organiser two-team 
   assert.deepEqual(T.teamRankBracket([{ teamCode: 'A', pf: 1, quotient: 1 }, { teamCode: 'B', pf: 2, quotient: 1 }], []).map(r => r.teamCode), ['B', 'A']);
 });
 
+test('teamScoring "games", headToHeadQuotient false: two teams at 1-1 head-to-head go straight to a playoff game', () => {
+  const rows = (...codes) => codes.map(teamCode => ({ teamCode, pf: 0, quotient: null }));
+  const ranked = (codes, matches, options) => T.teamRankBracket(rows(...codes), matches, 'games', options);
+  const off = { headToHeadQuotient: false };
+  // A is ahead on the head-to-head quotient (20-13), and the event doesn't use it: the sheet's order, flagged.
+  const split = [tm('A_1', 11, 'B_1', 2), tm('B_2', 11, 'A_2', 9), tm('B_3', 11, 'C_3', 0), tm('A_3', 11, 'C_4', 10)];
+  assert.deepEqual(ranked(['B', 'A', 'C'], split, off).map(r => r.teamCode), ['B', 'A', 'C']);
+  assert.deepEqual(ranked(['B', 'A', 'C'], split, off).ties, [{ codes: ['B', 'A'], playoff: 'game' }]);
+  // Without the option, and with it true, the head-to-head quotient still decides (the Millennium Invitational).
+  for(const options of [undefined, {}, { headToHeadQuotient: true }]){
+    assert.deepEqual(ranked(['B', 'A', 'C'], split, options).map(r => r.teamCode), ['A', 'B', 'C']);
+    assert.deepEqual(ranked(['B', 'A', 'C'], split, options).ties, []);
+  }
+  // A 2-0 head-to-head still settles it.
+  assert.deepEqual(ranked(['B', 'A', 'C'], [
+    tm('A_1', 11, 'B_1', 9), tm('A_2', 11, 'C_1', 10), tm('B_2', 11, 'C_2', 0), tm('B_3', 11, 'C_3', 0),
+  ], off).map(r => r.teamCode), ['A', 'B', 'C']);
+  // Mid-bracket: no flag yet.
+  assert.deepEqual(ranked(['B', 'A', 'C'], [...split, tm('C_1', null, 'B_1', null)], off).ties, []);
+  // Three level still go by the overall quotient, and two left level on it go to the same game when split 1-1.
+  const three = [
+    tm('A_1', 11, 'B_1', 5), tm('B_2', 11, 'A_2', 5), tm('B_3', 11, 'C_3', 5), tm('C_4', 11, 'B_4', 5),
+    tm('C_1', 11, 'A_3', 5), tm('A_4', 11, 'C_2', 5),
+  ];
+  assert.deepEqual(ranked(['A', 'B', 'C'], three, off).ties, [{ codes: ['A', 'B', 'C'], playoff: 'round-robin' }]);
+  const twoLeft = [
+    tm('A_1', 11, 'B_1', 5), tm('B_2', 11, 'A_2', 5),
+    tm('A_3', 11, 'C_1', 3), tm('C_2', 11, 'A_4', 3), tm('B_3', 11, 'C_3', 3), tm('C_4', 11, 'B_4', 3),
+    tm('A_5', 11, 'D_1', 1), tm('A_6', 11, 'D_2', 1), tm('B_5', 11, 'D_3', 1), tm('B_6', 11, 'D_4', 1),
+    tm('C_5', 11, 'D_5', 4), tm('C_6', 11, 'D_6', 4),
+  ];
+  assert.deepEqual(ranked(['A', 'B', 'C', 'D'], twoLeft, off).map(r => r.teamCode), ['A', 'B', 'C', 'D']);
+  assert.deepEqual(ranked(['A', 'B', 'C', 'D'], twoLeft, off).ties, [{ codes: ['A', 'B'], playoff: 'game' }]);
+});
+
 // A team day with one Final: Alpha wins three games on fewer points (35 to 38).
 const TEAM_MATCH_HEADER = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const finalDay = teamScoring => buildDayModel(

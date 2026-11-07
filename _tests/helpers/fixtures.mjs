@@ -136,6 +136,7 @@ export function eventConfig(eventKey) {
     seedLabels: (e.display && e.display.seedLabels) || {},
     playoffSeats: (e.display && e.display.playoffSeats) || {},
     lineupReveal: e.lineupReveal === true,
+    headToHeadQuotient: e.headToHeadQuotient !== false,
   };
 }
 

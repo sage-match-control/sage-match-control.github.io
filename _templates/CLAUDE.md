@@ -307,7 +307,9 @@ meeting another team in a matchup won on total points (or on games won, with
      head-to-head quotient; three or more by the overall quotient, with two
      still level going to the two-team rules. A tie left after that reads
      **Tied** for the organiser's playoff. The table shows W, L, PF, PA and the
-     quotient. Without it the event scores as PickleDrive did (`"points"`).
+     quotient. Without it the event scores as PickleDrive did (`"points"`). An
+     event whose two teams at 1–1 head-to-head go straight to a playoff, with no
+     head-to-head quotient, also sets `"headToHeadQuotient": false` on the event.
    - All three maps (`divisions`, `events`, `clubs`) are the same shape: **code → label**. Only codes that
      actually appear in `teamCode1`/`teamCode2` matter.
    - **Order comes from key order.** Categories are displayed in the order the

@@ -249,6 +249,34 @@ test('teamScoring "games": a tie no tiebreaker settles shares its rank and reads
   assert.deepEqual(ranks(midHtml), ['1', '2', '3']);
 });
 
+test('headToHeadQuotient false: two teams at 1-1 share a rank and read Tied · playoff game, whatever the quotient', () => {
+  const day = headToHeadQuotient => buildDayModel(
+    { key: 'e', type: 'team', display: {}, days: [], title: 'E', teamScoring: 'games', headToHeadQuotient },
+    { key: 'd', date: '2026-11-07' },
+    { isLive: true, facilities: [{ name: 'Main',
+      matchesCsv: [GAMES_HEADER,
+        '1,A v B,,1:00 PM,Court 1,A_1,a1,a2,11,B_1,b1,b2,2',
+        '2,A v B,,1:00 PM,Court 2,A_2,a3,a4,9,B_2,b3,b4,11'].join(String.fromCharCode(10)),
+      standingsCsv: ['teamCode,teamName,bracket', 'B,Beta,1', 'A,Alpha,1'].join(String.fromCharCode(10)) }] },
+    { now: 0, alwaysLive: true },
+  );
+  const ranks = html => [...html.matchAll(/<td class="rk">([0-9]+)<[/]td>/g)].map(x => x[1]);
+  const names = html => [...html.matchAll(/<td class="tm">([A-Za-z]+)/g)].map(x => x[1]);
+  const off = day(false);
+  const html = groupTableHTML(off, '1', off.standings);
+  assert.deepEqual(ranks(html), ['1', '1']);
+  assert.deepEqual(names(html), ['Beta', 'Alpha'], "the sheet's order");
+  assert.equal((html.match(/<span class="tie-pill"[^>]*>Tied · playoff game<[/]span>/g) || []).length, 2);
+  // Any other event: the head-to-head quotient (Alpha 20-13) decides, with no pill.
+  for(const flag of [true, undefined]){
+    const on = day(flag);
+    const onHtml = groupTableHTML(on, '1', on.standings);
+    assert.deepEqual(names(onHtml), ['Alpha', 'Beta']);
+    assert.deepEqual(ranks(onHtml), ['1', '2']);
+    assert.doesNotMatch(onHtml, /tie-pill/);
+  }
+});
+
 test('teamScoring "games": the matchup card and the Live row lead with games', () => {
   const m = gamesModel('games');
   const card = matchupCardHTML(m, m.team.matchups[0]);

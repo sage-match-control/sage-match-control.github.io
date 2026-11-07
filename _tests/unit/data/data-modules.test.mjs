@@ -724,6 +724,13 @@ test('eventConfigFrom reads teamScoring: "points" unless the event says "games"'
   assert.equal(warn.mock.calls[0].arguments[0], 'events.json: teamScoring for odd must be "points" or "games"; using "points"');
 });
 
+test('eventConfigFrom reads headToHeadQuotient: true unless the event says false', () => {
+  const registry = { events: { off: { type: 'team', headToHeadQuotient: false }, on: { type: 'team', headToHeadQuotient: true }, none: { type: 'team' } } };
+  assert.equal(eventConfigFrom(registry, 'off').headToHeadQuotient, false);
+  assert.equal(eventConfigFrom(registry, 'on').headToHeadQuotient, true);
+  assert.equal(eventConfigFrom(registry, 'none').headToHeadQuotient, true);
+});
+
 test('eventConfigFrom gives a team event its playoff placeholders from display.seedLabels, labels only', t => {
   const warn = mock.method(console, 'warn', () => {});
   t.after(() => warn.mock.restore());
