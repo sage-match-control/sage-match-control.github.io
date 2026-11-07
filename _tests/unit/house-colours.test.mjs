@@ -24,6 +24,20 @@ const PAGES = [
 
 const TEAM_HUBS = ['_templates/team-tournament-template/index.html', 'events/ladies-dink-2026/index.html'];
 
+// The engine's outline for a team's mark is a fixed dark green, not one of the house tokens, so the check below
+// doesn't see it. A re-skinned team event needs it in its own colours (the Millennium Invitational overrode it by hand).
+for (const rel of ['_templates/team-tournament-template/index.html', '_templates/team-tournament-template/schedule.html']) {
+  test(`${rel} draws a team mark's outline from the page's tokens`, () => {
+    assert.match(fs.readFileSync(path.join(SITE_ROOT, rel), 'utf8'), /\.team-mark path\{\s*stroke:color-mix\(in srgb, var\(--navy-deep\) 55%, transparent\);\s*\}/);
+  });
+}
+
+test('the team Hub template has an optional club name above the title, hidden when blank', () => {
+  const html = fs.readFileSync(path.join(SITE_ROOT, '_templates/team-tournament-template/index.html'), 'utf8');
+  assert.ok(html.indexOf('<div class="club-name">{{CLUB_NAME}}</div>') > -1 && html.indexOf('<div class="club-name">{{CLUB_NAME}}</div>') < html.indexOf('<h1 class="title">'));
+  assert.match(html, /\.club-name:empty\{\s*display:none;\s*\}/);
+});
+
 /** The house palette: each token's channels, as lib/v1/css writes them. */
 const HOUSE = {
   '--green': '124,185,44',

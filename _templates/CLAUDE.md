@@ -310,6 +310,8 @@ meeting another team in a matchup won on total points (or on games won, with
      quotient. Without it the event scores as PickleDrive did (`"points"`). An
      event whose two teams at 1–1 head-to-head go straight to a playoff, with no
      head-to-head quotient, also sets `"headToHeadQuotient": false` on the event.
+   - `teamScoring`, `headToHeadQuotient` and `lineupReveal` are each organiser's
+     own rules, and none is on by default: ask for every team event.
    - All three maps (`divisions`, `events`, `clubs`) are the same shape: **code → label**. Only codes that
      actually appear in `teamCode1`/`teamCode2` matter.
    - **Order comes from key order.** Categories are displayed in the order the
@@ -422,7 +424,9 @@ item off as it is fixed. Then step 4's checks become:
   a number or one letter, and no row reading `-` (a reference that slid onto
   a divider row when rows were moved);
 - `CSV` has every match with every score empty, every playoff row reading
-  its seed, and any tiebreaker rows coded `<SIDE>_TB` on both sides;
+  its seed, and any tiebreaker rows coded `<SIDE>_TB` on both sides. A spare
+  row with `-` as its first team code isn't a match: the site leaves it off
+  the board, the match count and the estimated finish;
 - the format's rules are in `events.json` (`display.pairs`, `teamScoring`,
   `lineupRules`, `lineupReveal`; step 7).
 
@@ -571,6 +575,7 @@ set, and its `schedule.html` the board's set):
 | `{{EVENT_TITLE}}` | Event name — `<title>`, hero `<h1>`, footer. In `schedule.html`: `<title>`, meta description and `og:title`. |
 | `{{EVENT_TAGLINE}}` | Hero subtitle line. |
 | `{{EVENT_HEADLINE}}` | Hero's big secondary line. Optional — blank is fine. |
+| `{{CLUB_NAME}}` | Team template only: the hosting club's name, a line above the title. Optional — blank takes no room. |
 | `{{EVENT_DATE_RANGE}}` | Hero eyebrow, footer, meta description. |
 | `{{VENUE}}` | Hero eyebrow, footer. |
 | `{{QR_IMAGE}}` | Path to the QR PNG dropped in alongside `index.html` (§2 step 2). |

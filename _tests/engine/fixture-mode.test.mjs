@@ -70,7 +70,7 @@ describe('fixture mode on the team templates', () => {
     CAT_META: { G1: { short: 'BR 1', color: '#1155CC' }, G2: { short: 'BR 2', color: '#B45F06' }, PO: { short: 'PLAYOFFS', color: '#14263C' } },
   };
   const teamTokens = {
-    EVENT_KEY: TEAM, EVENT_TITLE: 'Team Demo', EVENT_TAGLINE: 'x', EVENT_HEADLINE: '', EVENT_DATE_RANGE: 'Oct 10', VENUE: 'Demo Courts',
+    EVENT_KEY: TEAM, EVENT_TITLE: 'Team Demo', EVENT_TAGLINE: 'x', EVENT_HEADLINE: '', CLUB_NAME: '', EVENT_DATE_RANGE: 'Oct 10', VENUE: 'Demo Courts',
     QR_IMAGE: '/assets/logo.png', QR_URL: 'x', EVENT_LOGO: '/assets/logo.png', SCHEDULE_DAY_KEY: TEAM_DAY,
   };
   let browser, site;

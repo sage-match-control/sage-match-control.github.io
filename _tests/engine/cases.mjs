@@ -93,6 +93,7 @@ function tokensFor(event, registry) {
     EVENT_TITLE: escapeHtml(entry.title),
     EVENT_TAGLINE: 'Match schedule and live standings',
     EVENT_HEADLINE: '',
+    CLUB_NAME: '',
     EVENT_DATE_RANGE: escapeHtml(day.label),
     VENUE: escapeHtml(day.facilities[0].name),
     QR_IMAGE: '/assets/logo.png',

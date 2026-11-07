@@ -124,6 +124,20 @@ header.hero{ box-shadow:0 24px 60px -28px color-mix(in srgb, var(--navy-deep) 45
 .regal-rule::after{ background:linear-gradient(90deg, color-mix(in srgb, var(--green) 70%, transparent), transparent); }
 .view-tab:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
 .day-picker select:hover, .day-picker select:focus{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+/* Not a house token in the engine, a fixed dark green, so the event's own colours replace it here too. */
+.team-mark path{ stroke:color-mix(in srgb, var(--navy-deep) 55%, transparent); }
+
+/* The hosting club's name, a line above the title. Optional: blank, the line takes no room. */
+.club-name{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:clamp(15px,4.2vw,20px);
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  color:var(--green);
+  margin:0 0 4px;
+}
+.club-name:empty{ display:none; }
 
 /* The Teams tab's Expand all / Collapse all: lib/v1's Hub gives the button no class (Control Center passes
    one), so it is styled here. */
@@ -165,6 +179,7 @@ header.hero{ box-shadow:0 24px 60px -28px color-mix(in srgb, var(--navy-deep) 45
   </div>
   <div class="tagline-script">{{EVENT_TAGLINE}}</div>
   <div class="eyebrow">{{EVENT_DATE_RANGE}} &nbsp;·&nbsp; {{VENUE}}</div>
+  <div class="club-name">{{CLUB_NAME}}</div>
   <h1 class="title">{{EVENT_TITLE}}</h1>
   <div class="domination-line">{{EVENT_HEADLINE}}</div>
   <p class="subtitle">Follow every team, every matchup and every court — live.</p>

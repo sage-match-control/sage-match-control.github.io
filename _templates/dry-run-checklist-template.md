@@ -131,6 +131,13 @@ watching for when that pipeline needs a nudge:
   type the two nominated players into that row's player cells, then enter
   its score like any other. A matchup already settled needs nothing: its
   tiebreaker row reads *Not needed* on the board and drops off the Hub's card.
+- [ ] **Tiebreaker pair (team events that collect one with the lineup).** A team
+  submits 3 pairs for a playoff matchup, the third for its tiebreaker. Wait until
+  the tiebreaker is needed to type that pair in: the Hub shows anything typed in
+  the row at once, unless the event uses `lineupReveal`.
+- [ ] **Spare rows (team events).** A row in `CSV` with `-` as its team code isn't
+  a match: it stays off the schedule board, the match count and the estimated
+  finish, and it doesn't keep the day from finishing.
 - [ ] **Show lineup (team events with `lineupReveal`).** Tick each matchup's
   **Show lineup** box when the organiser says, then click **Resync this day
   now**: the tick doesn't sync by itself.

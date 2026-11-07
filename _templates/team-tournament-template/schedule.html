@@ -61,6 +61,8 @@
      other. Keep it whole when re-skinning; _tests/unit/house-colours.test.mjs checks it. */
   .bezel{ box-shadow:0 10px 30px -14px color-mix(in srgb, var(--navy-deep) 55%, transparent); }
   .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px color-mix(in srgb, var(--green) 60%, transparent); }
+  /* Not a house token in the engine, a fixed dark green, so the event's own colours replace it here too. */
+  .team-mark path{ stroke:color-mix(in srgb, var(--navy-deep) 55%, transparent); }
 </style>
 </head>
 <body>
