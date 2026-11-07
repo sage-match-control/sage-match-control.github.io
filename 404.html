@@ -4,35 +4,75 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex" />
+<meta name="theme-color" content="#14263C" />
 <title>Page not found · S.A.G.E.</title>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@600&family=Inter:wght@400&display=swap" rel="stylesheet" />
 <style>
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box;
-         background: #fff; color: #14263c; font: 16px/1.5 system-ui, sans-serif; text-align: center; }
-  h1 { font-size: 22px; margin: 0 0 8px; }
-  p { margin: 0; }
-  [hidden] { display: none; }
+  :root { --navy:#14263C; --green:#7CB92C; --white:#FFFFFF; --line:#D9DED2; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--navy); color: var(--white); font: 400 16px/1.5 Inter, system-ui, sans-serif; }
+  main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+         padding: 32px 16px; text-align: center; }
+  .logo { width: 88px; height: 88px; padding: 4px; background: var(--white); border-radius: 14px; display: block; }
+  .court { width: 100%; max-width: 360px; height: auto; margin: 28px 0 0; display: block; }
+  .code { margin: 24px 0 4px; color: var(--green); font: 600 15px 'Barlow Condensed', system-ui, sans-serif; letter-spacing: .22em; }
+  h1 { margin: 0; font: 400 clamp(30px, 8vw, 46px)/1.1 'Archivo Black', system-ui, sans-serif; text-transform: uppercase; overflow-wrap: anywhere; text-wrap: balance; }
+  .message { margin: 12px 0 0; max-width: 34ch; color: var(--line); text-wrap: balance; }
+  /* An address under events/ may be a finished event's, about to go on to events/archives/.
+     The message waits for that check, so nobody sees it flash on the way there. */
+  .checking main { visibility: hidden; }
 </style>
+<script>
+  if(location.pathname.startsWith('/events/')) document.documentElement.classList.add('checking');
+</script>
 </head>
 <body>
 <!-- GitHub Pages serves this for every missing address. A finished event's pages move to
      events/archives/, so its QR code, short link and bookmarks land here and go on to the
      same page there, query and all. See lib/v1/domain/event-pages.js. -->
-<main id="notFound" hidden>
-  <h1>Page not found</h1>
-  <p>This address isn't on the site. Check the link, or ask the organiser for a new one.</p>
+<main>
+  <img class="logo" src="/assets/logo.png" alt="S.A.G.E. Match Control Experts" />
+  <svg class="court" viewBox="0 0 300 110" role="img" aria-label="A pickleball court, with a ball landing outside the line">
+    <g fill="none" stroke="#7CB92C" stroke-width="2.5">
+      <rect x="30" y="12" width="190" height="86" />
+      <line x1="97" y1="12" x2="97" y2="98" />
+      <line x1="153" y1="12" x2="153" y2="98" />
+      <line x1="30" y1="55" x2="97" y2="55" />
+      <line x1="153" y1="55" x2="220" y2="55" />
+      <line x1="125" y1="12" x2="125" y2="98" stroke="#FFFFFF" />
+    </g>
+    <path d="M 60 80 Q 150 -18 243 54" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="3 5" />
+    <circle cx="250" cy="60" r="10" fill="#7CB92C" />
+    <g fill="#14263C">
+      <circle cx="246.5" cy="56.5" r="1.4" /><circle cx="253" cy="55.5" r="1.4" /><circle cx="250" cy="60.5" r="1.4" />
+      <circle cx="245.5" cy="63" r="1.4" /><circle cx="254.5" cy="62" r="1.4" /><circle cx="250" cy="66" r="1.4" />
+    </g>
+  </svg>
+  <p class="code">ERROR 404</p>
+  <h1>That one landed out</h1>
+  <p class="message">This page isn't on the site. The link may be old or mistyped.</p>
 </main>
-<noscript><p>Page not found. A finished event's page may have moved to /events/archives/.</p></noscript>
-<script type="module">
-import { archivedPagePath } from '/lib/v1/domain/event-pages.js';
-
-const target = archivedPagePath(location.pathname);
-let found = false;
-if(target){
-  try { found = (await fetch(target, { method: 'HEAD', cache: 'no-store' })).ok; } catch(e){ /* show the message */ }
-}
-if(found) location.replace(target + location.search + location.hash);
-else document.getElementById('notFound').hidden = false;
+<script>
+  (async () => {
+    const reveal = () => document.documentElement.classList.remove('checking');
+    if(!document.documentElement.classList.contains('checking')) return;
+    setTimeout(reveal, 4000);
+    try {
+      const { archivedPagePath } = await import('/lib/v1/domain/event-pages.js');
+      const target = archivedPagePath(location.pathname);
+      if(target && (await fetch(target, { method: 'HEAD', cache: 'no-store' })).ok){
+        location.replace(target + location.search + location.hash);
+        return;
+      }
+    } catch(e){ /* the message below is the answer either way */ }
+    reveal();
+  })();
 </script>
 </body>
 </html>
