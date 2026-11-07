@@ -42,6 +42,24 @@ test('a round that follows the rules has no issues; no rules, no checks', () => 
   assert.equal(lineupIssues(bad, ROSTER, ROWS, null).size, 0);
 });
 
+test('a tiebreaker may repeat a player, who still plays only once in the matchup’s other games', () => {
+  const rules = lineupRulesFrom({ pairs: { 1: 'open', 2: 'open' } });
+  const roster = new Map([['Red', RED.slice(0, 4)]]);
+  const tb = (a, b) => ({ num: 3, matchUp: 'Red v Orange', t1: 'Red_TB', t1p1: a, t1p2: b, t2: 'Orange_TB', t2p1: 'TBD', t2p2: 'TBD' });
+  const games = [match(1, 1, 'Cap Tan', 'Ben Uy'), match(2, 2, 'Carl Go', 'Dan Ko')];
+  // Both games played in, and a tiebreaker pair from each: nothing to warn about, and nobody reads as left out.
+  assert.equal(lineupIssues([...games, tb('Cap Tan', 'Dan Ko')], roster, ROWS, rules).size, 0);
+  // A player in both games is still warned about, with or without a tiebreaker.
+  const twice = [match(1, 1, 'Cap Tan', 'Ben Uy'), match(2, 2, 'Cap Tan', 'Dan Ko')];
+  for(const list of [twice, [...twice, tb('Ben Uy', 'Dan Ko')]]){
+    assert.ok(texts(lineupIssues(list, roster, ROWS, rules), 1).includes('Cap Tan plays twice this round (#1 and #2)'));
+    assert.ok(texts(lineupIssues(list, roster, ROWS, rules), 2).includes('Cap Tan plays twice this round (#1 and #2)'));
+  }
+  // The tiebreaker's own pair still has to be two people from the team.
+  assert.deepEqual(texts(lineupIssues([...games, tb('Cap Tan', 'Cap Tan')], roster, ROWS, rules), 3), ['Cap Tan is in this pair twice']);
+  assert.deepEqual(texts(lineupIssues([...games, tb('Cap Tan', 'Ana Cruz')], roster, ROWS, rules), 3), ["Ana Cruz isn't on Red's roster"]);
+});
+
 test('each pair kind’s gender rule, by the roster’s gender', () => {
   const issues = lineupIssues([
     match(1, 1, 'Cap Tan', 'Ana Cruz'),

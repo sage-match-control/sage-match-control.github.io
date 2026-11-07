@@ -71,6 +71,8 @@ const DECIDER_CASES = {
   '1-0 and a level game, tiebreaker blank': [qfCsv([11, 5], [9, 9], ['', '']), true],
   '2-0, no matchUp: the tiebreaker still counts': [qfCsv([11, 5], [11, 9], ['', ''], ''), false],
   '2-0, decimal scores': [qfCsv(['11.5', 5], [11, '9.0'], ['', '']), true],
+  '2-0, with a spare row': [`${qfCsv([11, 5], [11, 9], ['', ''])}\n102,#N/A,,Not found,Not found,-,,#REF!,-,-,,#REF!,-`, true],
+  '1-1, with a spare row': [`${qfCsv([11, 5], [9, 11], ['', ''])}\n102,#N/A,,Not found,Not found,-,,#REF!,-,-,,#REF!,-`, false],
 };
 
 test('a playoff tiebreaker: the card and completedAt agree on every case', options, () => {

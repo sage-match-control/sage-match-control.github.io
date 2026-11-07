@@ -16,6 +16,15 @@ const csv = (...rows) => parseCSV([HEADER, ...rows].join('\n'));
 
 // ---- rowsToMatches ----------------------------------------------------------------
 
+test('rowsToMatches leaves out a spare row (team code "-"), as the schedule board does', () => {
+  const rows = [
+    ['matchNumber', 'matchUp', 'Schedule', 'CourtAssignment', 'teamCode1', 'team1Player1', 'team1Score', 'teamCode2', 'team2Player1', 'team2Score'],
+    ['1', 'A v B', '3:00 PM', 'Court 1', 'A_1', 'a', '', 'B_1', 'b', ''],
+    ['102', '#N/A', 'Not found', 'Not found', '-', '', '-', '-', '', '-'],
+  ];
+  assert.deepEqual(rowsToMatches(rows).map(m => m.num), [1]);
+});
+
 test('a match is played only when both scores are present', () => {
   const [a, b, c, d] = rowsToMatches(csv(
     '1,,9:00 AM,Court 1,X_1,A,B,11,X_2,C,D,5',
