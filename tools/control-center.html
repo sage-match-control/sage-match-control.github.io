@@ -1417,6 +1417,7 @@
 // parameter, the page keeps a one-line wrapper that passes its own state
 // (site-engine-spec §7.1); the wrappers go when the views move into the engine.
 import { matchByeSide } from '/lib/v1/domain/byes.js';
+import { eventPagesPath } from '/lib/v1/domain/event-pages.js';
 import { unneededSeriesGames } from '/lib/v1/domain/series.js';
 import { isDecider } from '/lib/v1/domain/deciders.js';
 import { roundLabel } from '/lib/v1/domain/codes.js';
@@ -1499,6 +1500,7 @@ const liveChannel = createLiveChannel({
 // selection" further down) — replaces the old per-page EVENT_KEY/DAYS/
 // FACILITIES/DIVISIONS/EVENTS/CLUBS constants entirely.
 let EVENTS_REGISTRY = new Map(); // eventKey -> raw event entry from events.json (archived ones excluded)
+const pagesPathOf = eventKey => eventPagesPath(eventKey, EVENTS_REGISTRY.get(eventKey)); // events/<key>/ or events/archives/<key>/
 let CURRENT_EVENT_KEY = null;
 let CURRENT_TYPE = null;         // 'dual-meet' | 'standard' | 'team' | null (unresolved/unknown — shown as an error, never guessed)
 let DISPLAY = {};                // { divisions?, events?, clubs? } for the selected event
@@ -3175,8 +3177,8 @@ const orgScheduleRowEl = document.getElementById('orgScheduleRow');
 function renderScheduleLauncher(){
   if(!orgScheduleRowEl) return;
   orgScheduleRowEl.innerHTML = CURRENT_EVENT_KEY
-    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/schedule">Open schedule</a>
-       <a class="organizer-schedule-btn" target="_blank" rel="noopener" href="/events/${encodeURIComponent(CURRENT_EVENT_KEY)}/">Open Tournament Hub</a>`
+    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="${pagesPathOf(CURRENT_EVENT_KEY)}schedule">Open schedule</a>
+       <a class="organizer-schedule-btn" target="_blank" rel="noopener" href="${pagesPathOf(CURRENT_EVENT_KEY)}">Open Tournament Hub</a>`
     : '';
 }
 
@@ -3348,7 +3350,7 @@ if(syncMethodButtonsEl){
 // the page's own copy of the registry is updated to match, since it would
 // otherwise stay stale until a reload. Rendered from the registry alone, so
 // it is safe to call before anything has loaded.
-// Whether the event has a scorer page to send a link to: events/<key>/scorer.html
+// Whether the event has a scorer page to send a link to: scorer.html in its folder
 // on the site this console is served from. Without it a scorer link is a dead
 // end, so the switch and Issue scorer link stay off. Checked with a HEAD request
 // (same origin, so no CORS), remembered per event and re-checked after a minute
@@ -3362,7 +3364,7 @@ async function scorerPageExists(eventKey){
   const names = FIXTURE ? ['scorer.html', 'scorer-beta.html'] : ['scorer.html'];
   for(const name of names){
     try{
-      const res = await fetch(`/events/${encodeURIComponent(eventKey)}/${name}`, { method: 'HEAD', cache: 'no-store' });
+      const res = await fetch(`${pagesPathOf(eventKey)}${name}`, { method: 'HEAD', cache: 'no-store' });
       if(res.ok) return true;
     }catch(e){ /* try the next, then give up */ }
   }
@@ -3397,7 +3399,7 @@ function renderScorerLinks(){
     ? '<b>Accepting</b>: anyone with a scorer link for the day can enter scores.'
     : '<b>Stopped</b>: scorer links can\u2019t save scores or be issued. Operators still can, in Match Finder.';
   if(canAct && pageOk === false){
-    html += ` <b>This event has no scorer page</b> (<code>events/${escapeHtml(CURRENT_EVENT_KEY)}/scorer.html</code> isn\u2019t on the site), so the switch and links are off. Add the page first (see Adding a new event).`;
+    html += ` <b>This event has no scorer page</b> (<code>${escapeHtml(pagesPathOf(CURRENT_EVENT_KEY).slice(1))}scorer.html</code> isn\u2019t on the site), so the switch and links are off. Add the page first (see Adding a new event).`;
   } else if(canAct && pageOk === null){
     html += ' Checking for the scorer page\u2026';
   }
@@ -3466,8 +3468,8 @@ async function setScorerLinksMode(mode){
 
 function renderScorerLink(day, issued){
   const url = FIXTURE
-    ? `${location.origin}/events/${CURRENT_EVENT_KEY}/scorer.html?scorer=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
-    : `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/scorer?scorer=${issued.token}`;
+    ? `${location.origin}${pagesPathOf(CURRENT_EVENT_KEY)}scorer.html?scorer=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
+    : `https://sage-match-control.github.io${pagesPathOf(CURRENT_EVENT_KEY)}scorer?scorer=${issued.token}`;
   const box = document.getElementById('scorerLinkResult');
   box.className = 'organizer-result ok rich';
   box.textContent = '';
@@ -4282,8 +4284,8 @@ async function attConsoleShowQr(url, holder, btn, label = 'desk link'){
 
 function attConsoleRenderDeskLink(day, issued){
   const url = FIXTURE
-    ? `${location.origin}/events/${CURRENT_EVENT_KEY}/attendance.html?desk=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
-    : `https://sage-match-control.github.io/events/${CURRENT_EVENT_KEY}/attendance?desk=${issued.token}`;
+    ? `${location.origin}${pagesPathOf(CURRENT_EVENT_KEY)}attendance.html?desk=${issued.token}&fixture=${encodeURIComponent(FIXTURE)}`
+    : `https://sage-match-control.github.io${pagesPathOf(CURRENT_EVENT_KEY)}attendance?desk=${issued.token}`;
   const box = attConsoleDeskBox;
   box.className = 'organizer-result ok rich';
   box.textContent = '';

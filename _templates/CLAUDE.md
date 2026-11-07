@@ -723,7 +723,8 @@ shell's `import` lines alone, and leave the event in `config/events.json`
 
 The folder stays where it is, at the URL the venue's QR code points to.
 Archiving is a separate, later step. When you do it, move the folder into
-`events/archives/`:
+`events/archives/`, then set `"pagesArchived": true` on the event in
+`config/events.json`, which is how Control Center finds its pages:
 
 ```
 mv events/<event-key> events/archives/<event-key>
@@ -733,7 +734,11 @@ Because its asset paths are root-absolute (§6), nothing needs
 re-prefixing — this is the exact step the earliest, pre-template event
 pages got wrong, and why their icons are currently broken in
 `events/archives/`. The same goes for the shells' `/lib/v1/...` imports and
-stylesheet links: root-absolute, so the move needs no edit.
+stylesheet links: root-absolute, so the move needs no edit. A shell that names
+its own folder in a root-absolute path (`/events/<event-key>/assets/...`) does
+need that path changed. The QR code, the short link and old bookmarks keep
+working: the site's `404.html` sends a missing page under `events/` to the same
+page under `events/archives/`, keeping its query.
 
 ## 8. The engine, and its versioning rule
 

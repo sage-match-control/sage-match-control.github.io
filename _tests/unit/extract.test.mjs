@@ -60,7 +60,7 @@ test('matchBracket ignores brackets inside strings, comments and regexes', () =>
 
 test('the settings of the finished events read as plain literals', () => {
   for (const ev of ['piggleball-2026', 'pickle-for-sight-2026', 'pnf-x-bup-dual-meet']) {
-    const text = fs.readFileSync(path.join(SITE_ROOT, 'events', ev, 'index.html'), 'utf8');
+    const text = fs.readFileSync(path.join(SITE_ROOT, 'events', 'archives', ev, 'index.html'), 'utf8');
     assert.ok(Array.isArray(constValue(text, 'DAYS')), `${ev} DAYS`);
     assert.ok(Array.isArray(constValue(text, 'FACILITIES')), `${ev} FACILITIES`);
     assert.equal(typeof constValue(text, 'DIVISIONS'), 'object', `${ev} DIVISIONS`);

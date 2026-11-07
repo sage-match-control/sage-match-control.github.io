@@ -18,11 +18,11 @@ const PAGES = [
   '_templates/team-tournament-template/schedule.html',
   '_templates/scorer/scorer.html',
   '_templates/attendance/attendance.html',
-  'events/ladies-dink-2026/index.html',
-  'events/ladies-dink-2026/schedule.html',
+  'events/archives/ladies-dink-2026/index.html',
+  'events/archives/ladies-dink-2026/schedule.html',
 ];
 
-const TEAM_HUBS = ['_templates/team-tournament-template/index.html', 'events/ladies-dink-2026/index.html'];
+const TEAM_HUBS = ['_templates/team-tournament-template/index.html', 'events/archives/ladies-dink-2026/index.html'];
 
 // The engine's outline for a team's mark is a fixed dark green, not one of the house tokens, so the check below
 // doesn't see it. A re-skinned team event needs it in its own colours (the Millennium Invitational overrode it by hand).

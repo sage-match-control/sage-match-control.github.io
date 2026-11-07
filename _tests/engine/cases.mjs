@@ -33,10 +33,10 @@ const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').r
 // ---- the settings of each fixture event, read once from its own pages (§6.3) --
 
 const FINISHED_PAGES = {
-  'piggleball-2026': 'events/piggleball-2026',
-  'pickle-for-sight-2026': 'events/pickle-for-sight-2026',
-  'pnf-x-bup-dual-meet': 'events/pnf-x-bup-dual-meet',
-  'pickledrive-anniversary-2026': 'events/pickledrive-anniversary-2026',
+  'piggleball-2026': 'events/archives/piggleball-2026',
+  'pickle-for-sight-2026': 'events/archives/pickle-for-sight-2026',
+  'pnf-x-bup-dual-meet': 'events/archives/pnf-x-bup-dual-meet',
+  'pickledrive-anniversary-2026': 'events/archives/pickledrive-anniversary-2026',
 };
 
 // A fixture-only event has no finished pages to read its settings from.

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Page not found · S.A.G.E.</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png" />
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box;
+         background: #fff; color: #14263c; font: 16px/1.5 system-ui, sans-serif; text-align: center; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { margin: 0; }
+  [hidden] { display: none; }
+</style>
+</head>
+<body>
+<!-- GitHub Pages serves this for every missing address. A finished event's pages move to
+     events/archives/, so its QR code, short link and bookmarks land here and go on to the
+     same page there, query and all. See lib/v1/domain/event-pages.js. -->
+<main id="notFound" hidden>
+  <h1>Page not found</h1>
+  <p>This address isn't on the site. Check the link, or ask the organiser for a new one.</p>
+</main>
+<noscript><p>Page not found. A finished event's page may have moved to /events/archives/.</p></noscript>
+<script type="module">
+import { archivedPagePath } from '/lib/v1/domain/event-pages.js';
+
+const target = archivedPagePath(location.pathname);
+let found = false;
+if(target){
+  try { found = (await fetch(target, { method: 'HEAD', cache: 'no-store' })).ok; } catch(e){ /* show the message */ }
+}
+if(found) location.replace(target + location.search + location.hash);
+else document.getElementById('notFound').hidden = false;
+</script>
+</body>
+</html>
