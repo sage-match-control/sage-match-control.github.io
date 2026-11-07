@@ -364,6 +364,20 @@ test('ladderStageForTeam maps a team code’s side to the board’s stage', () =
   }
 });
 
+test('buildScheduleData: slots run in time order, wherever a game added by hand is numbered', () => {
+  const header = 'matchNumber,matchUp,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+  const row = (num, time, code1, code2) => `${num},${code1} v ${code2},,${time},Court 1,${code1}_1,a,b,,${code2}_1,c,d,`;
+  const slots = lines => G.buildScheduleData(
+    { facilities: [{ name: 'Main', matchesCsv: [header, ...lines].join(String.fromCharCode(10)), standingsCsv: 'teamCode,teamName,bracket' }] },
+    null, 'team').rows.map(r => r.slot);
+  // #73 at 6:20 PM goes between 5:55 and 6:45, and past midnight stays last.
+  assert.deepEqual(slots([row(48, '5:55 PM', 'A', 'B'), row(49, '6:45 PM', 'C', 'D'), row(50, '12:15 AM', 'E', 'F'), row(73, '6:20 PM', 'A', 'C')]),
+    ['5:55 PM', '6:20 PM', '6:45 PM', '12:15 AM']);
+  // A slot that isn't a time stays after those that are; two such keep their order.
+  assert.deepEqual(slots([row(1, 'TBC', 'A', 'B'), row(2, '6:45 PM', 'C', 'D'), row(3, 'Later', 'E', 'F'), row(4, '5:55 PM', 'A', 'C')]),
+    ['5:55 PM', '6:45 PM', 'TBC', 'Later']);
+});
+
 test('buildScheduleData for a team day: team names, pair, stage and category per match', () => {
   const snap = loadSnapshot('team-demo-2026');
   const pairs = eventConfig('team-demo-2026').pairs;

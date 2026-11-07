@@ -1,5 +1,5 @@
-// The score dialog's own warnings (lib/v1/views/score-dialog.js). A playoff matchup's tiebreaker game is played to 7
-// (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §1), so it is not warned about for stopping short of 11.
+// The score dialog's own warnings (lib/v1/views/score-dialog.js). A playoff matchup's tiebreaker game is played to 11
+// and a group-stage one to 5 (sage-docs/docs/specs/.../ladies-dink-club-tournament-spec.md §1, §1.1).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scoreBasicWarnings } from '../../../lib/v1/views/score-dialog.js';
@@ -27,15 +27,15 @@ test('a group-stage tiebreaker is to 5: 5 or more is not warned about, short of 
   assert.deepEqual(scoreBasicWarnings(4, 2, groupTiebreaker), ['Neither side reached 5.']);
 });
 
-test('a tiebreaker is to 7: 7 or more is not warned about, short of 7 is', () => {
-  assert.deepEqual(scoreBasicWarnings(7, 3, tiebreaker), []);
-  assert.deepEqual(scoreBasicWarnings(4, 7, tiebreaker), []);
-  assert.deepEqual(scoreBasicWarnings(5, 3, tiebreaker), ['Neither side reached 7.']);
+test('a playoff tiebreaker is to 11: 11 or more is not warned about, short of 11 is', () => {
+  assert.deepEqual(scoreBasicWarnings(11, 3, tiebreaker), []);
+  assert.deepEqual(scoreBasicWarnings(4, 11, tiebreaker), []);
+  assert.deepEqual(scoreBasicWarnings(9, 7, tiebreaker), ['Neither side reached 11.']);
 });
 
 test('a tiebreaker keeps the other warnings', () => {
   assert.deepEqual(scoreBasicWarnings(6, 6, tiebreaker), ['Tied: neither side wins this match.']);
-  assert.deepEqual(scoreBasicWarnings(7, 6, tiebreaker), ['Won by 1 point.']);
+  assert.deepEqual(scoreBasicWarnings(11, 10, tiebreaker), ['Won by 1 point.']);
   assert.deepEqual(scoreBasicWarnings(23, 2, tiebreaker), ['Unusually high: over 21.']);
 });
 
