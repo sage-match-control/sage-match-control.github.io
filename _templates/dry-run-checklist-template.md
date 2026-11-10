@@ -55,6 +55,12 @@ Follow §2.1–§2.2 below to get signed in and resynced, then check:
 - [ ] **Public site status**: click **Force hidden**, then **Auto** → a confirmation prompt appears before **Force hidden** takes effect; the console's own tabs stay visible throughout either way; it returns cleanly to **Auto**
 - [ ] **Scorer link (events with `"scoreEntry": "links"`)**: under Mission Control's **Scorer links**, press **Issue scorer link**, fill in **Issued to** and **Note** in the dialog, press **Issue link**, and open the link on a phone. The page's title line names the day, the venue and who it was issued to. Change Match A's score from the phone → the console shows the new score within a few seconds, and both of Match A's score cells in `SCHEDULE` get a note naming that label
 
+- [ ] **Best-of-3 round-robin meetings (categories with `bestOf` on `CSV`).** Enter one
+  meeting 2–0 and leave its game 3 blank: game 3 is greyed on the Hub, the board and the
+  scorer page, and the facility card is not held up by it. Enter another meeting at 1–1:
+  its game 3 stays a match left. Standings count meetings, so a 2–0 and a 2–1 are each
+  one W for the winner and one L for the loser. Clear the scores afterwards.
+
 Don't move on until every check above passes.
 
 ### 1.3 Public screens
@@ -120,6 +126,26 @@ Each edit syncs within a few seconds and reaches open pages by push — you
 don't need to do anything else for it to publish. Everything below is just
 watching for when that pipeline needs a nudge:
 
+- [ ] **One-bracket Final (formats `final` and `final_bronze`).** The round robin sets
+  no seats: when it ends, read the standings on the Hub or in Control Center (not the
+  category tab, which ranks nothing; the site breaks a tie on wins by head-to-head first)
+  and type RR #1–#4 into the category tab's draw column. RR #1 and #2 play the Final;
+  with `final_bronze`, RR #3 and #4 play the Bronze match, and with `final` RR #3
+  takes bronze with no match.
+- [ ] **Double round robin (`rr_legs` 2).** When packing `SCHEDULE` from `MATCHES`,
+  pack all of leg 1 (`RR n`) before any of leg 2 (`RR n · Leg 2`): halfway through the
+  standings mean something, a day running late can drop leg 2 and still have a complete
+  round robin, and no pairing plays twice in a row. Players see both meetings as
+  "Round robin".
+- [ ] **Best-of-3 meetings (`rr_best_of` 3).**
+  - Pack each meeting's three games (`RR n · G1`–`G3` on `MATCHES`) back to back on one
+    court. Every pairing has exactly three rows: a fourth row would count towards the
+    standings but not on the site.
+  - After a 2–0, leave game 3's scores blank. Never type `0`–`0` into it: a typed score
+    is a played game.
+  - The organiser can move the next meeting onto that court early.
+  - Check that a game 3 after a 2–0 is greyed on the Hub, and that the facility card
+    reads "All matches done" once every meeting is decided.
 - [ ] **Playoff teams (team events).** When the bracket stage ends,
   enter each qualifier's letter against its seed on `MatchUps`; after
   each playoff round, enter the next round's teams the same way. The
