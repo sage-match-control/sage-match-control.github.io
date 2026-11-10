@@ -125,7 +125,16 @@ table.tl td{padding:9px;border-bottom:1px solid #EEF1ED;text-align:right;vertica
 table.tl tr:last-child td{border-bottom:none}
 table.tl .cc{font-family:'Barlow Condensed';font-weight:700;color:var(--green-dark);font-size:14px}
 table.tl .win{display:block;font-size:11.5px;color:var(--muted)}
+/* Numbers and durations never break ("2h 30m" on one line); the category
+   column keeps a readable width, and on a narrow screen the table scrolls
+   sideways under a sticky category column instead of crushing it. */
+table.tl th,table.tl td.num{white-space:nowrap}
+table.tl td:first-child{min-width:136px}
+table.tl th:first-child,table.tl td:first-child{position:sticky;left:0;z-index:1;background:var(--card);box-shadow:1px 0 0 var(--rule)}
 .tlwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:640px){
+  table.tl th,table.tl td{padding-left:7px;padding-right:7px}
+}
 .tfoot{font-size:12px;color:var(--muted);padding:11px 16px;border-top:1.5px solid var(--rule)}
 .toolrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .btn{text-align:center;border:1.5px solid var(--navy);border-radius:100px;padding:10px;color:var(--navy);
@@ -1074,7 +1083,7 @@ function recalc(){
     const teamsCell = p.dual ? (p.sizes.length?`${p.a} v ${p.b}`:'—') : cats[i].teams;
     return `<tr>
     <td><span class="cc">${catCode(cats[i])}</span><span class="win">${catName(cats[i])}</span><span class="win">${struct}</span></td>
-    <td class="num">${teamsCell}</td><td class="num" style="font-variant-numeric:tabular-nums;white-space:nowrap">${bracketShorthand(p)}</td><td class="num">${p.rr}</td>
+    <td class="num">${teamsCell}</td><td class="num" style="font-variant-numeric:tabular-nums;white-space:nowrap">${p.sizes&&p.sizes.length?`${p.sizes.length}<span class="win">${p.sizes.length===1?`of ${p.sizes[0]}`:bracketShorthand(p)}</span>`:'—'}</td><td class="num">${p.rr}</td>
     <td class="num">${p.po}</td><td class="num"><b>${p.total}</b></td>
     <td class="num">${ct.rr?fmtDur(ct.rr):'—'}</td>
     <td class="num">${ct.po?fmtDur(ct.po):'—'}</td>
