@@ -55,10 +55,12 @@ test('every match by number leaves a BYE out and carries the hint', () => {
   assert.equal(allMatchesHTML(model([])), '');
 });
 
-test('the first screen counts matches, real pairs and divisions', () => {
+test('the first screen counts matches, real pairs and categories', () => {
   const html = introHTML(model(ROWS));
   assert.match(html, /<b>4<\/b><span>Matches<\/span>/);
   assert.match(html, /<b>4<\/b><span>Teams<\/span>/);
+  assert.match(html, /<span>Categories<\/span>/);
+  assert.doesNotMatch(html, /Divisions/);
 });
 
 test('a pair’s results are its matches in schedule order, a BYE excluded, with the first unplayed marked Next Up', () => {

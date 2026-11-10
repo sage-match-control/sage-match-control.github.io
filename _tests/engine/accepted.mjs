@@ -28,6 +28,10 @@ export const ACCEPTED = [
     case: /^cc\/(piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder\//, kind: 'both', row: 3,
     reason: 'the Teams count on the first screen counts real pairs only (codes ending in a bare number), as the Hub does',
   },
+  {
+    case: /^(std-index|dm-index|cc)\/[^/]+\/finder\//, kind: 'both', row: 'owner 2026-11-10',
+    reason: 'the first screen’s third count reads Categories, not Divisions: it counts categories, and an event may have no divisions',
+  },
   // ---- the team tournament template (sage-docs/docs/specs/.../team-tournament-template-spec.md §9 rows 8-10;
   //      `row` names the row of the spec's §17) ----
   {
