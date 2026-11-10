@@ -256,3 +256,26 @@ for (const event of ['piggleball-2026', 'pickle-for-sight-2026', 'pnf-x-bup-dual
     }
   });
 }
+
+// ---- a double round robin: two matches share a pair of codes (double-round-robin-and-finals-spec.md §6.0) ----
+
+test('rankStandings: a 1–1 split in a double round robin falls through to quotient', () => {
+  const rows = [S('A', 2, 1.0), S('B', 2, 2.0), S('C', 3, 0.5)];
+  // A won leg 1, B won leg 2: one head-to-head win each, so B's quotient decides.
+  const legs = [M('A', 11, 'B', 5), M('B', 11, 'A', 7)];
+  assert.deepEqual(rankStandings(rows, legs).map(s => s.teamCode), ['C', 'B', 'A']);
+  // Both legs to A: head-to-head puts A first, though B's quotient is higher.
+  assert.deepEqual(rankStandings(rows, [M('A', 11, 'B', 5), M('B', 5, 'A', 11)]).map(s => s.teamCode), ['C', 'A', 'B']);
+});
+
+// ---- a best-of-3 round-robin meeting (§6.1) ---------------------------------------------------------
+
+test('rowsToMatches reads bestOf: 3 gives 3, and blank, 1 or no column give null', () => {
+  const head = 'matchNumber,Schedule,CourtAssignment,teamCode1,team1Player1,team1Score,teamCode2,team2Player1,team2Score';
+  const body = (flag) => `1,9:00 AM,Court 1,A_1,a,11,A_2,b,5${flag}`;
+  const at = (flag) => rowsToMatches(parseCSV(`${head},bestOf\n${body(',' + flag)}`))[0].bestOf;
+  assert.equal(at('3'), 3);
+  assert.equal(at(''), null);
+  assert.equal(at('1'), null);
+  assert.equal(rowsToMatches(parseCSV(`${head}\n${body('')}`))[0].bestOf, null, 'no bestOf column');
+});

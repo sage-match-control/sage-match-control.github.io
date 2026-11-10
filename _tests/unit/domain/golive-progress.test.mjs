@@ -1,6 +1,8 @@
 // domain/golive.js, domain/progress.js
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { parseCSV } from '../../../lib/v1/domain/csv.js';
+import { rowsToMatches } from '../../../lib/v1/domain/matches.js';
 import {
   GO_LIVE_LEAD_HOURS, parseScheduleTimeToMinutes, formatMinutesAsClock, earliestScheduleMinutes, computeDayIsLive,
 } from '../../../lib/v1/domain/golive.js';
@@ -220,4 +222,27 @@ test('facilityFinishParts words the finish line for each situation', () => {
   assert.match(ahead.finish, /15 min ahead/);
   assert.equal(facilityFinishParts({ left: 2, plannedEnd: planned, eta: 600 }, true, null, day).sub, null);
   assert.equal(facilityFinishParts({ left: 2, plannedEnd: planned, eta: null }, false, null, day).finish, 'Scheduled end <b>10:00 AM</b>');
+});
+
+// ---- a double round robin and best-of-3 meetings (double-round-robin-and-finals-spec.md §6.0, §6.2) ----
+
+const PROGRESS_HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+const progressOf = (header, ...rows) => computeFacilityProgress(rowsToMatches(parseCSV([header, ...rows].join('\n'))), false, null);
+
+test('two matches with the same two codes are two matches', () => {
+  const p = progressOf(PROGRESS_HEADER,
+    '1,,9:00 AM,Court 1,A_1,a,b,11,A_2,c,d,5',
+    '2,,9:25 AM,Court 1,A_2,c,d,,A_1,a,b,');
+  assert.deepEqual([p.total, p.done, p.left], [2, 1, 1]);
+});
+
+test('a best-of-3 meeting won 2–0 leaves no match', () => {
+  const game = (n, s1, s2, flag = '3') => `${n},,9:00 AM,Court 1,A_1,a,b,${s1},A_2,c,d,${s2},${flag}`;
+  const header = `${PROGRESS_HEADER},bestOf`;
+  const decided = progressOf(header, game(1, 11, 5), game(2, 11, 7), game(3, '', ''));
+  assert.deepEqual([decided.total, decided.done, decided.left], [2, 2, 0]);
+  const split = progressOf(header, game(1, 11, 5), game(2, 5, 11), game(3, '', ''));
+  assert.deepEqual([split.total, split.done, split.left], [3, 2, 1]);
+  const unflagged = progressOf(header, game(1, 11, 5, ''), game(2, 11, 7, ''), game(3, '', '', ''));
+  assert.deepEqual([unflagged.total, unflagged.done, unflagged.left], [3, 2, 1], 'no flag: three ordinary matches');
 });

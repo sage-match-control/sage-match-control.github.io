@@ -16,7 +16,7 @@ import { SNAPSHOTS, STATES, loadSnapshot, deriveState } from '../helpers/fixture
 import { parseCSV } from '../../lib/v1/domain/csv.js';
 import { rowsToMatches } from '../../lib/v1/domain/matches.js';
 import { computeFacilityProgress } from '../../lib/v1/domain/progress.js';
-import { unneededSeriesGames, seriesGameOf } from '../../lib/v1/domain/series.js';
+import { unneededSeriesGames, seriesGameOf, unneededMeetingGames } from '../../lib/v1/domain/series.js';
 
 const SERVER = path.join(WORKSPACE_ROOT, 'sage-tools-api', 'src', 'sync', 'domain', 'facilityCompletion.mjs');
 const present = fs.existsSync(SERVER);
@@ -49,6 +49,16 @@ const CASES = {
   'a row with no match number': csvOf(row(1, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 5), ',,,,A_3,e,f,,A_4,g,h,'),
   'header only': csvOf(),
   'empty': '',
+  // A double round robin: two matches with the same two codes (double-round-robin-and-finals-spec.md §6.0).
+  'a double round robin, one meeting played': csvOf(
+    row(1, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 5),
+    row(2, 'A_2', 'c', 'd', '', 'A_1', 'a', 'b', '')),
+  'a double round robin, both meetings played': csvOf(
+    row(1, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 5),
+    row(2, 'A_2', 'c', 'd', 9, 'A_1', 'a', 'b', 11)),
+  'a one-game final and bronze': csvOf(
+    row(1, 'A_F_1', 'a', 'b', 11, 'A_F_2', 'c', 'd', 7),
+    row(2, 'A_B_1', 'e', 'f', 5, 'A_B_2', 'g', 'h', 11)),
   'a decimal score in a series final': csvOf(
     row(1, 'X_F_1_(1)', 'a', 'b', '11.5', 'X_F_2_(1)', 'c', 'd', '11'),
     row(2, 'X_F_1_(2)', 'a', 'b', '', 'X_F_2_(2)', 'c', 'd', '')),
@@ -147,4 +157,48 @@ test('series finals: a facility is complete or not on every outcome, in both', o
     const csv = csvOf(row(100, 'IXD_1', 'a', 'b', 11, 'IXD_2', 'c', 'd', 5), ...rows);
     assert.equal(siteSaysComplete(csv), server.facilityIsComplete(csv), JSON.stringify(outcome));
   }
+});
+
+// A best-of-3 round-robin meeting (sage-docs/docs/specs/.../double-round-robin-and-finals-spec.md §5.2, §6.1): the
+// rows flagged bestOf 3 with the same two codes, in match-number order, are games 1-3.
+const BO3_HEADER = `${HEADER},bestOf`;
+const bo3 = (...args) => `${row(...args)},3`;
+const bo3Csv = (...rows) => [BO3_HEADER, ...rows].join('\n');
+const A12 = (n, s1, s2, flag = 3) => `${row(n, 'A_1', 'a', 'b', s1, 'A_2', 'c', 'd', s2)},${flag}`;
+const A34 = (n, s1, s2) => bo3(n, 'A_3', 'e', 'f', s1, 'A_4', 'g', 'h', s2);
+const BO3_CASES = {
+  'a meeting won 2-0': [bo3Csv(A12(1, 11, 5), A12(2, 11, 7), A12(3, '', '')), true],
+  'a meeting at 1-1': [bo3Csv(A12(1, 11, 5), A12(2, 5, 11), A12(3, '', '')), false],
+  'a meeting won 2-1': [bo3Csv(A12(1, 11, 5), A12(2, 5, 11), A12(3, 11, 9)), true],
+  'rows out of order': [bo3Csv(A12(3, '', ''), A12(1, 11, 7), A12(2, 11, 5)), true],
+  'no bestOf column': [csvOf(row(1, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 5), row(2, 'A_1', 'a', 'b', 11, 'A_2', 'c', 'd', 7), row(3, 'A_1', 'a', 'b', '', 'A_2', 'c', 'd', '')), false],
+  'bestOf blank': [bo3Csv(A12(1, 11, 5, ''), A12(2, 11, 7, ''), A12(3, '', '', '')), false],
+  'two meetings, one at 1-1': [bo3Csv(A12(1, 11, 5), A12(2, 11, 7), A12(3, '', ''), A34(4, 11, 5), A34(5, 5, 11), A34(6, '', '')), false],
+  'two meetings, both decided': [bo3Csv(A12(1, 11, 5), A12(2, 11, 7), A12(3, '', ''), A34(4, 5, 11), A34(5, 7, 11), A34(6, '', '')), true],
+  'a tied game 1': [bo3Csv(A12(1, 11, 11), A12(2, 11, 7), A12(3, '', '')), false],
+  'a fourth row is an ordinary match': [bo3Csv(A12(1, 11, 5), A12(2, 5, 11), A12(3, 11, 9), A12(4, '', '')), false],
+  'a playoff match with no flag': [bo3Csv(A12(1, 11, 5), A12(2, 11, 7), A12(3, '', ''), A12(4, '', '', '')), false],
+};
+
+test('best-of-3 meetings: the card and completedAt agree, and say what they should, on every case', options, () => {
+  for (const [label, [csv, complete]] of Object.entries(BO3_CASES)) {
+    assert.equal(siteSaysComplete(csv), complete, `site: ${label}`);
+    assert.equal(server.facilityIsComplete(csv), complete, `server: ${label}`);
+  }
+});
+
+test('best-of-3 meetings: the games never played are the same, on every outcome', options, () => {
+  let n = 0;
+  for (const outcome of scenarios(3)) {
+    const siteGames = outcome.map(([s1, s2], g) => ({
+      num: g + 1, bestOf: 3, t1: 'A_1', t2: 'A_2',
+      t1Score: s1 === '' ? null : Number(s1), t2Score: s2 === '' ? null : Number(s2), played: s1 !== '' && s2 !== '',
+    }));
+    const serverGames = outcome.map(([s1, s2], g) => ({ key: g + 1, num: g + 1, bestOf: 3, code1: 'A_1', score1: s1, code2: 'A_2', score2: s2 }));
+    const site = [...unneededMeetingGames(siteGames)].map(m => m.num).sort();
+    const theirs = [...server.unneededMeetingGames(serverGames)].sort();
+    assert.deepEqual(site, theirs, JSON.stringify(outcome));
+    n++;
+  }
+  assert.equal(n, 64);
 });

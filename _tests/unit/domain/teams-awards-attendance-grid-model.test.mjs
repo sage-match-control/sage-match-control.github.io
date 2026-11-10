@@ -142,6 +142,21 @@ test('a Final and a Bronze decide the podium; the loser of the Final is silver',
   assert.equal(podium.warning, null);
 });
 
+test('a one-bracket Final and Bronze beside a round robin decide the podium from the bracket', () => {
+  // A one-bracket Final + Bronze category: four round-robin pairs, then the Final and the Bronze match
+  // (double-round-robin-and-finals-spec.md §6.0).
+  const m = model('standard', [
+    [1, ...P('ND_1', 'Ann', 'Bo'), 11, ...P('ND_2', 'Cy', 'Di'), 7],
+    [2, ...P('ND_3', 'Ed', 'Flo'), 11, ...P('ND_4', 'Gus', 'Hal'), 6],
+    [3, ...P('ND_F_1', 'Ann', 'Bo'), 11, ...P('ND_F_2', 'Cy', 'Di'), 7],
+    [4, ...P('ND_B_1', 'Ed', 'Flo'), 5, ...P('ND_B_2', 'Gus', 'Hal'), 11],
+  ], []);
+  const [podium] = A.buildPodiums(m);
+  assert.equal(podium.source, 'bracket');
+  assert.deepEqual([podium.gold.p1, podium.silver.p1, podium.bronze.p1], ['Ann', 'Cy', 'Gus']);
+  assert.equal(podium.warning, null);
+});
+
 test('a tied Final is flagged, not guessed', () => {
   const m = model('standard', [[7, ...P('ND_F_1', 'A', 'B'), 11, ...P('ND_F_2', 'C', 'D'), 11]], []);
   const [podium] = A.buildPodiums(m);

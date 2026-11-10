@@ -3,7 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCSV } from '../../../lib/v1/domain/csv.js';
 import { BYE_RE, sideIsBye, matchByeSide, isByeStandingRow } from '../../../lib/v1/domain/byes.js';
-import { SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames } from '../../../lib/v1/domain/series.js';
+import { SERIES_GAME_RE, seriesGameOf, seriesGroups, walkSeries, unneededSeriesGames, rrSeriesGroups, unneededMeetingGames } from '../../../lib/v1/domain/series.js';
+import { rowsToMatches } from '../../../lib/v1/domain/matches.js';
 
 // ---- csv ----------------------------------------------------------------------
 
@@ -183,4 +184,79 @@ test('the schedule board marks a tiebreaker that is not needed', () => {
   const rows = dkQf([11, 5], [11, 9]).map(m => ({ matchUp: m.matchUp, c1: m.t1, c2: m.t2, s1: m.t1Score, s2: m.t2Score }));
   dkMarkUnneeded(rows);
   assert.deepEqual(rows.map(r => r.notNeeded), [false, false, true]);
+});
+
+// ---- a best-of-3 round-robin meeting (double-round-robin-and-finals-spec.md §6.1) ----
+
+import { parseFacilityCsv } from '../../../lib/v1/domain/schedule-grid.js';
+
+const BO3_COLS = 'matchNumber,Schedule,CourtAssignment,teamCode1,team1Player1,team1Score,teamCode2,team2Player1,team2Score';
+// A list of games [num, code1, score1, code2, score2] as Match objects, with a bestOf column of 3 (or none: flag = null).
+const bo3Matches = (games, flag = '3') => rowsToMatches(parseCSV([flag === null ? BO3_COLS : `${BO3_COLS},bestOf`,
+  ...games.map(([n, c1, s1, c2, s2]) => `${n},9:00 AM,Court 1,${c1},a,${s1},${c2},b,${s2}${flag === null ? '' : ',' + flag}`)].join('\n')));
+const unneededNums = ms => [...unneededSeriesGames(ms)].map(m => m.num).sort((a, b) => a - b);
+
+test('a best-of-3 meeting won 2–0: game 3 is not needed', () => {
+  const ms = bo3Matches([[1, 'A_1', 11, 'A_2', 5], [2, 'A_1', 11, 'A_2', 7], [3, 'A_1', '', 'A_2', '']]);
+  assert.deepEqual(unneededNums(ms), [3]);
+});
+
+test('a best-of-3 meeting at 1–1 needs game 3', () => {
+  const ms = bo3Matches([[1, 'A_1', 11, 'A_2', 5], [2, 'A_1', 5, 'A_2', 11], [3, 'A_1', '', 'A_2', '']]);
+  assert.deepEqual(unneededNums(ms), []);
+});
+
+test('sides swapped between games are one meeting', () => {
+  const ms = bo3Matches([[1, 'A_1', 11, 'A_2', 5], [2, 'A_2', 7, 'A_1', 11], [3, 'A_1', '', 'A_2', '']]);
+  assert.deepEqual(unneededNums(ms), [3]);
+});
+
+test('without a bestOf column, three rows are three matches', () => {
+  const ms = bo3Matches([[1, 'A_1', 11, 'A_2', 5], [2, 'A_1', 11, 'A_2', 7], [3, 'A_1', '', 'A_2', '']], null);
+  assert.deepEqual(unneededNums(ms), []);
+  assert.equal(rrSeriesGroups(ms).size, 0);
+});
+
+test('a tied game counts for neither side, and a fourth row is an ordinary match', () => {
+  const tied = bo3Matches([[1, 'A_1', 11, 'A_2', 11], [2, 'A_1', 11, 'A_2', 5], [3, 'A_1', '', 'A_2', '']]);
+  assert.deepEqual(unneededNums(tied), []);
+  const four = bo3Matches([[1, 'A_1', 11, 'A_2', 5], [2, 'A_1', 5, 'A_2', 11], [3, 'A_1', 11, 'A_2', 9], [4, 'A_1', '', 'A_2', '']]);
+  assert.deepEqual(unneededNums(four), []);
+  assert.equal([...rrSeriesGroups(four).values()][0].length, 3, 'only the first three rows are the meeting');
+});
+
+test('rrSeriesGroups: games are taken in match-number order, and the facility is part of the key', () => {
+  const g = (num, facility, t1, s1, t2, s2) => ({ num, facility, bestOf: 3, t1, t2, t1Score: s1, t2Score: s2, played: s1 !== null && s2 !== null });
+  // Match numbers repeat across facilities: the same two codes in two facilities are two meetings.
+  const ms = [
+    g(3, 'Main', 'A_1', null, 'A_2', null), g(1, 'Main', 'A_1', 11, 'A_2', 5), g(2, 'Main', 'A_1', 11, 'A_2', 7),
+    g(1, 'Annex', 'A_1', 11, 'A_2', 5), g(2, 'Annex', 'A_1', 5, 'A_2', 11), g(3, 'Annex', 'A_1', null, 'A_2', null),
+  ];
+  const groups = rrSeriesGroups(ms);
+  assert.equal(groups.size, 2);
+  assert.deepEqual(groups.get('Main|A_1|A_2').map(x => x.m.num), [1, 2, 3]);
+  assert.deepEqual([...unneededMeetingGames(ms)].map(m => `${m.facility}${m.num}`), ['Main3']);
+});
+
+test('walkSeries still reads a series final the same way when no game count is passed', () => {
+  const g1 = game('IXD_F', 1, 2, 1, 11, 5), g2 = game('IXD_F', 1, 2, 2, 11, 9), g3 = game('IXD_F', 1, 2, 3);
+  const list = seriesGroups([g1, g2, g3]).get('IXD_F');
+  assert.deepEqual(walkSeries(list).unneeded, [g3]);
+  assert.deepEqual(walkSeries(list, 3).unneeded, [g3]);
+  assert.deepEqual(walkSeries(list.slice(0, 2), 2).decidedBy, g1, 'told it is twice-to-beat, seat 1 needs one win');
+});
+
+test('the board reads bestOf into its rows, and marks a best-of-3 meeting’s game 3 not needed after a 2–0', () => {
+  const rows = parseFacilityCsv(`${BO3_COLS},bestOf\n1,9:00 AM,Court 1,A_1,a,11,A_2,b,5,3\n2,9:25 AM,Court 1,A_1,a,,A_2,b,,\n`, 'standard');
+  assert.deepEqual(rows.map(r => r.bestOf), [3, null]);
+  const board = (s, flag = 3) => ({ num: s[0], c1: 'A_1', c2: 'A_2', s1: s[1], s2: s[2], matchUp: '', bestOf: flag });
+  const ms = [board([1, 11, 5]), board([2, 11, 7]), board([3, null, null])];
+  dkMarkUnneeded(ms);
+  assert.deepEqual(ms.map(r => r.notNeeded), [false, false, true]);
+  const split = [board([1, 11, 5]), board([2, 5, 11]), board([3, null, null])];
+  dkMarkUnneeded(split);
+  assert.deepEqual(split.map(r => r.notNeeded), [false, false, false]);
+  const plain = [board([1, 11, 5], null), board([2, 11, 7], null), board([3, null, null], null)];
+  dkMarkUnneeded(plain);
+  assert.deepEqual(plain.map(r => r.notNeeded), [false, false, false]);
 });
