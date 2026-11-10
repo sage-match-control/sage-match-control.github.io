@@ -24,18 +24,10 @@
   .code { margin: 24px 0 4px; color: var(--green); font: 600 15px 'Barlow Condensed', system-ui, sans-serif; letter-spacing: .22em; }
   h1 { margin: 0; font: 400 clamp(30px, 8vw, 46px)/1.1 'Archivo Black', system-ui, sans-serif; text-transform: uppercase; overflow-wrap: anywhere; text-wrap: balance; }
   .message { margin: 12px 0 0; max-width: 34ch; color: var(--line); text-wrap: balance; }
-  /* An address under events/ may be a finished event's, about to go on to events/archives/.
-     The message waits for that check, so nobody sees it flash on the way there. */
-  .checking main { visibility: hidden; }
 </style>
-<script>
-  if(location.pathname.startsWith('/events/')) document.documentElement.classList.add('checking');
-</script>
 </head>
 <body>
-<!-- GitHub Pages serves this for every missing address. A finished event's pages move to
-     events/archives/, so its QR code, short link and bookmarks land here and go on to the
-     same page there, query and all. See lib/v1/domain/event-pages.js. -->
+<!-- GitHub Pages serves this for every missing address. -->
 <main>
   <img class="logo" src="/assets/logo.png" alt="S.A.G.E. Match Control Experts" />
   <svg class="court" viewBox="0 0 300 110" role="img" aria-label="A pickleball court, with a ball landing outside the line">
@@ -58,21 +50,5 @@
   <h1>That one landed out</h1>
   <p class="message">This page isn't on the site. The link may be old or mistyped.</p>
 </main>
-<script>
-  (async () => {
-    const reveal = () => document.documentElement.classList.remove('checking');
-    if(!document.documentElement.classList.contains('checking')) return;
-    setTimeout(reveal, 4000);
-    try {
-      const { archivedPagePath } = await import('/lib/v1/domain/event-pages.js');
-      const target = archivedPagePath(location.pathname);
-      if(target && (await fetch(target, { method: 'HEAD', cache: 'no-store' })).ok){
-        location.replace(target + location.search + location.hash);
-        return;
-      }
-    } catch(e){ /* the message below is the answer either way */ }
-    reveal();
-  })();
-</script>
 </body>
 </html>

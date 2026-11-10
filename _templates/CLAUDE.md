@@ -736,9 +736,11 @@ pages got wrong, and why their icons are currently broken in
 `events/archives/`. The same goes for the shells' `/lib/v1/...` imports and
 stylesheet links: root-absolute, so the move needs no edit. A shell that names
 its own folder in a root-absolute path (`/events/<event-key>/assets/...`) does
-need that path changed. The QR code, the short link and old bookmarks keep
-working: the site's `404.html` sends a missing page under `events/` to the same
-page under `events/archives/`, keeping its query.
+need that path changed. **The old address stops working**: nothing redirects it,
+so it shows the site's 404 page. Point the event's short link at the new address
+in TinyURL when you move the folder. A QR code that goes through the short link
+then follows it; anything else that names the old address, a bookmark or a
+workbook's `Title` link, does not.
 
 ## 8. The engine, and its versioning rule
 
