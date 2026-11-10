@@ -279,3 +279,28 @@ test('rowsToMatches reads bestOf: 3 gives 3, and blank, 1 or no column give null
   assert.equal(at('1'), null);
   assert.equal(rowsToMatches(parseCSV(`${head}\n${body('')}`))[0].bestOf, null, 'no bestOf column');
 });
+
+// ---- second push: head-to-head counts a best-of-3 meeting once (§6.1 item 4) ----
+
+const G = (num, t1, s1, t2, s2) => ({ ...M(t1, s1, t2, s2), num, bestOf: 3 });
+
+test('rankStandings: a best-of-3 meeting is one head-to-head result', () => {
+  // Level on meetings won: A beat B 2–1, B beat C 2–1, C beat A 2–0. A has the best quotient.
+  const rows = [S('A', 1, 3.0), S('B', 1, 1.0), S('C', 1, 2.0)];
+  const meetings = [
+    G(1, 'A', 11, 'B', 5), G(2, 'B', 11, 'A', 7), G(3, 'A', 11, 'B', 9),
+    G(4, 'B', 11, 'C', 5), G(5, 'C', 11, 'B', 7), G(6, 'B', 11, 'C', 9),
+    G(7, 'C', 11, 'A', 5), G(8, 'A', 3, 'C', 11),
+  ];
+  // Counting meetings the three are 1–1–1 and quotient puts A first; counting games A (2) would be last behind B and C (3 each).
+  assert.deepEqual([...headToHeadWins(rows, meetings)], [['A', 1], ['B', 1], ['C', 1]]);
+  assert.deepEqual(rankStandings(rows, meetings).map(s => s.teamCode), ['A', 'C', 'B']);
+});
+
+test('headToHeadWins: a best-of-3 meeting at 1–1 counts for neither pair; a one-game match still counts', () => {
+  const rows = [S('A', 1, 1.0), S('B', 1, 2.0), S('C', 1, 1.5)];
+  const split = [G(1, 'A', 11, 'B', 5), G(2, 'B', 11, 'A', 5), G(3, 'A', null, 'B', null)];
+  assert.deepEqual([...headToHeadWins(rows, split)], [['A', 0], ['B', 0], ['C', 0]]);
+  const mixed = [...split, M('C', 11, 'A', 4)];
+  assert.deepEqual([...headToHeadWins(rows, mixed)], [['A', 0], ['B', 0], ['C', 1]]);
+});
