@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPAP 3rd Annual Tournament — Tournament Hub</title>
+<meta name="description" content="Find your pair's full UPAP 3rd Annual Tournament match schedule, live scores, and standings.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="UPAP 3rd Annual Tournament — Tournament Hub">
+<meta property="og:description" content="Find your pair's full match schedule, live scores, and standings.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@400;500;600;700&family=Comfortaa:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/lib/v1/css/ticket.css">
+<link rel="stylesheet" href="/lib/v1/css/finder.css">
+<link rel="stylesheet" href="/lib/v1/css/live-matches.css">
+<link rel="stylesheet" href="/lib/v1/css/standings.css">
+<link rel="stylesheet" href="/lib/v1/css/hub.css">
+<style>
+  /* ============================ THEME ============================
+     The UPAP 3rd Annual Tournament pubmat's palette
+     (sage-docs/docs/specs/.../upap-3rd-annual-tournament-spec.md §3): plum
+     structure from its diagonal bands, the ball's green for the accent,
+     its cream centre for paper, and the UPAP mark's maroon, gold, green
+     and black in the hero. Shared with this event's schedule.html.
+
+     To re-skin an event, change the brand tokens below and nothing else:
+     every rule in this file resolves through them or through the role
+     aliases underneath.
+
+     Contrast rules this palette has to respect — the ball green is a
+     *fill* colour, not a text colour:
+       - --green on white is ~1.6:1. Use it as a background (with --navy
+         text on top, ~6.8:1) or on the plum hero (~6.8:1).
+       - --green-dark on white is ~5.1:1 and on paper ~4.8:1.
+       - Small text on paper is --ink (~14.4:1) or --ink-soft (~6.0:1).
+     ================================================================ */
+  :root{
+    --navy:#6B2443;
+    --navy-deep:#45162B;
+    --green:#A6E01A;
+    --green-dark:#4D7A0E;
+    --paper:#FBF8F4;
+    --paper-dim:#F1EBE5;
+    --line:#E0D6CF;
+    --ink:#3D1A2A;
+    --ink-soft:#6E5A63;
+    --white:#FFFFFF;
+    --radius:14px;
+    /* The pubmat's and the UPAP mark's own colours, for this page's hero only (spec §3). */
+    --upap-plum:#99335B;
+    --upap-olive:#80844F;
+    --upap-maroon:#7D1013;
+    --upap-gold:#FEB71D;
+    --upap-green:#01563F;
+    --upap-black:#262022;
+
+    /* Role aliases kept from the pre-SAGE palette so the rules below read
+       by intent rather than by hue. --court* is the accent/structure pair,
+       --cork the emphasis colour (navy, not green — see the contrast note
+       above), --amber the "good/live" state. */
+    --court:var(--green);
+    --court-dark:var(--navy);
+    --court-line:var(--ink);
+    --amber:var(--green-dark);
+    --cork:var(--navy);
+    --muted:var(--ink-soft);
+    --navy-mid:var(--navy-deep);
+    --card-shadow: 0 18px 40px -20px color-mix(in srgb, var(--navy-deep) 28%, transparent);
+  }
+
+                                                    /* Below the desktop breakpoint brackets already stack, so there's nothing to toggle. */
+
+                                              /* Mobile (below the same breakpoint as isDesktopStandings) stacks
+     the brackets in one column — two side by side don't fit a phone-width
+     category card without squeezing every table. */
+                                                /* Desktop: break the standings board out of the page's narrow .wrap
+     max-width so it can actually use the screen. Each category becomes
+     its own column, and the whole row of categories scrolls horizontally. */
+
+
+           /* the all-matches list under the stats */
+
+
+
+/* ==== THIS TEMPLATE'S OWN TOUCHES, where it differs from lib/v1/css — site-engine-spec §12 ==== */
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  td.live-vs-cell{font-size:11px;}
+}
+/* §12 row 12: phone sizes of the match number, the VS or score, and the category line (this page keeps its own) */
+@media (max-width:480px) {
+  td.live-cat-cell{font-size:8.5px; padding:6px 5px 2px;}
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-board{
+  display:flex;
+  gap:20px;
+  max-height:92vh;
+  overflow:auto;
+  padding:4px 4px 16px;
+  align-items:flex-start;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.standings-col{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:16px;
+  margin-bottom:16px;
+  break-inside:avoid;
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.stage-banner + .br-table-wrap .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table th{
+  font-size:9px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:var(--muted);
+  border-bottom:1px solid rgba(20,27,44,.1);
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table td{ color:var(--ink); border-bottom:1px solid rgba(20,27,44,.06); }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table td.pair{font-family:'Inter',sans-serif; font-weight:600; font-size:12px; line-height:1.35;}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em; line-height:2.7;}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+.rr-bracket-label + .br-table-wrap .br-table{ border-radius:0 0 10px 10px; margin-top:0; }
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop{
+    overflow-x:auto;
+    overflow-y:visible;
+    max-height:none;
+    padding-bottom:20px;
+    align-items:stretch;
+    justify-content:flex-start;
+  }
+}
+/* §12 rows 5-7 and 13: this page's own version of a rule the pages disagree on; the shared rule is the version most pages hold, and what it sets that this one does not is reset here */
+@media (min-width:900px) and (min-height:600px) {
+  .standings-board-desktop .standings-col{
+    flex:0 0 360px;
+    max-width:360px;
+    max-height:92vh;
+    overflow-y:auto;
+  }
+}
+/* ==== lib/v1/css's house colours, through this page's tokens: engine rules with color-mix(in srgb, var(--token) N%,
+   transparent) for rgba(<house token>, N/100), so a re-skin reaches them. Keep it whole; _tests/unit/house-colours.test.mjs checks it. */
+.live-dot{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 50%, transparent); }
+@keyframes live-pulse{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 45%, transparent); } 70%{ box-shadow:0 0 0 8px color-mix(in srgb, var(--green-dark) 0%, transparent); } 100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--green-dark) 0%, transparent); } }
+.tag.pool{ background:color-mix(in srgb, var(--green) 18%, transparent); }
+.search-panel::before{ border:1px solid color-mix(in srgb, var(--green) 35%, transparent); }
+.ac-item:hover small, .ac-item.active small{ color:color-mix(in srgb, var(--ink) 75%, transparent); }
+td.live-court-cell{ background:color-mix(in srgb, var(--green) 16%, transparent); }
+.cat-toggle-chip:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.standings-col-head{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary{ background:color-mix(in srgb, var(--paper) 94%, transparent); }
+.club-summary-item.leader{ box-shadow:0 0 26px -8px color-mix(in srgb, var(--green-dark) 45%, transparent); }
+@media (min-width:900px) and (min-height:600px){ .club-subhead{ background:color-mix(in srgb, var(--paper) 94%, transparent); } .club-summary{ background:none; } }
+header.hero{ box-shadow:0 24px 60px -28px color-mix(in srgb, var(--navy-deep) 45%, transparent); }
+.regal-rule::before, .regal-rule::after{ background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--green) 70%, transparent)); }
+.regal-rule::after{ background:linear-gradient(90deg, color-mix(in srgb, var(--green) 70%, transparent), transparent); }
+.view-tab:hover{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+.day-picker select:hover, .day-picker select:focus{ border-color:color-mix(in srgb, var(--green) 60%, transparent); }
+/* ==== UPAP 3rd Annual Tournament: the pubmat's hero (sage-docs/docs/specs/.../upap-3rd-annual-tournament-spec.md §3) ==== */
+/* The pubmat's diagonal bands: a lighter plum across the top left, an olive band low on the right. */
+header.hero{
+  background-color:var(--navy);
+  background-image:
+    linear-gradient(152deg, color-mix(in srgb, var(--upap-plum) 75%, transparent) 0 28%, transparent 28%),
+    linear-gradient(152deg, transparent 0 74%, color-mix(in srgb, var(--upap-olive) 40%, transparent) 74% 88%, transparent 88%);
+}
+/* "UP Alumni Pickleball Community": the pubmat's condensed capitals, above the score call. */
+.tagline-script{ font-family:'Barlow Condensed',sans-serif; font-style:normal; font-weight:700; text-transform:uppercase; letter-spacing:.14em; font-size:clamp(14px,3.6vw,18px); margin:0 0 4px; }
+/* "0-0-3": the pubmat's score call, in its rounded face and the ball's green. */
+.domination-line{ font-family:'Comfortaa',sans-serif; font-weight:700; font-size:clamp(46px,14vw,88px); line-height:1; letter-spacing:.02em; text-transform:none; color:var(--green); margin:8px 0 6px; }
+/* "3rd Annual Tournament": the pubmat's rounded face in mixed case, "3rd" in the UPAP gold. */
+h1.title{ font-family:'Comfortaa',sans-serif; font-weight:700; font-size:clamp(26px,7vw,50px); line-height:1.12; letter-spacing:0; text-transform:none; margin:0 0 14px; }
+h1.title .accent{ color:var(--upap-gold); }
+/* The UPAP mark's four colours on a white chip, as the mark sits on its white ground. */
+.upap-bar{ display:inline-flex; gap:3px; padding:4px; border-radius:6px; background:var(--white); margin:0 0 16px; }
+.upap-bar span{ width:30px; height:8px; border-radius:2px; }
+.upap-bar span:nth-child(1){ background:var(--upap-maroon); }
+.upap-bar span:nth-child(2){ background:var(--upap-gold); }
+.upap-bar span:nth-child(3){ background:var(--upap-green); }
+.upap-bar span:nth-child(4){ background:var(--upap-black); }
+/* Date, then venue, under the title, in white like the pubmat's. */
+.eyebrow{ color:var(--white); line-height:1.9; margin-bottom:22px; }
+</style>
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+</head>
+<body>
+
+<div class="qr-panel" aria-hidden="false">
+  <img src="assets/qr.png" alt="QR code linking to this Tournament Hub site" />
+  <div class="qr-link-text">tinyurl.com/<wbr>SAGExUPAP2026</div>
+  <div class="qr-caption">Scan to open the Tournament Hub on your phone</div>
+</div>
+
+<header class="hero">
+  <div class="hero-logos">
+    <img src="assets/logo.jpg" alt="UP Alumni Pickleball Community logo" />
+    <span class="hero-logos-sep">&times;</span>
+    <img src="/assets/logo.png" alt="S.A.G.E." />
+  </div>
+  <div class="tagline-script">UP Alumni Pickleball Community</div>
+  <div class="domination-line">0-0-3</div>
+  <h1 class="title"><span class="accent">3rd</span> Annual Tournament</h1>
+  <div class="upap-bar" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <div class="eyebrow">Sunday, 22 November 2026<br>The Foundry &nbsp;·&nbsp; Cainta, Rizal</div>
+  <p class="subtitle">Find your pair's full match schedule — every round, every opponent, in order.</p>
+
+  <div class="day-picker" id="dayPickerWrap">
+    <label for="dayPicker">Select tournament day</label>
+    <select id="dayPicker"></select>
+  </div>
+
+  <div class="view-tabs" role="tablist" id="viewTabsWrap" style="display:none;">
+    <button class="view-tab active" data-view="finder" type="button">Match Finder</button>
+    <button class="view-tab" data-view="live" type="button">Live Matches</button>
+    <button class="view-tab" data-view="standings" type="button">Standings</button>
+  </div>
+
+  <div class="regal-rule"><span class="diamond"></span></div>
+
+  <div id="syncStatus" class="sync-status" style="display:none;"></div>
+</header>
+
+<div class="wrap">
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="liveResults" style="display:none;">
+    <div class="live-board-meta" id="liveBoardMeta"></div>
+    <div id="liveBoard"></div>
+  </div>
+  <div class="search-panel" id="searchPanel" style="display:none;">
+    <label class="search-label" for="teamInput">Enter your pair's names</label>
+    <div class="search-row autocomplete">
+      <div class="input-wrap">
+        <input id="teamInput" type="text" placeholder="e.g. John Smith / Jane Doe" autocomplete="off" inputmode="latin" />
+        <button type="button" id="clearInputBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+      </div>
+      <div id="acList" class="ac-list"></div>
+      <button id="searchBtn">Find matches</button>
+    </div>
+  </div>
+  <div id="results" style="display:none;"></div>
+  <div id="standingsResults" style="display:none;">
+    <div class="category-toggle-bar" id="categoryToggleBar"></div>
+    <div class="category-filter" id="categoryFilterWrap">
+      <label class="search-label" for="catFilterInput">Search a category</label>
+      <div class="search-row autocomplete">
+        <div class="input-wrap">
+          <input id="catFilterInput" type="text" class="cat-filter-input" placeholder="e.g. Open Women's Doubles" autocomplete="off" inputmode="latin" />
+          <button type="button" id="clearCatBtn" class="clear-input-btn" aria-label="Clear search" title="Clear">&times;</button>
+        </div>
+        <div id="catAcList" class="ac-list"></div>
+      </div>
+    </div>
+    <div id="standingsBody"></div>
+  </div>
+</div>
+
+<footer>
+  UPAP 3rd Annual Tournament &middot; Sunday, 22 November 2026<br>
+  The Foundry Pickleball Court, Cainta, Rizal<br>
+  Organised by the UP Alumni Pickleball Community<br>
+  Powered by S.A.G.E. Match Control Experts
+</footer>
+
+<script type="module">
+// ============================================================================
+// SETTINGS — the only script in this page. The days, facilities and labels come from
+// event-data/config/events.json (sage-docs/docs/specs/.../site-engine-spec.md §4.6); the rest of the
+// Hub is lib/v1/apps/hub.js.
+// ============================================================================
+import { mountHub } from '/lib/v1/apps/hub.js';
+
+// Does triple duty: the event's key in events.json, its folder in the shared data repo, and its folder under
+// events/ in this repo. Keep all three identical.
+const EVENT_KEY = 'upap-2026';
+
+// The live Worker's address: '' turns push off for this page, as a finished event's pages do
+// (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
+
+mountHub({ eventKey: EVENT_KEY, liveBaseUrl: LIVE_BASE_URL });
+</script>
+</body>
+</html>
