@@ -2,8 +2,8 @@
 
 This directory holds three reusable event-site templates. Instantiating one
 for a real event is a copy-and-fill job: copy the folder, replace every
-`{{TOKEN}}`, fill in a handful of example config arrays, and wire up the
-backend. This file is the checklist for doing that. It assumes you're
+`{{TOKEN}}`, set the schedule board's day and colours, register the event in
+`events.json`, and wire up the backend. This file is the checklist for doing that. It assumes you're
 working in this repo (`sage-match-control.github.io`) with the
 `sage-tools-api` backend repo also available.
 
@@ -646,17 +646,19 @@ most common cause. Exact, case-sensitive:
   counted once the matchup's other games settle it (`lib/v1/domain/deciders.js`,
   mirrored by `sage-tools-api`'s `facilityCompletion.mjs`).
 
-`_(N)` suffixes mark a twice-to-beat playoff instance (see the
-`matchInstanceOf`/`pairUpMatchups` comments in `index.html` if you need the
-details) — you generally don't need to think about this when just filling
-in a spreadsheet.
+`_(N)` suffixes mark a twice-to-beat playoff instance (see
+`matchInstanceOf` in `lib/v1/domain/codes.js` and `pairUpMatchups` in
+`lib/v1/views/standings.js` if you need the details) — you generally don't
+need to think about this when just filling in a spreadsheet.
 
-`schedule.html` classifies the tail of a team code into its stage pill
-(`RR` / `R16` / `QF` / `SF` / `BRONZE` / `FINAL`) using the same regexes as
-`roundKeyword()` in `index.html`, so a code is read the same way everywhere.
-Because the two templates' codes differ by one leading segment, each copy's
-`stageOf()` is anchored differently — don't copy that function between them.
-An unrecognised tail falls back to `RR`, matching `standingsStageKey()`.
+The schedule board classifies the tail of a team code into its stage pill
+(`RR` / `R16` / `QF` / `SF` / `BRONZE` / `FINAL`) with `ladderStageOf()` in
+`lib/v1/apps/schedule-board.js`, using the same regexes as `roundKeyword()` in
+`lib/v1/domain/codes.js`, so a code is read the same way everywhere. A dual
+meet's codes carry one more leading segment, so `ladderStageOf()` anchors
+differently when the board has a `clubOrder`. An unrecognised tail falls back
+to `RR`, matching `standingsStageKey()`. A team event's stage comes from the
+side's prefix instead.
 
 ## 5.1 Things that must be kept in sync by hand
 
@@ -668,7 +670,7 @@ Within one event's folder, across `index.html` and `schedule.html`:
 | day key | `config/events.json`, plus `schedule.html`'s `DAY_KEY`, plus each spreadsheet's day key, set through its **SAGE → Set up live sync** |
 | facility name | `config/events.json`, and each spreadsheet's venue name, set through its **SAGE → Set up live sync** — compared exactly, case-sensitive |
 | club codes | `index.html`'s `CLUB_LOGOS`, and `schedule.html`'s `CLUB_ORDER` (dual meet only) |
-| theme `:root` | `index.html` and `schedule.html` — plus the two non-CSS palettes noted in §2 step 5 |
+| theme `:root` | `index.html` and `schedule.html` — plus the non-CSS palette noted in §2 step 5 (`schedule.html`'s `CAT_META`) |
 | `LIVE_BASE_URL` | each shell, as a literal: `''` turns push off for that page (§7) |
 
 Nothing new is kept in sync by hand for a team event: pair labels live only
@@ -696,7 +698,7 @@ Control console, wins over `auto` either way — see
 
 ## 6. Root-absolute asset paths — do not "fix" them to relative
 
-Both templates load icons and images with root-absolute paths
+All three templates load icons and images with root-absolute paths
 (`/assets/favicons/...`, `/assets/logo.png` — one shared `assets/` folder
 at the repo root, used by every page on the site), not relative ones
 (`../favicons/...`). This is deliberate, not an oversight. A relative path
@@ -763,8 +765,9 @@ Control Center share:
 - `lib/v1/domain/` — the rules (played, BYE, series, standings, go-live,
   team events), plain functions with no DOM. `lib/v1/data/` — events.json,
   snapshots, the live channel, the API. `lib/v1/platform.js` — the constants.
-- Dependencies point one way (`platform` ← `domain` ← `data` ← `views` ←
-  `apps`); `_tests/unit/guards.test.mjs` enforces it. The theme contract
+- Dependencies point one way: `domain` imports only `domain`; `data` imports
+  `platform`, `domain` and `data`; `views` imports `domain` and `views`; `apps`
+  imports any of them but another app. `_tests/unit/guards.test.mjs` enforces it. The theme contract
   (`_tests/unit/theme-contract.test.mjs`) lists the custom properties a
   shell's `:root` must define.
 
