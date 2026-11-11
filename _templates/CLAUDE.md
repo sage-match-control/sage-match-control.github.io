@@ -7,6 +7,10 @@ backend. This file is the checklist for doing that. It assumes you're
 working in this repo (`sage-match-control.github.io`) with the
 `sage-tools-api` backend repo also available.
 
+A new event's **spec** (its exact edits, values and checks, for someone with
+no other context) starts from `sage-docs/docs/specs/event-spec-template.md`,
+which applies this runbook to one event.
+
 **These templates are not served as pages.** This repo has no
 `.nojekyll`, so GitHub Pages runs Jekyll over it, and Jekyll excludes
 top-level directories beginning with `_` from the published site — that's
