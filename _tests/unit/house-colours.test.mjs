@@ -20,6 +20,7 @@ const PAGES = [
   '_templates/attendance/attendance.html',
   'events/archives/ladies-dink-2026/index.html',
   'events/archives/ladies-dink-2026/schedule.html',
+  'events/upap-2026/schedule.html',
 ];
 
 const TEAM_HUBS = ['_templates/team-tournament-template/index.html', 'events/archives/ladies-dink-2026/index.html'];
