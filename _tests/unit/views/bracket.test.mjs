@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDayModel } from '../../../lib/v1/domain/model.js';
 import { buildBracket } from '../../../lib/v1/domain/bracket.js';
-import { bracketChartHTML, roundStripHTML, startRound, fullTreeButtonHTML, BRACKET_DIMS } from '../../../lib/v1/views/bracket.js';
+import { bracketChartHTML, roundStripHTML, startRound, fullTreeButtonHTML, BRACKET_DIMS, FULL_TREE_DIMS } from '../../../lib/v1/views/bracket.js';
 
 const MATCH_HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const STAND_HEADER = 'teamCode,player1,player2,wins,loss,quotient,bracket,match,from';
@@ -162,6 +162,25 @@ test('a chart can be drawn with wider cards, the lines following them', () => {
   assert.match(wide.html, /<div class="bk-node" style="left:336px;top:\d+px;width:300px">/);
   assert.match(wide.html, /<path d="M300 /, 'a line leaves a card at its right edge');
   assert.doesNotMatch(bracketChartHTML(bracketFor(m), m).html, /width:172px"/, 'the default card size is the stylesheet\'s');
+});
+
+test('Full tree\'s chart has wider, taller cards with a player per line; the default chart keeps one line', () => {
+  const m = model([...RR, ...rowsFor({ HIMD_SF_1: ['Ann Lee', 'Bo Cruz'], HIMD_SF_2: ['Solo', ''] })]);
+  const dims = { ...BRACKET_DIMS, ...FULL_TREE_DIMS };
+  assert.deepEqual(FULL_TREE_DIMS, { cardW: 280, seatH: 42 });
+  const full = bracketChartHTML(bracketFor(m), m, { fullTree: true });
+  const flat = bracketChartHTML(bracketFor(m), m);
+  assert.equal(full.width, 4 * dims.cardW + 3 * dims.colGap);
+  assert.ok(full.height > flat.height, 'taller, for the second line');
+  assert.match(full.html, new RegExp(`^<div class="bk bk--two" style="width:${full.width}px;height:${full.height}px" data-bk-cat="HIMD">`));
+  assert.match(full.html, /width:280px">/);
+  assert.match(full.html, /title="Ann Lee \/ Bo Cruz"><span class="bk-names"><span class="bk-full"><span class="bk-line">Ann Lee \/<\/span><span class="bk-line">Bo Cruz<\/span><\/span><span class="bk-short">Lee \/ Cruz<\/span><\/span><span class="bk-tag">Br 1 · #1<\/span>/);
+  assert.match(full.html, /<span class="bk-full">Solo<\/span>/, 'a single name stays one line');
+  assert.match(full.html, /<span class="bk-names">Winner of QF-2</, 'an empty seat stays one line');
+  assert.doesNotMatch(flat.html, /bk--two|class="bk-line"/);
+  // QF-2's line meets SF-2's second seat at its middle, at the taller seat height.
+  const [, x, y] = full.html.match(/<div class="bk-node" style="left:(\d+)px;top:(\d+)px;width:280px"><div class="bk-card[^"]*" data-bk-match="SF-2"/);
+  assert.match(full.html, new RegExp(`V${+y + dims.headH + dims.seatH + dims.seatH / 2} H${x}"`));
 });
 
 test('a strip given its window\'s width stretches its cards so the window holds whole rounds', () => {

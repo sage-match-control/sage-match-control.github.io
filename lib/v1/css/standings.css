@@ -849,8 +849,18 @@ div.bk-full{
 
 .bk-full-canvas{position:absolute; left:0; top:0; transform-origin:0 0; padding:16px;}
 
+/* Full tree's chart (views/bracket.js FULL_TREE_DIMS): taller seats, a player per line. */
+.bk--two .bk-card{height:104px;}
+
+.bk--two .bk-seat{height:42px;}
+
+.bk--two span.bk-full{display:flex; flex-direction:column; line-height:1.2;}
+
+.bk--two .bk-line{overflow:hidden; text-overflow:ellipsis;}
+
 /* Zoomed out far enough that the names would be unreadable: surnames, larger. */
 .bk-full--compact .bk-full,
+.bk-full--compact .bk--two span.bk-full,
 .bk-full--compact .bk-tag{display:none;}
 
 .bk-full--compact .bk-short{display:inline; font-size:20px;}

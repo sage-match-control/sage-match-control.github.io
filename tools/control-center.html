@@ -2557,6 +2557,26 @@ function fitRosterLines(ctx, roster, maxWidth){
   return { ...s, lines: [`${roster.length} players`] };
 }
 
+// Fits a medalist's name into a podium-card row: on one line at the largest
+// size that fits; for a pair that doesn't, one player per line ("p1 /", "p2")
+// at the largest size where both fit; failing that, wrapped at the smallest.
+// The row's width is fixed, so a long pair of names shrinks rather than
+// running off the card.
+const NAME_EXPORT_SIZES = [38, 34, 30, 26, 22];
+function fitMedalNameLines(ctx, medal, maxWidth){
+  const fits = lines => lines.every(l => ctx.measureText(l).width <= maxWidth);
+  const at = size => { ctx.font = `700 ${size}px "Inter"`; return { size, lineH: Math.round(size * 1.2) }; };
+  const one = [medalNameText(medal)];
+  const split = medal.teamName ? null : [`${medal.p1} /`, medal.p2];
+  for(const size of NAME_EXPORT_SIZES){
+    const s = at(size);
+    if(fits(one)) return { ...s, lines: one };
+    if(split && fits(split)) return { ...s, lines: split };
+  }
+  const s = at(NAME_EXPORT_SIZES[NAME_EXPORT_SIZES.length - 1]);
+  return { ...s, lines: (split || one).flatMap(l => wrapCanvasText(ctx, l, maxWidth)) };
+}
+
 function exportEventTitle(){
   const rawEvent = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
   return (rawEvent && rawEvent.title) || CURRENT_EVENT_KEY || '';
@@ -2668,28 +2688,43 @@ async function drawPodiumCard(ctx, w, h, podium){
 
     ctx.textAlign = 'left';
     const textX = rowX + 170;
+    const textW = rowW - (textX - rowX) - 32;
     if(row.medal && row.medal.roster && row.medal.roster.length){
       // A team: its name, then its roster, the pair centred on the row.
-      const fit = fitRosterLines(ctx, row.medal.roster, rowW - (textX - rowX) - 32);
-      const nameH = 38, gap = 14;
+      const fit = fitRosterLines(ctx, row.medal.roster, textW);
+      const name = fitMedalNameLines(ctx, row.medal, textW);
+      const nameH = name.lines.length * name.lineH, gap = 14;
       const top = cy - (nameH + gap + fit.lines.length * fit.lineH) / 2;
       ctx.fillStyle = textColor;
-      ctx.font = '700 38px "Inter"';
-      ctx.fillText(medalNameText(row.medal), textX, top + 30);
+      ctx.font = `700 ${name.size}px "Inter"`;
+      name.lines.forEach((line, i) => {
+        ctx.fillText(line, textX, top + i * name.lineH + Math.round(name.size * 0.8));
+      });
       ctx.fillStyle = 'rgba(11,24,38,.75)';
       ctx.font = `400 ${fit.size}px "Inter"`;
       fit.lines.forEach((line, i) => {
         ctx.fillText(line, textX, top + nameH + gap + i * fit.lineH + Math.round(fit.size * 0.8));
       });
     } else if(row.medal){
+      // A pair: its name (one line, or a player per line when that's too
+      // wide), then its club, the block centred on the row.
+      const name = fitMedalNameLines(ctx, row.medal, textW);
+      ctx.font = '400 26px "Inter"';
+      const club = row.medal.clubLabel ? wrapCanvasText(ctx, row.medal.clubLabel, textW) : [];
+      const clubLineH = 31, gap = club.length ? 8 : 0;
+      const top = cy - (name.lines.length * name.lineH + gap + club.length * clubLineH) / 2;
       ctx.fillStyle = textColor;
-      ctx.font = '700 38px "Inter"';
-      const nameLine = medalNameText(row.medal);
-      ctx.fillText(nameLine, textX, row.medal.clubLabel ? cy - 8 : cy + 12);
-      if(row.medal.clubLabel){
+      ctx.font = `700 ${name.size}px "Inter"`;
+      name.lines.forEach((line, i) => {
+        ctx.fillText(line, textX, top + i * name.lineH + name.lineH / 2 + Math.round(name.size * 0.35));
+      });
+      if(club.length){
+        const clubTop = top + name.lines.length * name.lineH + gap;
         ctx.fillStyle = decided ? 'rgba(11,24,38,.7)' : c.secondary;
         ctx.font = '400 26px "Inter"';
-        ctx.fillText(row.medal.clubLabel, textX, cy + 32);
+        club.forEach((line, i) => {
+          ctx.fillText(line, textX, clubTop + i * clubLineH + clubLineH / 2 + 9);
+        });
       }
     } else {
       ctx.fillStyle = textColor;
