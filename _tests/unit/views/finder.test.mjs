@@ -73,6 +73,22 @@ test('a pair’s results are its matches in schedule order, a BYE excluded, with
   assert.ok(html.indexOf('Match #1') < html.indexOf('Match #2') || html.indexOf('#1') < html.indexOf('#2'));
 });
 
+test('a pair’s matches follow the Schedule time, not the match number, and Next Up is the earliest unplayed', () => {
+  // A hand-packed SCHEDULE: match #2 is played before #1, and #5 runs past midnight.
+  const at = (time, n, ...rest) => row(n, ...rest).replace('9:00 AM', time);
+  const m = model([
+    at('10:00 AM', 1, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', ''),
+    at('9:00 AM', 2, '', 'ND_1', 'Ann', 'Bo', '', 'ND_4', 'Ed', 'Flo', ''),
+    at('12:30 AM', 5, '', 'ND_1', 'Ann', 'Bo', '', 'ND_3', 'Gil', 'Hal', ''),
+    at('11:00 PM', 4, '', 'ND_1', 'Ann', 'Bo', '', 'ND_5', 'Ivy', 'Jo', ''),
+  ]);
+  const { html } = pairResultsHTML('ann', m, buildPairIndex(m), null);
+  const order = [...html.matchAll(/Match #(\d+)/g)].map(x => Number(x[1]));
+  assert.deepEqual(order, [2, 1, 4, 5]);
+  const tickets = html.split(/<div class="ticket[ "]/).slice(1);
+  assert.deepEqual(tickets.map(t => t.includes('next-pill')), [true, false, false, false]);
+});
+
 test('an unknown name says so, with suggestions that start like it; an ambiguous one lists the pairs', () => {
   const m = model(ROWS);
   const pairs = buildPairIndex(m);
