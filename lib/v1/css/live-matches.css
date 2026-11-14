@@ -232,3 +232,14 @@ td.live-team-cell.right .live-team-cell-inner{
 
   .live-team-cell-inner{gap:6px;}
 }
+
+/* Control Center's Set match (control-center-court-control-spec.md §5.2): the court cell is the button. */
+td.live-court-cell.court-settable{ cursor:pointer; }
+td.live-court-cell.court-settable:hover,
+td.live-court-cell.court-settable:focus-visible{ outline:2px solid var(--green); outline-offset:-2px; }
+.court-hint{
+  display:block; margin-top:4px;
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600; letter-spacing:0;
+  color:var(--green-dark); white-space:nowrap;
+}
+@media (max-width:480px){ .court-hint{ font-size:10px; margin-top:2px; } }

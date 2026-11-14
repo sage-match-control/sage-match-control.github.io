@@ -103,4 +103,9 @@ export const ACCEPTED = [
     case: /^(std-index|cc)\/(piggleball-2026|pickle-for-sight-2026)\/standings(-category-2)?\//, kind: 'both', row: 'bracket-chart D11',
     reason: 'a category with two or more playoff rounds has a List / Bracket switch under its title',
   },
+  // ---- Court control (sage-docs/docs/specs/.../control-center-court-control-spec.md) ----
+  {
+    case: /^cc-signed-in\/[^/]+\/(live|court-set)\//, kind: 'both', row: 'owner 2026-11-14',
+    reason: 'signed in, a Live Matches court cell is a button with “✎ Set match” / “✎ Change”, and opens the court dialog',
+  },
 ];

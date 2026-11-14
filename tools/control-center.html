@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="/lib/v1/css/standings.css">
 <link rel="stylesheet" href="/lib/v1/css/teams.css">
 <link rel="stylesheet" href="/lib/v1/css/score-dialog.css">
+<link rel="stylesheet" href="/lib/v1/css/court-dialog.css">
 <style>
   /* ============================ THEME ============================
      S.A.G.E. house palette — navy structure, green accent, off-white
@@ -1406,6 +1407,21 @@
   </form>
 </dialog>
 
+<!-- Court dialog (control-center-court-control-spec.md §5.4): Live Matches' Set match. -->
+<dialog id="courtDialog" class="score-dialog court-dialog" aria-labelledby="courtDialogTitle">
+  <div class="score-head">
+    <div>
+      <h2 id="courtDialogTitle" class="score-title"></h2>
+      <div id="courtDialogSub" class="score-sub"></div>
+    </div>
+    <button type="button" class="score-x" id="courtDialogClose" aria-label="Close">&times;</button>
+  </div>
+  <div id="courtDialogBody"></div>
+  <p id="courtDialogNote" class="score-note" hidden></p>
+  <div id="courtDialogError" class="score-error" role="alert" hidden></div>
+  <div id="courtDialogActions" class="score-actions"></div>
+</dialog>
+
 <!-- Short outcomes (go-live, sync method, sign-in, "pick a day first") show
      here, pinned to the top of the screen so they are seen wherever the
      button that caused them sits. See showToast(). -->
@@ -1451,6 +1467,7 @@ import { createStandings } from '/lib/v1/views/standings.js';
 import { createAttendanceView } from '/lib/v1/views/attendance-view.js';
 import { createTeams } from '/lib/v1/views/teams.js';
 import { createScoreDialog } from '/lib/v1/views/score-dialog.js';
+import { createCourtDialog } from '/lib/v1/views/court-dialog.js';
 
 // ============================================================================
 // CONFIGURATION — platform-wide constants only. Everything event-specific
@@ -1593,6 +1610,7 @@ async function loadLiveData(){
     }
     if(typeof renderAwards === 'function') renderAwards();
     scoreDialog.refresh();
+    courtDialog.refresh();
 
     // "Synced" reflects when Cloud Run actually published this snapshot
     // (i.e. when the sheet was last edited and Apps Script synced it), not
@@ -2113,7 +2131,8 @@ function consoleTicketHTML(m, teamCode, isNext){
 // Only Match Finder's tickets and team match lines, a team event's Standings matchup cards, and a standard event's
 // Standings bracket cards (decorateBracketMatch), open the dialog; Live Matches, the rest of Standings and Awards
 // stay read-only (D8), so nothing else there calls scoreAttrs. Entry is on when the event's events.json entry carries
-// "scoreEntry": "console" | "links" and the operator is signed in.
+// "scoreEntry": "console" | "links" and the operator is signed in. Live Matches still opens no score dialog, but its
+// court cells open the court dialog (control-center-court-control-spec.md), which this same setting turns on.
 function scoreEntryAvailable(){
   const ev = EVENTS_REGISTRY.get(CURRENT_EVENT_KEY);
   if(!ev || (ev.scoreEntry !== 'console' && ev.scoreEntry !== 'links')) return false;
@@ -2130,27 +2149,31 @@ function scoreHintHTML(m){
   return `<span class="score-hint" aria-hidden="true">✎ ${m.played ? 'Edit score' : 'Enter score'}</span>`;
 }
 
+// How a match reads in a dialog: its title, its division and round (or a team matchup's), and its two
+// sides. Shared by the score dialog and the court dialog.
+function describeMatchForDialog(m){
+  const team = CURRENT_TYPE === 'team';
+  const code = nonByeCode(m);
+  const title = `Match #${m.num}` + (m.court ? ` · ${m.court}` : '') + (m.time ? ` · ${m.time}` : '') +
+    (FACILITIES.length > 1 ? ` · ${m.facility}` : '');
+  const sub = team
+    ? [m.matchUp, pairLabel(m.t1, true, MODEL.event.pairs || undefined)].filter(Boolean).join(' · ')
+    : [Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES), roundLabel(Codes.parseCode(code, CURRENT_TYPE).rest) || 'Round Robin'].filter(Boolean).join(' · ');
+  const side = (c, p1, p2) => ({
+    name: team ? (teams.nameOf(sideOf(c)) || (Teams.stageOf(sideOf(c)) !== null ? Teams.sideLabel(sideOf(c), MODEL.team.rowByCode, MODEL.event && MODEL.event.seedLabels) : c)) : c,
+    code: c,
+    players: p1 === 'TBD' ? null : [p1, p2],
+    missing: team ? 'Lineup not set' : 'To be decided',
+  });
+  return { title, sub, sides: [side(m.t1, m.t1p1, m.t1p2), side(m.t2, m.t2p1, m.t2p2)] };
+}
+
 const scoreDialog = createScoreDialog({
   dialog: document.getElementById('scoreDialog'),
   apiBase: CLOUD_RUN_BASE_URL,
   getToken: currentAuthToken,
   fixture: FIXTURE,
-  describe(m){
-    const team = CURRENT_TYPE === 'team';
-    const code = nonByeCode(m);
-    const title = `Match #${m.num}` + (m.court ? ` · ${m.court}` : '') + (m.time ? ` · ${m.time}` : '') +
-      (FACILITIES.length > 1 ? ` · ${m.facility}` : '');
-    const sub = team
-      ? [m.matchUp, pairLabel(m.t1, true, MODEL.event.pairs || undefined)].filter(Boolean).join(' · ')
-      : [Codes.divisionEventLabel(code, CURRENT_TYPE, DISPLAY, UNRESOLVED_CATEGORIES), roundLabel(Codes.parseCode(code, CURRENT_TYPE).rest) || 'Round Robin'].filter(Boolean).join(' · ');
-    const side = (c, p1, p2) => ({
-      name: team ? (teams.nameOf(sideOf(c)) || (Teams.stageOf(sideOf(c)) !== null ? Teams.sideLabel(sideOf(c), MODEL.team.rowByCode, MODEL.event && MODEL.event.seedLabels) : c)) : c,
-      code: c,
-      players: p1 === 'TBD' ? null : [p1, p2],
-      missing: team ? 'Lineup not set' : 'To be decided',
-    });
-    return { title, sub, sides: [side(m.t1, m.t1p1, m.t1p2), side(m.t2, m.t2p1, m.t2p2)] };
-  },
+  describe: describeMatchForDialog,
   readOnlyReason(m){
     return CURRENT_TYPE !== 'team' && (m.t1p1 === 'TBD' || m.t2p1 === 'TBD') ? 'Players for this match aren’t decided yet.' : null;
   },
@@ -2208,6 +2231,68 @@ function openScoreFromFinder(facility, num){
   if(!m){ showToast('error', `Match #${num} isn't loaded. Refresh and try again.`, 'score'); return; }
   scoreDialog.open(DAYS[currentDayIndex].key, facility, m);
 }
+
+// ---- Court control in Live Matches (control-center-court-control-spec.md §6) ----
+// The court's own cell is the button (D7). It is decorated through Live.renderLiveMatches' courtCell option,
+// so it appears only where score entry would: the event's scoreEntry is set and the operator is signed in.
+function courtCellDeco(facility, court, m){
+  const n = Live.courtNumberFrom(court);
+  if(n === null) return null;
+  return {
+    className: 'court-settable',
+    attrs: ` data-court-facility="${escapeHtml(facility)}" data-court-number="${n}" role="button" tabindex="0"` +
+           ` aria-label="${m ? `Change the match on court ${n}` : `Put a match on court ${n}`}"`,
+    html: `<span class="court-hint" aria-hidden="true">✎ ${m ? 'Change' : 'Set match'}</span>`,
+  };
+}
+
+// A fixture save changes the page's own data only: every match on the court leaves it, then the chosen one
+// takes it. MATCHES holds copies that carry .facility, MODEL.matchesByFacility the facility's own objects.
+function fixtureSetCourt(state, n){
+  const onThisCourt = m => Live.courtNumberFrom(m.liveCourt) === state.court;
+  const patch = list => {
+    list.forEach(m => { if(onThisCourt(m)) m.liveCourt = ''; });
+    if(n !== null){
+      const chosen = list.find(m => m.num === n);
+      if(chosen) chosen.liveCourt = state.court;
+    }
+  };
+  patch(MATCHES.filter(m => m.facility === state.facility));
+  const own = MODEL.matchesByFacility.get(state.facility);
+  if(own) patch(own);
+  drawLiveMatches();
+  finder.refresh();
+}
+
+const courtDialog = createCourtDialog({
+  dialog: document.getElementById('courtDialog'),
+  apiBase: CLOUD_RUN_BASE_URL, getToken: currentAuthToken, fixture: FIXTURE,
+  matchesFor: f => MATCHES.filter(x => x.facility === f),
+  dayMatches: () => MATCHES,
+  eventType: () => CURRENT_TYPE,
+  describe: describeMatchForDialog,
+  multiFacility: () => FACILITIES.length > 1,
+  notify: (kind, text) => showToast(kind, text, 'court'),
+  friendlyError: friendlyApiMessage, unreachable: unreachableMessage,
+  expiredText: 'Your sign-in expired. Sign in on Mission Control, then save again.',
+  resyncHint: 'Use “Resync this day now” on Mission Control.',
+  onFixtureSave: fixtureSetCourt,
+});
+
+function openCourtFromBoard(el){
+  courtDialog.open(DAYS[currentDayIndex].key, el.dataset.courtFacility, el.dataset.courtNumber);
+}
+liveBoardEl.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-court-number]');
+  if(!el || e.target.closest('button, a, input')) return;
+  openCourtFromBoard(el);
+});
+liveBoardEl.addEventListener('keydown', (e) => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-court-number]')){
+    e.preventDefault();
+    openCourtFromBoard(e.target);
+  }
+});
 
 // ---- Facility progress (sage-docs/docs/specs/.../facility-progress-spec.md) ----
 // Done / left / estimated finish per facility, computed from the matches
@@ -2314,6 +2399,7 @@ function drawLiveMatches(){
     facilityExtras: name => facilityProgressCardHTML(name, progressForFacility(name)),
     liveRow: team ? teams.liveRow : undefined,
     emptyMatchupHTML: team ? '<div class="live-matchup">&nbsp;</div>' : '',
+    courtCell: scoreEntryAvailable() ? courtCellDeco : undefined,
   });
 }
 
@@ -3733,6 +3819,8 @@ function renderAuthStatus(){
   renderScorerLinks();
   // The pencil hint on Match Finder's matches appears and disappears with sign-in.
   if(MATCHES.length) finder.refresh();
+  // And the court cells on Live Matches.
+  if(MATCHES.length && CURRENT_VIEW === 'live') drawLiveMatches();
   // So do the Attendance tab's buttons, when it is the tab on screen. (This first runs at
   // load, before the Attendance section's own variables exist, hence the try.)
   try{ if(attConsoleView) attConsoleRenderChrome(); }catch(e){ /* not initialised yet */ }

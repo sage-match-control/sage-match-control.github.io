@@ -4,8 +4,10 @@ import assert from 'node:assert/strict';
 import { buildDayModel } from '../../../lib/v1/domain/model.js';
 import {
   courtSortKey, courtNumberFrom, buildFacilityCourtGroups, liveEmptyRowHTML, liveTableRowsHTML,
-  facilityTableHTML, liveMetaHTML, renderLiveMatches,
+  facilityTableHTML, liveMetaHTML, renderLiveMatches, withCourtCell,
 } from '../../../lib/v1/views/live-matches.js';
+import { liveRowHTML } from '../../../lib/v1/views/teams.js';
+import { eventConfig, loadSnapshot, caseTime } from '../../helpers/fixtures.mjs';
 
 const HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const row = (n, live, court, t1, p1, p2, s1, t2, q1, q2, s2) => `${n},${live},9:00 AM,Court ${court},${t1},${p1},${p2},${s1},${t2},${q1},${q2},${s2}`;
@@ -106,4 +108,82 @@ test('renderLiveMatches fills the board, the count and the facility cards', () =
   assert.match(metaEl.innerHTML, /1<\/b><span>court in play/);
   assert.equal(extrasEl.innerHTML, '<card>Main</card><card>Annex</card>');
   assert.doesNotThrow(() => renderLiveMatches(m, { boardEl: null }));
+});
+
+// ---- courtCell: Control Center's Set match (control-center-court-control-spec.md §5.1) ----
+
+const DECO = { className: 'court-settable', attrs: ' data-court-number="1" role="button"', html: '<span class="court-hint">✎ Set match</span>' };
+const cellsOf = html => html.match(/<td class="live-court-cell[^"]*"/g) || [];
+
+test('withCourtCell decorates the first court cell only, keeping its classes, and leaves the row alone for null', () => {
+  const m = model([{ name: 'Main', rows: MAIN }]);
+  const idle = liveTableRowsHTML('1', null, m);
+  const decorated = withCourtCell(idle, DECO);
+  assert.match(decorated, /<td class="live-court-cell idle court-settable" rowspan="2" data-court-number="1" role="button">1<span class="court-hint">✎ Set match<\/span><\/td>/);
+  assert.equal(cellsOf(decorated).length, 1);
+  assert.equal(withCourtCell(idle, null), idle);
+  assert.equal(withCourtCell(idle, undefined), idle);
+  const live = liveTableRowsHTML('2', m.matches.find(x => x.num === 1), m);
+  assert.match(withCourtCell(live, { className: 'x' }), /<td class="live-court-cell x" rowspan="2"><span class="live-dot"/);
+  assert.equal(withCourtCell('<tr>no cell</tr>', DECO), '<tr>no cell</tr>');
+});
+
+test('without the courtCell option nothing changes, byte for byte', () => {
+  const m = model([{ name: 'Main', rows: MAIN }, { name: 'Annex', rows: ANNEX }]);
+  const groups = buildFacilityCourtGroups(m);
+  for (const [name, rows] of groups) {
+    assert.equal(facilityTableHTML(name, rows, m, { courtCell: undefined }), facilityTableHTML(name, rows, m, {}));
+    assert.equal(
+      facilityTableHTML(name, rows, m, {}),
+      `\n  ${m.day.facilities.length === 1 ? '' : `<div class="facility-title">${name} <span class="facility-count">${rows.filter(([, x]) => x).length} court${rows.filter(([, x]) => x).length === 1 ? '' : 's'} in play</span></div>`}\n  <div class="live-table-wrap" data-facility-key="${name}">\n    <table class="live-table">\n      <thead><tr>\n        <th>Court</th><th colspan="3">Match Details</th>\n      </tr></thead>\n      <tbody>${rows.map(([c, x]) => liveTableRowsHTML(c, x, m, {})).join('')}</tbody>\n    </table>\n  </div>`,
+    );
+  }
+  const el = () => ({ innerHTML: '', querySelectorAll: () => [] });
+  const a = el(), b = el();
+  renderLiveMatches(m, { boardEl: a, courtCell: undefined });
+  renderLiveMatches(m, { boardEl: b });
+  assert.equal(a.innerHTML, b.innerHTML);
+  assert.doesNotMatch(a.innerHTML, /court-settable/);
+});
+
+test('with courtCell every court gets exactly one decorated cell, and the option is called with (facility, court, match|null)', () => {
+  const m = model([{ name: 'Main', rows: MAIN }, { name: 'Annex', rows: ANNEX }]);
+  const calls = [];
+  const el = () => ({ innerHTML: '', querySelectorAll: () => [] });
+  const boardEl = el();
+  renderLiveMatches(m, {
+    boardEl,
+    courtCell: (facility, court, match) => {
+      calls.push([facility, court, match && match.num]);
+      return { className: 'court-settable', attrs: ` data-court-facility="${facility}" data-court-number="${court}"`, html: '<span class="court-hint">hint</span>' };
+    },
+  });
+  assert.deepEqual(calls, [['Main', '1', null], ['Main', '2', 1], ['Annex', '5', null]]);
+  assert.equal((boardEl.innerHTML.match(/class="live-court-cell[^"]*court-settable"/g) || []).length, 3);
+  assert.equal((boardEl.innerHTML.match(/<td class="live-court-cell/g) || []).length, 3);
+  assert.match(boardEl.innerHTML, /<td class="live-court-cell idle court-settable" rowspan="2" data-court-facility="Main" data-court-number="1">1<span class="court-hint">hint<\/span><\/td>/);
+  assert.match(boardEl.innerHTML, /<td class="live-court-cell court-settable" rowspan="2" data-court-facility="Main" data-court-number="2"><span class="live-dot" aria-hidden="true"><\/span>2<span class="court-hint">hint<\/span><\/td>/);
+});
+
+test('a courtCell that returns null leaves that court alone', () => {
+  const m = model([{ name: 'Main', rows: MAIN }]);
+  const el = { innerHTML: '', querySelectorAll: () => [] };
+  renderLiveMatches(m, { boardEl: el, courtCell: (f, court) => (court === '1' ? null : DECO) });
+  assert.equal((el.innerHTML.match(/court-settable/g) || []).length, 1);
+});
+
+test('a team event’s own live rows (options.liveRow) are decorated too, and an idle court gets null', () => {
+  const EV = 'pickledrive-anniversary-2026';
+  const team = buildDayModel(eventConfig(EV), eventConfig(EV).days[0], loadSnapshot(EV), { now: caseTime(EV), alwaysLive: true });
+  const match = team.matches.find(x => x.t1p1 !== 'TBD');
+  const rows = [['1', match], ['2', null]];
+  const seen = [];
+  const html = facilityTableHTML('Main', rows, team, {
+    liveRow: (court, x) => liveRowHTML(team, court, x),
+    courtCell: (facility, court, x) => { seen.push([facility, court, x && x.num]); return { className: 'court-settable', html: '<span class="court-hint">h</span>' }; },
+  });
+  assert.deepEqual(seen, [['Main', '1', match.num], ['Main', '2', null]]);
+  assert.equal(cellsOf(html).length, 2);
+  assert.equal((html.match(/court-settable/g) || []).length, 2);
+  assert.match(html, /live-dot" aria-hidden="true"><\/span>1<span class="court-hint">h<\/span><\/td>/);
 });

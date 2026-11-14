@@ -72,7 +72,7 @@ for (const file of files.filter(f => layer(f.rel) === 'domain')) {
 // Words that name an operator feature. They belong to Control Center's own
 // script, which attaches to the shared core through extension points (§4.10).
 const OPERATOR_WORDS = /getToken|authToken|signIn|scoreEntry|scoreable|organizer|missionControl|CLOUD_RUN/i;
-const OPERATOR_COMPONENTS = ['views/score-dialog.js', 'views/attendance-view.js'];
+const OPERATOR_COMPONENTS = ['views/score-dialog.js', 'views/court-dialog.js', 'views/attendance-view.js'];
 
 for (const file of files.filter(f => ['views', 'domain'].includes(layer(f.rel)) && !OPERATOR_COMPONENTS.includes(f.rel))) {
   test(`${file.rel} names no operator feature`, () => {

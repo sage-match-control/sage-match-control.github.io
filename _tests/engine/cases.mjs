@@ -132,6 +132,7 @@ function firstPlayerWord(event) {
 // ---- Cloud Run answers ------------------------------------------------------------
 
 const scoreOk = { method: 'PUT', path: /\/v3\/days\/[^/]+\/facilities\/[^/]+\/matches\/\d+\/score$/, reply: () => ({ status: 200, body: { ok: true, unchanged: false, sync: { ok: true } } }) };
+const courtOk = { method: 'PUT', path: /\/v3\/days\/[^/]+\/facilities\/[^/]+\/courts\/\d+\/match$/, reply: () => ({ status: 200, body: { unchanged: false, sync: { ok: true } } }) };
 const scoreConflict = {
   method: 'PUT',
   path: scoreOk.path,
@@ -271,13 +272,18 @@ function* controlCenterSignedInCases(registry) {
     ['mission-control', []],
     ['attendance', [tab('Attendance')]],
     ['score-entry-save', [tab('Match Finder'), type('#teamInput', '1'), click('#searchBtn'), click('.ticket.scoreable'), enterScores(11, 5), saveScores()]],
+    ['live', [tab('Live Matches')]],
+    // Opens the first court, picks the first suggestion and stops on Review (no save), so the shot shows the warnings.
+    ['court-set', [tab('Live Matches'), ifPresent('.court-settable', click('.court-settable')),
+      ifPresent('.court-option', click('.court-option')),
+      ifPresent('.court-dialog .score-btn.primary:not(:disabled)', click('.court-dialog .score-btn.primary:not(:disabled)'))]],
   ];
   for (const state of STATES) for (const [vname, steps] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
     yield common({
       id: `cc-signed-in/${event}/${vname}/${state}/${vp}`, page: 'cc', path: '/tools/control-center', event, day, state, viewport,
       time, instantiate: null, registry, snapshots: snapshotsFor(allEvents, state), storage,
       external: [{ match: /docs\.google\.com\/spreadsheets\/d\/test\//, contentType: 'text/csv', body: csv }],
-      cloudRun: [...signedInApi, scoreOk, {
+      cloudRun: [...signedInApi, scoreOk, courtOk, {
         ...attendancePeople,
         reply: () => ({ status: 200, body: parseAttendanceCsv(csv) }),
       }],

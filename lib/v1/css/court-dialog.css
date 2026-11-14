@@ -1,0 +1,40 @@
+/* The court dialog (lib/v1/views/court-dialog.js), in Control Center: Live Matches' Set match. It reuses the
+   score dialog's frame, buttons and warnings (score-dialog.css) and adds only the pick step's parts.
+   Spec: control-center-court-control-spec.md §5.5. */
+
+.court-suggest-label{font-size:13px; color:var(--ink-soft); margin:0 0 6px;}
+
+.court-option{
+  display:block; width:100%; text-align:left;
+  font:inherit; color:var(--ink);
+  padding:10px 12px; margin-bottom:8px; min-height:44px;
+  border:2px solid var(--line); border-radius:10px; background:var(--white);
+  cursor:pointer;
+}
+
+.court-option[aria-pressed="true"]{
+  border-color:var(--green);
+  background:color-mix(in srgb, var(--green) 10%, var(--white));
+}
+
+.court-option:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+
+.court-option-meta{display:block; font-size:12px; font-weight:600; color:var(--ink-soft);}
+
+.court-option-sub{display:block; font-size:13px; color:var(--ink-soft);}
+
+.court-option-text{display:block; font-size:15px; font-weight:700; overflow-wrap:anywhere;}
+
+.court-type-label{display:block; font-size:13px; color:var(--ink-soft); margin:12px 0 4px;}
+
+.court-type-input{
+  font:inherit; font-size:20px; font-weight:700;
+  width:100%; height:48px; padding:0 12px; box-sizing:border-box;
+  border:2px solid var(--line); border-radius:10px;
+  background:var(--white); color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+
+.court-type-input:focus{outline:none; border-color:var(--green);}
+
+.court-review-match{font-size:17px; font-weight:700; text-align:center; margin:6px 0 10px; overflow-wrap:anywhere;}
