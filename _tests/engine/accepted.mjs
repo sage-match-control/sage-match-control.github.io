@@ -108,4 +108,9 @@ export const ACCEPTED = [
     case: /^cc-signed-in\/[^/]+\/(live|court-set)\//, kind: 'both', row: 'owner 2026-11-14',
     reason: 'signed in, a Live Matches court cell is a button with “✎ Set match” / “✎ Change”, and opens the court dialog',
   },
+  // ---- the S.A.G.E. landscape logo on the schedule board (the owner's request of 2026-11-14) ----
+  {
+    case: /^(std|dm|team)-schedule\//, kind: 'both', row: 'owner 2026-11-14 logo',
+    reason: 'the board’s bar and every printed sheet carry the S.A.G.E. landscape logo in place of the square logo and the “S.A.G.E. · Match Control Experts” line',
+  },
 ];

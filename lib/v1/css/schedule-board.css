@@ -82,6 +82,14 @@ body{
 
 .bezel img{ width:34px; height:34px; object-fit:contain; flex-shrink:0; }
 
+/* The SAGE landscape logo in white (/assets/logo-landscape-white.png), in place of the square logo and the
+   eyebrow: as tall as the square one was, its own width, and a thin rule before the event title. */
+.bezel img.bezel-logo{ width:auto; height:34px; }
+
+.bezel.compact img.bezel-logo{ width:auto; height:26px; }
+
+.bezel .bezel-logo + .titles{ padding-left:14px; border-left:1px solid rgba(255,255,255,.22); }
+
 .bezel .titles{ display:flex; flex-direction:column; }
 
 .eyebrow{
@@ -415,6 +423,12 @@ body{
 
   .bezel img{ order:1; width:26px; height:26px; }
 
+  .bezel img.bezel-logo{ width:auto; height:26px; }
+
+  /* The landscape logo is ~96px wide here, so the title takes what is left and wraps, keeping the PDF button
+     and the chevron on the logo's row on a phone. */
+  .bezel .bezel-logo + .titles{ padding-left:10px; flex:1 1 0; }
+
   .bezel .titles{ order:2; flex:1 1 auto; min-width:0; }
 
   .eyebrow{ font-size:8px; letter-spacing:.14em; }
@@ -514,6 +528,18 @@ body{
     padding-bottom:4px; margin-bottom:6px;
   }
 
+  /* The logo, then the event title beside it, behind a thin rule. A 30px logo keeps the header at 46px, which
+     PRINT_SLOTS_PER_PAGE allows for. */
+  .print-head-left{ display:flex; align-items:center; gap:10px; }
+
+  .print-logo{ display:block; height:30px; width:auto; flex:none; }
+
+  .print-head-left .print-logo + .print-title{
+    padding-left:10px; border-left:1px solid var(--line);
+    line-height:1.1;
+  }
+
+  /* No longer printed (the logo carries the name); kept for any page that still emits it. */
   .print-eyebrow{
     display:block;
     font-family:'Barlow Condensed',sans-serif;
