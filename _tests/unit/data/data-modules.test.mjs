@@ -724,6 +724,17 @@ test('eventConfigFrom reads teamScoring: "points" unless the event says "games"'
   assert.equal(warn.mock.calls[0].arguments[0], 'events.json: teamScoring for odd must be "points" or "games"; using "points"');
 });
 
+test('eventConfigFrom reads scoring: null without it, the rule with it, null (and a warning) when malformed', t => {
+  const warn = mock.method(console, 'warn', () => {});
+  t.after(() => warn.mock.restore());
+  const registry = { events: { upap: { type: 'standard', scoring: { to: 11, winBy: 1, podiumWinBy: 2 } }, none: { type: 'standard' }, odd: { type: 'standard', scoring: { winBy: 3 } } } };
+  assert.deepEqual(eventConfigFrom(registry, 'upap').scoring, { to: 11, winBy: 1, podiumWinBy: 2 });
+  assert.equal(eventConfigFrom(registry, 'none').scoring, null);
+  assert.equal(warn.mock.calls.length, 0);
+  assert.equal(eventConfigFrom(registry, 'odd').scoring, null);
+  assert.equal(warn.mock.calls.length, 1);
+});
+
 test('eventConfigFrom reads headToHeadQuotient: true unless the event says false', () => {
   const registry = { events: { off: { type: 'team', headToHeadQuotient: false }, on: { type: 'team', headToHeadQuotient: true }, none: { type: 'team' } } };
   assert.equal(eventConfigFrom(registry, 'off').headToHeadQuotient, false);

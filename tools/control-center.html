@@ -1467,6 +1467,7 @@ import { createStandings } from '/lib/v1/views/standings.js';
 import { createAttendanceView } from '/lib/v1/views/attendance-view.js';
 import { createTeams } from '/lib/v1/views/teams.js';
 import { createScoreDialog } from '/lib/v1/views/score-dialog.js';
+import { scoringRuleFor } from '/lib/v1/domain/scoring.js';
 import { createCourtDialog } from '/lib/v1/views/court-dialog.js';
 
 // ============================================================================
@@ -2186,6 +2187,8 @@ const scoreDialog = createScoreDialog({
     (LINEUP_ISSUES.get(m.num) || []).forEach(i => out.push(`Lineup: ${i.text}.`));
     return out;
   },
+  // The event's own scoring rule (events.json `scoring`), when it has one.
+  scoringRule: m => scoringRuleFor(m, CURRENT_EVENT_CONFIG && CURRENT_EVENT_CONFIG.scoring, CURRENT_TYPE),
   findMatch: (f, n) => MATCHES.find(x => x.num === n && x.facility === f) || null,
   notify: (kind, text) => showToast(kind, text, 'score'),
   friendlyError: friendlyApiMessage,

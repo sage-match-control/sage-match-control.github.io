@@ -39,6 +39,24 @@ test('a tiebreaker keeps the other warnings', () => {
   assert.deepEqual(scoreBasicWarnings(23, 2, tiebreaker), ['Unusually high: over 21.']);
 });
 
+test('with an event scoring rule the rule decides, and a very high score is still flagged', () => {
+  const winBy1 = { to: 11, winBy: 1 }, winBy2 = { to: 11, winBy: 2 };
+  assert.deepEqual(scoreBasicWarnings(11, 10, game, winBy1), []);
+  assert.deepEqual(scoreBasicWarnings(12, 10, game, winBy1), ['Past 11: this game ends as soon as a side reaches 11.']);
+  assert.deepEqual(scoreBasicWarnings(11, 10, game, winBy2), ['Won by 1 point: this game is win by 2.']);
+  assert.deepEqual(scoreBasicWarnings(15, 13, game, winBy2), []);
+  assert.deepEqual(scoreBasicWarnings(23, 21, game, winBy2), ['Unusually high: over 21.']);
+});
+
+test('without a rule (null or left out) the warnings are as before', () => {
+  assert.deepEqual(scoreBasicWarnings(11, 10, game, null), ['Won by 1 point.']);
+  assert.deepEqual(scoreBasicWarnings(12, 10, game, undefined), []);
+});
+
+test('a group-stage tiebreaker stays to 5 under an event scoring rule', () => {
+  assert.deepEqual(scoreBasicWarnings(5, 3, { t1: 'A2_TB', t2: 'A4_TB' }, { to: 11, winBy: 1 }), []);
+});
+
 test('only a match with a _TB code on both sides is a tiebreaker', () => {
   assert.deepEqual(scoreBasicWarnings(7, 3, { t1: 'QF-1_TB', t2: 'QF-2_2' }), ['Neither side reached 11.']);
 });

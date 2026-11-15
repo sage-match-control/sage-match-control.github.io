@@ -132,6 +132,7 @@ export function eventConfig(eventKey) {
     scoreEntry: e.scoreEntry,
     attendance: e.attendance,
     teamScoring: e.teamScoring === 'games' ? 'games' : 'points',
+    scoring: e.scoring ? { to: e.scoring.to ?? 11, winBy: e.scoring.winBy, podiumWinBy: e.scoring.podiumWinBy ?? e.scoring.winBy } : null,
     teamColors: (e.display && e.display.teamColors) || {},
     seedLabels: (e.display && e.display.seedLabels) || {},
     playoffSeats: (e.display && e.display.playoffSeats) || {},
