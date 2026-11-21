@@ -153,6 +153,15 @@ table.tl th:first-child,table.tl td:first-child{position:sticky;left:0;z-index:1
   text-transform:uppercase;font-size:14px;color:var(--navy)}
 .genbox p{margin:0 0 11px;font-size:13px;color:var(--muted);line-height:1.5}
 .genbox .btn{display:block;text-decoration:none}
+/* Share the estimate: an image and a plain-text message for an organiser,
+   both built from one summary (buildEstimateSummary). */
+.sharebox{margin-top:14px;border:1.5px solid #C4DFA0;border-radius:12px;padding:13px 15px;background:#F1F8E7}
+.sharebox h3{margin:0 0 4px;font-family:'Barlow Condensed';font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;font-size:14px;color:var(--navy)}
+.sharebox p{margin:0 0 11px;font-size:13px;color:var(--muted);line-height:1.5}
+.sharerow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn:disabled,.btn:disabled:hover{opacity:.45;cursor:not-allowed;background:#fff;color:var(--navy)}
+.btn.primary:disabled,.btn.primary:disabled:hover{background:var(--green-dark);color:#fff}
 
 @media(max-width:640px){
   header.hero{padding:24px 16px 18px;border-radius:16px 16px 6px 6px}
@@ -162,7 +171,7 @@ table.tl th:first-child,table.tl td:first-child{position:sticky;left:0;z-index:1
 }
 
 @media print{
-  header.hero,.toolrow,.addcat,.del,form .panel{display:none}
+  header.hero,.toolrow,.sharebox,.addcat,.del,form .panel{display:none}
   body{background:#fff}
   main{grid-template-columns:1fr}
   .results{position:static}
@@ -247,6 +256,14 @@ table.tl th:first-child,table.tl td:first-child{position:sticky;left:0;z-index:1
         </table>
       </div>
       <div class="tfoot" id="r-windows"></div>
+    </div>
+    <div class="sharebox" id="sharebox">
+      <h3>Share the estimate</h3>
+      <p id="sharehelp">Send the projected finish and the category breakdown to an organiser.</p>
+      <div class="sharerow">
+        <button type="button" class="btn primary" id="shareimg">Save image</button>
+        <button type="button" class="btn" id="sharetext">Copy text</button>
+      </div>
     </div>
     <div class="toolrow">
       <button type="button" class="btn" id="reset">Reset</button>
@@ -826,18 +843,22 @@ function legendDualTxt(p){
 
 /* ---------------- state & presets ---------------- */
 const PRESETS=[
+  ['BWD',"Beginner Women's Doubles"],['BMD',"Beginner Men's Doubles"],['BXD','Beginner Mixed Doubles'],
   ['NWD',"Novice Women's Doubles"],['NMD',"Novice Men's Doubles"],['NXD','Novice Mixed Doubles'],
   ['LIWD',"Low Intermediate Women's Doubles"],['LIMD',"Low Intermediate Men's Doubles"],['LIXD','Low Intermediate Mixed Doubles'],
   ['IWD',"Intermediate Women's Doubles"],['IMD',"Intermediate Men's Doubles"],['IXD','Intermediate Mixed Doubles'],
   ['HIWD',"High Intermediate Women's Doubles"],['HIMD',"High Intermediate Men's Doubles"],['HIXD','High Intermediate Mixed Doubles'],
   ['AWD',"Advanced Women's Doubles"],['AMD',"Advanced Men's Doubles"],['AXD','Advanced Mixed Doubles'],
-  ['OPEN',"Open Men's Doubles"],['CUSTOM','Custom…']];
+  ['OWD',"Open Women's Doubles"],['OPEN',"Open Men's Doubles"],['OXD','Open Mixed Doubles'],['CUSTOM','Custom…']];
 
 let cats=[];
 let nextId=1;
 function defaultCat(){
   const used=cats.map(c=>c.code);
-  const free=PRESETS.find(p=>p[0]!=='CUSTOM'&&!used.includes(p[0]))||PRESETS[0];
+  // Beginner heads the menu, but a new category starts from Novice and
+  // reaches Beginner only after Open, as it did before Beginner existed.
+  const from=PRESETS.findIndex(p=>p[0]==='NWD');
+  const free=[...PRESETS.slice(from),...PRESETS.slice(0,from)].find(p=>p[0]!=='CUSTOM'&&!used.includes(p[0]))||PRESETS[0];
   return {id:nextId++, code:free[0], name:free[1], teams:16, group:4, adv:2, fill:'bye',
     groupDual:1, teamsA:5, teamsB:5, poFormat:'semis', soloFormat:'ttb', rrLegs:1, rrBestOf:1};
 }
@@ -1063,8 +1084,9 @@ function recalc(){
   const alerts=[];
   if(r.matches){
     const endClock=r.endMin%1440, late=r.endMin>=cfg.startMin+ (22*60-cfg.startMin) && endClock>=22*60;
-    if(r.endMin-cfg.startMin>15*60||r.endMin>=24*60) alerts.push(['bad',`This plan runs past midnight. Add courts, trim categories, or shorten matches.`]);
-    else if(endClock>=22*60) alerts.push(['warn',`Finishing after 10 PM — tight for a one-day event. One more court would finish at ${fmtTime(cfg.startMin+Math.ceil(r.matches/(cfg.courts+1))*(cfg.dur+cfg.buf)-cfg.buf)}.`]);
+    const level=finishLevel(cfg,r);
+    if(level==='bad') alerts.push(['bad',`This plan runs past midnight. Add courts, trim categories, or shorten matches.`]);
+    else if(level==='warn') alerts.push(['warn',`Finishing after 10 PM — tight for a one-day event. One more court would finish at ${fmtTime(cfg.startMin+Math.ceil(r.matches/(cfg.courts+1))*(cfg.dur+cfg.buf)-cfg.buf)}.`]);
     else alerts.push(['good',`Comfortable one-day plan. Last match steps off court around ${fmtTime(r.endMin)}.`]);
   }
   r.per.forEach((p,i)=>p.notes.forEach(n=>alerts.push(['warn',`${catName(cats[i])}: ${n}`])));
@@ -1093,6 +1115,9 @@ function recalc(){
   $('r-windows').innerHTML=(r.matches?`RR/PO time = court time for that phase with all ${cfg.courts} court${cfg.courts>1?'s':''} on it (${cfg.dur}-min matches${cfg.buf?` + ${cfg.buf}-min buffer`:''}), respecting that playoff rounds and series games run one after another and that no pair can be on two courts at once — a small bracket can leave courts idle.`:'')
     +(hasTTB?' <b>Note:</b> twice-to-beat finals and best-of-3 series are counted at full length so the plan covers the worst case; the day ends earlier if they\u2019re decided sooner.':'');
   $('r-windows').style.display=(r.matches||hasTTB)?'':'none';
+  const canShare=r.matches>0;
+  $('shareimg').disabled=!canShare;$('sharetext').disabled=!canShare;
+  $('sharehelp').textContent=canShare?'Send the projected finish and the category breakdown to an organiser.':'Add a category first.';
   save();
 }
 function groupShorthand(p){
@@ -1110,6 +1135,253 @@ function bracketShorthand(p){
 const catCode=c=>c.code==='CUSTOM'?(c.ccode||(c.name||'Custom').replace(/[^A-Za-z0-9_]/g,'').slice(0,6).toUpperCase()||'CUS'):c.code;
 const catName=c=>c.code==='CUSTOM'?(c.name||'Custom category'):PRESETS.find(p=>p[0]===c.code)[1];
 
+/* ---------------- share the estimate ---------------- */
+// One summary of the plan (buildEstimateSummary), rendered two ways: a
+// plain-text message (buildEstimateText) and a PNG (drawEstimate). Both read
+// only the summary, so the image and the text can't disagree. See
+// sage-docs/docs/specs/.../calculator-share-estimate-spec.md.
+const SHARE_ROUND={'Quarterfinals':'QF','Semifinals':'SF','Bronze match':'Bronze','Final':'Final'};
+const SHARE_VERDICT={good:'Comfortable one-day plan',warn:'Finishes after 10 PM',bad:'Runs past midnight'};
+// The finish alert's three levels; recalc's alert and the summary both read it.
+function finishLevel(cfg,r){
+  if(!r.matches) return null;
+  if(r.endMin-cfg.startMin>15*60||r.endMin>=24*60) return 'bad';
+  return r.endMin%1440>=22*60?'warn':'good';
+}
+function buildEstimateSummary(cfg,r){
+  const dual=cfg.format==='dual';
+  const rng=(a,b)=>a===b?String(b):a+'–'+b;
+  const cats=r.per.map((p,i)=>{
+    if(!p.total) return null;
+    const c=cfg.cats[i];
+    const ct=catTime(p,cfg);
+    const mins=(ct.rr||0)+(ct.po||0)+(ct.rr&&ct.po?cfg.buf:0);
+    const k={code:catCode(c),name:catName(c),format:'',playoff:'',count:rng(p.totalMin,p.total),split:'',time:mins?fmtDur(mins):'—'};
+    const rounds=()=>p.plan.rounds.map(rd=>SHARE_ROUND[rd.label]||rd.label.replace(/^Round of (\d+)$/,'R$1')).join(', ');
+    if(p.dual){
+      const br=p.groups<=1?'1 bracket':p.groups+' brackets ('+p.aSizes.map((n,j)=>n+'v'+p.bSizes[j]).join(', ')+')';
+      k.format=p.po?`${p.a} v ${p.b} pairs · ${br} · cross-club group stage`:`${p.a} v ${p.b} pairs · one match decides it`;
+      if(p.po){k.playoff='Playoffs: '+rounds();k.split=`${p.rr} group + ${p.po} PO`;}
+      return k;
+    }
+    if(p.plan.bestOf3){
+      k.format=`${c.teams} pairs · head-to-head, no round robin`;
+      k.playoff='Final: best of 3 (first to 2 wins)';
+      return k;
+    }
+    const grp=p.groups===1?'1 group of '+p.sizes[0]:groupShorthand(p);
+    const rrWord=p.games===3?'best-of-3 round robin':p.legs===2?'double round robin':'round robin';
+    if(p.plan.rrOnly) k.format=`${c.teams} pairs · ${grp} · ${rrWord} only, standings decide`;
+    else if(p.plan.single){
+      k.format=`${c.teams} pairs · ${grp} · ${rrWord}`;
+      k.playoff={ttb:'Final: twice-to-beat (#1 needs one win, #2 must win twice) · #3 takes bronze',
+        final:'Final: #1 v #2 · #3 takes bronze',final_bronze:'Final: #1 v #2 · Bronze: #3 v #4'}[p.plan.solo]||'';
+    }else{
+      const extra=(p.plan.wc?` + ${p.plan.wc} wildcard${p.plan.wc>1?'s':''}`:'')
+        +(p.plan.byes?(p.plan.byes===1?', top seed bye':`, top ${p.plan.byes} seeds bye`):'');
+      k.format=`${c.teams} pairs · ${grp} · top ${p.adv} advance${extra}`+(rrWord==='round robin'?'':' · '+rrWord);
+      k.playoff='Playoffs: '+rounds();
+    }
+    if(p.po) k.split=rng(p.games===3?p.meetings*2:p.rr,p.rr)+' RR + '+rng(p.plan.min,p.po)+' PO';
+    return k;
+  }).filter(Boolean);
+  const ranged=r.per.some(p=>p.total!==p.totalMin);
+  const courts=cfg.courts===1?'the court is':`all ${cfg.courts} courts are`;
+  return {
+    title:cfg.title||'Untitled tournament',
+    clubs:dual?`${cfg.clubA} vs ${cfg.clubB}`:'',
+    date:cfg.date?new Date(cfg.date+'T00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric',year:'numeric'}):'',
+    meta:[`Start ${fmtTime(cfg.startMin)}`,`${cfg.courts} court${cfg.courts>1?'s':''}`,`${cfg.dur}-min matches`+(cfg.buf?` + ${cfg.buf}-min buffer`:'')].join(' · '),
+    finish:r.matches?fmtTime(r.endMin):'—', level:finishLevel(cfg,r)||'good',
+    verdict:SHARE_VERDICT[finishLevel(cfg,r)||'good'],
+    pairs:r.per.reduce((s,p,i)=>s+(p.dual?(p.a||0)+(p.b||0):(cfg.cats[i].teams||0)),0),
+    matches:r.matches, ranged, slots:r.slots, play:fmtDur(r.playMin), cats,
+    foot:`Estimate only: assumes ${courts} in use from ${fmtTime(cfg.startMin)} with ${cfg.dur}-minute matches`
+      +(cfg.buf?` and a ${cfg.buf}-minute buffer.`:' and no buffer.')
+      +(ranged?' Twice-to-beat finals and best-of-3 matches are counted at full length, so the day ends earlier if they’re decided sooner.':'')
+  };
+}
+function buildEstimateText(s){
+  const L=[s.title.toUpperCase()];
+  if(s.clubs) L.push(s.clubs);
+  L.push('Schedule estimate','');
+  if(s.date) L.push(s.date);
+  L.push(s.meta,'','Projected finish: '+s.finish,s.verdict,
+    `${s.pairs} pairs · ${s.ranged?'up to ':''}${s.matches} matches · ${s.slots} time slot${s.slots===1?'':'s'} · ${s.play} play time`,
+    '','CATEGORIES');
+  s.cats.forEach(k=>{
+    L.push('',k.code+' · '+k.name,k.format);
+    if(k.playoff) L.push(k.playoff);
+    L.push(`${k.count} match${k.count==='1'?'':'es'}${k.split?` (${k.split})`:''} · ${k.time}`);
+  });
+  L.push('',s.foot,'S.A.G.E. Tournament Time Calculator');
+  return L.join('\n');
+}
+// The image: 1080 px wide, drawn at 2x, as tall as its categories need.
+const SHARE_W=1080, SHARE_SCALE=2;
+const SHARE_C={navy:'#14263C',deep:'#0B1826',paper:'#F6F7F2',card:'#FFFFFF',line:'#D9DED2',row:'#EEF1ED',
+  green:'#7CB92C',greenDark:'#5C8F1F',muted:'#5B6B74',
+  good:['#F1F8E7','#3F6317'],warn:['#FFF6DC','#6B4E0C'],bad:['#FBEAE6','#7C2D1E']};
+const SHARE_F={
+  kicker:'600 22px "Barlow Condensed", "Arial Narrow", sans-serif',
+  label:'600 19px "Barlow Condensed", "Arial Narrow", sans-serif',
+  title:'52px "Archivo Black", Impact, sans-serif',
+  clock:'92px "Archivo Black", Impact, sans-serif',
+  stat:'700 40px "Barlow Condensed", "Arial Narrow", sans-serif',
+  code:'700 28px "Barlow Condensed", "Arial Narrow", sans-serif',
+  big:'700 32px "Barlow Condensed", "Arial Narrow", sans-serif',
+  clubs:'600 26px Inter, Arial, sans-serif', meta:'400 24px Inter, Arial, sans-serif',
+  pill:'600 22px Inter, Arial, sans-serif', name:'600 24px Inter, Arial, sans-serif',
+  fmt:'400 21px Inter, Arial, sans-serif', small:'400 18px Inter, Arial, sans-serif',
+  foot:'400 20px Inter, Arial, sans-serif'};
+const SHARE_LOGO=new Image();
+// Loaded when the page boots, so the click that saves the image can draw
+// without waiting (see saveEstimateImage).
+function preloadShareAssets(){
+  SHARE_LOGO.src='/assets/logo.png';
+  try{
+    if(document.fonts&&document.fonts.load)
+      [SHARE_F.title,SHARE_F.kicker,SHARE_F.stat,SHARE_F.name,SHARE_F.meta].forEach(f=>document.fonts.load(f).catch(()=>{}));
+  }catch(e){}
+}
+function shareWrap(ctx,text,maxW){
+  const lines=[];let cur='';
+  String(text).split(' ').forEach(w=>{
+    const t=cur?cur+' '+w:w;
+    if(cur&&ctx.measureText(t).width>maxW){lines.push(cur);cur=w;}else cur=t;
+  });
+  if(cur) lines.push(cur);
+  return lines;
+}
+// Lays the image out twice: once to measure its height (draw=false), once to
+// paint it. The header band, the table's card and the page behind them are
+// filled last, under what is already drawn, once their heights are known.
+function layoutEstimate(ctx,s,logo,draw){
+  const W=SHARE_W,P=48,IW=W-2*P,C=SHARE_C,F=SHARE_F;
+  const put=(t,x,y,f,color,align)=>{if(!draw)return;ctx.font=f;ctx.fillStyle=color;ctx.textAlign=align||'left';ctx.fillText(t,x,y);};
+  const box=(x,y,w,h,rad,fill,stroke)=>{if(!draw)return;ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(x,y,w,h,rad);else ctx.rect(x,y,w,h);
+    if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}};
+  const wrap=(t,f,w)=>{ctx.font=f;return shareWrap(ctx,t,w);};
+  const spaced=on=>{if('letterSpacing' in ctx)ctx.letterSpacing=on?'3px':'0px';};
+  ctx.textBaseline='alphabetic';
+  let y=P;
+  // Header: the logo on a white tile, the kicker, title, clubs, date and settings.
+  box(P,y,64,64,14,'#FFFFFF');
+  if(draw&&logo&&logo.complete&&logo.naturalWidth) ctx.drawImage(logo,P+3,y+3,58,58);
+  spaced(true);put('S.A.G.E. · SCHEDULE ESTIMATE',P+84,y+41,F.kicker,C.green);spaced(false);
+  y+=64+30;
+  wrap(s.title.toUpperCase(),F.title,IW).forEach(l=>{put(l,P,y+50,F.title,C.paper);y+=62;});
+  if(s.clubs){put(s.clubs,P,y+30,F.clubs,C.green);y+=44;}
+  y+=6;
+  wrap([s.date,s.meta].filter(Boolean).join(' · '),F.meta,IW).forEach(l=>{put(l,P,y+24,F.meta,'rgba(246,247,242,0.85)');y+=34;});
+  y+=34;
+  const bandH=y;
+  if(draw){ctx.save();ctx.setLineDash([12,9]);ctx.strokeStyle='rgba(124,185,44,0.5)';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(0,bandH-12);ctx.lineTo(W,bandH-12);ctx.stroke();ctx.restore();}
+  y+=32;
+  // Projected finish, with the verdict in a pill coloured by its level.
+  box(P,y,IW,236,24,C.deep);
+  spaced(true);put('PROJECTED FINISH',W/2,y+50,F.kicker,C.green,'center');spaced(false);
+  put(s.finish,W/2,y+146,F.clock,C.paper,'center');
+  ctx.font=F.pill;const pw=ctx.measureText(s.verdict).width+44,pc=C[s.level]||C.good;
+  box(W/2-pw/2,y+170,pw,44,22,pc[0]);put(s.verdict,W/2,y+200,F.pill,pc[1],'center');
+  y+=236+20;
+  // Four figures.
+  const stats=[[String(s.pairs),'PAIRS'],[String(s.matches),s.ranged?'MATCHES, MAX':'MATCHES'],[String(s.slots),'TIME SLOTS'],[s.play,'PLAY TIME']];
+  const sw=(IW-36)/4;
+  stats.forEach(([v,k],i)=>{const x=P+i*(sw+12);box(x,y,sw,108,16,C.card,C.line);
+    put(v,x+sw/2,y+56,F.stat,C.deep,'center');spaced(true);put(k,x+sw/2,y+88,F.label,C.muted,'center');spaced(false);});
+  y+=108+28;
+  // Categories: code and name, format, playoff | matches (RR + PO) | time.
+  const top=y,colT=140,colM=180,left=P+24,textW=IW-48-colT-colM-12,xM=P+IW-24-colT,xT=P+IW-24;
+  box(P,y,IW,58,[20,20,0,0],C.deep);
+  spaced(true);put('CATEGORIES',left,y+38,F.kicker,C.paper);spaced(false);
+  y+=58;
+  spaced(true);put('CATEGORY · FORMAT',left,y+34,F.label,C.muted);put('MATCHES',xM,y+34,F.label,C.muted,'right');put('TIME',xT,y+34,F.label,C.muted,'right');spaced(false);
+  y+=48;
+  s.cats.forEach(k=>{
+    if(draw){ctx.fillStyle=C.row;ctx.fillRect(P+2,y,IW-4,2);}
+    let ry=y+18;
+    ctx.font=F.code;const cw=ctx.measureText(k.code).width+12;
+    put(k.code,left,ry+28,F.code,C.greenDark);
+    wrap(k.name,F.name,textW-cw).forEach(l=>{put(l,left+cw,ry+27,F.name,C.navy);ry+=34;});
+    ry+=2;
+    [k.format,k.playoff].filter(Boolean).forEach(t=>wrap(t,F.fmt,textW).forEach(l=>{put(l,left,ry+21,F.fmt,C.muted);ry+=29;}));
+    put(k.count,xM,y+48,F.big,C.navy,'right');
+    if(k.split) put(k.split,xM,y+76,F.small,C.muted,'right');
+    put(k.time,xT,y+48,F.big,C.navy,'right');
+    y=Math.max(ry,y+90)+14;
+  });
+  const tableH=y-top+8;
+  y+=8+26;
+  // The footnote and the signature line.
+  wrap(s.foot,F.foot,IW).forEach(l=>{put(l,P,y+20,F.foot,C.muted);y+=29;});
+  y+=22;
+  if(draw){ctx.fillStyle=C.line;ctx.fillRect(P,y,IW,2);}
+  y+=22;
+  spaced(true);put('S.A.G.E. MATCH CONTROL EXPERTS',P,y+20,F.label,C.muted);put('TOURNAMENT TIME CALCULATOR',P+IW,y+20,F.label,C.muted,'right');spaced(false);
+  y+=20+P;
+  if(draw){
+    ctx.save();ctx.globalCompositeOperation='destination-over';
+    box(P,top,IW,tableH,20,C.card,C.line);
+    ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,bandH);
+    ctx.fillStyle=C.paper;ctx.fillRect(0,0,W,y);
+    ctx.restore();
+  }
+  return y;
+}
+function drawEstimate(s,logo){
+  const h=Math.ceil(layoutEstimate(document.createElement('canvas').getContext('2d'),s,logo,false));
+  const cv=document.createElement('canvas');cv.width=SHARE_W*SHARE_SCALE;cv.height=h*SHARE_SCALE;
+  const ctx=cv.getContext('2d');ctx.scale(SHARE_SCALE,SHARE_SCALE);
+  layoutEstimate(ctx,s,logo,true);
+  return cv;
+}
+// Synchronous on purpose (toDataURL, not toBlob): navigator.share must start
+// inside the click, and Safari refuses one that starts after an await.
+function canvasPngFile(cv,name){
+  const d=cv.toDataURL('image/png'),bin=atob(d.slice(d.indexOf(',')+1)),u=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return new File([u],name,{type:'image/png'});
+}
+function downloadFile(blob,name){
+  try{
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    ioMsg('Saved '+name,'good');
+  }catch(err){ioMsg('Download failed in this viewer — open the page in a regular browser.','bad');}
+}
+// A phone (a coarse pointer) gets the share sheet, so the image goes straight
+// to a chat app; anything else downloads the PNG.
+function saveEstimateImage(){
+  const cfg=readForm(),r=calcAll(cfg);
+  if(!r.matches){ioMsg('Add at least one category first.','bad');return;}
+  const name=fileBase(cfg)+'-estimate.png';
+  let file;
+  try{file=canvasPngFile(drawEstimate(buildEstimateSummary(cfg,r),SHARE_LOGO),name);}
+  catch(err){ioMsg('Could not draw the image in this browser. Use Copy text instead.','bad');return;}
+  const phone=!!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
+  if(phone&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:cfg.title||'Schedule estimate'})
+      .then(()=>ioMsg('Shared '+name,'good'))
+      .catch(err=>{if(err&&err.name==='AbortError')return;downloadFile(file,name);});
+    return;
+  }
+  downloadFile(file,name);
+}
+function copyEstimateText(){
+  const cfg=readForm(),r=calcAll(cfg);
+  if(!r.matches){ioMsg('Add at least one category first.','bad');return;}
+  const text=buildEstimateText(buildEstimateSummary(cfg,r));
+  const done=ok=>ioMsg(ok?'Estimate copied — paste it into any chat.':'Could not reach the clipboard. Use Save image instead.',ok?'good':'bad');
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>done(true),()=>done(copyFallback(text)));
+  }else{
+    done(copyFallback(text));
+  }
+}
 /* ---------------- export / import CSV ---------------- */
 function csvCell(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function parseCSVRows(text){
@@ -1326,6 +1598,9 @@ $('add').addEventListener('click',()=>{cats.push(defaultCat());renderCats();reca
 if($('genlink'))$('genlink').addEventListener('click',copyPlanToClipboard);
 $('exportbtn').addEventListener('click',exportCSV);
 $('xlsxbtn').addEventListener('click',exportXLSX);
+$('shareimg').addEventListener('click',saveEstimateImage);
+$('sharetext').addEventListener('click',copyEstimateText);
+preloadShareAssets();
 $('importbtn').addEventListener('click',()=>$('importfile').click());
 $('importfile').addEventListener('change',e=>{
   const f=e.target.files[0];if(!f)return;
