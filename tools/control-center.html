@@ -471,6 +471,30 @@
   .mc-trouble-item .organizer-hint{margin-bottom:0;}
   .mc-trouble-item .switch-row{margin:0;}
   .mc-trouble .organizer-check-conn-btn{margin-top:0;}
+  /* A card's explanation, behind an (i) beside its title: shown on hover (a mouse), on keyboard focus, and
+     toggled by a tap (a phone has no hover). It opens under the title row, as wide as the card allows. */
+  .mc-label-row{display:flex; align-items:center; gap:6px; margin-bottom:10px; position:relative;}
+  .mc-label-row .search-label{margin-bottom:0;}
+  .mc-trouble-item .switch-row{position:relative;}
+  .mc-info{
+    flex:0 0 auto; width:17px; height:17px; padding:0; border-radius:50%;
+    border:1.5px solid rgba(20,27,44,.35); background:transparent; color:var(--muted);
+    font:italic 700 11px/1 Georgia,'Times New Roman',serif; cursor:help;
+    display:inline-flex; align-items:center; justify-content:center;
+    transition:color .12s ease, border-color .12s ease, background .12s ease;
+  }
+  .mc-info:hover, .mc-info-wrap.open .mc-info{color:var(--ink); border-color:var(--ink);}
+  .mc-info:focus-visible{outline:2px solid var(--navy); outline-offset:2px;}
+  .mc-tip{
+    display:none; position:absolute; z-index:20; top:calc(100% + 8px); left:0; right:0; max-width:360px;
+    padding:10px 12px; border-radius:10px; background:var(--ink); color:var(--white);
+    font:400 12.5px/1.5 'Inter',sans-serif; letter-spacing:0; text-transform:none; text-align:left;
+    box-shadow:0 8px 24px rgba(20,27,44,.25);
+  }
+  .mc-tip b{color:var(--white); font-weight:700;}
+  .mc-info-wrap.open .mc-tip, .mc-info:focus-visible + .mc-tip{display:block;}
+  @media (hover:hover){ .mc-info-wrap:hover .mc-tip{display:block;} }
+  @media (pointer:coarse){ .mc-info{width:22px; height:22px; font-size:12px;} }
   @media (min-width:900px){
     .organizer-panel.mc-grid{max-width:none; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
     .mc-head, .mc-open, .mc-trouble{grid-column:1 / -1;}
@@ -1331,7 +1355,10 @@
              config edit + redeploy. Affects the PUBLIC index.html only — this
              console's own tabs always stay live, for preview (spec §3). -->
         <section class="mc-card">
-          <label class="search-label">Public site status</label>
+          <div class="mc-label-row">
+            <label class="search-label">Public site status</label>
+            <span class="mc-info-wrap"><button type="button" class="mc-info" aria-label="About Public site status" aria-expanded="false" aria-describedby="tipGoLive">i</button><span class="mc-tip" role="tooltip" id="tipGoLive">Changes the public event page's Live Matches and Standings only. This console's own tabs always show live data, for preview.</span></span>
+          </div>
           <div class="golive-current" id="goLiveCurrent"></div>
           <p class="organizer-hint" id="goLiveSignInHint" style="display:none; margin-top:-2px;">Sign in to change this.</p>
           <div class="golive-buttons" id="goLiveButtons">
@@ -1339,14 +1366,16 @@
             <button type="button" class="golive-btn" data-live="true">Force live</button>
             <button type="button" class="golive-btn golive-btn-danger" data-live="false">Force hidden</button>
           </div>
-          <p class="organizer-hint">Changes the public event page's Live Matches and Standings only. This console's own tabs always show live data, for preview.</p>
         </section>
 
         <!-- Scorer links (control-center-score-entry-spec.md §5.8): a link that can
              enter scores and nothing else, and a switch that stops every such link.
              The switch writes config/events.json (PUT /v3/events/{event}/score-entry). -->
         <section class="mc-card" id="scorerLinksSection" style="display:none;">
-          <label class="search-label">Scorer links</label>
+          <div class="mc-label-row">
+            <label class="search-label">Scorer links</label>
+            <span class="mc-info-wrap"><button type="button" class="mc-info" aria-label="About Scorer links" aria-expanded="false" aria-describedby="tipScorerLinks">i</button><span class="mc-tip" role="tooltip" id="tipScorerLinks">A scorer link opens this event's scorer page, for entering scores at any venue on that day and nothing else. It works for 24 hours, while this reads <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder.</span></span>
+          </div>
           <div class="golive-current" id="scorerLinksCurrent"></div>
           <div class="switch-row" id="scorerSwitchRow" style="display:none;">
             <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
@@ -1354,7 +1383,6 @@
           </div>
           <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
           <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
-          <p class="organizer-hint">A scorer link opens this event's scorer page, for entering scores at any venue on that day and nothing else. It works for 24 hours, while this reads <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder.</p>
         </section>
       </div>
 
@@ -1386,21 +1414,23 @@
                only". Writes config/events.json (PUT /v3/settings/live-push), so it works
                even when the live Worker is the thing that is broken. -->
           <div class="mc-trouble-item">
-            <label class="search-label">Sync method</label>
+            <div class="mc-label-row">
+              <label class="search-label">Sync method</label>
+              <span class="mc-info-wrap"><button type="button" class="mc-info" aria-label="About Sync method" aria-expanded="false" aria-describedby="tipSyncMethod">i</button><span class="mc-tip" role="tooltip" id="tipSyncMethod">For when live updates misbehave. <b>GitHub only</b> sends every score through GitHub: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</span></span>
+            </div>
             <div class="golive-current" id="syncMethodCurrent"></div>
             <div class="golive-buttons" id="syncMethodButtons" style="display:none;">
               <button type="button" class="golive-btn" data-push="true">Live push + GitHub</button>
               <button type="button" class="golive-btn golive-btn-danger" data-push="false">GitHub only</button>
             </div>
-            <p class="organizer-hint">For when live updates misbehave. <b>GitHub only</b> sends every score through GitHub: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</p>
           </div>
 
           <div class="mc-trouble-item" id="orgCsvRow">
             <div class="switch-row">
               <button type="button" class="switch" id="orgUseCsvMethod" role="switch" aria-checked="false" aria-labelledby="orgUseCsvMethodLabel"><span class="switch-thumb"></span></button>
               <span class="switch-label plain" id="orgUseCsvMethodLabel">Use CSV export fallback instead of Sheets API</span>
+              <span class="mc-info-wrap"><button type="button" class="mc-info" aria-label="About the CSV export fallback" aria-expanded="false" aria-describedby="tipCsvMethod">i</button><span class="mc-tip" role="tooltip" id="tipCsvMethod">Changes how the resync buttons read the sheets. Turn it on only when a resync fails through the Sheets API.</span></span>
             </div>
-            <p class="organizer-hint">Changes how the resync buttons read the sheets. Turn it on only when a resync fails through the Sheets API.</p>
           </div>
         </div>
       </details>
@@ -4131,6 +4161,27 @@ if(orgCheckConnBtn){
 
 const toastStackEl = document.getElementById('toastStack');
 const orgConnResultBox = document.getElementById('orgConnResultBox');
+// The (i) beside a Mission Control card's title: hover or keyboard focus shows its explanation (CSS), and a
+// tap toggles it, since a phone has no hover. One open at a time; a tap elsewhere or Escape closes it.
+function closeInfoTips(except = null){
+  document.querySelectorAll('.mc-info-wrap.open').forEach(w => {
+    if(w === except) return;
+    w.classList.remove('open');
+    const b = w.querySelector('.mc-info'); if(b) b.setAttribute('aria-expanded', 'false');
+  });
+}
+document.querySelectorAll('.mc-info').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const wrap = btn.parentElement;
+    closeInfoTips(wrap);
+    const open = wrap.classList.toggle('open');
+    btn.setAttribute('aria-expanded', String(open));
+  });
+});
+document.addEventListener('click', e => { if(!e.target.closest('.mc-info-wrap')) closeInfoTips(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeInfoTips(); });
+
 // Troubleshooting opens closed; this browser remembers if it was left open (mission-control-layout-spec D3).
 const STORAGE_TROUBLESHOOTING_KEY = 'sage.troubleshootingOpen';
 const orgTroubleshootingEl = document.getElementById('orgTroubleshooting');

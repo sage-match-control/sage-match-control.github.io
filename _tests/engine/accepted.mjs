@@ -126,5 +126,10 @@ export const ACCEPTED = [
     case: /^std-schedule\/[^/]+\/staff\//, kind: 'both', row: 'owner 2026-11-21 board staff view',
     reason: 'with ?staff=1 and a sign-in from an open Control Center tab, the board shows a Staff view badge, rings on the names not checked in yet, and “N not in” on unplayed cards',
   },
+  // ---- Mission Control's explanations behind an (i) (the owner's request of 2026-11-21) ----
+  {
+    case: /^cc(-signed-in)?\/[^/]+\/mission-control(-troubleshooting)?\//, kind: 'both', row: 'owner 2026-11-21 info tips',
+    reason: 'the explanations under Public site status, Scorer links, Sync method and the CSV fallback move behind an (i) beside each title, shown on hover, keyboard focus or a tap',
+  },
 ];
 
