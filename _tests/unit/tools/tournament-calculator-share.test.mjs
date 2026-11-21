@@ -97,7 +97,7 @@ test('the other playoff shapes, a buffer, and one court', () => {
     cat('OXD', 5, 1, { soloFormat: 'final_bronze' }),
     cat('BMD', 4, 1, { soloFormat: 'final' }),
     cat('BXD', 3, 1, { soloFormat: 'rr' }),
-    cat('OPEN', 8, 2, { rrBestOf: 3 })]));
+    cat('OMD', 8, 2, { rrBestOf: 3 })]));
   const [h2h, fb, fin, rr, bo3] = s.cats;
   assert.deepEqual([h2h.name, h2h.format, h2h.playoff, h2h.count, h2h.split],
     ["Beginner Women's Doubles", '2 pairs · head-to-head, no round robin', 'Final: best of 3 (first to 2 wins)', '2–3', '']);
@@ -142,8 +142,8 @@ test('finishLevel: the three alert levels', () => {
 test('presets: Beginner first, the three Opens, and a new category still starts from Novice', () => {
   const codes = lib.PRESETS.map(p => p[0]);
   assert.deepEqual(codes, ['BWD', 'BMD', 'BXD', 'NWD', 'NMD', 'NXD', 'LIWD', 'LIMD', 'LIXD', 'IWD', 'IMD', 'IXD',
-    'HIWD', 'HIMD', 'HIXD', 'AWD', 'AMD', 'AXD', 'OWD', 'OPEN', 'OXD', 'CUSTOM']);
-  assert.deepEqual(['BWD', 'BMD', 'BXD', 'OWD', 'OPEN', 'OXD'].map(code => lib.catName({ code })), [
+    'HIWD', 'HIMD', 'HIXD', 'AWD', 'AMD', 'AXD', 'OWD', 'OMD', 'OXD', 'CUSTOM']);
+  assert.deepEqual(['BWD', 'BMD', 'BXD', 'OWD', 'OMD', 'OXD'].map(code => lib.catName({ code })), [
     "Beginner Women's Doubles", "Beginner Men's Doubles", 'Beginner Mixed Doubles',
     "Open Women's Doubles", "Open Men's Doubles", 'Open Mixed Doubles']);
   lib.setCats([]);
@@ -152,4 +152,11 @@ test('presets: Beginner first, the three Opens, and a new category still starts 
   assert.equal(lib.defaultCat().code, 'BWD');
   lib.setCats(codes.slice(0, -1).map(code => ({ code })));
   assert.equal(lib.defaultCat().code, 'BWD', 'every preset used: the first one, as before');
+});
+
+test("Open Men's Doubles is OMD, and OPEN is no longer a preset", () => {
+  assert.deepEqual(lib.PRESETS.find(p => p[0] === 'OMD'), ['OMD', "Open Men's Doubles"]);
+  assert.ok(!lib.PRESETS.some(p => p[0] === 'OPEN'), 'OPEN is no longer a preset');
+  const s = estimate(plan({}, [cat('OMD', 4, 1)]));
+  assert.deepEqual([s.cats[0].code, s.cats[0].name], ['OMD', "Open Men's Doubles"]);
 });
