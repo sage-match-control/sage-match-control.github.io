@@ -173,7 +173,7 @@ meeting another team in a matchup won on total points (or on games won, with
 6. **Set up the schedule board** (`schedule.html`). This is the venue wall
    display — courts as columns, time slots as rows, one card per match. It
    is **unlisted from the public pages on purpose**: nothing links to it
-   except the `Open schedule` button at the foot of Mission Control in
+   except the `Open schedule` tiles in Mission Control's **Pages and tools** in
    Control Center (`tools/control-center.html`), so operators can launch
    it and spectators never see it. GitHub Pages resolves extensionless
    HTML, so it is reachable as `/events/<event-key>/schedule`.

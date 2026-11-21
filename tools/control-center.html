@@ -421,6 +421,65 @@
     margin-bottom:20px;
     text-align:center;
   }
+  /* ---------- MISSION CONTROL CARDS (mission-control-layout-spec.md) ----------
+     The panel is a grid of cards: one column up to 899px (480px wide, centred,
+     as the single card was), two from 900px, where the sync card sits beside
+     the public-site and scorer-link cards and the rest span both columns. */
+  .organizer-panel.mc-grid{
+    background:none; box-shadow:none; border-radius:0; padding:0;
+    max-width:480px; margin:0 auto;
+    display:grid; gap:16px; grid-template-columns:minmax(0,1fr); align-items:start;
+  }
+  .mc-card{background:var(--white); border-radius:18px; padding:22px; box-shadow:var(--card-shadow); min-width:0;}
+  .mc-side{display:grid; gap:16px; align-content:start; min-width:0;}
+  .mc-card > .organizer-hint:last-child{margin-bottom:0;}
+  .mc-head .organizer-day-label{margin-bottom:14px;}
+  .mc-login-row .organizer-text-input + .organizer-text-input{margin-top:0;}
+  .mc-login-row .organizer-secondary-btn{flex:0 0 auto;}
+  .mc-auth-status-row{display:flex; align-items:center; justify-content:space-between; gap:8px 12px; flex-wrap:wrap;}
+  .mc-auth-status-row .organizer-auth-status{margin:8px 0;}
+  .mc-auth #orgAuthHint{margin:0;}
+  .mc-sync #orgFacilityResyncGroup{margin-top:16px;}
+  .mc-tiles{display:grid; grid-template-columns:minmax(0,1fr); gap:10px;}
+  .mc-tile{
+    display:flex; flex-direction:column; gap:3px; min-width:0;
+    padding:12px 14px; border-radius:12px;
+    border:1px solid rgba(20,27,44,.18); background:var(--white);
+    color:var(--ink); text-decoration:none;
+    transition:border-color .12s ease, background .12s ease;
+  }
+  .mc-tile:hover{border-color:var(--cork);}
+  .mc-tile-title{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; letter-spacing:.04em; text-transform:uppercase;}
+  .mc-tile-title::after{content:"\00a0\2197"; font-weight:400; opacity:.6;}
+  .mc-tile-sub{font-size:12px; line-height:1.4; color:var(--muted);}
+  .mc-tile.primary{background:var(--ink); border-color:var(--ink); color:var(--white);}
+  .mc-tile.primary:hover{background:var(--navy-deep); border-color:var(--navy-deep);}
+  .mc-tile.primary .mc-tile-sub{color:rgba(255,255,255,.78);}
+  .mc-trouble{padding:0;}
+  .mc-trouble-summary{
+    display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 10px;
+    padding:18px 22px; cursor:pointer; list-style:none;
+  }
+  .mc-trouble-summary::-webkit-details-marker{display:none;}
+  .mc-trouble-summary::before{content:"\25B8"; color:var(--muted); display:inline-block; transition:transform .12s ease;}
+  .mc-trouble[open] > .mc-trouble-summary::before{transform:rotate(90deg);}
+  .mc-trouble-summary:focus-visible{outline:2px solid var(--navy); outline-offset:-2px; border-radius:18px;}
+  .mc-trouble-title{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink);}
+  .mc-trouble-sub{font-size:12px; color:var(--muted);}
+  .mc-trouble-body{padding:0 22px 22px; display:grid; grid-template-columns:minmax(0,1fr);}
+  .mc-trouble-item{padding:16px 0; border-top:1px solid rgba(20,27,44,.1); min-width:0;}
+  .mc-trouble-item .organizer-hint{margin-bottom:0;}
+  .mc-trouble-item .switch-row{margin:0;}
+  .mc-trouble .organizer-check-conn-btn{margin-top:0;}
+  @media (min-width:900px){
+    .organizer-panel.mc-grid{max-width:none; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);}
+    .mc-head, .mc-open, .mc-trouble{grid-column:1 / -1;}
+    .mc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:24px;}
+    .mc-head .organizer-day-label{margin:4px 0 0; text-align:left;}
+    .mc-auth{flex:0 1 480px; min-width:0;}
+    .mc-tiles{grid-template-columns:repeat(3, minmax(0,1fr));}
+    .mc-trouble-body{grid-template-columns:repeat(3, minmax(0,1fr)); gap:0 28px;}
+  }
   .golive-current{
     font-size:13px;
     line-height:1.5;
@@ -663,49 +722,14 @@
   .attendance-link-valid{font-size:12.5px; color:var(--ink);}
   .attendance-qr{margin-top:12px;}
 
-  /* Launchers for the schedule wall display (see #orgScheduleRow). */
-  .organizer-schedule-row{
+  .organizer-facility-row{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
   }
-  .organizer-schedule-btn{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    font-family:'Barlow Condensed',sans-serif;
-    font-size:12px;
-    font-weight:600;
-    text-transform:uppercase;
-    letter-spacing:.04em;
-    padding:9px 14px;
-    border-radius:10px;
-    border:1px solid rgba(20,27,44,.18);
-    background:transparent;
-    color:var(--muted);
-    text-decoration:none;
-    cursor:pointer;
-  }
-  .organizer-schedule-btn:hover{
-    border-color:var(--cork);
-    color:var(--ink);
-  }
-  .organizer-schedule-btn.primary{
-    background:var(--ink);
-    border-color:var(--ink);
-    color:var(--white);
-  }
-  .organizer-schedule-btn.primary:hover{
-    background:var(--navy-deep);
-    border-color:var(--navy-deep);
-    color:var(--white);
-  }
-  .organizer-facility-row{
-    display:flex;
-    gap:8px;
-  }
   .organizer-facility-btn{
     flex:1;
+    min-width:120px;
     font-family:'Barlow Condensed',sans-serif;
     font-weight:600;
     font-size:13px;
@@ -1264,102 +1288,123 @@
     </div>
   </div>
   <div id="organizerResults" style="display:none;">
-    <div class="organizer-panel">
-      <div class="organizer-day-label" id="organizerDayLabel"></div>
+    <!-- Mission Control (sage-docs/docs/specs/.../mission-control-layout-spec.md): cards,
+         one column on a phone; on a desktop the sync card sits beside the public-site and
+         scorer-link cards. Every id here is read by the script: keep them. -->
+    <div class="organizer-panel mc-grid">
 
-      <div id="orgLoginForm">
-        <label class="search-label" for="orgUsernameInput">Sign in</label>
-        <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
-        <div class="organizer-secret-row" style="margin-top:8px;">
-          <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
-          <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
+      <section class="mc-card mc-head">
+        <div class="organizer-day-label" id="organizerDayLabel"></div>
+        <div class="mc-auth">
+          <div id="orgLoginForm">
+            <label class="search-label" for="orgUsernameInput">Sign in</label>
+            <div class="organizer-secret-row mc-login-row">
+              <input id="orgUsernameInput" type="text" class="organizer-text-input" placeholder="Username" autocomplete="username" />
+              <input id="orgPasswordInput" type="password" class="organizer-text-input" placeholder="Password" autocomplete="current-password" />
+              <button type="button" id="orgSignInBtn" class="organizer-secondary-btn">Sign in</button>
+            </div>
+          </div>
+          <div class="mc-auth-status-row">
+            <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
+            <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
+          </div>
+          <p class="organizer-hint" id="orgAuthHint">Your password is exchanged for a session token kept only in this browser. The password itself is never saved.</p>
         </div>
-      </div>
-      <p class="organizer-auth-status" id="orgAuthStatus">Not signed in.</p>
-      <button type="button" id="orgSignOutBtn" class="organizer-secondary-btn" style="display:none;">Sign out</button>
-      <p class="organizer-hint" id="orgAuthHint">Signing in exchanges your password for a session token held only in this browser tab (cleared when you close it) — the password itself is never saved anywhere.</p>
+      </section>
 
-      <div class="organizer-divider"></div>
+      <section class="mc-card mc-sync">
+        <label class="search-label">Facility sync status</label>
+        <div id="orgStatusBox" class="organizer-status-box"></div>
 
-      <label class="search-label">Facility sync status</label>
-      <div id="orgStatusBox" class="organizer-status-box"></div>
+        <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
 
-      <button type="button" id="orgResyncBtn" class="organizer-primary-btn">Resync this day now</button>
-
-      <div class="switch-row" id="orgCsvRow" style="margin:14px 0;">
-        <button type="button" class="switch" id="orgUseCsvMethod" role="switch" aria-checked="false" aria-labelledby="orgUseCsvMethodLabel"><span class="switch-thumb"></span></button>
-        <span class="switch-label plain" id="orgUseCsvMethodLabel">Use CSV export fallback instead of Sheets API</span>
-      </div>
-
-      <div id="orgFacilityResyncGroup">
-        <label class="search-label">Or resync just one facility</label>
-        <div class="organizer-facility-row" id="orgFacilityRow"></div>
-      </div>
-
-      <div id="orgResultBox" class="organizer-result" style="display:none;"></div>
-
-      <button type="button" id="orgCheckConnBtn" class="organizer-secondary-btn organizer-check-conn-btn">Check connection</button>
-      <div id="orgConnResultBox" class="organizer-result" style="display:none;"></div>
-
-      <div class="organizer-divider"></div>
-
-      <!-- Go-live override (spec §4.1): a kill switch as a button, not a
-           config edit + redeploy. Affects the PUBLIC index.html only — this
-           console's own tabs always stay live, for preview (spec §3). -->
-      <label class="search-label">Public site status</label>
-      <div class="golive-current" id="goLiveCurrent"></div>
-      <p class="organizer-hint" id="goLiveSignInHint" style="display:none; margin-top:-2px;">Sign in to change this.</p>
-      <div class="golive-buttons">
-        <button type="button" class="golive-btn" data-live="auto">Auto</button>
-        <button type="button" class="golive-btn" data-live="true">Force live</button>
-        <button type="button" class="golive-btn golive-btn-danger" data-live="false">Force hidden</button>
-      </div>
-      <p class="organizer-hint">Controls the public event page's Live Matches/Standings tabs — this console's own tabs above are unaffected and always show live data, for preview.</p>
-
-      <div class="organizer-divider"></div>
-
-      <!-- Emergency switch between "live push + GitHub archive" and "GitHub
-           only". Writes config/events.json (PUT /v3/settings/live-push), so it works
-           even when the live Worker is the thing that is broken. -->
-      <label class="search-label">Sync method</label>
-      <div class="golive-current" id="syncMethodCurrent"></div>
-      <div class="golive-buttons" id="syncMethodButtons" style="display:none;">
-        <button type="button" class="golive-btn" data-push="true">Live push + GitHub</button>
-        <button type="button" class="golive-btn golive-btn-danger" data-push="false">GitHub only</button>
-      </div>
-      <p class="organizer-hint">An emergency switch, for when live updates misbehave. <b>GitHub only</b> sends every score through GitHub, as before live push existed: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</p>
-
-      <div class="organizer-divider"></div>
-
-      <!-- Scorer links (control-center-score-entry-spec.md §5.8): a link that can
-           enter scores and nothing else, and a switch that stops every such link.
-           The switch writes config/events.json (PUT /v3/events/{event}/score-entry). -->
-      <div id="scorerLinksSection" style="display:none;">
-        <label class="search-label">Scorer links</label>
-        <div class="golive-current" id="scorerLinksCurrent"></div>
-        <div class="switch-row" id="scorerSwitchRow" style="display:none;">
-          <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
-          <span class="switch-label" id="scorerSwitchLabel">Accepting</span>
+        <div id="orgFacilityResyncGroup">
+          <label class="search-label">Or resync just one facility</label>
+          <div class="organizer-facility-row" id="orgFacilityRow"></div>
         </div>
-        <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
-        <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
-        <p class="organizer-hint">A scorer link opens this event's scorer page, where staff enter scores for any venue on that day and do nothing else. Each link works for 24 hours, and only while this is set to <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder. Takes effect within about a minute.</p>
-        <div class="organizer-divider"></div>
+
+        <div id="orgResultBox" class="organizer-result" style="display:none;"></div>
+      </section>
+
+      <div class="mc-side">
+        <!-- Go-live override (spec §4.1): a kill switch as a button, not a
+             config edit + redeploy. Affects the PUBLIC index.html only — this
+             console's own tabs always stay live, for preview (spec §3). -->
+        <section class="mc-card">
+          <label class="search-label">Public site status</label>
+          <div class="golive-current" id="goLiveCurrent"></div>
+          <p class="organizer-hint" id="goLiveSignInHint" style="display:none; margin-top:-2px;">Sign in to change this.</p>
+          <div class="golive-buttons" id="goLiveButtons">
+            <button type="button" class="golive-btn" data-live="auto">Auto</button>
+            <button type="button" class="golive-btn" data-live="true">Force live</button>
+            <button type="button" class="golive-btn golive-btn-danger" data-live="false">Force hidden</button>
+          </div>
+          <p class="organizer-hint">Changes the public event page's Live Matches and Standings only. This console's own tabs always show live data, for preview.</p>
+        </section>
+
+        <!-- Scorer links (control-center-score-entry-spec.md §5.8): a link that can
+             enter scores and nothing else, and a switch that stops every such link.
+             The switch writes config/events.json (PUT /v3/events/{event}/score-entry). -->
+        <section class="mc-card" id="scorerLinksSection" style="display:none;">
+          <label class="search-label">Scorer links</label>
+          <div class="golive-current" id="scorerLinksCurrent"></div>
+          <div class="switch-row" id="scorerSwitchRow" style="display:none;">
+            <button type="button" class="switch switch-stop" id="scorerSwitch" role="switch" aria-checked="true" aria-labelledby="scorerSwitchLabel"><span class="switch-thumb"></span></button>
+            <span class="switch-label" id="scorerSwitchLabel">Accepting</span>
+          </div>
+          <button type="button" id="scorerLinkBtn" class="organizer-secondary-btn" style="display:none;">Issue scorer link</button>
+          <div id="scorerLinkResult" class="organizer-result" style="display:none;"></div>
+          <p class="organizer-hint">A scorer link opens this event's scorer page, for entering scores at any venue on that day and nothing else. It works for 24 hours, while this reads <b>Accepting</b>. <b>Stopped</b> blocks every scorer link at once; operators can still enter scores in Match Finder.</p>
+        </section>
       </div>
 
       <!-- The schedule board is a venue wall display, deliberately unlisted from
            the public pages — this is its only entry point, operators launch it
            from here and spectators never see a link to it. Tournament Hub just
            opens the event's real public page, so an operator can see exactly
-           what a player/spectator sees right now, in the same click. -->
-      <label class="search-label">Public pages</label>
-      <p class="organizer-hint" style="margin-bottom:12px;">
-        Schedule board is the full-screen wall display &mdash; courts as columns,
-        time slots as rows, pick courts from the board itself to drive a
-        second screen. Tournament Hub opens this event's actual public page.
-        Both open in a new tab.
-      </p>
-      <div class="organizer-schedule-row" id="orgScheduleRow"></div>
+           what a player/spectator sees right now, in the same click. The
+           scoresheet generator opens on this day. See renderScheduleLauncher(). -->
+      <section class="mc-card mc-open">
+        <label class="search-label">Pages and tools</label>
+        <div class="mc-tiles" id="orgScheduleRow"></div>
+      </section>
+
+      <!-- For when something is wrong: closed by default, remembered per browser
+           (sage.troubleshootingOpen). -->
+      <details class="mc-card mc-trouble" id="orgTroubleshooting">
+        <summary class="mc-trouble-summary">
+          <span class="mc-trouble-title">Troubleshooting</span>
+          <span class="mc-trouble-sub">Check connection, sync method, CSV fallback</span>
+        </summary>
+        <div class="mc-trouble-body">
+          <div class="mc-trouble-item">
+            <button type="button" id="orgCheckConnBtn" class="organizer-secondary-btn organizer-check-conn-btn">Check connection</button>
+            <div id="orgConnResultBox" class="organizer-result" style="display:none;"></div>
+          </div>
+
+          <!-- Emergency switch between "live push + GitHub archive" and "GitHub
+               only". Writes config/events.json (PUT /v3/settings/live-push), so it works
+               even when the live Worker is the thing that is broken. -->
+          <div class="mc-trouble-item">
+            <label class="search-label">Sync method</label>
+            <div class="golive-current" id="syncMethodCurrent"></div>
+            <div class="golive-buttons" id="syncMethodButtons" style="display:none;">
+              <button type="button" class="golive-btn" data-push="true">Live push + GitHub</button>
+              <button type="button" class="golive-btn golive-btn-danger" data-push="false">GitHub only</button>
+            </div>
+            <p class="organizer-hint">For when live updates misbehave. <b>GitHub only</b> sends every score through GitHub: pages catch up within 30&ndash;60 seconds. Takes effect within about a minute.</p>
+          </div>
+
+          <div class="mc-trouble-item" id="orgCsvRow">
+            <div class="switch-row">
+              <button type="button" class="switch" id="orgUseCsvMethod" role="switch" aria-checked="false" aria-labelledby="orgUseCsvMethodLabel"><span class="switch-thumb"></span></button>
+              <span class="switch-label plain" id="orgUseCsvMethodLabel">Use CSV export fallback instead of Sheets API</span>
+            </div>
+            <p class="organizer-hint">Changes how the resync buttons read the sheets. Turn it on only when a resync fails through the Sheets API.</p>
+          </div>
+        </div>
+      </details>
+
     </div>
   </div>
 </div>
@@ -1453,6 +1498,7 @@ import { loadRegistry, eventConfigFrom } from '/lib/v1/data/registry.js';
 import { createPoller } from '/lib/v1/data/snapshot.js';
 import { createLiveChannel } from '/lib/v1/data/live-channel.js';
 import { createAttendanceSignal } from '/lib/v1/data/attendance-signal.js';
+import { createOperatorSession } from '/lib/v1/data/operator-session.js';
 import { friendlyApiMessage } from '/lib/v1/data/api.js';
 import { lineupRulesFrom, lineupIssues } from '/lib/v1/domain/lineup-rules.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
@@ -1914,6 +1960,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   clearResultBoxes();
   currentDayIndex = idx;
   renderScorerLinks();
+  renderScheduleLauncher();
   liveChannel.follow(CURRENT_EVENT_KEY, DAYS[idx].key);
   if(dayPickerEl) dayPickerEl.value = String(idx);
   const day = DAYS[idx];
@@ -3122,6 +3169,7 @@ const orgPasswordInput = document.getElementById('orgPasswordInput');
 const orgSignInBtn = document.getElementById('orgSignInBtn');
 const orgSignOutBtn = document.getElementById('orgSignOutBtn');
 const orgAuthStatusEl = document.getElementById('orgAuthStatus');
+const orgAuthHintEl = document.getElementById('orgAuthHint');
 const orgUseCsvMethodEl = document.getElementById('orgUseCsvMethod');
 // The switch is a button, so it flips its own state; the label beside it does the same.
 if(orgUseCsvMethodEl){
@@ -3157,7 +3205,7 @@ function describeAutoGoLive(){
 }
 
 const goLiveCurrentEl = document.getElementById('goLiveCurrent');
-const goLiveButtonsEl = document.querySelector('.golive-buttons');
+const goLiveButtonsEl = document.getElementById('goLiveButtons');
 
 // Reads the value straight from the fetched event registry (not the
 // snapshot) — the console is what authors this value, so it always shows
@@ -3298,12 +3346,21 @@ function renderFacilityControls(){
 // at /tools/control-center, not inside the event's own folder the way the
 // per-event page did — rebuilt on every event switch (see selectEvent()).
 const orgScheduleRowEl = document.getElementById('orgScheduleRow');
+// The third tile opens the Scoresheet Generator on the current day (mission-control-layout-spec D6).
 function renderScheduleLauncher(){
   if(!orgScheduleRowEl) return;
-  orgScheduleRowEl.innerHTML = CURRENT_EVENT_KEY
-    ? `<a class="organizer-schedule-btn primary" target="_blank" rel="noopener" href="${pagesPathOf(CURRENT_EVENT_KEY)}schedule">Open schedule</a>
-       <a class="organizer-schedule-btn" target="_blank" rel="noopener" href="${pagesPathOf(CURRENT_EVENT_KEY)}">Open Tournament Hub</a>`
-    : '';
+  if(!CURRENT_EVENT_KEY){ orgScheduleRowEl.innerHTML = ''; return; }
+  const base = pagesPathOf(CURRENT_EVENT_KEY);
+  const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
+  // The generator finds the event from the day key itself (scoresheet-generator.html, ?day=).
+  const scoresheetHref = '/tools/scoresheet-generator' + (day ? `?day=${encodeURIComponent(day.key)}` : '');
+  const tile = (href, title, sub, cls) =>
+    `<a class="mc-tile${cls ? ' ' + cls : ''}" target="_blank" rel="noopener" href="${escapeHtml(href)}">` +
+    `<span class="mc-tile-title">${title}</span><span class="mc-tile-sub">${sub}</span></a>`;
+  orgScheduleRowEl.innerHTML =
+    tile(`${base}schedule`, 'Open schedule', 'The venue wall display', 'primary') +
+    tile(base, 'Open Tournament Hub', 'What players and spectators see') +
+    tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets');
 }
 
 // Never written into this file. Holds { token, expiresAt } from a successful
@@ -3811,11 +3868,13 @@ function renderAuthStatus(){
     orgAuthStatusEl.classList.add('signed-in');
     if(orgSignOutBtn) orgSignOutBtn.style.display = '';
     if(orgLoginFormEl) orgLoginFormEl.style.display = 'none';
+    if(orgAuthHintEl) orgAuthHintEl.style.display = 'none';
   } else {
     orgAuthStatusEl.textContent = 'Not signed in.';
     orgAuthStatusEl.classList.remove('signed-in');
     if(orgSignOutBtn) orgSignOutBtn.style.display = 'none';
     if(orgLoginFormEl) orgLoginFormEl.style.display = '';
+    if(orgAuthHintEl) orgAuthHintEl.style.display = '';
   }
   syncActionAvailability();
   refreshSyncMethod();
@@ -3847,6 +3906,7 @@ async function signIn(){
       return;
     }
     saveAuthToken(body.token, body.expiresAt);
+    operatorSession.announce({ token: body.token, expiresAt: body.expiresAt });
     if(orgPasswordInput) orgPasswordInput.value = '';
     renderAuthStatus();
     showToast('ok', `Signed in until ${signedInUntilText(body.expiresAt)}.`, 'auth');
@@ -3862,11 +3922,29 @@ if(orgPasswordInput) orgPasswordInput.addEventListener('keydown', (e) => { if(e.
 if(orgSignOutBtn){
   orgSignOutBtn.addEventListener('click', () => {
     clearAuthToken();
+    operatorSession.signedOut();
     renderAuthStatus();
     showToast('ok', 'Signed out.', 'auth');
   });
 }
+// This browser's other open Control Center tabs share their sign-in (mission-control-layout-spec D12).
+const operatorSession = createOperatorSession({
+  getSession: () => (currentAuthToken() ? loadAuthToken() : null),
+  onSession: s => {
+    const mine = currentAuthToken() ? loadAuthToken() : null;
+    if(mine && mine.expiresAt >= s.expiresAt) return;   // ours is as new or newer
+    saveAuthToken(s.token, s.expiresAt);
+    renderAuthStatus();
+  },
+  onSignedOut: () => {
+    if(!loadAuthToken()) return;
+    clearAuthToken();
+    renderAuthStatus();
+    showToast('ok', 'Signed out in another tab.', 'auth');
+  },
+});
 renderAuthStatus();
+if(!currentAuthToken()) operatorSession.ask();
 
 function updateOrganizerDayLabel(){
   if(!organizerDayLabelEl) return;
@@ -4036,6 +4114,15 @@ if(orgCheckConnBtn){
 
 const toastStackEl = document.getElementById('toastStack');
 const orgConnResultBox = document.getElementById('orgConnResultBox');
+// Troubleshooting opens closed; this browser remembers if it was left open (mission-control-layout-spec D3).
+const STORAGE_TROUBLESHOOTING_KEY = 'sage.troubleshootingOpen';
+const orgTroubleshootingEl = document.getElementById('orgTroubleshooting');
+if(orgTroubleshootingEl){
+  try{ orgTroubleshootingEl.open = localStorage.getItem(STORAGE_TROUBLESHOOTING_KEY) === '1'; } catch(e){}
+  orgTroubleshootingEl.addEventListener('toggle', () => {
+    try{ localStorage.setItem(STORAGE_TROUBLESHOOTING_KEY, orgTroubleshootingEl.open ? '1' : '0'); } catch(e){}
+  });
+}
 const TOAST_MS = { ok: 4500, warn: 7000, error: 9000 }; // 'loading' stays until replaced
 
 // kind: 'ok' | 'warn' | 'error' | 'loading'. key: a later toast with the same
@@ -4715,10 +4802,10 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
 
   if(eventPickerEl) eventPickerEl.value = eventKey;
   if(eventTitleLineEl) eventTitleLineEl.textContent = rawEvent && rawEvent.title ? rawEvent.title : eventKey;
-  renderScheduleLauncher();
 
   // Reset all per-event state so nothing from a previous event lingers.
   currentDayIndex = null;
+  renderScheduleLauncher();
   liveChannel.follow(null, null);
   MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
   MODEL = buildDayModel(eventConfig || { key: eventKey, type: CURRENT_TYPE, title: '', days: [], display: DISPLAY }, { key: '', facilities: [] }, null, { now: 0, alwaysLive: true });

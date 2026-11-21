@@ -90,7 +90,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Open Control Center (`tools/control-center.html`)
 - [ ] Select `{{EVENT_TITLE}}` → today's day
 - [ ] Sign in with the operator username and password in Mission Control
-- [ ] Click **Check connection** → confirms Cloud Run is reachable before anything depends on it
+- [ ] Open **Troubleshooting** in Mission Control, then click **Check connection** → confirms Cloud Run is reachable before anything depends on it
 - [ ] Each facility workbook's **Share** dialog lists `sage-tools-api-runtime@sage-tools-api.iam.gserviceaccount.com` as Editor, and **General access** reads **Restricted** (not "Anyone with the link")
 - [ ] If this event has attendance: open the **Attendance** tab, press **Update roster**, and check every venue reports its people; for `"desks"`, issue one desk link per desk (press **Issue desk link**, fill in **Issued to** with the person's name and **Note** with the gate in the dialog, then press **Issue link**) and send the link (or QR) to that desk with the desk handout
 - [ ] If this event has scorer links (`"scoreEntry": "links"`): confirm Mission Control's **Scorer links** reads **Accepting**, then issue one link per scorer (press **Issue scorer link**, fill in **Issued to** and **Note** with their name and courts in the dialog, then press **Issue link**) and send the link (or QR) with the scorer handout. A scorer link lasts 24 hours, so issue them that morning
@@ -174,7 +174,7 @@ watching for when that pipeline needs a nudge:
 - [ ] Periodically glance at Mission Control's Facility Sync Status. It should read "Synced" a few seconds to a couple minutes ago, continuously
 - [ ] If it ever goes stale or shows "Last attempt failed," click **Resync this day now** yourself rather than waiting
 - [ ] If a score or court entry hasn't appeared on the site within about **2 minutes**, click **Resync this day now**. A sync can lose a race with another venue's sync, or with another event's on the same day, and Facility Sync Status only turns amber after 5 minutes without one
-- [ ] If Sheets API trouble persists, check **Use CSV export fallback instead of Sheets API** and resync again
+- [ ] If Sheets API trouble persists, open **Troubleshooting** in Mission Control, check **Use CSV export fallback instead of Sheets API** and resync again
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Public site status** to **Force hidden**, correct the sheet, resync, then set it back to **Auto** (or **Force live**) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board updates on its own (pushed within seconds, with a ~10s poll as the fallback) — no action needed, just glance at it occasionally to confirm it's still moving
 - [ ] Use **Match Finder** on the console directly if a player asks where their match is

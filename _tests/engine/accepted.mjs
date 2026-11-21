@@ -113,4 +113,10 @@ export const ACCEPTED = [
     case: /^(std|dm|team)-schedule\//, kind: 'both', row: 'owner 2026-11-14 logo',
     reason: 'the board’s bar and every printed sheet carry the S.A.G.E. landscape logo in place of the square logo and the “S.A.G.E. · Match Control Experts” line',
   },
+  // ---- Mission Control layout, shared sign-in and attendance marks (sage-docs/docs/specs/.../mission-control-layout-spec.md) ----
+  {
+    case: /^cc(-signed-in)?\/[^/]+\/mission-control(-troubleshooting)?\//, kind: 'both', row: 'owner 2026-11-21 mission control',
+    reason: 'Mission Control is cards: two columns on a desktop, Troubleshooting (Check connection, Sync method, CSV fallback) folded at the bottom, a Pages and tools row with the Scoresheet Generator (and, signed in on an event with attendance, the staff-view board), and shorter help text',
+  },
 ];
+

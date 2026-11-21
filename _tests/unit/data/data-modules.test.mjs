@@ -7,6 +7,7 @@ import { registryUrl, loadRegistry, eventConfigFrom, REGISTRY_LAST_GOOD_KEY } fr
 import { snapshotUrlFor, fetchDaySnapshotFromPages, fetchDaySnapshot, createPoller } from '../../../lib/v1/data/snapshot.js';
 import { createLiveChannel, LIVE_PING_MS, LIVE_PONG_TIMEOUT_MS, LIVE_SAFETY_POLL_MS, LIVE_RETRY_MAX_MS } from '../../../lib/v1/data/live-channel.js';
 import { createAttendanceSignal, ATTENDANCE_NUDGE_GAP_MS, ATTENDANCE_SETTLE_MS } from '../../../lib/v1/data/attendance-signal.js';
+import { createOperatorSession } from '../../../lib/v1/data/operator-session.js';
 import { httpWords, messageFromJson, friendlyApiMessage, fetchJson } from '../../../lib/v1/data/api.js';
 import { scorerDecode, deskDecode, scorerLoadToken, deskLoadToken, scorerStorageKey, deskStorageKey } from '../../../lib/v1/data/tokens.js';
 import { loadRegistry as loadFixtureRegistry, eventConfig } from '../../helpers/fixtures.mjs';
@@ -781,3 +782,103 @@ test('eventConfigFrom reads display.playoffSeats by category code or shape key, 
   assert.deepEqual(eventConfigFrom(registry, 'notObject').playoffSeats, {});
   assert.equal(warn.mock.callCount(), 5);
 });
+
+// ---- operator session -----------------------------------------------------------------------------------------------------------
+// sage-docs/docs/specs/.../mission-control-layout-spec.md §6
+
+class FakeChannel {
+  static all = [];
+  constructor(name) { this.name = name; this.onmessage = null; this.closed = false; FakeChannel.all.push(this); }
+  postMessage(data) {
+    for (const c of FakeChannel.all) if (c !== this && !c.closed && c.name === this.name && c.onmessage) c.onmessage({ data });
+  }
+  close() { this.closed = true; }
+}
+function sessionSetup(t) {
+  FakeChannel.all = [];
+  Object.defineProperty(globalThis, 'BroadcastChannel', { value: FakeChannel, configurable: true, writable: true });
+  t.after(() => { delete globalThis.BroadcastChannel; });
+}
+const FUTURE = () => Date.now() + 3600e3;
+
+test('operator session: a page that asks gets the sign-in of an open, signed-in page', t => {
+  sessionSetup(t);
+  const sign = { token: 'tok', expiresAt: FUTURE() };
+  const got = [];
+  createOperatorSession({ getSession: () => sign, onSession: () => {}, onSignedOut: () => {} });
+  const asker = createOperatorSession({ onSession: s => got.push(s), onSignedOut: () => {} });
+  asker.ask();
+  assert.deepEqual(got, [sign]);
+});
+
+test('operator session: nothing comes back from a page that does not answer, is signed out or has an expired sign-in', t => {
+  sessionSetup(t);
+  const got = [];
+  createOperatorSession({ answer: false, getSession: () => ({ token: 'tok', expiresAt: FUTURE() }), onSession: () => {}, onSignedOut: () => {} });
+  createOperatorSession({ getSession: () => null, onSession: () => {}, onSignedOut: () => {} });
+  createOperatorSession({ getSession: () => ({ token: 'old', expiresAt: Date.now() - 1 }), onSession: () => {}, onSignedOut: () => {} });
+  createOperatorSession({ getSession: () => ({ token: '', expiresAt: FUTURE() }), onSession: () => {}, onSignedOut: () => {} });
+  createOperatorSession({ onSession: s => got.push(s), onSignedOut: () => {} }).ask();
+  assert.deepEqual(got, []);
+});
+
+test('operator session: a page never hears its own messages, and announce reaches every other page', t => {
+  sessionSetup(t);
+  const a = [], b = [], c = [];
+  const pa = createOperatorSession({ onSession: s => a.push(s), onSignedOut: () => a.push('out') });
+  createOperatorSession({ onSession: s => b.push(s), onSignedOut: () => {} });
+  createOperatorSession({ answer: false, onSession: s => c.push(s), onSignedOut: () => {} });
+  const sign = { token: 'tok', expiresAt: FUTURE() };
+  pa.announce(sign);
+  assert.deepEqual(a, []);
+  assert.deepEqual(b, [sign]);
+  assert.deepEqual(c, [sign]);
+});
+
+test('operator session: signedOut reaches every other page', t => {
+  sessionSetup(t);
+  const a = [], b = [];
+  const pa = createOperatorSession({ onSession: () => {}, onSignedOut: () => a.push('out') });
+  createOperatorSession({ onSession: () => {}, onSignedOut: () => b.push('out') });
+  pa.signedOut();
+  assert.deepEqual(a, []);
+  assert.deepEqual(b, ['out']);
+});
+
+test('operator session: an expired or malformed session message is ignored, and announce sends no expired sign-in', t => {
+  sessionSetup(t);
+  const got = [];
+  const raw = new FakeChannel('sage.operator-session');
+  const page = createOperatorSession({ onSession: s => got.push(s), onSignedOut: () => {} });
+  for (const msg of [
+    { type: 'session', token: 'x', expiresAt: Date.now() - 1 },
+    { type: 'session', token: '', expiresAt: FUTURE() },
+    { type: 'session', token: 5, expiresAt: FUTURE() },
+    { type: 'session', token: 'x', expiresAt: String(FUTURE()) },
+    { type: 'session' }, { type: 'other' }, null, 'junk',
+  ]) raw.postMessage(msg);
+  assert.deepEqual(got, []);
+  page.announce({ token: 'x', expiresAt: Date.now() - 1 });
+  const heard = [];
+  raw.onmessage = e => heard.push(e.data);
+  page.announce({ token: 'x', expiresAt: Date.now() - 1 });
+  page.announce(null);
+  assert.deepEqual(heard, []);
+});
+
+test('operator session: close stops the page listening', t => {
+  sessionSetup(t);
+  const got = [];
+  const a = createOperatorSession({ onSession: s => got.push(s), onSignedOut: () => {} });
+  const b = createOperatorSession({ onSession: () => {}, onSignedOut: () => {} });
+  a.close();
+  b.announce({ token: 'tok', expiresAt: FUTURE() });
+  assert.deepEqual(got, []);
+});
+
+test('operator session: without BroadcastChannel every method does nothing', () => {
+  assert.equal(typeof globalThis.BroadcastChannel, 'undefined');
+  const s = createOperatorSession({ onSession: () => assert.fail(), onSignedOut: () => assert.fail() });
+  s.ask(); s.announce({ token: 'x', expiresAt: Date.now() + 1e6 }); s.signedOut(); s.close();
+});
+
