@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SITE_ROOT } from '../helpers/paths.mjs';
 import { parseAttendanceCsv } from '../../lib/v1/domain/attendance.js';
+import { attendanceKey } from '../../lib/v1/domain/attendance-marks.js';
 import { constValue } from '../helpers/extract.mjs';
 import { loadRegistry, loadSnapshot, deriveState, parseCsv, toCsv, SNAPSHOTS, STATES } from '../helpers/fixtures.mjs';
 import { click, clickNth, choose, enterScores, ifPresent, ifVisible, printMedia, saveScores, tab, type } from './steps.mjs';
@@ -261,6 +262,28 @@ function* controlCenterCases(registry) {
   }
 }
 
+/**
+ * A /people reply built from an event's own players (mission-control-layout-spec §12.2): every distinct
+ * name in its snapshot's matches, in first-seen order, every second one not checked in. The demo CSV's
+ * names are not any harness event's, so it would mark nobody.
+ */
+function peopleFor(event) {
+  const names = [];
+  const seen = new Set();
+  for (const facility of loadSnapshot(event).facilities || []) {
+    const [header, ...rows] = parseCsv(facility.matchesCsv || '');
+    if (!header) continue;
+    const cols = ['team1Player1', 'team1Player2', 'team2Player1', 'team2Player2'].map(c => header.indexOf(c)).filter(i => i >= 0);
+    for (const r of rows) for (const i of cols) {
+      const name = String(r[i] || '').trim();
+      if (!name || /^(tbd|bye)$/i.test(name) || seen.has(name)) continue;
+      seen.add(name);
+      names.push(name);
+    }
+  }
+  return names.map((name, i) => ({ key: attendanceKey(name), player: name, teams: [], categories: [], present: i % 2 === 0, timeIn: '', withdrawn: false, shirt: '' }));
+}
+
 function* controlCenterSignedInCases(registry) {
   const allEvents = Object.keys(SNAPSHOTS);
   const event = 'piggleball-2026';
@@ -273,6 +296,9 @@ function* controlCenterSignedInCases(registry) {
     ['attendance', [tab('Attendance')]],
     ['score-entry-save', [tab('Match Finder'), type('#teamInput', '1'), click('#searchBtn'), click('.ticket.scoreable'), enterScores(11, 5), saveScores()]],
     ['live', [tab('Live Matches')]],
+    ['mission-control-troubleshooting', [ifPresent('#orgTroubleshooting > summary', click('#orgTroubleshooting > summary'))]],
+    ['finder', [tab('Match Finder')]],
+    ['standings', [tab('Standings')]],
     // Opens the first court, picks the first suggestion and stops on Review (no save), so the shot shows the warnings.
     ['court-set', [tab('Live Matches'), ifPresent('.court-settable', click('.court-settable')),
       ifPresent('.court-option', click('.court-option')),
@@ -285,7 +311,8 @@ function* controlCenterSignedInCases(registry) {
       external: [{ match: /docs\.google\.com\/spreadsheets\/d\/test\//, contentType: 'text/csv', body: csv }],
       cloudRun: [...signedInApi, scoreOk, courtOk, {
         ...attendancePeople,
-        reply: () => ({ status: 200, body: parseAttendanceCsv(csv) }),
+        // The Attendance tab keeps the demo list, so its shots do not change; every other view reads the event's own players.
+        reply: () => ({ status: 200, body: vname === 'attendance' ? parseAttendanceCsv(csv) : peopleFor(event) }),
       }],
       allowErrors: [CONSOLE_404],
       steps: [choose('#eventPicker', event), ...steps],

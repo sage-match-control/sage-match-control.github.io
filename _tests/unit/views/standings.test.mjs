@@ -278,3 +278,48 @@ test('a card hands the decorate hook to its chart', () => {
   const html = categoryCardHTML(CARD, m.standings, m, { view: 'bracket', decorateBracketMatch: match => ({ attrs: ` data-n="${match.num}"` }) });
   assert.match(html, /data-bk-match="SF-1" data-n="3"/);
 });
+
+// ---- markPlayer (mission-control-layout-spec §9.3): a page's own mark on a name in the list view ----
+
+const MARK_MATCHES = ['1,,9:00 AM,Court 1,NOD_SF_1,Ann,Bo,,NOD_SF_2,Cy,Di,', '2,,9:30 AM,Court 1,NOD_1,Ann,Bo,11,NOD_2,Cy,Di,4'];
+const MARK_ROWS = [
+  stand('NOD_1', 'Ann', 'Bo', 1, 0, 2, '1'), stand('NOD_2', 'Cy', 'Di', 0, 1, 0.5, '1'),
+  stand('NOD_SF_1', 'Ann', 'Bo', 0, 0, 0), stand('NOD_SF_2', 'Cy', 'Di', 0, 0, 0),
+];
+const flagBo = (name, match) => (name === 'Bo' ? (match === null ? 'rr' : 'pf') : '');
+
+test('markPlayer: a matchup card marks a name, and is told the match; a Round Robin row is told null', () => {
+  const m = model({ display: DISPLAY, matches: MARK_MATCHES, standings: MARK_ROWS });
+  const playoff = [m.standings[2], m.standings[3]];
+  const plain = matchupHTML(playoff, m);
+  assert.equal(matchupHTML(playoff, m, { markPlayer: () => '' }), plain);
+  const seen = [];
+  const html = matchupHTML(playoff, m, { markPlayer: (name, match) => { seen.push([name, match && match.num]); return flagBo(name, match); } });
+  assert.match(html, /<span class="p">Ann<\/span><span class="p pf">Bo<\/span>/);
+  assert.equal(html.replace(' pf', ''), plain);
+  assert.deepEqual(seen.filter(s => s[0] === 'Bo'), [['Bo', 1]]);
+  const tables = stageTablesHTML(m.standings, m, { markPlayer: flagBo }).html;
+  assert.match(tables, /<span>Ann<\/span><span class="rr">Bo<\/span>/);
+  assert.match(tables, /<span class="p pf">Bo<\/span>/, 'and the playoff cards in the same call');
+  assert.equal(stageTablesHTML(m.standings, m).html, tables.replace(/ class="rr"/g, '').replace(/ pf/g, ''));
+});
+
+test('markPlayer reaches a standard category card', () => {
+  const m = model({ display: DISPLAY, matches: MARK_MATCHES, standings: MARK_ROWS });
+  const card = categoryCardHTML('NOD', m.standings, m, { markPlayer: flagBo });
+  assert.match(card, /class="rr">Bo/);
+  assert.match(card, /class="p pf">Bo/);
+  assert.equal(categoryCardHTML('NOD', m.standings, m), card.replace(/ class="rr"/g, '').replace(/ pf/g, ''));
+});
+
+test('markPlayer reaches a dual meet\'s club columns', () => {
+  const display = { divisions: { N: 'Novice' }, events: { OD: 'Open Doubles' }, clubs: { PNF: 'P', BUP: 'B' } };
+  const m = model({ type: 'dual-meet', display, standings: [stand('PNF_NOD_1', 'Ann', 'Bo', 1, 0, 1), stand('BUP_NOD_1', 'Cy', 'Di', 0, 1, 0.5)] });
+  globalThis.window = { matchMedia: () => ({ matches: true }) };
+  try {
+    const plain = dualMeetStandingsHTML(m, {});
+    const html = dualMeetStandingsHTML(m, { markPlayer: name => (name === 'Bo' ? 'flag' : '') });
+    assert.match(html, /<span class="flag">Bo<\/span>/);
+    assert.equal(html.replace(' class="flag"', ''), plain);
+  } finally { delete globalThis.window; }
+});

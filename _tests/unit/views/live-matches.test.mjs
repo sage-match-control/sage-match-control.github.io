@@ -187,3 +187,29 @@ test('a team event’s own live rows (options.liveRow) are decorated too, and an
   assert.equal((html.match(/court-settable/g) || []).length, 2);
   assert.match(html, /live-dot" aria-hidden="true"><\/span>1<span class="court-hint">h<\/span><\/td>/);
 });
+
+// ---- markPlayer and matchNote (mission-control-layout-spec §9.2): a page's own mark and count ----
+
+test('markPlayer marks a name and matchNote ends the category line; without them the rows are as before', () => {
+  const m = model([{ name: 'Main', rows: MAIN }]);
+  const live = m.matches.find(x => x.num === 1);
+  const plain = liveTableRowsHTML('2', live, m);
+  assert.equal(liveTableRowsHTML('2', live, m, { markPlayer: () => '', matchNote: () => '' }), plain);
+  const seen = [];
+  const html = liveTableRowsHTML('2', live, m, {
+    markPlayer: (name, match) => { seen.push([name, match.num]); return name === 'Cy' ? 'flag' : ''; },
+    matchNote: match => `<span class="note">${match.num} note</span>`,
+  });
+  assert.match(html, /<span class="p">Ann<\/span><span class="p">Bo<\/span>/);
+  assert.match(html, /<span class="p flag">Cy<\/span><span class="p">Di<\/span>/);
+  assert.match(html, /<span class="live-round">Round Robin<\/span><span class="note">1 note<\/span><\/td>/);
+  assert.deepEqual(seen.map(s => s[0]).sort(), ['Ann', 'Bo', 'Cy', 'Di']);
+  assert.equal(html.replace(' flag', '').replace('<span class="note">1 note</span>', ''), plain);
+});
+
+test('matchNote returning nothing adds nothing, and an idle court is untouched', () => {
+  const m = model([{ name: 'Main', rows: MAIN }]);
+  const live = m.matches.find(x => x.num === 1);
+  assert.equal(liveTableRowsHTML('2', live, m, { matchNote: () => undefined }), liveTableRowsHTML('2', live, m));
+  assert.equal(liveTableRowsHTML('5', null, m, { markPlayer: () => 'flag', matchNote: () => 'x' }), liveTableRowsHTML('5', null, m));
+});

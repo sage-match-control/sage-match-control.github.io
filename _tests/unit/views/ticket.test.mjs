@@ -99,3 +99,38 @@ test('standingRowClass', () => {
   assert.equal(standingRowClass({ wins: 2, loss: 1 }), 'win');
   assert.equal(standingRowClass({ wins: 1, loss: 1 }), 'loss');
 });
+
+// ---- markPlayer (mission-control-layout-spec §9.1): a page's own mark on a name ----
+
+test('markPlayer adds its class to the named span and changes nothing else; without it the markup is as before', () => {
+  const m = model([row(1, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', '')]);
+  const plain = ticketHTML(m.matches[0], m);
+  assert.equal(plain, ticketHTML(m.matches[0], m, { markPlayer: () => '' }), 'a hook that returns nothing leaves the markup alone');
+  const seen = [];
+  const marked = ticketHTML(m.matches[0], m, { markPlayer: (name, match) => { seen.push([name, match.num]); return name === 'Bo' || name === 'Di' ? 'flag' : ''; } });
+  assert.match(marked, /<span class="p flag">Bo<\/span>/);
+  assert.match(marked, /<span class="p flag">Di<\/span>/);
+  assert.match(marked, /<span class="p">Ann<\/span><span class="p flag">Bo<\/span>/);
+  assert.equal(marked.replace(/ flag/g, ''), plain);
+  assert.deepEqual(seen.map(s => s[0]).sort(), ['Ann', 'Bo', 'Cy', 'Di']);
+  assert.ok(seen.every(s => s[1] === 1), 'the hook is told which match the name is shown for');
+});
+
+test('markPlayer is not asked about a side that is still to be determined', () => {
+  const m = model([row(1, '', 'ND_1', 'TBD', 'TBD', '', 'ND_2', 'Cy', 'Di', '')]);
+  const seen = [];
+  const html = ticketHTML(m.matches[0], m, { markPlayer: name => { seen.push(name); return 'flag'; } });
+  assert.deepEqual(seen.sort(), ['Cy', 'Di']);
+  assert.match(html, /To be determined/);
+});
+
+test('pairCell: markPlayer marks a name of a Round Robin row, with no match', () => {
+  const m = model([row(1, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', '')]);
+  const s = { teamCode: 'ND_1', player1: 'Ann', player2: 'Bo', wins: 0, loss: 0 };
+  const plain = pairCell(s, m);
+  assert.equal(pairCell(s, m, { markPlayer: () => '' }), plain);
+  const seen = [];
+  const html = pairCell(s, m, { markPlayer: (name, match) => { seen.push([name, match]); return name === 'Bo' ? 'flag' : ''; } });
+  assert.match(html, /<span>Ann<\/span><span class="flag">Bo<\/span>/);
+  assert.deepEqual(seen, [['Ann', null], ['Bo', null]]);
+});

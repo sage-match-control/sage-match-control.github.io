@@ -1499,6 +1499,8 @@ import { createPoller } from '/lib/v1/data/snapshot.js';
 import { createLiveChannel } from '/lib/v1/data/live-channel.js';
 import { createAttendanceSignal } from '/lib/v1/data/attendance-signal.js';
 import { createOperatorSession } from '/lib/v1/data/operator-session.js';
+import { createAttendanceStatus } from '/lib/v1/data/attendance-status.js';
+import { isNotIn, matchNotInCount, facilityNotInCount } from '/lib/v1/domain/attendance-marks.js';
 import { friendlyApiMessage } from '/lib/v1/data/api.js';
 import { lineupRulesFrom, lineupIssues } from '/lib/v1/domain/lineup-rules.js';
 import * as Snapshot from '/lib/v1/data/snapshot.js';
@@ -1792,7 +1794,7 @@ const finder = createFinder({
   clearBtn: document.getElementById('clearInputBtn'),
   searchBtn: document.getElementById('searchBtn'),
   getModel: () => MODEL,
-  ticket: { decorate: ticketDecorate },
+  ticket: { decorate: ticketDecorate, markPlayer: attMarkPlayer },
   searchHint: 'Search a name or a match number above.',
   searchHandlers: [raw => {
     const byNumber = MATCH_NUMBER_SEARCH_RE.exec(raw);
@@ -1821,6 +1823,7 @@ const standings = createStandings({
   unresolved: UNRESOLVED_CATEGORIES,
   // A playoff bracket card with a scheduled match opens the score dialog, like a ticket (scoreAttrs; the listeners below).
   decorateBracketMatch: m => { const attrs = scoreAttrs(m); return attrs ? { className: ' scoreable', attrs } : {}; },
+  markPlayer: (name, m) => (CURRENT_TYPE === 'team' ? '' : attMarkPlayer(name, m)),
 });
 
 function renderStandings(){
@@ -1887,6 +1890,8 @@ function revealActiveTab(btn){
 // rest and renders it. Used by the tab buttons and by revealLiveTabsAfterLoad
 // (which lands on Mission Control after a day loads).
 let CURRENT_VIEW = null;
+let ATT_STATUS = null;            // the day's attendance reader (mission-control-layout-spec §10), or null
+let ATT_STATUS_SIGNED_IN = null;  // attConsoleSignedIn() when ATT_STATUS was last (re)started
 function showView(view){
   if(view !== CURRENT_VIEW) clearResultBoxes();
   CURRENT_VIEW = view;
@@ -1976,6 +1981,7 @@ async function selectDay(idx, { isInitialLoad = false } = {}){
   const rawDay = rawEvent && rawEvent.days ? rawEvent.days[day.key] : null;
   FACILITIES = ((rawDay && rawDay.facilities) || []).map(f => ({ name: f.name, sheetId: f.sheetId || null }));
   renderFacilityControls();
+  attStatusRestart();
 
   // Switching days always drops back to the same "first screen" shown on
   // initial page load — tabs/status hidden, just the centered prompt —
@@ -2091,8 +2097,9 @@ if(jumpToTodayBtn){
 function ticketDecorate(m){
   const attrs = scoreAttrs(m);
   const warn = lineupWarnHTML(m);
-  if(!attrs) return warn ? { metaHTML: warn } : {};
-  return { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) + warn };
+  const extra = warn + attNotInChipHTML(m);
+  if(!attrs) return extra ? { metaHTML: extra } : {};
+  return { className: ' scoreable', attrs, metaHTML: scoreHintHTML(m) + warn + attNotInChipHTML(m) };
 }
 
 // A team match line's click-to-score (Match Finder's and the Standings tab's matchup cards); its lineup warnings
@@ -2172,6 +2179,7 @@ function consoleTicketHTML(m, teamCode, isNext){
   return Ticket.ticketHTML(m, MODEL, {
     teamCode, isNext,
     decorate: ticketDecorate,
+    markPlayer: attMarkPlayer,
   });
 }
 
@@ -2401,7 +2409,7 @@ function progressForFacility(name){
   return rest;
 }
 
-function facilityProgressCardHTML(name, info){
+function facilityProgressCardHTML(name, info, people = null){
   const { p, isEventDay, stale, syncedAt, actualEnd } = info;
   const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
   const { finish, sub } = Progress.facilityFinishParts(p, isEventDay, actualEnd, currentDay());
@@ -2423,6 +2431,7 @@ function facilityProgressCardHTML(name, info){
     </div>
     <div class="fp-line">Done <b>${p.done}</b> &middot; Left <b>${p.left - p.inPlay}</b> &middot; In play <b>${p.inPlay}</b></div>
     <div class="fp-line">${finish}</div>
+    ${people && facilityNotInCount(people) ? `<div class="fp-line">Still to check in <b>${facilityNotInCount(people)}</b></div>` : ''}
     ${subs.map(s => `<div class="fp-sub">${s}</div>`).join('')}
   </div>`;
 }
@@ -2446,7 +2455,9 @@ function drawLiveMatches(){
   Live.renderLiveMatches(MODEL, {
     boardEl: liveBoardEl, metaEl: liveBoardMetaEl,
     extrasEl: facilityProgressEl,
-    facilityExtras: name => facilityProgressCardHTML(name, progressForFacility(name)),
+    facilityExtras: name => facilityProgressCardHTML(name, progressForFacility(name), ATT_STATUS ? ATT_STATUS.people(name) : null),
+    markPlayer: team ? undefined : attMarkPlayer,
+    matchNote: team ? undefined : attNotInChipHTML,
     liveRow: team ? teams.liveRow : undefined,
     emptyMatchupHTML: team ? '<div class="live-matchup">&nbsp;</div>' : '',
     courtCell: scoreEntryAvailable() ? courtCellDeco : undefined,
@@ -3886,6 +3897,7 @@ function renderAuthStatus(){
   // So do the Attendance tab's buttons, when it is the tab on screen. (This first runs at
   // load, before the Attendance section's own variables exist, hence the try.)
   try{ if(attConsoleView) attConsoleRenderChrome(); }catch(e){ /* not initialised yet */ }
+  if(attConsoleSignedIn() !== ATT_STATUS_SIGNED_IN) attStatusRestart();
 }
 
 async function signIn(){
@@ -4294,6 +4306,43 @@ function attConsoleDestroy(){
 
 function attConsoleSignedIn(){
   return !!FIXTURE || !!currentAuthToken();
+}
+
+// ---- Attendance marks (mission-control-layout-spec §10): who is not in yet, in Match Finder, Live Matches and Standings ----
+function attStatusRestart(){
+  if(ATT_STATUS){ ATT_STATUS.close(); ATT_STATUS = null; }
+  ATT_STATUS_SIGNED_IN = attConsoleSignedIn();
+  const day = currentDay();
+  if(day && attConsoleSetting() && ATT_STATUS_SIGNED_IN){
+    ATT_STATUS = createAttendanceStatus({
+      apiBase: CLOUD_RUN_BASE_URL, getToken: currentAuthToken, event: CURRENT_EVENT_KEY, day: day.key,
+      facilities: FACILITIES.map(f => f.name), liveBaseUrl: LIVE_BASE_URL, fixture: FIXTURE,
+      onChange: attMarksChanged,
+    });
+  }
+  attMarksChanged();
+}
+function attMarksChanged(){
+  if(!MATCHES.length) return;
+  // Match Finder's list lives on while its tab is hidden, so it is redrawn whichever tab is showing (a list that
+  // loads while Mission Control is on screen would otherwise stay unmarked); Live Matches and Standings are
+  // drawn each time their tab opens.
+  finder.refresh();
+  if(CURRENT_VIEW === 'live') drawLiveMatches();
+  else if(CURRENT_VIEW === 'standings') renderStandings();
+}
+function attIndex(){ return ATT_STATUS ? ATT_STATUS.index() : null; }
+// markPlayer: '' for a played match or a series game never played (D15).
+function attMarkPlayer(name, m){
+  const index = attIndex();
+  if(!index || (m && (m.played || MODEL.unneededGames.has(m)))) return '';
+  return isNotIn(index, name) ? 'att-not-in' : '';
+}
+function attNotInChipHTML(m){
+  const index = attIndex();
+  if(!index || MODEL.unneededGames.has(m)) return '';
+  const n = matchNotInCount(m, index);
+  return n ? `<span class="att-not-in-chip">${n} not in</span>` : '';
 }
 
 function attConsoleMount(){
@@ -4806,6 +4855,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   // Reset all per-event state so nothing from a previous event lingers.
   currentDayIndex = null;
   renderScheduleLauncher();
+  attStatusRestart();
   liveChannel.follow(null, null);
   MATCHES = []; MATCHES_BY_FACILITY = []; STANDINGS = []; LAST_SNAPSHOT = null;
   MODEL = buildDayModel(eventConfig || { key: eventKey, type: CURRENT_TYPE, title: '', days: [], display: DISPLAY }, { key: '', facilities: [] }, null, { now: 0, alwaysLive: true });

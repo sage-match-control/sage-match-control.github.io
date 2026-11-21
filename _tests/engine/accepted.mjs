@@ -118,5 +118,9 @@ export const ACCEPTED = [
     case: /^cc(-signed-in)?\/[^/]+\/mission-control(-troubleshooting)?\//, kind: 'both', row: 'owner 2026-11-21 mission control',
     reason: 'Mission Control is cards: two columns on a desktop, Troubleshooting (Check connection, Sync method, CSV fallback) folded at the bottom, a Pages and tools row with the Scoresheet Generator (and, signed in on an event with attendance, the staff-view board), and shorter help text',
   },
+  {
+    case: /^cc-signed-in\/[^/]+\/(finder|live|court-set|standings|score-entry-save)\//, kind: 'both', row: 'owner 2026-11-21 attendance marks',
+    reason: 'signed in on an event with attendance, a player not checked in yet is greyed with an amber ring, an unplayed match shows “N not in”, and each Live Matches facility card counts who is still to check in',
+  },
 ];
 

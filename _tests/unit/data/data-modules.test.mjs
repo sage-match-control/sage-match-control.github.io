@@ -7,6 +7,7 @@ import { registryUrl, loadRegistry, eventConfigFrom, REGISTRY_LAST_GOOD_KEY } fr
 import { snapshotUrlFor, fetchDaySnapshotFromPages, fetchDaySnapshot, createPoller } from '../../../lib/v1/data/snapshot.js';
 import { createLiveChannel, LIVE_PING_MS, LIVE_PONG_TIMEOUT_MS, LIVE_SAFETY_POLL_MS, LIVE_RETRY_MAX_MS } from '../../../lib/v1/data/live-channel.js';
 import { createAttendanceSignal, ATTENDANCE_NUDGE_GAP_MS, ATTENDANCE_SETTLE_MS } from '../../../lib/v1/data/attendance-signal.js';
+import { createAttendanceStatus } from '../../../lib/v1/data/attendance-status.js';
 import { createOperatorSession } from '../../../lib/v1/data/operator-session.js';
 import { httpWords, messageFromJson, friendlyApiMessage, fetchJson } from '../../../lib/v1/data/api.js';
 import { scorerDecode, deskDecode, scorerLoadToken, deskLoadToken, scorerStorageKey, deskStorageKey } from '../../../lib/v1/data/tokens.js';
@@ -882,3 +883,141 @@ test('operator session: without BroadcastChannel every method does nothing', () 
   s.ask(); s.announce({ token: 'x', expiresAt: Date.now() + 1e6 }); s.signedOut(); s.close();
 });
 
+// ---- attendance status ----------------------------------------------------------------------------------------------------------
+// sage-docs/docs/specs/.../mission-control-layout-spec.md §8
+
+const personRow = (name, extra = {}) => ({ key: name.toLowerCase(), player: name, teams: [], categories: [], present: false, timeIn: '', withdrawn: false, shirt: '', ...extra });
+const flush = () => new Promise(resolve => setImmediate(resolve));
+
+function statusSetup(t, { people = {}, options = {}, fetchImpl = null } = {}) {
+  mock.timers.enable({ apis: ['setInterval', 'setTimeout', 'Date'], now: Date.parse('2026-10-03T00:00:00Z') });
+  FakeSocket.instances = [];
+  Object.defineProperty(globalThis, 'WebSocket', { value: FakeSocket, configurable: true, writable: true });
+  mock.method(Math, 'random', () => 0);
+  const listeners = {};
+  const doc = { visibilityState: 'visible', addEventListener: (n, f) => { listeners[n] = f; }, removeEventListener: n => { delete listeners[n]; } };
+  Object.defineProperty(globalThis, 'document', { value: doc, configurable: true, writable: true });
+  t.after(() => { mock.restoreAll(); mock.timers.reset(); delete globalThis.WebSocket; delete globalThis.document; });
+  const state = { people, failing: new Set() };
+  const env = browser(t, {
+    fetch: fetchImpl || (url => {
+      const facility = decodeURIComponent(url.match(/facilities\/([^/]+)\/people/)[1]);
+      if (state.failing.has(facility)) return fail(500);
+      return ok(state.people[facility] || []);
+    }),
+  });
+  let changes = 0;
+  let token = 'op-token';
+  const status = createAttendanceStatus({
+    apiBase: 'https://api.example', getToken: () => token, event: 'e', day: 'd', facilities: ['Main', 'Annex'],
+    liveBaseUrl: 'wss://live.example', onChange: () => { changes++; }, ...options,
+  });
+  return { status, env, state, listeners, doc, changes: () => changes, setToken: v => { token = v; } };
+}
+
+test('attendance status: reads every facility once with the bearer token, and indexes them all', async t => {
+  const { status, env, changes } = statusSetup(t, { people: { Main: [personRow('ana reyes')], Annex: [personRow('ben cruz', { present: true })] } });
+  assert.equal(status.index(), null, 'nothing before the first list arrives');
+  assert.equal(status.people('Main'), null);
+  await flush();
+  assert.deepEqual(env.calls.map(c => c.url).sort(), [
+    'https://api.example/v3/days/d/facilities/Annex/people',
+    'https://api.example/v3/days/d/facilities/Main/people',
+  ]);
+  assert.ok(env.calls.every(c => c.init.headers.Authorization === 'Bearer op-token' && c.init.cache === 'no-store'));
+  assert.equal(changes(), 2);
+  assert.equal(status.people('Main')[0].player, 'ana reyes');
+  assert.deepEqual([...status.index().keys()].sort(), ['ana reyes', 'ben cruz']);
+  status.close();
+});
+
+test('attendance status: reads nothing without a token', async t => {
+  const { status, env, changes } = statusSetup(t, { options: { getToken: () => null } });
+  await flush();
+  assert.equal(env.calls.length, 0);
+  assert.equal(changes(), 0);
+  assert.equal(status.index(), null);
+  status.close();
+});
+
+test('attendance status: a fixture reads the facility CSVs, with no token and no socket', async t => {
+  const csv = '"key","player","teams","categories","present","timeIn","withdrawn"\n"ana reyes","Ana Reyes","","","FALSE","","FALSE"\n';
+  const { status, env } = statusSetup(t, {
+    options: { getToken: () => null, fixture: 'pre' },
+    fetchImpl: url => (/annex/.test(url) ? { ok: false, status: 404 } : { ok: true, status: 200, text: async () => csv }),
+  });
+  await flush();
+  assert.deepEqual(env.calls.map(c => c.url).sort(), ['/_fixtures/e/attendance-annex-pre.csv', '/_fixtures/e/attendance-main-pre.csv']);
+  assert.equal(status.people('Main')[0].player, 'Ana Reyes');
+  assert.deepEqual(status.people('Annex'), [], 'a facility with no fixture file has no one');
+  assert.equal(FakeSocket.instances.length, 0, 'a fixture never opens the socket');
+  status.close();
+});
+
+test('attendance status: a failed read keeps that facility\'s last list and says nothing', async t => {
+  const { status, state, changes } = statusSetup(t, { people: { Main: [personRow('ana reyes')], Annex: [] } });
+  await flush();
+  const before = changes();
+  state.failing.add('Main');
+  status.reload();
+  await flush();
+  assert.equal(changes(), before + 1, 'only Annex, which still answers, changed anything');
+  assert.equal(status.people('Main')[0].player, 'ana reyes');
+  assert.ok(status.index().has('ana reyes'));
+  status.close();
+});
+
+test('attendance status: a nudge re-reads that one facility', async t => {
+  const { status, env, state } = statusSetup(t, { people: { Main: [personRow('ana reyes')], Annex: [personRow('ben cruz')] } });
+  await flush();
+  assert.equal(FakeSocket.instances[0].url, 'wss://live.example/attendance/e/d');
+  FakeSocket.instances[0].open();
+  const before = env.calls.length;
+  state.people.Main = [personRow('ana reyes', { present: true })];
+  nudge(FakeSocket.instances[0], 'Main');
+  await flush();
+  assert.equal(env.calls.length, before + 1);
+  assert.match(env.calls.at(-1).url, /facilities\/Main\/people/);
+  assert.equal(status.index().get('ana reyes').present, true);
+  nudge(FakeSocket.instances[0], 'Elsewhere');
+  await flush();
+  assert.equal(env.calls.length, before + 1, 'a facility this page does not show is ignored');
+  status.close();
+});
+
+test('attendance status: coming back into view, or the socket reconnecting, re-reads everything; the first open does not', async t => {
+  const { status, env, listeners, doc } = statusSetup(t, { people: { Main: [personRow('ana reyes')], Annex: [] } });
+  await flush();
+  const ws = FakeSocket.instances[0];
+  ws.open();
+  await flush();
+  assert.equal(env.calls.length, 2, 'the first open re-reads nothing');
+  doc.visibilityState = 'hidden'; listeners.visibilitychange();
+  await flush();
+  assert.equal(env.calls.length, 2, 'hidden re-reads nothing');
+  doc.visibilityState = 'visible'; listeners.visibilitychange();
+  await flush();
+  assert.equal(env.calls.length, 4);
+  ws.close();                                  // the socket drops...
+  mock.timers.tick(60000);                     // ...and is retried
+  const retry = FakeSocket.instances.at(-1);
+  assert.notEqual(retry, ws);
+  retry.open();
+  await flush();
+  assert.equal(env.calls.length, 6, 'a reconnect re-reads every facility');
+  status.close();
+});
+
+test('attendance status: close stops it', async t => {
+  const { status, env, listeners } = statusSetup(t, { people: { Main: [personRow('ana reyes')], Annex: [] } });
+  await flush();
+  const ws = FakeSocket.instances[0];
+  ws.open();
+  status.close();
+  assert.equal(ws.closed, true);
+  assert.equal(listeners.visibilitychange, undefined);
+  const before = env.calls.length;
+  status.reload();
+  await flush();
+  assert.equal(env.calls.length, before, 'a closed reader reads nothing');
+});
