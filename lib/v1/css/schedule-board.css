@@ -644,3 +644,10 @@ body{
 
 /* A finished match dims less on a team tint: .84 would take the ink under 4.5:1 on purple; .92 keeps 5:1. */
 .cell.team-tint.done{ opacity:.92; }
+
+/* Staff view (mission-control-layout-spec §11): never in print. */
+.staff-badge{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.08em; text-transform:uppercase; padding:4px 10px; border-radius:6px; background:#B3541A; color:#fff; margin-right:12px; white-space:nowrap;}
+.fo-name.att-not-in{opacity:.55;}
+.fo-name.att-not-in::before{content:""; display:inline-block; width:8px; height:8px; margin-right:5px; border:2px solid #B3541A; border-radius:50%; vertical-align:1px;}
+.cell-notin{font-size:11px; font-weight:700; padding:1px 6px; border-radius:5px; background:#B3541A; color:#fff; white-space:nowrap;}
+@media print{ .staff-badge, .cell-notin{display:none !important;} .fo-name.att-not-in{opacity:1;} .fo-name.att-not-in::before{display:none;} }

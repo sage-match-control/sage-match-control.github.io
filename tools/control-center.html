@@ -3371,7 +3371,11 @@ function renderScheduleLauncher(){
   orgScheduleRowEl.innerHTML =
     tile(`${base}schedule`, 'Open schedule', 'The venue wall display', 'primary') +
     tile(base, 'Open Tournament Hub', 'What players and spectators see') +
-    tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets');
+    tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets') +
+    // The board's staff view asks this browser's signed-in Control Center tab for the sign-in (mission-control-layout-spec D22).
+    (currentAuthToken() && attConsoleSetting()
+      ? tile(`${base}schedule?staff=1`, 'Open schedule (staff view)', 'Who is not in yet, for this browser only')
+      : '');
 }
 
 // Never written into this file. Holds { token, expiresAt } from a successful
@@ -3898,6 +3902,7 @@ function renderAuthStatus(){
   // load, before the Attendance section's own variables exist, hence the try.)
   try{ if(attConsoleView) attConsoleRenderChrome(); }catch(e){ /* not initialised yet */ }
   if(attConsoleSignedIn() !== ATT_STATUS_SIGNED_IN) attStatusRestart();
+  renderScheduleLauncher();
 }
 
 async function signIn(){

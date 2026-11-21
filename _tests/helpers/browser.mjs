@@ -46,6 +46,10 @@ function allowed(text, allowList) {
  *   cloudRun         [{ method, path: RegExp over the pathname, reply(request) → { status, body } }]
  *   allowErrors      messages (substring or RegExp) a console.error or pageerror may carry
  *   storage          { session: {k: v}, local: {k: v} } seeded before the page's own scripts run
+ *   operatorSession  { token, expiresAt } | null: an open, signed-in Control Center tab in this browser. A
+ *                    BroadcastChannel('sage.operator-session') on the site's origin answers every
+ *                    { type: 'ask' } with { type: 'session', token, expiresAt } (what the schedule board's
+ *                    staff view asks for; mission-control-layout-spec §12.2)
  *   caseId           sent as x-harness-case on every request to the site, so a shared server can
  *                    instantiate this case's templates
  * @returns {Promise<{ page, context, errors: string[], requests: object[], setTime(iso), close() }>}
@@ -61,6 +65,7 @@ export async function openPage(browser, url, options = {}) {
     cloudRun = [],
     allowErrors = [],
     storage = {},
+    operatorSession = null,
     caseId,
   } = options;
   const origin = new URL(url).origin;
@@ -154,6 +159,16 @@ export async function openPage(browser, url, options = {}) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
     add();
   }, { origin, session: seedSession, local: seedLocal, css: QUIET_CSS });
+
+  if (operatorSession) {
+    await context.addInitScript(({ origin: o, session }) => {
+      if (location.origin !== o) return;
+      const channel = new BroadcastChannel('sage.operator-session');
+      channel.onmessage = e => {
+        if (e.data && e.data.type === 'ask') channel.postMessage({ type: 'session', token: session.token, expiresAt: session.expiresAt });
+      };
+    }, { origin, session: operatorSession });
+  }
 
   const page = await context.newPage();
   await page.emulateMedia({ reducedMotion: 'reduce' });

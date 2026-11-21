@@ -23,6 +23,7 @@ export async function runCase(browser, tree, c) {
     cloudRun: [...c.cloudRun, ...backend.cloudRun],
     allowErrors: c.allowErrors,
     storage: c.storage,
+    operatorSession: c.operatorSession,
     caseId: c.id,
   });
   try {

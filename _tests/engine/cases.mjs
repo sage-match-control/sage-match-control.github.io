@@ -158,7 +158,7 @@ const token = (scope, day, expMs) =>
 const CONSOLE_409 = 'Failed to load resource: the server responded with a status of 409';
 const CONSOLE_404 = 'Failed to load resource: the server responded with a status of 404';
 
-const common = (c, extra) => ({ root: 'body', external: [], cloudRun: [], allowErrors: [], storage: {}, fixtureFiles: {}, ...c, ...extra });
+const common = (c, extra) => ({ root: 'body', external: [], cloudRun: [], allowErrors: [], storage: {}, fixtureFiles: {}, operatorSession: null, ...c, ...extra });
 
 function* hubCases(registry) {
   const pages = [
@@ -220,12 +220,20 @@ function* scheduleCases(registry) {
       if (p.label === 'std-schedule') {
         views.push(['courts-1-2', '?courts=1-2', []]);
         if (facilities.length > 1) views.push(['venue-2', `?venue=${encodeURIComponent(facilities[1])}`, []]);
+        // The staff view (mission-control-layout-spec §11): with an open, signed-in Control Center tab (operatorSession)
+        // and the event's own players on the roster, then the same printed, then with no such tab, which must
+        // be the public board exactly (D24, D26).
+        const staff = {
+          operatorSession: { token: 'harness-operator-token', expiresAt: Date.parse(timeFor(registry, event, day)) + 3600e3 },
+          cloudRun: [{ ...attendancePeople, reply: () => ({ status: 200, body: peopleFor(event) }) }],
+        };
+        views.push(['staff', '?staff=1', [], staff], ['staff-print', '?staff=1', [printMedia()], staff], ['staff-no-session', '?staff=1', []]);
       }
-      for (const state of STATES) for (const [vname, query, steps] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
+      for (const state of STATES) for (const [vname, query, steps, extra = {}] of views) for (const [vp, viewport] of Object.entries(VIEWPORTS)) {
         yield common({
           id: `${p.label}/${event}/${vname}/${state}/${vp}`, page: p.label, path: p.path + query, event, day, state, viewport,
           time: timeFor(registry, event, day), instantiate: templateInstance(event, registry), registry,
-          snapshots: snapshotsFor([event], state), steps,
+          snapshots: snapshotsFor([event], state), steps, ...extra,
         });
       }
     }

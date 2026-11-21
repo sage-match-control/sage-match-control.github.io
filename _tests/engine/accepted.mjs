@@ -122,5 +122,9 @@ export const ACCEPTED = [
     case: /^cc-signed-in\/[^/]+\/(finder|live|court-set|standings|score-entry-save)\//, kind: 'both', row: 'owner 2026-11-21 attendance marks',
     reason: 'signed in on an event with attendance, a player not checked in yet is greyed with an amber ring, an unplayed match shows “N not in”, and each Live Matches facility card counts who is still to check in',
   },
+  {
+    case: /^std-schedule\/[^/]+\/staff\//, kind: 'both', row: 'owner 2026-11-21 board staff view',
+    reason: 'with ?staff=1 and a sign-in from an open Control Center tab, the board shows a Staff view badge, rings on the names not checked in yet, and “N not in” on unplayed cards',
+  },
 ];
 
