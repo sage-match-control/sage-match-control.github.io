@@ -156,6 +156,7 @@
     <div class="reveal" id="reveal" aria-live="polite"></div>
     <button type="button" id="spinBtn">Spin</button>
     <p class="seed-line" id="seedLine"></p>
+    <p class="seed-line" id="recordStatus"></p>
   </section>
 
   <aside class="setup" aria-label="Set up">
@@ -235,6 +236,12 @@
       </div>
       <div class="check-result" id="checkResult"></div>
     </div>
+
+    <div class="card" id="pastDraws" hidden>
+      <h2>Past draws</h2>
+      <button type="button" class="btn small" id="loadPastBtn">Load past draws</button>
+      <div id="pastList"></div>
+    </div>
   </aside>
 </main>
 
@@ -303,7 +310,7 @@ const ids = ['eventLine', 'howBtn', 'displayBtn', 'bigBtn', 'styleReel', 'styleJ
   'loadCheckedInBtn', 'numberCount', 'fillNumbersBtn', 'namesInput', 'namesCount', 'namesProblems', 'prizeRows',
   'addPrizeBtn', 'prizesCount', 'prizeProblems', 'removeWinners', 'showTickets', 'showTicketsText', 'lockBtn',
   'unlockBtn', 'editListBtn', 'newDrawBtn', 'hashNote', 'winnersList', 'copyBtn', 'txtBtn', 'pngBtn', 'listBtn',
-  'checkBtn', 'checkResult', 'howDialog', 'howClose', 'toast'];
+  'checkBtn', 'checkResult', 'howDialog', 'howClose', 'toast', 'recordStatus', 'pastDraws', 'loadPastBtn', 'pastList'];
 const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -707,7 +714,9 @@ function render(){
   renderNamesInfo(); renderSources(); renderPrizes(slots, all); renderWinners();
   const any = lock || state.parts.length > 0;
   for(const id of ['copyBtn', 'txtBtn', 'pngBtn', 'listBtn', 'checkBtn']) el[id].disabled = !any;
+  renderRecord(); renderPast();
   sendScene();
+  pumpQueue();
 }
 function renderNamesInfo(){
   const { entries, merged } = state.locked ? { entries: state.entries, merged: [] } : namesParsed();
@@ -938,7 +947,7 @@ el.newDrawBtn.addEventListener('click', () => {
   if(confirm('Start a new draw? This one stays in its exports and, once recorded, in the workbook.')){
     const keep = { title: state.title, event: state.event, day: state.day, facility: state.facility, prizeRows: state.prizeRows, rowSeq: state.rowSeq, style: state.style };
     state = { ...blankState(), ...keep };
-    el.namesInput.value = ''; resetRows(); animateReveal = false; save(); render();
+    el.namesInput.value = ''; resetRows(); animateReveal = false; recStopped = false; recError = ''; save(); render();
   }
 });
 el.removeWinners.addEventListener('change', () => { state.rule = el.removeWinners.checked ? 'remove-winners' : 'keep-winners'; save(); });
@@ -975,6 +984,7 @@ function redraw(place){
   const p = state.picks.find(k => k.spin === latest && k.place === place && k.result === 'won');
   if(!p || busy) return;
   p.result = 'redrawn';
+  state.picks.filter(k => k.spin === latest).forEach(k => { k.recorded = false; });   // the spin is sent again
   toast(p.prize ? `Drawing again for ${p.prize}: ${p.winner} is out of the draw.` : `Drawing again: ${p.winner} is out of the draw.`);
   save(); lastSceneJson = ''; render();
 }
@@ -1069,6 +1079,101 @@ el.displayBtn.addEventListener('click', () => {
 });
 el.bringBackBtn.addEventListener('click', () => { post({ type: 'close' }); ignoreDisplay = true; displaySeen = 0; render(); });
 
+// ---- Recording to the workbook, and past draws (prize-draw-spec §7.9) -----------------------------------------
+let recRunning = false, recStopped = false, recError = '', recRetry = false, pastDraws = [];
+const recordingOn = () => !!(state.event && state.day && state.facility && hasSignIn() && (state.locked || state.parts.length));
+function pendingSpins(){
+  const out = [];
+  partsForExport().forEach((part, index) => {
+    const spins = [...new Set(part.picks.map(k => k.spin))].sort((a, b) => a - b);
+    for(const s of spins) if(part.picks.some(k => k.spin === s && !k.recorded)) out.push({ part, index, spin: s });
+  });
+  return out;
+}
+function spinBody({ part, index, spin: n }){
+  const these = part.picks.filter(k => k.spin === n).sort((a, b) => a.place - b.place);
+  const body = { title: state.title, seed: part.seed, fingerprint: part.fingerprint, rule: state.rule, entries: part.entries.length,
+    winners: these.map(k => ({ place: k.place, prize: k.prize, ticket: k.ticket, winner: k.winner, result: k.result })) };
+  if(n === 1){ body.list = part.entries; body.continues = index > 0 ? partsForExport()[index - 1].drawId : ''; }
+  return body;
+}
+async function pumpQueue(){
+  if(recRunning || recStopped || busy || !recordingOn()) return;
+  const next = pendingSpins()[0]; if(!next) return;
+  recRunning = true;
+  const url = `${CLOUD_RUN_BASE_URL}/v3/days/${enc(state.day)}/facilities/${enc(state.facility)}/prize-draws/${next.part.drawId}/spins/${next.spin}`;
+  try {
+    await fetchJson(url, { method: 'PUT', token: signIn.token, body: spinBody(next) });
+    next.part.picks.filter(k => k.spin === next.spin).forEach(k => { k.recorded = true; });
+    recError = ''; recRunning = false; save(); render();
+  } catch(err){
+    recRunning = false; recStopped = true;
+    recRetry = err.status !== 409;
+    recError = err.status === 409 ? err.message : `Spin ${next.spin} isn't in the workbook yet.`;
+    renderRecord();
+  }
+}
+function renderRecord(){
+  if(!state.locked && !state.parts.length){ el.recordStatus.textContent = ''; return; }
+  if(!state.event || !state.day){ el.recordStatus.textContent = 'Not recorded: pick an event and day before locking'; return; }
+  if(!hasSignIn()){ el.recordStatus.textContent = 'Not recorded: sign in to Control Center in this browser'; return; }
+  if(recError){
+    el.recordStatus.innerHTML = esc(recError) + (recRetry ? ' <button type="button" class="btn small" id="retryRecordBtn">Retry</button>' : '');
+    return;
+  }
+  const spins = partsForExport().flatMap(p => [...new Set(p.picks.map(k => k.spin))].map(s => p.picks.filter(k => k.spin === s)));
+  const done = spins.filter(g => g.every(k => k.recorded)).length;
+  el.recordStatus.textContent = spins.length ? `Recorded: ${done} of ${spins.length} spins` : `Recording to the ${state.facility} workbook`;
+}
+document.addEventListener('click', e => {
+  if(e.target.id === 'retryRecordBtn'){ recStopped = false; recError = ''; renderRecord(); pumpQueue(); }
+});
+function renderPast(){
+  el.pastDraws.hidden = !(state.event && state.day && hasSignIn());
+  el.pastList.innerHTML = pastDraws.map((d, i) => {
+    const first = d.picks[0], when = first && first.drawnAt ? new Date(first.drawnAt).toLocaleString() : '';
+    return `<div class="past-row" data-i="${i}"><b>${esc(d.title || 'Untitled draw')}</b>${d.continues ? ' · part 2' : ''}`
+      + ` · ${esc(when)} · ${d.picks.length} winner${d.picks.length === 1 ? '' : 's'} `
+      + '<button type="button" class="btn small past-check">Check</button> <button type="button" class="btn small past-continue">Continue</button>'
+      + '<div class="check-result past-result"></div></div>';
+  }).join('') || (pastLoaded ? '<p class="hint">No draws recorded for this day and facility.</p>' : '');
+}
+let pastLoaded = false;
+el.loadPastBtn.addEventListener('click', async () => {
+  if(!hasSignIn()) return;
+  try {
+    const res = await fetchJson(`${CLOUD_RUN_BASE_URL}/v3/days/${enc(state.day)}/facilities/${enc(state.facility)}/prize-draws`, { token: signIn.token });
+    pastDraws = res.draws || []; pastLoaded = true; renderPast();
+  } catch(err){ toast(err.status === 401 ? 'Your sign-in has expired. Sign in again in Control Center.' : "Couldn't load the past draws. Try again."); }
+});
+el.pastList.addEventListener('click', async e => {
+  const row = e.target.closest('.past-row'); if(!row) return;
+  const d = pastDraws[Number(row.dataset.i)]; if(!d) return;
+  if(e.target.classList.contains('past-check')){
+    const out = row.querySelector('.past-result');
+    if(await sha256Hex(listText(d.list)) !== d.fingerprint){ out.textContent = "The list in the workbook doesn't match its fingerprint."; return; }
+    const res = await verifyDraw({ entries: d.list, seed: d.seed, rule: d.rule, picks: d.picks, sha256Hex });
+    const bad = res.filter(r => !r.ok).length;
+    out.innerHTML = res.map(r => r.ok ? `✓ Spin ${r.spin} · ${r.place}: ${esc(r.recorded)}`
+      : `<span class="bad">✗ Spin ${r.spin} · ${r.place}: recorded ${esc(r.recorded)}, the rule gives ${esc(r.expected || 'nobody')}</span>`).join('\n')
+      + '\n' + (bad ? `${bad} winner${bad === 1 ? '' : 's'} ${bad === 1 ? "doesn't" : "don't"} match this list and code.` : 'Every winner checks out.');
+  }else if(e.target.classList.contains('past-continue')){
+    if(!d.list.length){ toast("This draw's list isn't in the workbook, so it can't be continued."); return; }
+    if(!confirm('Continue this draw here? The draw open now is replaced.')) return;
+    const asPart = x => ({ drawId: x.drawId, entries: x.list, seed: x.seed, fingerprint: x.fingerprint, lockedAt: (x.picks[0] && x.picks[0].drawnAt) || new Date().toISOString(),
+      picks: x.picks.map(k => ({ spin: k.spin, place: k.place, slotId: '', prize: k.prize, ticket: k.ticket, winner: k.winner, result: k.result, drawnAt: k.drawnAt, recorded: true })) });
+    const chain = []; let at = d;
+    while(at && at.continues){ at = pastDraws.find(x => x.drawId === at.continues); if(at) chain.unshift(asPart(at)); }
+    const cur = asPart(d);
+    Object.assign(state, { title: d.title, locked: true, drawId: cur.drawId, entries: cur.entries, seed: cur.seed, fingerprint: cur.fingerprint,
+      lockedAt: cur.lockedAt, rule: d.rule, picks: cur.picks, parts: chain, names: cur.entries.join('\n') });
+    el.namesInput.value = state.names; el.titleInput.value = state.title;
+    recStopped = false; recError = ''; resetRows();
+    if(state.picks.length) visibleRows = rowsAround(state.picks[state.picks.length - 1].winner);
+    save(); render(); toast('Continuing the draw. Add any prizes not yet drawn.');
+  }
+});
+
 // ---- Start ---------------------------------------------------------------------------------------------------------
 async function init(){
   if(isDisplay){
@@ -1083,7 +1188,7 @@ async function init(){
   render();
   if(restored) toast('Restored the draw from this browser.');
   const session = createOperatorSession({
-    onSession: s => { signIn = s; renderSources(); }, onSignedOut: () => { signIn = null; renderSources(); }, answer: false });
+    onSession: s => { signIn = s; recStopped = false; recError = ''; render(); }, onSignedOut: () => { signIn = null; render(); }, answer: false });
   session.ask();
   try { registry = await loadRegistry(); }
   catch(e){ registry = null; toast("Couldn't load the events. You can still paste names."); }
