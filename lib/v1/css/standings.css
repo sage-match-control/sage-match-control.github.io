@@ -272,6 +272,9 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .br-table td.pts{text-align:center; width:30px;}
 
+/* The numbers (W, L, PF, PA, Q) in bold */
+.br-table td.num, .br-table td.pts, .br-table td.quo{font-weight:700;}
+
 .br-table td.br-badge{
   text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
 }
