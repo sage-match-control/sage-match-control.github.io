@@ -45,4 +45,15 @@
 .att-switch:disabled{opacity:.55;cursor:default;}
 .att-switch:focus-visible{outline:3px solid var(--att-green);outline-offset:2px;}
 .att-empty{color:var(--att-soft);text-align:center;padding:40px 0;}
+/* "Mark … not present?" — asked before a present player's switch turns off */
+.att-confirm{width:min(400px,calc(100vw - 32px));padding:0;border:0;border-radius:16px;background:var(--att-white);color:var(--att-ink);box-shadow:0 12px 40px rgba(0,0,0,.25);font-family:inherit;}
+.att-confirm::backdrop{background:rgba(0,0,0,.5);}
+.att-confirm-body{padding:20px 20px 16px;}
+.att-confirm-title{margin:0 0 8px;font-size:18px;font-weight:700;line-height:1.3;overflow-wrap:anywhere;}
+.att-confirm-text{margin:0 0 18px;font-size:14px;color:var(--att-soft);}
+.att-confirm-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+.att-confirm-btns button{min-height:44px;padding:0 16px;border-radius:10px;font-weight:600;font-size:15px;font-family:inherit;cursor:pointer;}
+.att-confirm-no{border:1px solid var(--att-line);background:var(--att-white);color:var(--att-ink);}
+.att-confirm-yes{border:0;background:var(--att-red);color:var(--att-white);}
+.att-confirm-btns button:focus-visible{outline:3px solid var(--att-green);outline-offset:2px;}
 @media (prefers-reduced-motion: reduce){ .att-switch,.att-switch::after{transition:none;} }

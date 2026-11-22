@@ -94,6 +94,11 @@ export const ACCEPTED = [
     case: /^attendance\//, kind: 'both', row: 'attendance-push D8',
     reason: 'with the live Worker unreachable the list says live updates are off',
   },
+  // ---- asking before an unmark (the owner's request of 2026-11-22) ----
+  {
+    case: /^attendance\/[^/]+\/unmark-(asks|kept)\//, kind: 'both', row: 'owner 2026-11-22 unmark confirm',
+    reason: 'turning a present player’s switch off opens “Mark … not present?” (Keep present / Mark not present); the baseline unmarked at once',
+  },
   {
     case: /^cc-signed-in\/[^/]+\/attendance\//, kind: 'both', row: 'attendance-push D8',
     reason: 'with the live Worker unreachable the list says live updates are off',

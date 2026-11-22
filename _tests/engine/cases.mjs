@@ -411,7 +411,8 @@ function* attendanceCases() {
       ],
     },
     {
-      event: 'team-demo-2026', title: 'Team Demo', mark: click('input.att-switch'), snapshot: true,
+      // Aldo Ramos, not yet in: the first switch (Abel Tan) is already in, and turning it off now asks first.
+      event: 'team-demo-2026', title: 'Team Demo', mark: click('input.att-switch[data-k="aldo ramos"]'), snapshot: true,
       venues: [{ name: 'Demo Courts', sheetIdPrefix: 'FIXTURETEAMSHEETID', file: 'attendance-demo-courts-pre.csv' }],
     },
   ];
@@ -423,10 +424,14 @@ function* attendanceCases() {
     const link = token('attendance-desk', day, Date.parse(time) + 3600e3);
     const instantiate = { tokens: { EVENT_KEY: event, EVENT_TITLE: title }, settings: { EVENT_KEY: event } };
     const backend = attendanceBackend(event, venues);
+    // Turning a present player off asks first (the owner's request of 2026-11-22); a baseline from before that
+    // has no dialog, so answering it is ifPresent and both trees end in the same list.
     const views = [
       ['list', []],
       ['mark', [mark]],
-      ['mark-then-unmark', [mark, mark]],
+      ['mark-then-unmark', [mark, mark, ifPresent('dialog.att-confirm[open]', click('dialog.att-confirm[open] .att-confirm-yes'))]],
+      ['unmark-asks', [mark, mark]],
+      ['unmark-kept', [mark, mark, ifPresent('dialog.att-confirm[open]', click('dialog.att-confirm[open] .att-confirm-no'))]],
     ];
     // The fixture is the ATTENDANCE tabs as they stood before check-in ("pre"). A standard event's desk reads no
     // snapshot; a team event's reads it for the team names.
