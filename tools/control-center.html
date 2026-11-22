@@ -3396,6 +3396,8 @@ function renderScheduleLauncher(){
   const day = currentDayIndex !== null ? DAYS[currentDayIndex] : null;
   // The generator finds the event from the day key itself (scoresheet-generator.html, ?day=).
   const scoresheetHref = '/tools/scoresheet-generator' + (day ? `?day=${encodeURIComponent(day.key)}` : '');
+  // The prize draw opens on this event and day (prize-draw-spec §6).
+  const prizeDrawHref = '/tools/prize-draw?event=' + encodeURIComponent(CURRENT_EVENT_KEY) + (day ? `&day=${encodeURIComponent(day.key)}` : '');
   const tile = (href, title, sub, cls) =>
     `<a class="mc-tile${cls ? ' ' + cls : ''}" target="_blank" rel="noopener" href="${escapeHtml(href)}">` +
     `<span class="mc-tile-title">${title}</span><span class="mc-tile-sub">${sub}</span></a>`;
@@ -3408,7 +3410,8 @@ function renderScheduleLauncher(){
       ? tile(`${base}schedule?staff=1`, 'Open schedule (staff view)', 'Who is not in yet, for this browser only')
       : '') +
     tile(base, 'Open Tournament Hub', 'What players and spectators see') +
-    tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets');
+    tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets') +
+    tile(prizeDrawHref, 'Open prize draw', 'Lucky Dink: raffles and door prizes');
 }
 
 // Never written into this file. Holds { token, expiresAt } from a successful

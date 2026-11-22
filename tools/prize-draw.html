@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Prize draw · S.A.G.E.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+<style>
+  /* S.A.G.E. house palette only (prize-draw-spec §5.2). Green is a fill colour: on navy, or under navy text. */
+  :root{
+    --navy:#14263C; --navy-deep:#0B1826; --green:#7CB92C; --green-dark:#5C8F1F;
+    --paper:#F6F7F2; --paper-dim:#ECEEE6; --line:#D9DED2; --ink:#14263C; --ink-soft:#5B6B74;
+    --white:#FFFFFF; --radius:14px;
+    --ball-a:#9ED34A; --ball-b:#C9E265; --ball-line:#5C8F1F;
+    --dim:rgba(11,24,38,.6); --band:rgba(124,185,44,.12);
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,sans-serif; font-size:15px; line-height:1.4; overflow-x:hidden; }
+  h1,h2,h3{ font-family:'Barlow Condensed',sans-serif; margin:0; }
+  button{ font:inherit; cursor:pointer; }
+  button:disabled{ cursor:not-allowed; opacity:.5; }
+  [hidden]{ display:none !important; }
+
+  /* Header */
+  .bar{ background:var(--navy); color:var(--paper); padding:12px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; }
+  .wordmark{ font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:28px; line-height:1; }
+  .wordmark .dink{ color:var(--green); }
+  .event-line{ color:var(--paper); font-size:13px; flex:1 1 200px; min-width:0; }
+  .bar .btns{ display:flex; flex-wrap:wrap; gap:8px; margin-left:auto; }
+  .bar .btns button{ background:transparent; color:var(--paper); border:1px solid var(--paper); border-radius:8px; padding:6px 12px; font-size:13px; }
+  .bar .btns button:hover:not(:disabled){ background:rgba(246,247,242,.12); }
+
+  /* Layout */
+  .wrap{ display:grid; gap:20px; padding:16px; max-width:1280px; margin:0 auto; grid-template-columns:minmax(0,1fr); }
+  @media (min-width:900px){ .wrap{ grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); } }
+  .card{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:14px; }
+  .card:last-child{ margin-bottom:0; }
+  .card h2{ font-weight:600; font-size:18px; margin-bottom:10px; }
+  label.f{ display:block; font-size:13px; font-weight:600; color:var(--ink-soft); margin:10px 0 4px; }
+  input[type=text],input[type=number],select,textarea{ width:100%; font:inherit; color:var(--ink); background:var(--white); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  textarea{ resize:vertical; }
+  .hint{ font-size:13px; color:var(--ink-soft); margin:6px 0 0; }
+  .problems{ color:#8A2A12; font-size:13px; margin:6px 0 0; }
+  .problems p{ margin:2px 0; }
+  .btn{ border:1px solid var(--navy); background:var(--white); color:var(--navy); border-radius:8px; padding:8px 14px; font-weight:600; font-size:14px; }
+  .btn.primary{ background:var(--green); border-color:var(--green); color:var(--navy); }
+  .btn.small{ padding:4px 10px; font-size:13px; }
+  .row{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .seg{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .seg button{ border:1px solid var(--line); background:var(--paper); color:var(--ink); border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; }
+  .seg button[aria-pressed=true]{ background:var(--navy); border-color:var(--navy); color:var(--paper); }
+
+  /* Stage */
+  .stage{ min-width:0; }
+  .style-switch{ display:flex; gap:8px; margin-bottom:12px; }
+  .style-switch button{ border:1px solid var(--navy); background:var(--white); color:var(--navy); border-radius:8px; padding:6px 16px; font-weight:600; }
+  .style-switch button[aria-checked=true]{ background:var(--navy); color:var(--paper); }
+  .stage-title{ font-size:22px; font-weight:600; margin-bottom:8px; }
+  .reel{ --row:64px; position:relative; height:calc(var(--row) * 5); overflow:hidden; background:var(--navy-deep); border-radius:10px; }
+  @media (max-width:599px){ .reel{ --row:52px; } }
+  body.big .reel, body.display .reel{ --row:96px; }
+  .strip{ will-change:transform; }
+  .strip .r{ height:var(--row); display:flex; align-items:center; gap:10px; padding:0 22px; font-family:'Barlow Condensed',sans-serif; font-weight:500; font-size:calc(var(--row) * .5); color:var(--paper); white-space:nowrap; }
+  .strip .r span{ min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .strip .r .n{ color:var(--green); font-weight:700; font-size:.85em; min-width:64px; }
+  .strip .r.hit{ color:var(--green); font-weight:700; }
+  .reel .dim{ position:absolute; left:0; right:0; background:var(--dim); pointer-events:none; }
+  .reel .dim.top{ top:0; height:calc(var(--row) * 2); }
+  .reel .dim.bottom{ bottom:0; height:calc(var(--row) * 2); }
+  .reel .band{ position:absolute; left:0; right:0; top:calc(var(--row) * 2); height:var(--row); border-top:2px solid var(--green); border-bottom:2px solid var(--green); background:var(--band); pointer-events:none; }
+  .reel .pointer{ position:absolute; left:0; top:calc(var(--row) * 2.5 - 7px); width:0; height:0; border-top:7px solid transparent; border-bottom:7px solid transparent; border-left:14px solid var(--green); pointer-events:none; }
+  #jar{ display:block; width:100%; height:auto; background:var(--white); border:1px solid var(--line); border-radius:var(--radius); }
+  .display-status{ border:1px dashed var(--line); border-radius:var(--radius); padding:28px 16px; text-align:center; color:var(--ink-soft); background:var(--white); }
+  .reveal{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius); margin-top:14px; padding:16px; text-align:center; min-height:120px; }
+  .rv-label{ font-size:13px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; color:var(--ink-soft); }
+  .rv-prize{ font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:600; }
+  .rv-name{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:44px; line-height:1.1; color:var(--navy); word-break:break-word; }
+  .rv-ticket{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:56px; line-height:1.05; color:var(--green-dark); }
+  .rv-name.fade{ animation:fadein .5s 1.1s both; }
+  @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
+  .rv-list{ list-style:none; margin:8px 0 0; padding:0; text-align:left; display:inline-block; }
+  .rv-list.two{ columns:2; column-gap:40px; }
+  .rv-list li{ font-family:'Barlow Condensed',sans-serif; font-weight:600; font-size:32px; line-height:1.2; break-inside:avoid; }
+  .struck{ text-decoration:line-through; color:var(--ink-soft); }
+  .redraw-btn{ border:1px solid var(--navy); background:var(--paper); color:var(--navy); border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; margin-left:8px; font-family:'Inter',sans-serif; vertical-align:middle; }
+  @media (max-width:599px){ .rv-name{ font-size:32px; } .rv-list li{ font-size:24px; } }
+  #spinBtn{ display:block; width:100%; margin-top:14px; padding:14px; font-size:18px; font-weight:700; background:var(--green); color:var(--navy); border:0; border-radius:12px; }
+  .seed-line{ margin:8px 0 0; font-size:13px; color:var(--ink-soft); }
+  .seed-line b{ color:var(--ink); }
+
+  /* Setup cards */
+  .tile-num{ display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; border-radius:50%; background:var(--navy); color:var(--paper); font-size:13px; margin-right:6px; font-family:'Inter',sans-serif; }
+  .prize-row{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .prize-row.won{ opacity:.55; }
+  .prize-name{ flex:1 1 100%; }
+  .prize-qty{ width:5em !important; flex:0 0 5em; }
+  .prize-together{ font-size:13px; display:inline-flex; align-items:center; gap:4px; }
+  .prize-row button{ border:1px solid var(--line); background:var(--paper); border-radius:6px; padding:3px 9px; color:var(--ink); }
+  .prize-left{ font-size:12px; color:var(--ink-soft); margin-left:auto; }
+  @media (min-width:600px){ .prize-name{ flex:1 1 150px; } }
+  .winners ol{ margin:6px 0; padding-left:22px; }
+  .winners li{ margin:3px 0; font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:600; }
+  .winners li .pz{ font-family:'Inter',sans-serif; font-size:12px; font-weight:500; color:var(--ink-soft); margin-right:6px; }
+  .winners h3{ font-size:16px; margin-top:8px; }
+  .chip{ display:inline-block; font-family:'Inter',sans-serif; font-size:12px; font-weight:700; background:var(--paper-dim); border-radius:6px; padding:0 6px; margin-right:6px; }
+  .check-result{ font-size:13px; margin-top:8px; white-space:pre-wrap; }
+  .check-result .bad{ color:#8A2A12; font-weight:600; }
+  .toast{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:var(--navy); color:var(--paper); border-radius:10px; padding:10px 16px; font-size:14px; max-width:90vw; z-index:50; box-shadow:0 4px 18px rgba(0,0,0,.25); }
+  dialog{ border:0; border-radius:var(--radius); padding:0; max-width:560px; width:calc(100vw - 32px); color:var(--ink); }
+  dialog::backdrop{ background:rgba(11,24,38,.6); }
+  .dlg{ padding:20px; }
+  .dlg h2{ font-size:28px; margin-bottom:10px; }
+  .dlg p{ margin:0 0 12px; }
+
+  /* Big screen and the display window */
+  body.big .setup, body.big .event-line{ display:none; }
+  body.big .wrap, body.display .wrap{ grid-template-columns:minmax(0,1fr); max-width:none; }
+  body.big .rv-name, body.display .rv-name{ font-size:72px; }
+  body.big #spinBtn{ font-size:22px; padding:18px; }
+  body.display .setup, body.display .bar .btns, body.display .style-switch, body.display #spinBtn,
+  body.display #seedLine, body.display .toast, body.display .redraw-btn{ display:none !important; }
+  body.display .display-note{ font-size:28px; text-align:center; color:var(--ink-soft); padding:80px 16px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wordmark">S.A.G.E. <span class="dink">LUCKY DINK</span></div>
+  <div class="event-line" id="eventLine"></div>
+  <div class="btns">
+    <button type="button" id="howBtn">How it works</button>
+    <button type="button" id="displayBtn">Open display</button>
+    <button type="button" id="bigBtn">Big screen</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stage" aria-label="The draw">
+    <div class="display-note" id="displayNote" hidden></div>
+    <div class="style-switch" role="radiogroup" aria-label="Draw style">
+      <button type="button" id="styleReel" role="radio" aria-checked="true">Reel</button>
+      <button type="button" id="styleJar" role="radio" aria-checked="false">Pickle Jar</button>
+    </div>
+    <div class="stage-title" id="stageTitle" hidden></div>
+    <div id="reel" class="reel"><div id="reelStrip" class="strip"></div>
+      <div class="dim top"></div><div class="dim bottom"></div><div class="band"></div><div class="pointer"></div></div>
+    <canvas id="jar" width="640" height="400" hidden></canvas>
+    <div class="display-status" id="displayStatus" hidden>Showing on the display window. <button type="button" class="btn small" id="bringBackBtn">Bring it back</button></div>
+    <div class="reveal" id="reveal" aria-live="polite"></div>
+    <button type="button" id="spinBtn">Spin</button>
+    <p class="seed-line" id="seedLine"></p>
+  </section>
+
+  <aside class="setup" aria-label="Set up">
+    <div class="card">
+      <h2><span class="tile-num">1</span>Draw</h2>
+      <label class="f" for="titleInput">Title</label>
+      <input type="text" id="titleInput" maxlength="80" placeholder="Door prizes">
+      <label class="f" for="eventSelect">Event</label>
+      <select id="eventSelect"><option value="">No event</option></select>
+      <div id="dayRow" hidden>
+        <label class="f" for="daySelect">Day</label>
+        <select id="daySelect"></select>
+      </div>
+      <div id="facilityRow" hidden>
+        <label class="f" for="facilitySelect">Facility</label>
+        <select id="facilitySelect"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="tile-num">2</span>Names</h2>
+      <div class="seg" role="group" aria-label="Where the names come from">
+        <button type="button" id="srcPaste" aria-pressed="true">Paste</button>
+        <button type="button" id="srcPlayers" aria-pressed="false">Players on a day</button>
+        <button type="button" id="srcCheckedIn" aria-pressed="false">Checked in</button>
+        <button type="button" id="srcNumbers" aria-pressed="false">Numbers</button>
+      </div>
+      <div id="helpPlayers" hidden>
+        <button type="button" class="btn small" id="loadPlayersBtn">Load players</button>
+        <p class="hint" id="playersHint">Pick an event and day first.</p>
+      </div>
+      <div id="helpChecked" hidden>
+        <button type="button" class="btn small" id="loadCheckedInBtn">Load checked in</button>
+        <p class="hint" id="checkedHint">Open Control Center in this browser and sign in.</p>
+      </div>
+      <div id="helpNumbers" hidden>
+        <div class="row">
+          <input type="number" id="numberCount" min="2" max="1000" value="100" style="width:7em" aria-label="How many numbers">
+          <button type="button" class="btn small" id="fillNumbersBtn">Fill 1 to N</button>
+        </div>
+      </div>
+      <textarea id="namesInput" rows="10" placeholder="One name per line" style="margin-top:8px"></textarea>
+      <p class="hint" id="namesCount"></p>
+      <div class="problems" id="namesProblems"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="tile-num">3</span>Prizes</h2>
+      <div id="prizeRows"></div>
+      <div class="row" style="margin-top:8px"><button type="button" class="btn small" id="addPrizeBtn">Add prize</button></div>
+      <p class="hint" id="prizesCount"></p>
+      <div class="problems" id="prizeProblems"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="tile-num">4</span>Rule</h2>
+      <label><input type="checkbox" id="removeWinners" checked> Each winner leaves the draw</label><br>
+      <label><input type="checkbox" id="showTickets"> <span id="showTicketsText">Show ticket numbers</span></label>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="btn primary" id="lockBtn">Lock the list and start</button>
+        <button type="button" class="btn" id="unlockBtn" hidden>Unlock</button>
+        <button type="button" class="btn" id="editListBtn" hidden>Edit list</button>
+        <button type="button" class="btn" id="newDrawBtn" hidden>New draw</button>
+      </div>
+      <p class="hint" id="hashNote" hidden>The draw needs the page served over HTTPS.</p>
+    </div>
+
+    <div class="card winners">
+      <h2><span class="tile-num">5</span>Winners</h2>
+      <div id="winnersList"></div>
+      <div class="row" style="margin-top:10px">
+        <button type="button" class="btn small" id="copyBtn">Copy results</button>
+        <button type="button" class="btn small" id="txtBtn">Download .txt</button>
+        <button type="button" class="btn small" id="pngBtn">Save image</button>
+        <button type="button" class="btn small" id="listBtn">Copy numbered list</button>
+        <button type="button" class="btn small" id="checkBtn">Check this draw</button>
+      </div>
+      <div class="check-result" id="checkResult"></div>
+    </div>
+  </aside>
+</main>
+
+<dialog id="howDialog" aria-labelledby="howTitle">
+  <div class="dlg">
+    <h2 id="howTitle">No Rigging Zone</h2>
+    <p><b>The list is locked before anything is drawn.</b> Once the first spin happens, nobody can quietly add or remove a name. The page shows a fingerprint of the locked list: change one letter and it changes. If the list has to change after that, the draw closes and a new part starts, and both parts stay on record.</p>
+    <p><b>A random code decides every spin.</b> When the list is locked, the page makes a random draw code. For each spin, every name still in the draw gets a code made from the draw code, the spin number and the name (a SHA-256 hash), and the smallest wins. Nobody can steer it, not even the person running the draw. The spinning on screen only shows a result that was already fixed. The prizes never enter it, so changing their order can't favour anyone.</p>
+    <p><b>Anyone can check it.</b> With the list, the draw code and the rule, <i>Check this draw</i> works every spin out again and shows whether each recorded winner is the one the code gives.</p>
+    <button type="button" class="btn primary" id="howClose">Close</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module">
+import { CLOUD_RUN_BASE_URL } from '/lib/v1/platform.js';
+import { loadRegistry, eventConfigFrom } from '/lib/v1/data/registry.js';
+import { fetchDaySnapshotFromPages } from '/lib/v1/data/snapshot.js';
+import { fetchJson } from '/lib/v1/data/api.js';
+import { createOperatorSession } from '/lib/v1/data/operator-session.js';
+import {
+  SEED_LENGTH, JAR_MAX_ENTRIES, JAR_LABEL_MAX, MAX_QUANTITY, seedFromBytes, cleanEntry, parseEntries, entryProblems,
+  numberEntries, ticketOf, isNumberList, playersFromSnapshot, checkedInFromPeople, listText, prizeProblems, prizeSlots,
+  entrantsFor, nextSpin, drawWinners, drawFinished, verifyDraw, drawText,
+} from '/lib/v1/domain/prize-draw.js';
+
+const STORE_KEY = 'sage.prizeDraw';
+const DISPLAY_CHANNEL = 'sage.prize-draw-display';
+const sha256Hex = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+const randomCode = () => seedFromBytes(crypto.getRandomValues(new Uint8Array(SEED_LENGTH)));
+
+// ---- State --------------------------------------------------------------------------------------------------
+// { v: 2, title, event, day, facility, names, rule, showTickets, style,
+//   prizeRows: [{ id, name, quantity, together }],          // id: 'p' + a counter (rowSeq), never reused
+//   locked: false,
+//   // when locked:
+//   drawId, entries, seed, fingerprint, lockedAt (ISO),
+//   picks: [{ spin, place, slotId, prize, ticket, winner, result: 'won'|'redrawn', drawnAt (ISO) }],
+//   // earlier parts of the same draw, after Edit list (oldest first), for the winners list, exports and Check:
+//   parts: [{ drawId, entries, seed, fingerprint, lockedAt, picks }] }
+const blankState = () => ({ v: 2, title: '', event: '', day: '', facility: '', names: '', rule: 'remove-winners',
+  showTickets: false, style: 'reel', prizeRows: [], rowSeq: 0, locked: false, drawId: '', entries: [], seed: '',
+  fingerprint: '', lockedAt: '', picks: [], parts: [] });
+const isDisplay = new URLSearchParams(location.search).get('display') === '1';
+const canHash = !!(globalThis.crypto && crypto.subtle);
+let state = blankState();
+let restored = false;
+if(!isDisplay){
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    const saved = raw ? JSON.parse(raw) : null;
+    if(saved && saved.v === 2){ state = { ...blankState(), ...saved }; restored = state.locked; }
+  } catch(e){ /* storage unavailable or unreadable: start empty */ }
+}
+function save(){
+  if(isDisplay) return;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){ /* storage unavailable */ }
+}
+
+const ids = ['eventLine', 'howBtn', 'displayBtn', 'bigBtn', 'styleReel', 'styleJar', 'reel', 'reelStrip', 'jar',
+  'displayStatus', 'bringBackBtn', 'displayNote', 'stageTitle', 'reveal', 'spinBtn', 'seedLine', 'titleInput',
+  'eventSelect', 'daySelect', 'dayRow', 'facilitySelect', 'facilityRow', 'srcPaste', 'srcPlayers', 'srcCheckedIn',
+  'srcNumbers', 'helpPlayers', 'helpChecked', 'helpNumbers', 'playersHint', 'checkedHint', 'loadPlayersBtn',
+  'loadCheckedInBtn', 'numberCount', 'fillNumbersBtn', 'namesInput', 'namesCount', 'namesProblems', 'prizeRows',
+  'addPrizeBtn', 'prizesCount', 'prizeProblems', 'removeWinners', 'showTickets', 'showTicketsText', 'lockBtn',
+  'unlockBtn', 'editListBtn', 'newDrawBtn', 'hashNote', 'winnersList', 'copyBtn', 'txtBtn', 'pngBtn', 'listBtn',
+  'checkBtn', 'checkResult', 'howDialog', 'howClose', 'toast'];
+const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const enc = encodeURIComponent;
+const reducedMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+let toastTimer = 0;
+function toast(msg){
+  el.toast.textContent = msg; el.toast.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.toast.hidden = true; }, 5000);
+}
+
+// ---- Runtime (not saved) ------------------------------------------------------------------------------------
+let busy = false;                 // a spin is running
+let animating = false;            // this window's reel or jar is playing
+let source = 'paste';
+let problemsShown = false;
+let registry = null;
+let signIn = null;                // { token, expiresAt }, in memory only
+let visibleRows = [];             // the reel's five rows when idle
+let animateReveal = false;        // the next reveal render fades the name in after the ticket
+let view = null;                  // the display window's scene
+const hasSignIn = () => !!(signIn && signIn.expiresAt > Date.now());
+
+// ---- Derived ------------------------------------------------------------------------------------------------
+const slotsNow = () => prizeSlots(state.prizeRows);
+const allPicks = () => [...state.parts.flatMap(p => p.picks), ...state.picks];
+const latestSpin = () => (state.picks.length ? Math.max(...state.picks.map(p => p.spin)) : 0);
+const namesParsed = () => parseEntries(el.namesInput.value);
+const finishedNow = () => state.locked && drawFinished({ entries: state.entries, slots: slotsNow(), picks: state.picks, allPicks: allPicks(), rule: state.rule });
+const entrantsNow = () => (state.locked ? entrantsFor(state.entries, state.picks, state.rule) : namesParsed().entries);
+const numberListNow = () => isNumberList(state.locked ? state.entries : namesParsed().entries);
+const eventCfg = () => (registry && state.event ? eventConfigFrom(registry, state.event) : null);
+const dayCfg = () => { const c = eventCfg(); return c ? c.days.find(d => d.key === state.day) || null : null; };
+const dayText = iso => (iso ? new Date(iso + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
+function eventLineNow(){
+  const c = eventCfg(), d = dayCfg();
+  if(!c) return '';
+  return [c.title || c.key, d ? d.label : ''].filter(Boolean).join(' · ');
+}
+const rowSlots = (rowId, slots, all) => {
+  const used = new Set(all.filter(p => p.result === 'won').map(p => p.slotId));
+  const mine = slots.filter(s => s.rowId === rowId);
+  return { total: mine.length, won: mine.filter(s => used.has(s.id)).length };
+};
+function revealPicks(){
+  const latest = latestSpin();
+  if(!state.locked || !latest) return null;
+  return state.picks.filter(p => p.spin === latest)
+    .map(p => ({ place: p.place, prize: p.prize, ticket: p.ticket, winner: p.winner, result: p.result }));
+}
+function ticketsNow(){
+  const out = {};
+  if(state.showTickets && state.locked && !isNumberList(state.entries)) state.entries.forEach((e, i) => { out[e] = ticketOf(state.entries, e); });
+  return out;
+}
+const trayNow = () => state.picks.filter(p => p.result === 'won').slice(-12).map(p => p.winner);
+function rowsAround(name){
+  const i = state.entries.indexOf(name), at = d => state.entries[i + d] || '';
+  return i < 0 ? padRows(state.entries.slice(0, 5)) : [at(-2), at(-1), name, at(1), at(2)];
+}
+const padRows = r => { const o = r.slice(0, 5); while(o.length < 5) o.push(''); return o; };
+function resetRows(){ visibleRows = padRows(state.entries.slice(0, 5)); }
+
+function buildView(){
+  const plan = nextSpin(slotsNow(), allPicks());
+  return {
+    title: state.title, eventLine: eventLineNow(), style: state.style, showTickets: state.showTickets,
+    numberList: numberListNow(), visibleRows: visibleRows.slice(), entrants: entrantsNow(), tickets: ticketsNow(),
+    reveal: revealPicks(), nextPrize: plan.slots.length ? plan.slots[0].label : '', finished: finishedNow(), tray: trayNow(),
+  };
+}
+
+// ---- The stage: reel, reveal, jar (also the display window) ---------------------------------------------------
+const shownName = (v, name) => (v.numberList ? `#${name}` : name);
+const chipOf = (v, name) => (v.showTickets && !v.numberList && v.tickets && v.tickets[name] ? `#${v.tickets[name]}` : '');
+let rowView = { numberList: false, showTickets: false, tickets: {} };
+function rowHtml(e){
+  if(!e) return '<div class="r"><span>&nbsp;</span></div>';
+  const chip = chipOf(rowView, e);
+  return `<div class="r">${chip ? `<span class="n">${esc(chip)}</span>` : ''}<span>${esc(shownName(rowView, e))}</span></div>`;
+}
+function renderReelIdle(v){
+  if(animating) return;
+  rowView = v;
+  el.reelStrip.style.transition = 'none'; el.reelStrip.style.transform = 'translateY(0)';
+  el.reelStrip.innerHTML = v.visibleRows.map(rowHtml).join('');
+  if(v.reveal && v.reveal.length && el.reelStrip.children[2]) el.reelStrip.children[2].classList.add('hit');
+}
+function playReel(entrants, winner){
+  return new Promise(resolve => {
+    animating = true;
+    const reel = el.reel, strip = el.reelStrip;
+    const row = parseFloat(getComputedStyle(reel).getPropertyValue('--row')) || 64;
+    const pick = () => entrants[Math.floor(Math.random() * entrants.length)];   // cosmetic rows only
+    const seq = visibleRows.slice();
+    for(let i = 0; i < 46; i++) seq.push(pick());
+    const idx = seq.length; seq.push(winner, pick(), pick());
+    strip.innerHTML = seq.map(rowHtml).join('');                 // rowHtml escapes every name
+    strip.style.transition = 'none'; strip.style.transform = 'translateY(0)'; void strip.offsetHeight;
+    const done = () => { strip.children[idx].classList.add('hit'); visibleRows = seq.slice(idx - 2, idx + 3); animating = false; resolve(); };
+    if(reducedMotion()){ strip.style.transform = `translateY(${-(idx - 2) * row}px)`; setTimeout(done, 400); return; }
+    strip.style.transition = 'transform 4.8s cubic-bezier(.08,.72,.12,1)';
+    strip.style.transform = `translateY(${-(idx - 2) * row}px)`;
+    setTimeout(done, 4900);
+  });
+}
+
+function revealHtml(v){
+  if(animating) return '<div class="rv-label">Drawing…</div>';
+  const r = v.reveal, fade = animateReveal ? ' fade' : '';
+  const again = p => (!isDisplay && v.canRedraw && p.result === 'won'
+    ? `<button type="button" class="redraw-btn" data-place="${p.place}">Draw again</button>` : '');
+  if(!r || !r.length){
+    return `<div class="rv-label">${v.finished ? 'Draw complete' : 'Next up'}</div>`
+      + `<div class="rv-prize">${esc(v.finished ? 'Every prize is won' : (v.nextPrize || 'Spin when ready'))}</div>`;
+  }
+  if(r.length === 1){
+    const p = r[0], chip = chipOf(v, p.winner), cls = p.result === 'redrawn' ? ' struck' : '';
+    const label = (p.prize ? `Winner · ${esc(p.prize)}` : 'Winner') + (p.result === 'redrawn' ? ' (drawn again)' : '');
+    return `<div class="rv-label">${label}</div>`
+      + (chip ? `<div class="rv-ticket${cls}">${esc(chip)}</div>` : '')
+      + `<div class="rv-name${cls}${chip ? fade : ''}">${esc(shownName(v, p.winner))}</div>${again(p)}`;
+  }
+  const group = (r[0].prize || '').replace(/ \(\d+ of \d+\)$/, '');
+  return `<div class="rv-label">${group ? `Winners · ${esc(group)}` : 'Winners'}</div>`
+    + `<ol class="rv-list${r.length >= 10 ? ' two' : ''}" style="list-style:none">${r.map(p =>
+      `<li class="${p.result === 'redrawn' ? 'struck' : ''}">${p.place} · ${esc(shownName(v, p.winner))}${again(p)}</li>`).join('')}</ol>`;
+}
+
+// The Pickle Jar (prize-draw-spec §5.12)
+const JAR = { CX: 190, CY: 190, R: 150, TRAY_Y: 372 };
+const ballRadius = n => Math.max(6, Math.min(19, 19 * Math.sqrt(40 / Math.max(1, n))));
+let jarBalls = [], jarSig = '', jarTray = [], jarAng = 0, jarOm = 0, jarMix = false, jarRaf = 0, jarIdleEnd = 0;
+let jarFlyers = [], jarBig = null, jarR = 19, jarNumbers = false;
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function jarSync(v){
+  const entrants = v.entrants.slice(0, JAR_MAX_ENTRIES + 1);
+  const sig = entrants.join('|');
+  jarNumbers = v.numberList;
+  if(!animating) jarTray = v.tray.slice();
+  if(sig !== jarSig && !animating){
+    jarSig = sig; jarR = ballRadius(entrants.length);
+    const n = entrants.length, r = jarR;
+    jarBalls = entrants.map((name, i) => {
+      const rad = (JAR.R - r - 2) * Math.sqrt((i + .5) / n), th = i * 2.399963;
+      return { name, x: JAR.CX + rad * Math.cos(th), y: JAR.CY + rad * Math.sin(th), vx: 0, vy: 0, a: 0, alt: i % 2 };
+    });
+  }
+  jarWake(3000);
+}
+function jarWake(ms){
+  jarIdleEnd = Math.max(jarIdleEnd, performance.now() + ms);
+  if(!jarRaf) jarRaf = requestAnimationFrame(jarFrame);
+}
+function jarPhysics(){
+  const balls = jarBalls, r = jarR, { CX, CY, R } = JAR;
+  jarAng += jarOm; if(jarMix) jarOm = Math.min(jarOm + .002, .07); else jarOm *= .97;
+  const om = jarOm, mix = jarMix;
+  for(const b of balls){
+    b.vy += .38; if(mix){ b.vx += (Math.random() - .5) * .6; b.vy += (Math.random() - .5) * .6; }
+    b.x += b.vx; b.y += b.vy; b.vx *= .996; b.vy *= .996; b.a += b.vx * .04;
+    const dx = b.x - CX, dy = b.y - CY, d = Math.hypot(dx, dy) || 1;
+    if(d > R - r){ const nx = dx / d, ny = dy / d; b.x = CX + nx * (R - r); b.y = CY + ny * (R - r);
+      const vn = b.vx * nx + b.vy * ny; if(vn > 0){ b.vx -= 1.75 * vn * nx; b.vy -= 1.75 * vn * ny; }
+      b.vx += -ny * om * R * .22; b.vy += nx * om * R * .22; }
+  }
+  const touch = (p, q) => {
+    const dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
+    if(d > 0 && d < 2 * r){ const o = (2 * r - d) / 2, nx = dx / d, ny = dy / d;
+      p.x -= nx * o; p.y -= ny * o; q.x += nx * o; q.y += ny * o;
+      const rv = (q.vx - p.vx) * nx + (q.vy - p.vy) * ny;
+      if(rv < 0){ p.vx += rv * nx * .9; p.vy += rv * ny * .9; q.vx -= rv * nx * .9; q.vy -= rv * ny * .9; } }
+  };
+  if(balls.length > 120){
+    const cell = 4 * r, grid = new Map();
+    balls.forEach((b, i) => { const k = Math.floor(b.x / cell) + ',' + Math.floor(b.y / cell); (grid.get(k) || grid.set(k, []).get(k)).push(i); });
+    balls.forEach((p, i) => {
+      const cx = Math.floor(p.x / cell), cy = Math.floor(p.y / cell);
+      for(let gx = cx - 1; gx <= cx + 1; gx++) for(let gy = cy - 1; gy <= cy + 1; gy++){
+        for(const j of grid.get(gx + ',' + gy) || []) if(j > i) touch(p, balls[j]);
+      }
+    });
+  }else{
+    for(let i = 0; i < balls.length; i++) for(let j = i + 1; j < balls.length; j++) touch(balls[i], balls[j]);
+  }
+}
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+let jarRun = null;   // { t0, winners: [{ name, at, started, rollAt }], resolve }
+function jarFrame(now){
+  jarRaf = 0;
+  if(jarRun){
+    const t = now - jarRun.t0;
+    if(t > 2800) jarMix = false;
+    for(const w of jarRun.winners){
+      if(!w.started && t >= w.at){
+        w.started = true;
+        const i = jarBalls.findIndex(b => b.name === w.name);
+        const b = i >= 0 ? jarBalls.splice(i, 1)[0] : { x: JAR.CX, y: JAR.CY };
+        jarFlyers.push({ name: w.name, sx: b.x, sy: b.y, at: w.at, phase: 'drop', a: b.a || 0, alt: b.alt || 0 });
+      }
+    }
+    for(const f of jarFlyers){
+      if(f.phase === 'drop' && t - f.at >= 700){ f.phase = 'roll'; f.rollAt = f.at + 700; f.target = 560 - 34 * jarTray.length; }
+      if(f.phase === 'roll' && t - f.rollAt >= 1100){
+        f.phase = 'done';
+        if(jarBig){ jarTray.push(jarBig.name); jarTray = jarTray.slice(-12); }
+        jarBig = f;
+      }
+    }
+    jarFlyers = jarFlyers.filter(f => f.phase !== 'done');
+    if(jarRun.winners.every(w => w.started) && !jarFlyers.length){ const done = jarRun.resolve; jarRun = null; jarMix = false; done(); }
+  }
+  jarPhysics();
+  jarDraw(now);
+  if(jarRun || now < jarIdleEnd) jarRaf = requestAnimationFrame(jarFrame);
+}
+function drawBall(ctx, x, y, r, b, labels, name, number){
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = b.alt ? cssVar('--ball-b') : cssVar('--ball-a'); ctx.fill();
+  ctx.lineWidth = 1.5; ctx.strokeStyle = cssVar('--ball-line'); ctx.stroke();
+  if(r >= 10){
+    ctx.fillStyle = cssVar('--ball-line');
+    for(let k = 0; k < 6; k++){
+      const th = (b.a || 0) + k * Math.PI / 3;
+      ctx.beginPath(); ctx.arc(x + Math.cos(th) * r * .55, y + Math.sin(th) * r * .55, r * .1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  if(labels && name){
+    const text = number ? name : name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+    ctx.fillStyle = cssVar('--navy'); ctx.font = `700 ${Math.round(r * (number ? .7 : .9))}px Inter, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y + 1);
+  }
+}
+function jarDraw(now){
+  const cv = el.jar; if(!cv || cv.hidden) return;
+  const ctx = cv.getContext('2d'), { CX, CY, R, TRAY_Y } = JAR, t = jarRun ? now - jarRun.t0 : 0;
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  // drum
+  ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI * 2); ctx.fillStyle = cssVar('--paper'); ctx.fill();
+  ctx.save(); ctx.translate(CX, CY); ctx.rotate(jarAng); ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 2;
+  for(let k = 0; k < 8; k++){ ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(k * Math.PI / 4) * R, Math.sin(k * Math.PI / 4) * R); ctx.stroke(); }
+  ctx.restore();
+  const labels = jarBalls.length <= JAR_LABEL_MAX;
+  for(const b of jarBalls) drawBall(ctx, b.x, b.y, jarR, b, labels, b.name, jarNumbers);
+  ctx.beginPath(); ctx.arc(CX, CY, R + 5, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.strokeStyle = cssVar('--navy'); ctx.stroke();
+  // tray
+  ctx.fillStyle = cssVar('--paper-dim'); ctx.fillRect(360, TRAY_Y - 22, 270, 44);
+  const m = jarTray.length;
+  jarTray.forEach((name, i) => drawBall(ctx, 560 - 34 * (m - 1 - i), TRAY_Y, 15, { alt: i % 2 }, false, name, jarNumbers));
+  const fly = f => {
+    let x, y, r;
+    if(f.phase === 'drop'){ const k = Math.min(1, (t - f.at) / 700); x = f.sx + (CX - f.sx) * k; y = f.sy + (CY + R - f.sy) * k * k; r = jarR; }
+    else { const k = easeOutCubic(Math.min(1, (t - f.rollAt) / 1100)); x = CX + (f.target - CX) * k; y = CY + R + (TRAY_Y - CY - R) * k; r = jarR + (33 - jarR) * k; }
+    drawBall(ctx, x, y, r, f, false, f.name, jarNumbers);
+  };
+  jarFlyers.forEach(fly);
+  if(jarBig){ const f = jarBig; drawBall(ctx, f.target, TRAY_Y, 33, f, false, f.name, jarNumbers); }
+}
+function playJar(entrants, picks){
+  return new Promise(resolve => {
+    animating = true;
+    const names = picks.map(p => p.winner);
+    if(reducedMotion()){
+      jarTray = [...jarTray, ...names].slice(-12); jarWake(500);
+      setTimeout(() => { animating = false; resolve(); }, 400); return;
+    }
+    jarBig = null; jarFlyers = []; jarMix = true;
+    jarRun = { t0: performance.now(), winners: names.map((name, i) => ({ name, at: 2800 + 600 * i, started: false })),
+      resolve: () => { animating = false; jarBig = null; resolve(); } };
+    jarWake(60000);
+  });
+}
+
+function renderStage(v){
+  const jar = v.style === 'jar';
+  el.reel.hidden = jar; el.jar.hidden = !jar;
+  el.styleReel.setAttribute('aria-checked', String(!jar)); el.styleJar.setAttribute('aria-checked', String(jar));
+  el.stageTitle.hidden = !v.title; el.stageTitle.textContent = v.title || '';
+  el.eventLine.textContent = v.eventLine || '';
+  if(jar) jarSync(v); else renderReelIdle(v);
+  el.reveal.innerHTML = revealHtml(v);
+  animateReveal = false;
+}
+
+// ---- The display window -------------------------------------------------------------------------------------
+const chan = typeof BroadcastChannel === 'function' ? new BroadcastChannel(DISPLAY_CHANNEL) : null;
+const post = m => { try { if(chan) chan.postMessage(m); } catch(e){ /* nothing listening */ } };
+let displaySeen = 0, ignoreDisplay = false, wasConnected = false, pendingPlay = null, lastSceneJson = '';
+const displayConnected = () => !isDisplay && !ignoreDisplay && Date.now() - displaySeen < 5000;
+function sendScene(force){
+  if(isDisplay || !displayConnected() || busy) return;
+  const v = buildView(), json = JSON.stringify(v);
+  if(!force && json === lastSceneJson) return;
+  lastSceneJson = json;
+  post({ type: 'scene', ...v });
+}
+function showOnDisplay(play){
+  return new Promise(resolve => {
+    const t = setTimeout(done, 15000);
+    function done(){ clearTimeout(t); pendingPlay = null; resolve(); }
+    pendingPlay = { spin: play.spin, done };
+    post({ type: 'play', ...play });
+  });
+}
+function play(entrants, picks){
+  if(displayConnected()){
+    return showOnDisplay({ spin: picks[0].spin, style: state.style, entrants, tickets: ticketsNow(), numberList: numberListNow(),
+      showTickets: state.showTickets, picks: picks.map(p => ({ spin: p.spin, place: p.place, prize: p.prize, ticket: p.ticket, winner: p.winner })) });
+  }
+  return state.style === 'jar' ? playJar(entrants, picks) : playReel(entrants, picks[0].winner);
+}
+if(chan && !isDisplay){
+  chan.onmessage = e => {
+    const m = e.data || {};
+    if(m.type === 'hello'){ ignoreDisplay = false; displaySeen = Date.now(); sendScene(true); render(); }
+    else if(m.type === 'here'){ if(!ignoreDisplay){ displaySeen = Date.now(); if(!wasConnected) sendScene(true); } }
+    else if(m.type === 'played'){ if(pendingPlay && pendingPlay.spin === m.spin) pendingPlay.done(); }
+    else if(m.type === 'bye'){ displaySeen = 0; render(); }
+  };
+  setInterval(() => { if(displayConnected() !== wasConnected) render(); }, 1000);
+  addEventListener('pagehide', () => post({ type: 'close' }));
+}
+if(chan && isDisplay){
+  const note = text => { el.displayNote.hidden = !text; el.displayNote.textContent = text || ''; document.querySelector('.stage').classList.toggle('waiting', !!text); };
+  const showStage = on => { for(const id of ['reel', 'jar', 'reveal', 'stageTitle']) if(!on) el[id].hidden = true; };
+  note('Waiting for the controls… Open Lucky Dink in another tab and press Open display.');
+  showStage(false);
+  chan.onmessage = async e => {
+    const m = e.data || {};
+    if(m.type === 'scene'){
+      note(''); view = m; view.canRedraw = false; el.reveal.hidden = false;
+      visibleRows = m.visibleRows; renderStage(view);
+    }else if(m.type === 'play'){
+      note(''); el.reveal.hidden = false;
+      view = { ...(view || {}), style: m.style, showTickets: m.showTickets, numberList: m.numberList, entrants: m.entrants, tickets: m.tickets,
+        visibleRows: visibleRows, reveal: null, tray: (view && view.tray) || [], title: (view && view.title) || '', eventLine: (view && view.eventLine) || '' };
+      renderStage(view);
+      if(m.style === 'jar'){ el.jar.hidden = false; el.reel.hidden = true; await playJar(m.entrants, m.picks); }
+      else { el.reel.hidden = false; el.jar.hidden = true; await playReel(m.entrants, m.picks[0].winner); }
+      view.reveal = m.picks.map(p => ({ ...p, result: 'won' })); view.tray = [...view.tray, ...m.picks.map(p => p.winner)].slice(-12);
+      view.visibleRows = visibleRows; animateReveal = true; renderStage(view);
+      post({ type: 'played', spin: m.spin });
+    }else if(m.type === 'close'){
+      note('The controls have closed.'); showStage(false); clearInterval(hereTimer);
+    }
+  };
+  post({ type: 'hello' });
+  const hereTimer = setInterval(() => post({ type: 'here' }), 2000);
+  addEventListener('pagehide', () => post({ type: 'bye' }));
+}
+
+// ---- Rendering the controls ---------------------------------------------------------------------------------
+function render(){
+  if(isDisplay) return;
+  const slots = slotsNow(), all = allPicks(), finished = finishedNow();
+  const connected = displayConnected(); wasConnected = connected;
+  const names = state.locked ? null : namesParsed();
+  const jarCount = state.locked ? entrantsNow().length : names.entries.length;
+  const jarOff = jarCount > JAR_MAX_ENTRIES;
+  if(jarOff && state.style === 'jar'){ state.style = 'reel'; save(); }
+  el.styleJar.disabled = jarOff;
+  el.styleJar.title = jarOff ? `The Pickle Jar holds up to ${JAR_MAX_ENTRIES} names; this draw has ${jarCount}.` : '';
+  // header and stage
+  const v = buildView();
+  v.canRedraw = !busy;
+  el.displayBtn.textContent = connected ? 'Display open' : 'Open display';
+  el.displayStatus.hidden = !connected;
+  if(connected){
+    el.reel.hidden = true; el.jar.hidden = true; el.reveal.hidden = true; el.stageTitle.hidden = true;
+    el.eventLine.textContent = v.eventLine;
+    el.styleReel.setAttribute('aria-checked', String(v.style !== 'jar')); el.styleJar.setAttribute('aria-checked', String(v.style === 'jar'));
+  }else{
+    el.reveal.hidden = false;
+    renderStage(v);
+  }
+  // spin
+  const problems = prizeProblems(state.prizeRows);
+  el.spinBtn.textContent = finished ? 'Draw complete' : busy ? 'Drawing…' : state.style === 'jar' ? 'Draw' : 'Spin';
+  el.spinBtn.disabled = !canHash || !state.locked || busy || finished || problems.length > 0;
+  // seed line
+  if(state.locked){
+    const nextN = (state.picks.length ? latestSpin() : 0) + 1;
+    el.seedLine.innerHTML = `Draw code <b>${esc(state.seed)}</b> · ${state.entries.length} entries · list ${esc(state.fingerprint.slice(0, 8))} · spin ${nextN}`
+      + (state.parts.length ? ` · part ${state.parts.length + 1}` : '');
+  }else el.seedLine.textContent = state.parts.length ? `Edit the list, then lock part ${state.parts.length + 1}.` : '';
+  // setup
+  const lock = state.locked;
+  for(const id of ['titleInput', 'eventSelect', 'daySelect', 'facilitySelect', 'namesInput', 'numberCount', 'fillNumbersBtn']) el[id].disabled = lock && id !== 'titleInput';
+  el.titleInput.disabled = false;
+  el.removeWinners.checked = state.rule === 'remove-winners';
+  el.removeWinners.disabled = lock || state.parts.length > 0;
+  const isNum = numberListNow();
+  el.showTickets.checked = isNum ? true : state.showTickets;
+  el.showTickets.disabled = isNum;
+  el.showTicketsText.textContent = isNum ? 'Ticket numbers (a Numbers list)' : 'Show ticket numbers';
+  el.lockBtn.hidden = lock; el.lockBtn.disabled = !canHash;
+  el.hashNote.hidden = canHash; if(!canHash) el.spinBtn.title = 'The draw needs the page served over HTTPS.';
+  el.unlockBtn.hidden = !(lock && state.picks.length === 0);
+  el.editListBtn.hidden = !(lock && state.picks.length > 0); el.editListBtn.disabled = busy;
+  el.newDrawBtn.hidden = !(lock || state.parts.length > 0);
+  renderNamesInfo(); renderSources(); renderPrizes(slots, all); renderWinners();
+  const any = lock || state.parts.length > 0;
+  for(const id of ['copyBtn', 'txtBtn', 'pngBtn', 'listBtn', 'checkBtn']) el[id].disabled = !any;
+  sendScene();
+}
+function renderNamesInfo(){
+  const { entries, merged } = state.locked ? { entries: state.entries, merged: [] } : namesParsed();
+  let text = `${entries.length} name${entries.length === 1 ? '' : 's'}`;
+  if(merged.length){
+    const shown = merged.slice(0, 5).join(', ') + (merged.length > 5 ? ` and ${merged.length - 5} more` : '');
+    text += ` · ${merged.length} merged (the same person twice): ${shown}`;
+  }
+  el.namesCount.textContent = text;
+  el.namesProblems.innerHTML = problemsShown && !state.locked ? entryProblems(entries).map(p => `<p>${esc(p)}</p>`).join('') : '';
+}
+function renderSources(){
+  const sel = { paste: 'srcPaste', players: 'srcPlayers', checked: 'srcCheckedIn', numbers: 'srcNumbers' };
+  for(const [k, id] of Object.entries(sel)) el[id].setAttribute('aria-pressed', String(source === k));
+  el.helpPlayers.hidden = source !== 'players'; el.helpChecked.hidden = source !== 'checked'; el.helpNumbers.hidden = source !== 'numbers';
+  const haveDay = !!(state.event && state.day);
+  el.loadPlayersBtn.disabled = !haveDay || state.locked; el.playersHint.hidden = haveDay;
+  const ok = haveDay && hasSignIn();
+  el.loadCheckedInBtn.disabled = !ok || state.locked;
+  el.checkedHint.textContent = !haveDay ? 'Pick an event and day first.' : 'Open Control Center in this browser and sign in.';
+  el.checkedHint.hidden = ok;
+}
+
+// Card 3: prizes
+function renderPrizes(slots, all){
+  const rows = state.prizeRows;
+  const info = new Map(rows.map(r => [r.id, rowSlots(r.id, slots, all)]));
+  const ordered = [...rows.filter(r => info.get(r.id).won < info.get(r.id).total || info.get(r.id).total === 0),
+    ...rows.filter(r => info.get(r.id).total > 0 && info.get(r.id).won === info.get(r.id).total)];
+  el.prizeRows.innerHTML = ordered.map(r => {
+    const { total, won } = info.get(r.id), left = total - won, allWon = total > 0 && left === 0;
+    const touched = state.locked && won > 0;
+    const open = state.locked && !allWon;
+    const leftText = allWon ? 'Won' : won > 0 ? `${left} of ${total} left` : `${left} left`;
+    return `<div class="prize-row${allWon ? ' won' : ''}" data-id="${esc(r.id)}">`
+      + `<input type="text" class="prize-name" maxlength="60" placeholder="Paddle (Joola)" value="${esc(r.name)}" aria-label="Prize name"${touched ? ' disabled' : ''}>`
+      + `<input type="number" class="prize-qty" min="1" max="${MAX_QUANTITY}" step="1" value="${Number.isFinite(r.quantity) ? r.quantity : ''}" aria-label="Quantity"${touched ? ' disabled' : ''}>`
+      + `<label class="prize-together"${r.quantity > 1 ? '' : ' hidden'}><input type="checkbox" class="pt-box"${r.together ? ' checked' : ''}${state.locked && left < 2 ? ' disabled' : ''}> Draw all at once</label>`
+      + `<button type="button" class="prize-up" aria-label="Move up"${state.locked && !open ? ' disabled' : ''}>↑</button>`
+      + `<button type="button" class="prize-down" aria-label="Move down"${state.locked && !open ? ' disabled' : ''}>↓</button>`
+      + `<button type="button" class="prize-next"${state.locked && !open ? ' disabled' : ''}>Next</button>`
+      + `<button type="button" class="prize-remove" aria-label="Remove prize"${touched ? ' disabled' : ''}>×</button>`
+      + `<span class="prize-left">${esc(leftText)}</span></div>`;
+  }).join('');
+  renderPrizeInfo(slots, all);
+}
+function renderPrizeInfo(slots, all){
+  const plan = nextSpin(slots, all);
+  el.prizesCount.textContent = !state.prizeRows.length ? 'No prizes: spin as many times as you like'
+    : `${slots.length} prize${slots.length === 1 ? '' : 's'}: ${plan.count ? `next up ${plan.slots[0].label}` : 'all won'}`;
+  el.prizeProblems.innerHTML = prizeProblems(state.prizeRows).map(p => `<p>${esc(p)}</p>`).join('');
+}
+const unwonIds = () => {
+  const slots = slotsNow(), all = allPicks();
+  return state.prizeRows.filter(r => { const s = rowSlots(r.id, slots, all); return s.total === 0 || s.won < s.total; }).map(r => r.id);
+};
+function moveRow(id, dir){
+  const open = unwonIds(), at = open.indexOf(id), other = open[at + dir];
+  if(at < 0 || other === undefined) return;
+  const rows = state.prizeRows, i = rows.findIndex(r => r.id === id), j = rows.findIndex(r => r.id === other);
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+}
+function rowNext(id){
+  const open = unwonIds(); if(!open.length || open[0] === id) return;
+  const rows = state.prizeRows, i = rows.findIndex(r => r.id === id), [r] = rows.splice(i, 1);
+  rows.splice(rows.findIndex(x => x.id === open[0]), 0, r);
+}
+el.addPrizeBtn.addEventListener('click', () => {
+  const id = 'p' + (++state.rowSeq);
+  state.prizeRows.push({ id, name: '', quantity: 1, together: false });
+  save(); render();
+  const input = el.prizeRows.querySelector(`[data-id="${id}"] .prize-name`); if(input) input.focus();
+});
+el.prizeRows.addEventListener('input', e => {
+  const row = e.target.closest('.prize-row'); if(!row) return;
+  const r = state.prizeRows.find(x => x.id === row.dataset.id); if(!r) return;
+  if(e.target.classList.contains('prize-name')) r.name = e.target.value;
+  else if(e.target.classList.contains('prize-qty')){
+    r.quantity = e.target.value === '' ? 0 : Number(e.target.value);
+    row.querySelector('.prize-together').hidden = !(r.quantity > 1);
+  }
+  save(); renderPrizeInfo(slotsNow(), allPicks()); el.spinBtn.disabled = !canHash || !state.locked || busy || finishedNow() || prizeProblems(state.prizeRows).length > 0;
+  sendScene();
+});
+el.prizeRows.addEventListener('change', e => {
+  const row = e.target.closest('.prize-row'); if(!row) return;
+  const r = state.prizeRows.find(x => x.id === row.dataset.id); if(!r) return;
+  if(e.target.classList.contains('pt-box')) r.together = e.target.checked;
+  save(); render();
+});
+el.prizeRows.addEventListener('click', e => {
+  const btn = e.target.closest('button'), row = e.target.closest('.prize-row'); if(!btn || !row) return;
+  const id = row.dataset.id;
+  if(btn.classList.contains('prize-up')) moveRow(id, -1);
+  else if(btn.classList.contains('prize-down')) moveRow(id, 1);
+  else if(btn.classList.contains('prize-next')) rowNext(id);
+  else if(btn.classList.contains('prize-remove')) state.prizeRows = state.prizeRows.filter(r => r.id !== id);
+  else return;
+  save(); render();
+});
+
+// Card 5: winners
+function partsForExport(){
+  const parts = state.parts.map(p => ({ ...p }));
+  if(state.locked) parts.push({ drawId: state.drawId, entries: state.entries, seed: state.seed, fingerprint: state.fingerprint, lockedAt: state.lockedAt, picks: state.picks });
+  return parts;
+}
+function renderWinners(){
+  const parts = partsForExport();
+  if(!parts.length){ el.winnersList.innerHTML = '<p class="hint">No spins yet.</p>'; return; }
+  const latest = latestSpin();
+  el.winnersList.innerHTML = parts.map((p, pi) => {
+    const isCurrent = state.locked && pi === parts.length - 1;
+    const numbers = isNumberList(p.entries);
+    const picks = [...p.picks].sort((a, b) => a.spin - b.spin || a.place - b.place);
+    const lis = picks.map(k => {
+      const chip = state.showTickets && !numbers && k.ticket ? `<span class="chip">#${esc(k.ticket)}</span>` : '';
+      const redo = isCurrent && !busy && k.spin === latest && k.result === 'won' ? `<button type="button" class="redraw-btn" data-spin="${k.spin}" data-place="${k.place}">Draw again</button>` : '';
+      const who = numbers ? `#${k.winner}` : k.winner;
+      return `<li><span class="pz">${esc(k.prize || `Spin ${k.spin}`)}</span>${chip}`
+        + (k.result === 'redrawn' ? `<span class="struck">${esc(who)}</span> (drawn again)` : esc(who)) + redo + '</li>';
+    }).join('');
+    const head = parts.length > 1 || state.parts.length ? `<h3>Part ${pi + 1} · Draw code ${esc(p.seed)}</h3>` : '';
+    return head + (lis ? `<ol>${lis}</ol>` : '<p class="hint">No spins yet.</p>');
+  }).join('');
+}
+
+// ---- Events, days, facilities ---------------------------------------------------------------------------------
+function fillEventMenu(){
+  const sorted = Object.keys((registry && registry.events) || {}).map(k => eventConfigFrom(registry, k))
+    .filter(c => c && !registry.events[c.key].archived)
+    .sort((a, b) => ((b.days[0] && b.days[0].date) || '').localeCompare((a.days[0] && a.days[0].date) || ''));
+  el.eventSelect.innerHTML = '<option value="">No event</option>' + sorted.map(c => `<option value="${esc(c.key)}">${esc(c.title || c.key)}</option>`).join('');
+}
+function syncEventControls(){
+  const c = eventCfg();
+  if(!c){ state.event = ''; state.day = ''; state.facility = ''; }
+  el.eventSelect.value = state.event;
+  el.dayRow.hidden = !c;
+  if(c){
+    if(!c.days.some(d => d.key === state.day)) state.day = c.days[0] ? c.days[0].key : '';
+    el.daySelect.innerHTML = c.days.map(d => `<option value="${esc(d.key)}">${esc(d.label)}${d.date ? ' · ' + esc(dayText(d.date)) : ''}</option>`).join('');
+    el.daySelect.value = state.day;
+    const d = dayCfg(), facs = d ? d.facilities : [];
+    if(!facs.includes(state.facility)) state.facility = facs[0] || '';
+    el.facilitySelect.innerHTML = facs.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+    el.facilitySelect.value = state.facility;
+    el.facilityRow.hidden = facs.length < 2;
+  }else el.facilityRow.hidden = true;
+  try {
+    const url = new URL(location.href);
+    if(state.event) url.searchParams.set('event', state.event); else url.searchParams.delete('event');
+    if(state.event && state.day) url.searchParams.set('day', state.day); else url.searchParams.delete('day');
+    history.replaceState(null, '', url);
+  } catch(e){ /* no history API */ }
+}
+el.eventSelect.addEventListener('change', () => { state.event = el.eventSelect.value; state.day = ''; syncEventControls(); save(); render(); });
+el.daySelect.addEventListener('change', () => { state.day = el.daySelect.value; syncEventControls(); save(); render(); });
+el.facilitySelect.addEventListener('change', () => { state.facility = el.facilitySelect.value; save(); });
+el.titleInput.addEventListener('input', () => { state.title = el.titleInput.value; save(); render(); });
+
+// ---- Names ----------------------------------------------------------------------------------------------------
+for(const [id, key] of [['srcPaste', 'paste'], ['srcPlayers', 'players'], ['srcCheckedIn', 'checked'], ['srcNumbers', 'numbers']]){
+  el[id].addEventListener('click', () => { source = key; renderSources(); });
+}
+el.namesInput.addEventListener('input', () => { state.names = el.namesInput.value; save(); render(); });
+function setNames(list){ el.namesInput.value = list.join('\n'); state.names = el.namesInput.value; save(); render(); }
+el.loadPlayersBtn.addEventListener('click', async () => {
+  try {
+    const snapshot = await fetchDaySnapshotFromPages(state.event, state.day);
+    const c = eventCfg();
+    setNames(playersFromSnapshot(snapshot, c ? c.type : null));
+  } catch(err){ toast(err.status === 404 ? 'This day has no published data yet.' : "Couldn't load the players. Try again."); }
+});
+el.loadCheckedInBtn.addEventListener('click', async () => {
+  if(!hasSignIn()) return;
+  const d = dayCfg(); if(!d) return;
+  try {
+    const lists = await Promise.all(d.facilities.map(f =>
+      fetchJson(`${CLOUD_RUN_BASE_URL}/v3/days/${enc(state.day)}/facilities/${enc(f)}/people`, { token: signIn.token })));
+    const names = checkedInFromPeople(lists);
+    if(!names.length){ toast('Nobody is checked in yet.'); return; }
+    setNames(names);
+  } catch(err){
+    toast(err.status === 401 ? 'Your sign-in has expired. Sign in again in Control Center.' : "Couldn't load who is checked in. Try again.");
+  }
+});
+el.fillNumbersBtn.addEventListener('click', () => {
+  const n = Math.min(1000, Math.max(2, Math.floor(Number(el.numberCount.value) || 100)));
+  el.numberCount.value = n; setNames(numberEntries(n));
+});
+
+// ---- Lock, unlock, edit list, new draw --------------------------------------------------------------------------
+function showProblems(list){
+  problemsShown = true; renderNamesInfo();
+  toast(list[0]);
+}
+async function lockDraw(){
+  const { entries: typed } = parseEntries(el.namesInput.value);
+  const earlier = state.parts.flatMap(p => p.picks);
+  const entries = earlier.length ? entrantsFor(typed, earlier, state.rule) : typed;   // a continuation drops earlier winners
+  const problems = [...entryProblems(entries), ...prizeProblems(state.prizeRows)];
+  if(problems.length){ showProblems(problems); return; }
+  Object.assign(state, {
+    locked: true, drawId: randomCode(), entries, seed: randomCode(), fingerprint: await sha256Hex(listText(entries)),
+    rule: el.removeWinners.checked ? 'remove-winners' : 'keep-winners', lockedAt: new Date().toISOString(), picks: [],
+  });
+  problemsShown = false; resetRows(); animateReveal = false;
+  if(state.parts.length) toast(`Part ${state.parts.length + 1} has ${entries.length} entries: ${typed.length - entries.length} earlier winners left out.`);
+  save(); render();
+}
+el.lockBtn.addEventListener('click', lockDraw);
+el.unlockBtn.addEventListener('click', () => {
+  Object.assign(state, { locked: false, drawId: '', seed: '', fingerprint: '', lockedAt: '', entries: [], picks: [] });
+  resetRows(); save(); render();
+});
+el.editListBtn.addEventListener('click', () => {
+  if(busy) return;
+  if(confirm('Edit the list? This part of the draw closes as it is. Earlier winners stay out, and the prizes not yet won carry over.')){
+    state.parts.push({ drawId: state.drawId, entries: state.entries, seed: state.seed, fingerprint: state.fingerprint, lockedAt: state.lockedAt, picks: state.picks });
+    Object.assign(state, { locked: false, picks: [], drawId: '', seed: '', fingerprint: '', lockedAt: '' });
+    el.namesInput.value = state.entries.join('\n'); state.names = el.namesInput.value;
+    resetRows(); save(); render();
+  }
+});
+el.newDrawBtn.addEventListener('click', () => {
+  if(busy) return;
+  if(confirm('Start a new draw? This one stays in its exports and, once recorded, in the workbook.')){
+    const keep = { title: state.title, event: state.event, day: state.day, facility: state.facility, prizeRows: state.prizeRows, rowSeq: state.rowSeq, style: state.style };
+    state = { ...blankState(), ...keep };
+    el.namesInput.value = ''; resetRows(); animateReveal = false; save(); render();
+  }
+});
+el.removeWinners.addEventListener('change', () => { state.rule = el.removeWinners.checked ? 'remove-winners' : 'keep-winners'; save(); });
+el.showTickets.addEventListener('change', () => { state.showTickets = el.showTickets.checked; save(); render(); });
+el.styleReel.addEventListener('click', () => { state.style = 'reel'; save(); render(); });
+el.styleJar.addEventListener('click', () => { if(!el.styleJar.disabled){ state.style = 'jar'; save(); render(); } });
+
+// ---- Spinning ---------------------------------------------------------------------------------------------------
+async function spin(){
+  const slots = prizeSlots(state.prizeRows), allP = [...state.parts.flatMap(p => p.picks), ...state.picks];
+  if(busy || !state.locked || !canHash || prizeProblems(state.prizeRows).length || drawFinished({ entries: state.entries, slots, picks: state.picks, allPicks: allP, rule: state.rule })) return;
+  busy = true; render();
+  const n = (state.picks.length ? Math.max(...state.picks.map(p => p.spin)) : 0) + 1;
+  const plan = nextSpin(slots, allP);                           // { count, slots }
+  const entrants = entrantsFor(state.entries, state.picks, state.rule);
+  const won = await drawWinners({ seed: state.seed, spin: n, entrants, count: plan.count, sha256Hex });
+  const at = new Date().toISOString();
+  const picks = won.map((w, i) => ({ spin: n, place: i + 1, slotId: plan.slots[i] ? plan.slots[i].id : '',
+    prize: plan.slots[i] ? plan.slots[i].label : '', ticket: ticketOf(state.entries, w.winner), winner: w.winner, result: 'won', drawnAt: at }));
+  await play(entrants, picks);                                   // the reel, the jar, or the display window
+  state.picks.push(...picks);
+  save(); busy = false; animateReveal = true; lastSceneJson = ''; render();
+}
+el.spinBtn.addEventListener('click', spin);
+document.addEventListener('keydown', e => {
+  if(isDisplay) return;
+  if(e.key === 'Escape' && document.body.classList.contains('big')){ setBig(false); return; }
+  if(e.key !== ' ' && e.key !== 'Enter') return;
+  if(el.howDialog.open || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test((e.target.tagName || ''))) return;
+  e.preventDefault(); spin();
+});
+function redraw(place){
+  const latest = latestSpin();
+  const p = state.picks.find(k => k.spin === latest && k.place === place && k.result === 'won');
+  if(!p || busy) return;
+  p.result = 'redrawn';
+  toast(p.prize ? `Drawing again for ${p.prize}: ${p.winner} is out of the draw.` : `Drawing again: ${p.winner} is out of the draw.`);
+  save(); lastSceneJson = ''; render();
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.redraw-btn'); if(b) redraw(Number(b.dataset.place));
+});
+
+// ---- Exports and the check ---------------------------------------------------------------------------------------
+const baseName = () => {
+  const parts = partsForExport();
+  const slug = (state.title || 'prize-draw').toLowerCase().replace(/\W+/g, '-').replace(/^-+|-+$/g, '') || 'prize-draw';
+  const d = new Date(parts.length && parts[0].lockedAt ? parts[0].lockedAt : Date.now());
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${slug}-${date}`;
+};
+const resultsText = () => partsForExport().map(p => drawText({ title: state.title, eventLine: eventLineNow(), seed: p.seed,
+  fingerprint: p.fingerprint, rule: state.rule, entries: p.entries, picks: p.picks })).join('\n\n');
+function download(name, blob){
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function copyText(text, okMsg, failMsg){
+  try { await navigator.clipboard.writeText(text); toast(okMsg); return; } catch(e){ /* try the old way */ }
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand('copy'); } catch(e){ ok = false; }
+  ta.remove(); toast(ok ? okMsg : failMsg);
+}
+el.copyBtn.addEventListener('click', () => copyText(resultsText(), 'Results copied.', "Couldn't reach the clipboard. Use Download .txt."));
+el.txtBtn.addEventListener('click', () => download(`${baseName()}-draw.txt`, new Blob([resultsText()], { type: 'text/plain' })));
+el.listBtn.addEventListener('click', () => {
+  const entries = state.locked ? state.entries : (state.parts.length ? state.parts[state.parts.length - 1].entries : []);
+  const numbers = isNumberList(entries);
+  copyText(entries.map(e => (numbers ? e : `${ticketOf(entries, e)} ${e}`)).join('\n'), 'Numbered list copied.', "Couldn't reach the clipboard.");
+});
+el.pngBtn.addEventListener('click', async () => {
+  const parts = partsForExport(), picks = parts.flatMap(p => p.picks.map(k => ({ ...k, numbers: isNumberList(p.entries) })))
+    .sort((a, b) => 0);
+  const flat = parts.flatMap(p => [...p.picks].sort((a, b) => a.spin - b.spin || a.place - b.place).map(k => ({ ...k, numbers: isNumberList(p.entries) })));
+  try { await document.fonts.ready; } catch(e){ /* draw with what is loaded */ }
+  const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 220 + 64 * flat.length + 40 * parts.length;
+  const ctx = cv.getContext('2d'), ink = cssVar('--ink'), soft = cssVar('--ink-soft');
+  ctx.fillStyle = cssVar('--white'); ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = cssVar('--navy'); ctx.fillRect(0, 0, 1200, 120);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = "700 56px 'Barlow Condensed', sans-serif";
+  ctx.fillStyle = cssVar('--paper'); ctx.fillText('S.A.G.E.', 48, 60);
+  const w = ctx.measureText('S.A.G.E. ').width; ctx.fillStyle = cssVar('--green'); ctx.fillText('LUCKY DINK', 48 + w, 60);
+  ctx.fillStyle = ink; ctx.font = "600 28px Inter, sans-serif";
+  ctx.fillText([state.title, eventLineNow()].filter(Boolean).join(' · ') || 'Prize draw', 48, 160);
+  flat.forEach((k, i) => {
+    const y = 220 + 64 * i + 32, redrawn = k.result === 'redrawn', who = k.numbers ? `#${k.winner}` : k.winner;
+    ctx.fillStyle = soft; ctx.font = "500 24px Inter, sans-serif"; ctx.fillText(k.prize || `Spin ${k.spin}`, 48, y);
+    ctx.fillStyle = redrawn ? soft : ink; ctx.font = "600 34px 'Barlow Condensed', sans-serif";
+    const text = redrawn ? `${who} (drawn again)` : who, x = 440;
+    ctx.fillText(text, x, y);
+    if(redrawn){ const tw = ctx.measureText(text).width; ctx.fillRect(x, y, tw, 2); }
+  });
+  ctx.fillStyle = soft; ctx.font = "400 20px Inter, sans-serif";
+  parts.forEach((p, i) => {
+    const text = `Draw code ${p.seed} · list ${p.fingerprint.slice(0, 8)} · check it at sage-match-control.github.io/tools/prize-draw`;
+    ctx.fillText(parts.length > 1 ? `Part ${i + 1} · ${text}` : text, 48, 220 + 64 * flat.length + 24 + 40 * i);
+  });
+  cv.toBlob(b => { if(b) download(`${baseName()}-winners.png`, b); });
+});
+el.checkBtn.addEventListener('click', async () => {
+  const parts = partsForExport(), lines = []; let bad = 0;
+  for(const [i, p] of parts.entries()){
+    if(parts.length > 1) lines.push(`<b>Part ${i + 1} · Draw code ${esc(p.seed)}</b>`);
+    const res = await verifyDraw({ entries: p.entries, seed: p.seed, rule: state.rule, picks: p.picks, sha256Hex });
+    for(const r of res){
+      if(r.ok) lines.push(`✓ Spin ${r.spin} · ${r.place}: ${esc(r.recorded)}`);
+      else { bad++; lines.push(`<span class="bad">✗ Spin ${r.spin} · ${r.place}: recorded ${esc(r.recorded)}, the rule gives ${esc(r.expected || 'nobody')}</span>`); }
+    }
+  }
+  lines.push(bad ? `${bad} winner${bad === 1 ? '' : 's'} ${bad === 1 ? "doesn't" : "don't"} match this list and code.` : 'Every winner checks out.');
+  el.checkResult.innerHTML = lines.join('\n');
+});
+
+// ---- How it works, big screen, display window --------------------------------------------------------------------
+el.howBtn.addEventListener('click', () => el.howDialog.showModal());
+el.howClose.addEventListener('click', () => el.howDialog.close());
+el.howDialog.addEventListener('click', e => { if(e.target === el.howDialog) el.howDialog.close(); });
+function setBig(on){
+  document.body.classList.toggle('big', on);
+  el.bigBtn.textContent = on ? 'Exit big screen' : 'Big screen';
+}
+el.bigBtn.addEventListener('click', () => setBig(!document.body.classList.contains('big')));
+el.displayBtn.addEventListener('click', () => {
+  const w = window.open('/tools/prize-draw?display=1', 'sage-prize-display', 'popup,width=1280,height=720');
+  if(!w) window.open('/tools/prize-draw?display=1', 'sage-prize-display');   // popups blocked: a tab
+});
+el.bringBackBtn.addEventListener('click', () => { post({ type: 'close' }); ignoreDisplay = true; displaySeen = 0; render(); });
+
+// ---- Start ---------------------------------------------------------------------------------------------------------
+async function init(){
+  if(isDisplay){
+    document.body.classList.add('display');
+    return;
+  }
+  el.titleInput.value = state.title; el.namesInput.value = state.names;
+  if(state.locked && state.picks.length){
+    const last = state.picks[state.picks.length - 1];
+    visibleRows = rowsAround(last.winner);
+  }else resetRows();
+  render();
+  if(restored) toast('Restored the draw from this browser.');
+  const session = createOperatorSession({
+    onSession: s => { signIn = s; renderSources(); }, onSignedOut: () => { signIn = null; renderSources(); }, answer: false });
+  session.ask();
+  try { registry = await loadRegistry(); }
+  catch(e){ registry = null; toast("Couldn't load the events. You can still paste names."); }
+  fillEventMenu();
+  if(!state.locked){
+    const q = new URLSearchParams(location.search), ev = q.get('event'), day = q.get('day');
+    if(ev && registry && eventConfigFrom(registry, ev)){ state.event = ev; state.day = day || ''; }
+  }
+  if(state.event && !eventCfg()){ state.event = ''; state.day = ''; }
+  syncEventControls(); save(); render();
+}
+init();
+</script>
+</body>
+</html>
