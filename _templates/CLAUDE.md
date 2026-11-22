@@ -568,6 +568,18 @@ master", and the site needs no change.
     git-ignored. Scan the printed panel before mounting it. See that
     folder's `README.md`.
 
+15. **Nothing to add for the prize draw or the clock.** Both are evergreen
+    tools, not event pages: `tools/prize-draw.html` (Lucky Dink) and
+    `tools/clock.html` open from Mission Control's **Pages and tools** row as
+    **Open prize draw** and **Open clock**, on whichever event and day is
+    selected, so no file is copied and no `events.json` field turns them on.
+    A prize draw records each spin to a `DRAWS` tab in the facility workbook,
+    which the API creates on the first recorded spin. It needs only step 13's
+    Editor share, so neither master nor a copied team workbook carries the tab.
+    Ask the organiser whether the event has a raffle or door-prize draw: if it
+    does, the dry-run checklist (step 10) rehearses one. See
+    `sage-docs/docs/specs/.../prize-draw-spec.md`.
+
 ## 3. Required `{{TOKEN}}` replacements
 
 **All three templates** (`index.html`; the team template uses the standard
@@ -760,8 +772,9 @@ Control Center share:
   `schedule-board.js`, `scorer.js`, `attendance-desk.js`. Each documents its
   settings in its header and rejects an unknown or missing one with a
   console error that names it.
-- `lib/v1/views/`, `lib/v1/css/` — the Match Finder, tickets, Live Matches,
-  Standings, team views, score dialog and attendance list, and their CSS.
+- `lib/v1/views/`, `lib/v1/css/` — the Match Finder (and its pair summary
+  card), tickets, Live Matches, Standings, team views, score dialog and
+  attendance list, and their CSS.
 - `lib/v1/domain/` — the rules (played, BYE, series, standings, go-live,
   team events), plain functions with no DOM. `lib/v1/data/` — events.json,
   snapshots, the live channel, the API. `lib/v1/platform.js` — the constants.

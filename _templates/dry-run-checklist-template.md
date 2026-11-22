@@ -50,10 +50,14 @@ Follow §2.1–§2.2 below to get signed in and resynced, then check:
 
 - [ ] **Live Matches** tab: Match A shows the final score you set; Match B shows a live pill on the court you set; every other configured court on that facility shows idle placeholders, not blank/missing
 - [ ] **Standings** tab: a visible warning banner naming Match C's unmapped code — not a silent "Other" bucket
-- [ ] **Match Finder** tab: search a real player name from any match → returns their matches in schedule order, correct opponent/score state
+- [ ] **Match Finder** tab: search a real player name from any match → returns their matches in schedule order, correct opponent/score state, each ticket with its match number in a corner tab and its category beside it. A standard or dual meet event also shows a **summary card** above the tickets: the pair's category, its rank in its bracket with W, L, PF, PA and Q (Match A's pairs show the score you set), and a status pill
+- [ ] **Standings** tab: every round-robin table shows W, L, PF, PA and Q, and Match A's score is counted in its two pairs' PF and PA
 - [ ] **Awards** tab: loads without errors and lists every category — before any Final/Bronze match is played, every placing reads "Pending," not a fabricated winner
 - [ ] **Public site status**: click **Force hidden**, then **Auto** → a confirmation prompt appears before **Force hidden** takes effect; the console's own tabs stay visible throughout either way; it returns cleanly to **Auto**
 - [ ] **Scorer link (events with `"scoreEntry": "links"`)**: under Mission Control's **Scorer links**, press **Issue scorer link**, fill in **Issued to** and **Note** in the dialog, press **Issue link**, and open the link on a phone. The page's title line names the day, the venue and who it was issued to. Change Match A's score from the phone → the console shows the new score within a few seconds, and both of Match A's score cells in `SCHEDULE` get a note naming that label
+
+- [ ] **Attendance (events with `attendance`)**: on the **Attendance** tab, press **Update roster**, then mark one test person in → their row in `ATTENDANCE` gets the check-in. Turn their switch off → a **Mark … not present?** dialog opens; **Keep present** leaves the mark, **Mark not present** clears it and its time. Marking someone in never asks
+- [ ] **Prize draw (events with a raffle or door-prize draw)**: under **Pages and tools**, press **Open prize draw** with this event and day selected, still signed in. Load **Players on a day** (or **Checked in**), add one test prize, **Lock the list and start**, press **Open display** and put that window on the screen the draw will use, and spin once. The facility workbook gets a `DRAWS` tab with the winner's row, and under **Past draws**, **Load past draws** lists the draw and checks it
 
 - [ ] **Best-of-3 round-robin meetings (categories with `bestOf` on `CSV`).** Enter one
   meeting 2–0 and leave its game 3 blank: game 3 is greyed on the Hub, the board and the
@@ -70,12 +74,15 @@ Follow §2.3 below (screen setup), then:
 - [ ] Screen 1 (Schedule board): courts/times render, Match B's court shows as in-progress
 - [ ] Screen 2 (Live Matches): matches what the console showed (same score, same live court); if **Force hidden** was active at any point in §1.2, confirm this screen goes to hidden/idle instead of showing scores, since that's what actually happens publicly
 - [ ] Screen 3 (Standings): same unmapped-code warning, same standings as the console
+- [ ] A spare screen for the time (optional): under **Pages and tools**, **Open clock** shows the event's name above the time; set it to **Full screen**, and check the device's own clock and time zone are right, since the clock shows the device's time
 
 ### 1.4 Cleanup
 
 - [ ] Revert `team1Score`/`team2Score` on Match A (clear both), and delete the note the scorer link left on those two cells, if any
 - [ ] Clear `court` on Match B
 - [ ] Restore Match C's original team code
+- [ ] Mark the test attendance person not present again, if they're still in
+- [ ] If you rehearsed a prize draw, delete the workbook's `DRAWS` tab, so **Past draws** starts empty on the day (the first recorded spin makes it again)
 - [ ] Resync once more to publish the reverted state
 
 ---
@@ -110,6 +117,7 @@ Follow §2.3 below (screen setup), then:
 - [ ] Load the same public URL again on Screen 3, click its **Standings** tab
 - [ ] On a phone (not the console — the console always shows live data regardless of the switch above), open the public page and confirm it looks like what a player would actually see
 - [ ] The hub board is up with **this** event's QR panel on it, and scanning it with a phone opens `{{EVENT_TITLE}}`'s Tournament Hub
+- [ ] Optional: a spare screen shows **Open clock** in **Full screen** (it keeps the screen on by itself; a browser that can't says so, so then set the device's screen timeout)
 
 ### 2.4 During play
 
@@ -178,12 +186,14 @@ watching for when that pipeline needs a nudge:
 - [ ] If Sheets API trouble persists, open **Troubleshooting** in Mission Control, check **Use CSV export fallback instead of Sheets API** and resync again
 - [ ] If a bad score or typo goes public and needs a moment to fix quietly: set **Public site status** to **Force hidden**, correct the sheet, resync, then set it back to **Auto** (or **Force live**) — remember this hides the *public* page only, the console keeps showing everything the whole time
 - [ ] The Schedule Board updates on its own (pushed within seconds, with a ~10s poll as the fallback) — no action needed, just glance at it occasionally to confirm it's still moving
-- [ ] Use **Match Finder** on the console directly if a player asks where their match is
+- [ ] Use **Match Finder** on the console directly if a player asks where their match is; on a standard or dual meet event its summary card also answers "where do we stand?" and "who do we play next?"
+- [ ] Attendance: turning off a present person's switch asks **Mark … not present?** first. **Keep present** if it was a slip
 - [ ] If scorer links must stop (one sent to the wrong person, say): set **Scorer links** to **Stopped**. Within about a minute every scorer save is refused; enter scores in Match Finder meanwhile, and set it back to **Accepting** when ready
 
 ### 2.5 End of day
 
 - [ ] After the last match, check **Standings** on the console look complete and correct
 - [ ] Once the day's Finals and Bronze matches are scored, check the **Awards** tab — every category should show its gold/silver/bronze (or a named-match warning if a score looks wrong); use **Export image** per category, or **Export whole tournament**, to hand results to the emcee/ceremony
+- [ ] **Prize draw**, if there is one: on the operator laptop, signed in, press **Open prize draw** under **Pages and tools** with this event and day selected, load the names, add the prizes, **Lock the list and start**, and put **Open display** on the venue screen. Each spin is recorded to the workbook's `DRAWS` tab. If a winner isn't there, **Draw again** beside their name. Afterwards **Copy results** or **Save image** for the emcee
 - [ ] No action needed on the go-live switch — **Auto** stays live permanently once it's triggered, so there's nothing to turn off
 - [ ] If anything broke mid-day, note the rough time — `event-data`'s git history (both `config/events.json` and the day's published JSON) has a timestamped commit for every sync and every override, so it's reconstructable after the fact
