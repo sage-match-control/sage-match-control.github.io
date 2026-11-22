@@ -56,7 +56,8 @@ test('an idle row has the same cells as a live one, so the row keeps its height'
   const cells = html => (html.match(/<td/g) || []).length;
   assert.equal(cells(idle), cells(live));
   assert.match(idle, /No match playing/);
-  assert.match(live, /live-match-pill">#1</);
+  assert.match(live, /<td class="live-cat-cell" colspan="3"><span class="live-num" title="Match 1">#1<\/span>/);
+  assert.doesNotMatch(live, /live-match-pill/);
   assert.match(live, /live-vs-score">VS</);
   assert.match(live, /Round Robin/);
   assert.equal((idle.match(/<tr/g) || []).length, (live.match(/<tr/g) || []).length);
@@ -96,7 +97,7 @@ test('extension points: a logo (and its blank slot in an idle row), a row of its
   assert.doesNotMatch(liveEmptyRowHTML('1'), /live-team-logo/);
   assert.match(liveEmptyRowHTML('1', { emptyMatchupHTML: '<div class="live-matchup">&nbsp;</div>' }), /live-matchup/);
   assert.equal(liveTableRowsHTML('2', m.matches[0], m, { liveRow: () => '<tr>own</tr>' }), '<tr>own</tr>');
-  assert.match(liveTableRowsHTML('2', m.matches.find(x => x.num === 1), m, { liveRow: () => null }), /live-match-pill/);
+  assert.match(liveTableRowsHTML('2', m.matches.find(x => x.num === 1), m, { liveRow: () => null }), /live-num/);
 });
 
 test('renderLiveMatches fills the board, the count and the facility cards', () => {
@@ -175,7 +176,8 @@ test('a courtCell that returns null leaves that court alone', () => {
 test('a team event’s own live rows (options.liveRow) are decorated too, and an idle court gets null', () => {
   const EV = 'pickledrive-anniversary-2026';
   const team = buildDayModel(eventConfig(EV), eventConfig(EV).days[0], loadSnapshot(EV), { now: caseTime(EV), alwaysLive: true });
-  const match = team.matches.find(x => x.t1p1 !== 'TBD');
+  // The fixture is a finished day; an unscored copy of a match is one still being played (a scored one is done).
+  const match = { ...team.matches.find(x => x.t1p1 !== 'TBD'), played: false, t1Score: '', t2Score: '' };
   const rows = [['1', match], ['2', null]];
   const seen = [];
   const html = facilityTableHTML('Main', rows, team, {
@@ -212,4 +214,74 @@ test('matchNote returning nothing adds nothing, and an idle court is untouched',
   const live = m.matches.find(x => x.num === 1);
   assert.equal(liveTableRowsHTML('2', live, m, { matchNote: () => undefined }), liveTableRowsHTML('2', live, m));
   assert.equal(liveTableRowsHTML('5', null, m, { markPlayer: () => 'flag', matchNote: () => 'x' }), liveTableRowsHTML('5', null, m));
+});
+
+// ---- the match number's corner tab and a finished match still on court (the owner's request of 2026-11-22) ----
+
+const DONE_ROWS = [
+  row(1, '2', 2, 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', ''),      // on court 2, no score: in play
+  row(2, '1', 1, 'ND_3', 'Ed', 'Flo', 11, 'ND_4', 'Gus', 'Hal', 4),     // on court 1, both scores in: done
+];
+
+test('an idle row has no number tab, but its strip keeps the same cell, so its height matches', () => {
+  const m = model([{ name: 'Main', rows: MAIN }]);
+  assert.doesNotMatch(liveTableRowsHTML('1', null, m), /live-num/);
+  assert.match(liveTableRowsHTML('1', null, m), /<td class="live-cat-cell" colspan="3">/);
+});
+
+test('a match with both scores in still on its court is done: a check mark for the dot, a Done note, its rows marked', () => {
+  const m = model([{ name: 'Main', rows: DONE_ROWS }]);
+  const done = liveTableRowsHTML('1', m.matches.find(x => x.num === 2), m);
+  assert.match(done, /<tr class="live-done">\s*<td class="live-court-cell done" rowspan="2"><span class="live-done-mark" aria-hidden="true">✓<\/span>1<\/td>/);
+  assert.doesNotMatch(done, /live-dot/);
+  assert.match(done, /<span class="live-done-note">Done<\/span><\/td>/);
+  assert.match(done, /<tr class="live-match-row live-done">/);
+  assert.match(done, /live-vs-score">11&ndash;4</);
+  const live = liveTableRowsHTML('2', m.matches.find(x => x.num === 1), m);
+  assert.doesNotMatch(live, /live-done|done"/);
+  assert.match(live, /<td class="live-court-cell" rowspan="2"><span class="live-dot"/);
+});
+
+test('a series game that will never be played counts as done on its court too, scores or not', () => {
+  const m = model([{ name: 'Main', rows: DONE_ROWS }]);
+  const unplayed = m.matches.find(x => x.num === 1);
+  assert.doesNotMatch(liveTableRowsHTML('2', unplayed, m), /live-done/);
+  m.unneededGames.add(unplayed);
+  assert.match(liveTableRowsHTML('2', unplayed, m), /<td class="live-court-cell done"/);
+});
+
+test('a decorated done court keeps its done class', () => {
+  const m = model([{ name: 'Main', rows: DONE_ROWS }]);
+  const html = withCourtCell(liveTableRowsHTML('1', m.matches.find(x => x.num === 2), m), { className: 'court-settable' });
+  assert.match(html, /<td class="live-court-cell done court-settable" rowspan="2">/);
+});
+
+test('without countDone the counts are as before; with it, a done court counts apart from the courts in play', () => {
+  const two = model([{ name: 'Main', rows: DONE_ROWS }, { name: 'Annex', rows: ANNEX }]);
+  const groups = buildFacilityCourtGroups(two);
+  assert.match(liveMetaHTML(groups), /<b>2<\/b><span>courts in play<\/span>/);
+  const isDone = x => x.played;
+  assert.match(liveMetaHTML(groups, isDone), /<b>1<\/b><span>court in play &middot; 1 done<\/span>/);
+  const rows = groups.get('Main');
+  assert.match(facilityTableHTML('Main', rows, two), /facility-count">2 courts in play</);
+  assert.match(facilityTableHTML('Main', rows, two, { countDone: true }), /facility-count">1 court in play &middot; 1 done</);
+  const el = () => ({ innerHTML: '', querySelectorAll: () => [] });
+  const metaEl = el();
+  renderLiveMatches(two, { boardEl: el(), metaEl, countDone: true });
+  assert.match(metaEl.innerHTML, /<b>1<\/b><span>court in play &middot; 1 done/);
+  assert.doesNotMatch(liveMetaHTML(buildFacilityCourtGroups(model([{ name: 'Main', rows: MAIN }])), isDone), /done/, 'no done court: no done count');
+});
+
+test('a team event’s own live row has the tab in its strip and the same done state', () => {
+  const EV = 'pickledrive-anniversary-2026';
+  const team = buildDayModel(eventConfig(EV), eventConfig(EV).days[0], loadSnapshot(EV), { now: caseTime(EV), alwaysLive: true });
+  const unplayed = { ...team.matches.find(x => x.t1p1 !== 'TBD'), played: false, t1Score: '', t2Score: '' };
+  const played = team.matches.find(x => x.played);
+  const live = liveRowHTML(team, '1', unplayed);
+  assert.match(live, new RegExp(`<td class="live-cat-cell" colspan="3"><span class="live-num" title="Match ${unplayed.num}">#${unplayed.num}</span>`));
+  assert.doesNotMatch(live, /live-match-pill|live-done/);
+  const done = liveRowHTML(team, '2', played);
+  assert.match(done, /<td class="live-court-cell done" rowspan="2"><span class="live-done-mark" aria-hidden="true">✓<\/span>2<\/td>/);
+  assert.match(done, /<span class="live-done-note">Done<\/span>/);
+  assert.match(done, /<tr class="live-match-row live-done">/);
 });

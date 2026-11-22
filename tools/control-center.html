@@ -2332,11 +2332,13 @@ function openScoreFromFinder(facility, num){
 function courtCellDeco(facility, court, m){
   const n = Live.courtNumberFrom(court);
   if(n === null) return null;
+  // A match whose scores are in is done though still on its court: the court is waiting for its next match.
+  const done = !!m && (m.played || MODEL.unneededGames.has(m));
   return {
     className: 'court-settable',
     attrs: ` data-court-facility="${escapeHtml(facility)}" data-court-number="${n}" role="button" tabindex="0"` +
-           ` aria-label="${m ? `Change the match on court ${n}` : `Put a match on court ${n}`}"`,
-    html: `<span class="court-hint" aria-hidden="true">✎ ${m ? 'Change' : 'Set match'}</span>`,
+           ` aria-label="${done ? `Put the next match on court ${n}` : m ? `Change the match on court ${n}` : `Put a match on court ${n}`}"`,
+    html: `<span class="court-hint" aria-hidden="true">✎ ${done ? 'Next match' : m ? 'Change' : 'Set match'}</span>`,
   };
 }
 
@@ -2497,6 +2499,9 @@ function drawLiveMatches(){
     liveRow: team ? teams.liveRow : undefined,
     emptyMatchupHTML: team ? '<div class="live-matchup">&nbsp;</div>' : '',
     courtCell: scoreEntryAvailable() ? courtCellDeco : undefined,
+    // A done court (its match's scores in, still on the court) counts apart from the courts in play; its
+    // court cell's hint reads "✎ Next match" (courtCellDeco).
+    countDone: true,
   });
 }
 

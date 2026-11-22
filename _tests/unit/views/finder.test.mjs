@@ -83,7 +83,7 @@ test('a pair’s matches follow the Schedule time, not the match number, and Nex
     at('11:00 PM', 4, '', 'ND_1', 'Ann', 'Bo', '', 'ND_5', 'Ivy', 'Jo', ''),
   ]);
   const { html } = pairResultsHTML('ann', m, buildPairIndex(m), null);
-  const order = [...html.matchAll(/Match #(\d+)/g)].map(x => Number(x[1]));
+  const order = [...html.matchAll(/ticket-num" title="Match (\d+)"/g)].map(x => Number(x[1]));
   assert.deepEqual(order, [2, 1, 4, 5]);
   const tickets = html.split(/<div class="ticket[ "]/).slice(1);
   assert.deepEqual(tickets.map(t => t.includes('next-pill')), [true, false, false, false]);

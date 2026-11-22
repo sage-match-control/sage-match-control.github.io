@@ -134,3 +134,35 @@ test('pairCell: markPlayer marks a name of a Round Robin row, with no match', ()
   assert.match(html, /<span>Ann<\/span><span class="flag">Bo<\/span>/);
   assert.deepEqual(seen, [['Ann', null], ['Bo', null]]);
 });
+
+// ---- the match number's corner tab and the category pill (the owner's request of 2026-11-22) ----
+
+test('the match number is a tab in the ticket’s top-left corner, before the body, and not repeated in the meta row', () => {
+  const m = model([row(42, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', '')]);
+  const html = ticketHTML(m.matches[0], m);
+  assert.match(html, /<div class="ticket"[^>]*>\s*<span class="ticket-num" title="Match 42">#42<\/span>\s*<div class="ticket-body">/);
+  assert.doesNotMatch(html, /meta-chip/);
+  assert.doesNotMatch(html, /Match #42/);
+});
+
+test('every ticket carries its category as a pill before the round tag', () => {
+  const m = model([row(1, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', ''), row(2, '', 'ND_SF_1', 'TBD', 'TBD', '', 'ND_SF_2', 'TBD', 'TBD', '')]);
+  const rr = ticketHTML(m.matches[0], m, { teamCode: 'ND_2' });
+  assert.match(rr, /<span class="tag cat">ND<\/span>\s*<span class="tag pool">Round Robin<\/span>/);
+  const sf = ticketHTML(m.matches[1], m);
+  assert.match(sf, /<span class="tag cat">ND<\/span>\s*<span class="tag round">/);
+});
+
+test('the category pill reads the event’s own names (display.divisions and display.events)', () => {
+  const ev = { key: 'e', type: 'standard', title: 'E', display: { divisions: { A45: '45+' }, events: { HMD: 'Men’s Doubles' } }, days: [] };
+  const HEAD = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
+  const m = buildDayModel(ev, { key: 'd', facilities: ['Main'] },
+    { isLive: true, facilities: [{ name: 'Main', matchesCsv: `${HEAD}\n1,,9:00 AM,Court 1,A45HMD_1,Ann,Bo,,A45HMD_2,Cy,Di,`, standingsCsv: 'teamCode,player1,player2,wins,loss,quotient,bracket\n' }] },
+    { now: 0 });
+  assert.match(ticketHTML(m.matches[0], m), /<span class="tag cat">45\+ Men’s Doubles<\/span>/);
+});
+
+test('a code with no category gets no category pill', () => {
+  const m = model([row(1, '', 'ND_1', 'Ann', 'Bo', '', 'ND_2', 'Cy', 'Di', '')]);
+  assert.doesNotMatch(ticketHTML({ ...m.matches[0], t1: '', t2: '' }, m), /tag cat/);
+});

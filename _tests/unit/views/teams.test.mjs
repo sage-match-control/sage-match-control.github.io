@@ -453,7 +453,7 @@ test('a matchup card leaves out a tiebreaker that is not needed, and lists one t
   const level = dkQfDay([9, 11]);
   const levelHtml = matchupCardHTML(level, level.team.matchups[0], {});
   assert.match(levelHtml, /tm-pill progress">In progress/);
-  assert.match(levelHtml, /<span>#3<\/span><span class="tm-plabel">TB<\/span>/);
+  assert.match(levelHtml, /<span class="tm-num" title="Match 3">#3<\/span><span class="tm-plabel">TB<\/span>/);
   assert.match(levelHtml, /Lineup not set/);
   const decided = dkQfDay([9, 11], [7, 4]);
   assert.match(matchupCardHTML(decided, decided.team.matchups[0], {}), /tm-pill final">Final/);

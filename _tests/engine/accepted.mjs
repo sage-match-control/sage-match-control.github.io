@@ -131,5 +131,18 @@ export const ACCEPTED = [
     case: /^cc(-signed-in)?\/[^/]+\/mission-control(-troubleshooting)?\//, kind: 'both', row: 'owner 2026-11-21 info tips',
     reason: 'the explanations under Public site status, Scorer links, Sync method and the CSV fallback move behind an (i) beside each title, shown on hover, keyboard focus or a tap',
   },
+  // ---- match-number corner tabs, a ticket's category, Live Matches' Done courts (the owner's request of 2026-11-22) ----
+  {
+    case: /^(std-index|dm-index|cc|cc-signed-in)\/[^/]+\/(finder|finder-search|finder-by-number|score-entry-save)\//, kind: 'both', row: 'owner 2026-11-22 match numbers',
+    reason: 'a ticket’s match number is a dark tab in its top-left corner (“#42”, not the “Match #42” chip at its foot), and its category is a pill before the round',
+  },
+  {
+    case: /^(std-index|dm-index|team-index|cc|cc-signed-in)\/[^/]+\/(live|court-set)\//, kind: 'both', row: 'owner 2026-11-22 match numbers',
+    reason: 'a Live Matches row’s match number is a tab at the top-left of its strip (not a pill above the VS); a court whose match has both scores in reads Done, with a check mark on an amber cell; Control Center counts those courts apart (“1 court in play · 1 done”) and its court hint reads “✎ Next match”',
+  },
+  {
+    case: /^(team-index\/[^/]+|cc(-signed-in)?\/(pickledrive-anniversary-2026|team-demo-2026))\/(finder[^/]*|standings[^/]*|teams[^/]*)\//, kind: 'both', row: 'owner 2026-11-22 match numbers',
+    reason: 'a team match line’s number is a small dark tab',
+  },
 ];
 

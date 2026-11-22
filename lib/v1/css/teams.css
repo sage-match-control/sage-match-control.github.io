@@ -403,6 +403,19 @@ table.gt th.rk{ width:24px; text-align:center; padding-left:8px; padding-right:2
 
 .tm-row-meta .tm-live{ color:var(--green-dark); }
 
+/* A match line's number, as a small dark tab (the ticket's and Live Matches' corner tab, in line). */
+.tm-row-meta .tm-num{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:12px;
+  letter-spacing:.02em;
+  color:var(--white);
+  background:var(--ink);
+  border-radius:6px;
+  padding:2px 7px;
+  font-variant-numeric:tabular-nums;
+}
+
 .tm-row-meta .live-dot{ margin-right:4px; }
 
 .tm-row-body{

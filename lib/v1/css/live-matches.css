@@ -243,3 +243,68 @@ td.live-court-cell.court-settable:focus-visible{ outline:2px solid var(--green);
   color:var(--green-dark); white-space:nowrap;
 }
 @media (max-width:480px){ .court-hint{ font-size:10px; margin-top:2px; } }
+
+/* The match number: a tab in the top-left corner of a match's details, beside its court (views/live-matches.js,
+   views/teams.js). The strip keeps the tab's height on every row, idle ones too, so a row's height doesn't
+   change when a match starts on it, and the same room free on both sides so its text stays centred. The side
+   padding's selector outranks the shells' own (`td.live-cat-cell`, `table.live-table td.live-cat-cell` in
+   their phone rules, which a finished event's shell keeps), so the room holds on every page. */
+table.live-table td.live-cat-cell{
+  position:relative;
+  height:24px;
+}
+
+table.live-table tr td.live-cat-cell{ padding-left:62px; padding-right:62px; }   /* a four-digit tab */
+
+.live-num{
+  position:absolute;
+  top:0; left:0;
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:13px;
+  line-height:1;
+  letter-spacing:.01em;
+  text-transform:none;
+  color:var(--white);
+  background:var(--ink);
+  padding:5px 9px 6px 8px;
+  border-radius:0 0 8px 0;
+  font-variant-numeric:tabular-nums;
+}
+
+/* A match still on its court once both scores are in: done. A check mark in place of the pulsing dot on an
+   amber court cell, the players greyed, the score kept dark. Its own amber, not the theme's --amber, which
+   most shells set to a green. */
+td.live-court-cell.done{
+  background:#FBE5B0;
+  color:var(--ink);
+}
+
+.live-done-mark{
+  display:inline-block;
+  margin-right:6px;
+  font-family:'Inter',sans-serif;
+  font-weight:800;
+  color:#8A5A00;
+}
+
+tr.live-done .live-team-players,
+tr.live-done .live-team-code,
+tr.live-done .live-team-name{ color:var(--muted); }
+
+tr.live-done .live-vs-score{ color:var(--ink); }
+
+tr.live-done .live-num{ background:var(--muted); }
+
+td.live-cat-cell .live-done-note{
+  color:#8A5A00;
+  font-weight:700;
+}
+
+@media (max-width:480px){
+  table.live-table td.live-cat-cell{ height:22px; }
+
+  table.live-table tr td.live-cat-cell{ padding-left:52px; padding-right:52px; }
+
+  .live-num{ font-size:11px; padding:5px 7px 6px 6px; border-radius:0 0 7px 0; }
+}

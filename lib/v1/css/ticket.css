@@ -180,13 +180,36 @@
   letter-spacing:.1em;
 }
 
+/* The category and the round, side by side; a page's own chips (options.decorate's metaHTML) follow. */
 .meta-row{
   display:flex;
   align-items:center;
-  justify-content:space-between;
+  justify-content:flex-start;
   flex-wrap:wrap;
-  gap:8px;
+  gap:6px;
 }
+
+/* The match number: a tab in the ticket's top-left corner, its own size, against the coloured edge.
+   The time row keeps the same room free on both sides, so its pills stay centred and never reach it. */
+.ticket-num{
+  position:absolute;
+  top:0; left:0;
+  z-index:1;
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:16px;
+  line-height:1;
+  letter-spacing:.01em;
+  color:var(--white);
+  background:var(--ink);
+  padding:8px 12px 9px 10px;
+  border-radius:0 0 12px 0;
+  font-variant-numeric:tabular-nums;
+}
+
+.ticket-num + .ticket-body .time-row{ padding:0 80px; }   /* a four-digit tab */
+
+.tag.cat{background:var(--paper-dim); color:var(--ink); font-weight:700;}
 
 .meta-chip{
   font-family:'Barlow Condensed',sans-serif;
@@ -252,6 +275,10 @@
   .team-block .players{font-size:14px;}
 
   .meta-row{justify-content:center;}
+
+  .ticket-num{font-size:14px; padding:7px 10px 8px 9px; border-radius:0 0 10px 0;}
+
+  .ticket-num + .ticket-body .time-row{ padding:0 58px; }   /* a three-digit tab; the pills wrap sooner */
 
   .score-col{font-size:26px; padding:0 2px;}
 }
