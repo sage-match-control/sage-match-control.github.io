@@ -91,7 +91,7 @@
   .dock button{
     display:inline-flex; align-items:center; gap:8px;
     font:600 14px/1 'Inter',sans-serif; color:inherit; background:transparent;
-    border:0; border-radius:999px; padding:10px 14px; min-height:44px; cursor:pointer;
+    border:0; border-radius:999px; padding:10px 14px; min-height:44px; cursor:pointer; white-space:nowrap;
   }
   .dock button:hover{ background:var(--chip); }
   .dock button.on{ background:var(--green); color:var(--navy); }
@@ -240,8 +240,8 @@
     // Room the label and the date take, as a share of the time's own size.
     const extra = (S.label ? 0.22 : 0) + (S.date ? 0.28 : 0);
     const maxW = W * (stack ? 0.96 : 0.94);
-    // Keeps clear of the dock (about 60px) at the bottom, and the same at the top so the clock stays centred.
-    const maxH = Math.min(H * 0.92, H - 128);
+    // The dock floats over the clock and fades after a few seconds, so it takes no room from the digits.
+    const maxH = H * 0.96;
     let size = Math.min(maxW / r.width * 100, maxH / (r.height / 100 + extra * 1.2) );
     size = Math.max(24, Math.floor(size));
     $('time').style.fontSize = size + 'px';
