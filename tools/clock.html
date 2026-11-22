@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="navy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1826">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SAGE Clock">
+<title>Clock · S.A.G.E.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<style>
+  /* A full-screen wall clock for the venue: the time as large as the screen allows, the date under it,
+     an optional label (the event's name, from ?title=) above. S.A.G.E. house palette; three themes.
+     Settings are remembered per browser; the URL can set any of them (see readUrl()). */
+  :root{
+    --navy:#14263C; --navy-deep:#0B1826; --green:#7CB92C; --green-dark:#5C8F1F;
+    --paper:#F6F7F2; --paper-dim:#ECEEE6; --line:#D9DED2; --ink-soft:#5B6B74; --white:#FFFFFF;
+  }
+  html[data-theme="navy"]{ --bg:var(--navy-deep); --fg:var(--paper); --sub:rgba(246,247,242,.62); --accent:var(--green);
+    --panel:#14263C; --panel-fg:var(--paper); --panel-line:rgba(246,247,242,.16); --chip:rgba(246,247,242,.08); color-scheme:dark; }
+  html[data-theme="black"]{ --bg:#000000; --fg:#FFFFFF; --sub:rgba(255,255,255,.55); --accent:var(--green);
+    --panel:#111111; --panel-fg:#FFFFFF; --panel-line:rgba(255,255,255,.14); --chip:rgba(255,255,255,.08); color-scheme:dark; }
+  html[data-theme="light"]{ --bg:var(--paper); --fg:var(--navy); --sub:var(--ink-soft); --accent:var(--green-dark);
+    --panel:var(--white); --panel-fg:var(--navy); --panel-line:var(--line); --chip:var(--paper-dim); color-scheme:light; }
+
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; margin:0; }
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    overflow:hidden; user-select:none; -webkit-user-select:none;
+    transition:background .25s ease, color .25s ease;
+  }
+  body.idle{ cursor:none; }
+  :focus-visible{ outline:3px solid var(--green); outline-offset:2px; }
+
+  /* The clock fills the visible viewport (dvh: the phone's toolbars excluded) and keeps clear of notches. */
+  .stage{
+    position:fixed; inset:0; height:100vh; height:100dvh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+            max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    text-align:center;
+  }
+  .label{
+    font-family:'Barlow Condensed',sans-serif; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--sub); line-height:1.1; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    margin-bottom:.4em;
+  }
+  .time{
+    display:flex; align-items:flex-start; justify-content:center;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700;
+    font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1, "lnum" 1;
+    line-height:.86; white-space:nowrap; letter-spacing:-.005em;
+  }
+  .time .colon{ display:inline-block; transform:translateY(-.06em); padding:0 .02em; }
+  .time .sec{ color:var(--accent); }
+  .ampm{
+    font-size:.24em; font-weight:600; letter-spacing:.04em; line-height:1;
+    margin-left:.18em; margin-top:.12em; color:var(--sub);
+  }
+  .date{
+    font-family:'Barlow Condensed',sans-serif; font-weight:500; letter-spacing:.03em;
+    color:var(--sub); margin-top:.55em; line-height:1.1; white-space:nowrap;
+  }
+  /* A tall screen (a phone upright) stacks hours, minutes and seconds, so the digits use its height. */
+  .stack .time{ flex-direction:column; align-items:center; line-height:.84; }
+  .stack .time .colon{ display:none; }
+  .stack .ampm{ font-size:.2em; margin:.25em 0 0; }
+  [hidden]{ display:none !important; }
+
+  /* The dock: Settings, Fullscreen and Hide controls. It fades out after a few seconds without a move or a
+     tap, with the cursor, and comes back on the next one. */
+  .dock{
+    position:fixed; left:50%; bottom:max(16px, env(safe-area-inset-bottom)); transform:translateX(-50%);
+    display:flex; gap:6px; padding:6px; border-radius:999px;
+    background:var(--panel); color:var(--panel-fg); border:1px solid var(--panel-line);
+    box-shadow:0 10px 30px -12px rgba(0,0,0,.45);
+    transition:opacity .35s ease, transform .35s ease;
+    z-index:10;
+  }
+  body.idle .dock{ opacity:0; pointer-events:none; transform:translate(-50%, 12px); }
+  .dock button{
+    display:inline-flex; align-items:center; gap:8px;
+    font:600 14px/1 'Inter',sans-serif; color:inherit; background:transparent;
+    border:0; border-radius:999px; padding:10px 14px; min-height:44px; cursor:pointer;
+  }
+  .dock button:hover{ background:var(--chip); }
+  .dock button.on{ background:var(--green); color:var(--navy); }
+  .dock svg{ width:18px; height:18px; flex:0 0 auto; }
+  @media (max-width:420px){ .dock .txt{ display:none; } .dock button{ padding:10px 13px; } }
+
+  /* Settings sheet */
+  .sheet{
+    position:fixed; right:max(16px, env(safe-area-inset-right)); bottom:calc(max(16px, env(safe-area-inset-bottom)) + 70px);
+    width:min(340px, calc(100vw - 32px)); max-height:calc(100dvh - 120px); overflow:auto;
+    background:var(--panel); color:var(--panel-fg); border:1px solid var(--panel-line); border-radius:16px;
+    padding:16px; z-index:11; box-shadow:0 18px 40px -16px rgba(0,0,0,.5);
+    user-select:text; -webkit-user-select:text;
+  }
+  @media (max-width:520px){ .sheet{ left:16px; right:16px; width:auto; } }
+  .sheet h2{ margin:0 0 12px; font:700 16px/1.2 'Barlow Condensed',sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--panel-line); font-size:14px; }
+  .row:first-of-type{ border-top:0; }
+  .row label{ flex:1; }
+  .row .hint{ display:block; font-size:12px; color:var(--sub); margin-top:2px; }
+  .seg{ display:inline-flex; border:1px solid var(--panel-line); border-radius:10px; overflow:hidden; }
+  .seg button{ font:600 13px/1 'Inter',sans-serif; padding:8px 11px; background:transparent; color:inherit; border:0; cursor:pointer; }
+  .seg button + button{ border-left:1px solid var(--panel-line); }
+  .seg button[aria-pressed="true"]{ background:var(--green); color:var(--navy); }
+  input[type="checkbox"]{ width:20px; height:20px; accent-color:var(--green); }
+  input[type="text"]{ width:100%; font:14px 'Inter',sans-serif; padding:9px 10px; border-radius:8px; border:1px solid var(--panel-line); background:var(--chip); color:inherit; }
+  .row.col{ flex-direction:column; align-items:stretch; }
+  .sheet .foot{ display:flex; gap:8px; margin-top:12px; }
+  .sheet .foot button{ flex:1; font:600 13px/1 'Inter',sans-serif; padding:10px; border-radius:10px; border:1px solid var(--panel-line); background:transparent; color:inherit; cursor:pointer; }
+  .sheet .keys{ font-size:12px; color:var(--sub); margin:12px 0 0; line-height:1.5; }
+  kbd{ font:600 11px 'Inter',sans-serif; border:1px solid var(--panel-line); border-radius:4px; padding:1px 5px; }
+  .toast{
+    position:fixed; left:50%; top:max(16px, env(safe-area-inset-top)); transform:translateX(-50%);
+    background:var(--panel); color:var(--panel-fg); border:1px solid var(--panel-line); border-radius:10px;
+    padding:10px 14px; font-size:14px; max-width:calc(100vw - 32px); z-index:12; text-align:center;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
+</style>
+</head>
+<body>
+<main class="stage" id="stage">
+  <div class="label" id="label" hidden></div>
+  <div class="time" id="time" role="timer" aria-live="off" aria-label="Current time">
+    <span id="hh"></span><span class="colon">:</span><span id="mm"></span><span class="sec" id="secWrap"><span class="colon">:</span><span id="ss"></span></span><span class="ampm" id="ampm"></span>
+  </div>
+  <div class="date" id="date"></div>
+</main>
+
+<nav class="dock" id="dock" aria-label="Clock controls">
+  <button type="button" id="settingsBtn" aria-expanded="false" aria-controls="sheet" title="Settings (S)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+    <span class="txt">Settings</span>
+  </button>
+  <button type="button" id="fsBtn" title="Full screen (F)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" id="fsIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    <span class="txt" id="fsTxt">Full screen</span>
+  </button>
+  <button type="button" id="hideBtn" title="Hide controls (H)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20L20 4"/></svg>
+    <span class="txt">Hide</span>
+  </button>
+</nav>
+
+<section class="sheet" id="sheet" hidden aria-label="Clock settings">
+  <h2>Clock settings</h2>
+  <div class="row"><span>Format</span>
+    <span class="seg" data-key="h24"><button type="button" data-v="false">12-hour</button><button type="button" data-v="true">24-hour</button></span></div>
+  <div class="row"><span>Theme</span>
+    <span class="seg" data-key="theme"><button type="button" data-v="navy">Navy</button><button type="button" data-v="black">Black</button><button type="button" data-v="light">Light</button></span></div>
+  <div class="row"><label for="optSeconds">Show seconds</label><input type="checkbox" id="optSeconds" data-key="seconds"></div>
+  <div class="row"><label for="optDate">Show date</label><input type="checkbox" id="optDate" data-key="date"></div>
+  <div class="row"><label for="optWake">Keep screen on<span class="hint" id="wakeHint">While this page is showing</span></label><input type="checkbox" id="optWake" data-key="wake"></div>
+  <div class="row col"><label for="optLabel">Label above the time<span class="hint">An event name, a court, anything. Empty for none.</span></label>
+    <input type="text" id="optLabel" data-key="label" maxlength="80" placeholder="e.g. UPAP 3rd Annual"></div>
+  <div class="foot"><button type="button" id="resetBtn">Reset to defaults</button><button type="button" id="closeBtn">Done</button></div>
+  <p class="keys"><kbd>F</kbd> or double-click: full screen · <kbd>H</kbd> hide controls · <kbd>S</kbd> settings · <kbd>Esc</kbd> close</p>
+</section>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  const STORE_KEY = 'sage.clock.v1';
+  const DEFAULTS = { h24:false, seconds:true, date:true, theme:'navy', wake:true, label:'' };
+  const THEMES = ['navy', 'black', 'light'];
+  const $ = id => document.getElementById(id);
+
+  // ---- settings: defaults, then this browser's saved ones, then the URL (?h24=1&seconds=0&date=0&theme=black&title=…)
+  function loadSaved(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}') || {}; } catch(e){ return {}; } }
+  function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch(e){} }
+  function readUrl(){
+    const q = new URLSearchParams(location.search), out = {};
+    const bool = v => !/^(0|false|no|off)$/i.test(v);
+    for(const k of ['h24', 'seconds', 'date', 'wake']) if(q.has(k)) out[k] = bool(q.get(k));
+    if(THEMES.includes(q.get('theme'))) out.theme = q.get('theme');
+    if(q.has('title')) out.label = q.get('title').slice(0, 80);
+    return out;
+  }
+  const saved = loadSaved();
+  const S = Object.assign({}, DEFAULTS, saved, readUrl());
+  if(!THEMES.includes(S.theme)) S.theme = DEFAULTS.theme;
+
+  // ---- the clock
+  const pad = n => String(n).padStart(2, '0');
+  const dateFmt = new Intl.DateTimeFormat(undefined, { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  let lastKey = '';
+  function render(){
+    const d = new Date();
+    let h = d.getHours();
+    let ampm = '';
+    if(!S.h24){ ampm = h < 12 ? 'AM' : 'PM'; h = h % 12 || 12; }
+    const hh = S.h24 ? pad(h) : String(h), mm = pad(d.getMinutes());
+    if(hh + mm !== lastKey){ $('hh').textContent = hh; $('mm').textContent = mm; lastKey = hh + mm; }
+    $('ss').textContent = pad(d.getSeconds());
+    $('ampm').textContent = ampm;
+    const ds = dateFmt.format(d);
+    if($('date').textContent !== ds) $('date').textContent = ds;
+    document.title = (S.h24 ? pad(h) : h) + ':' + pad(d.getMinutes()) + (ampm ? ' ' + ampm : '') + ' · Clock';
+  }
+  // Ticks on the second boundary, so the seconds change when the device clock's do.
+  let timer = 0;
+  function tick(){ render(); clearTimeout(timer); timer = setTimeout(tick, 1000 - (Date.now() % 1000) + 5); }
+
+  // ---- sizing: the largest font at which the widest time this format can show ("88:88:88 PM") fits the screen,
+  // so the digits never change size from one minute to the next.
+  const measurer = document.createElement('div');
+  measurer.className = 'time';
+  measurer.setAttribute('aria-hidden', 'true');
+  measurer.style.cssText = 'position:absolute; visibility:hidden; left:-9999px; top:0; font-size:100px;';
+  document.body.appendChild(measurer);
+  function fit(){
+    const stage = $('stage'), cs = getComputedStyle(stage);
+    const W = stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const H = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const stack = H > W * 1.15;
+    stage.classList.toggle('stack', stack);
+    measurer.className = 'time' + (stack ? ' stack-m' : '');
+    measurer.style.flexDirection = stack ? 'column' : 'row';
+    measurer.style.lineHeight = stack ? '.84' : '';
+    measurer.innerHTML = stack
+      ? '<span>88</span><span>88</span>' + (S.seconds ? '<span>88</span>' : '') + (S.h24 ? '' : '<span class="ampm" style="font-size:.2em;margin:.25em 0 0">PM</span>')
+      : '<span>88</span><span class="colon">:</span><span>88</span>' + (S.seconds ? '<span class="colon">:</span><span>88</span>' : '') +
+        (S.h24 ? '' : '<span class="ampm">PM</span>');
+    const r = measurer.getBoundingClientRect();
+    // Room the label and the date take, as a share of the time's own size.
+    const extra = (S.label ? 0.22 : 0) + (S.date ? 0.28 : 0);
+    const maxW = W * (stack ? 0.96 : 0.94);
+    // Keeps clear of the dock (about 60px) at the bottom, and the same at the top so the clock stays centred.
+    const maxH = Math.min(H * 0.92, H - 128);
+    let size = Math.min(maxW / r.width * 100, maxH / (r.height / 100 + extra * 1.2) );
+    size = Math.max(24, Math.floor(size));
+    $('time').style.fontSize = size + 'px';
+    $('date').style.fontSize = Math.max(14, Math.round(size * 0.2)) + 'px';
+    $('label').style.fontSize = Math.max(13, Math.round(size * 0.16)) + 'px';
+    // A long date or label (a stacked clock is narrow) shrinks until it fits the width.
+    for(const id of ['date', 'label']){
+      const el = $(id);
+      if(el.hidden) continue;
+      const px = parseFloat(el.style.fontSize);
+      const fitPx = Math.floor(px * W / el.scrollWidth);
+      if(el.scrollWidth > W) el.style.fontSize = Math.max(12, fitPx) + 'px';
+    }
+  }
+
+  function apply(){
+    document.documentElement.dataset.theme = S.theme;
+    document.querySelector('meta[name="theme-color"]').content = { navy:'#0B1826', black:'#000000', light:'#F6F7F2' }[S.theme];
+    $('secWrap').hidden = !S.seconds;
+    $('date').hidden = !S.date;
+    $('label').hidden = !S.label;
+    $('label').textContent = S.label;
+    $('ampm').hidden = S.h24;
+    document.querySelectorAll('.seg').forEach(seg => {
+      seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(String(S[seg.dataset.key]) === b.dataset.v)));
+    });
+    $('optSeconds').checked = S.seconds; $('optDate').checked = S.date; $('optWake').checked = S.wake;
+    if(document.activeElement !== $('optLabel')) $('optLabel').value = S.label;
+    lastKey = '';
+    render(); fit(); wake();
+  }
+  function set(k, v){ S[k] = v; save(); apply(); }
+
+  // ---- settings sheet
+  document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const k = seg.dataset.key; set(k, k === 'h24' ? b.dataset.v === 'true' : b.dataset.v);
+  }));
+  ['optSeconds', 'optDate', 'optWake'].forEach(id => $(id).addEventListener('change', e => set(e.target.dataset.key, e.target.checked)));
+  $('optLabel').addEventListener('input', e => set('label', e.target.value.slice(0, 80)));
+  $('resetBtn').addEventListener('click', () => { Object.assign(S, DEFAULTS); save(); apply(); });
+  function openSheet(open){
+    $('sheet').hidden = !open;
+    $('settingsBtn').setAttribute('aria-expanded', String(open));
+    $('settingsBtn').classList.toggle('on', open);
+    if(open) wakeUi();
+  }
+  $('settingsBtn').addEventListener('click', () => openSheet($('sheet').hidden));
+  $('closeBtn').addEventListener('click', () => openSheet(false));
+
+  // ---- full screen: the screen when the browser allows it (not on an iPhone), else the dock hides and the
+  // clock fills the window, and Add to Home Screen gives an iPhone the whole screen.
+  const fsEl = document.documentElement;
+  const canFs = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+  const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  async function toggleFs(){
+    if(!canFs){ hideControls(); toast('This browser can’t go full screen. Controls hidden; tap to bring them back. On an iPhone, Share → Add to Home Screen opens it full screen.'); return; }
+    try{
+      if(fsActive()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else await (fsEl.requestFullscreen || fsEl.webkitRequestFullscreen).call(fsEl, { navigationUI:'hide' });
+    } catch(e){ toast('Full screen was refused: ' + (e && e.message || 'unknown reason')); }
+  }
+  function syncFsButton(){
+    const on = fsActive();
+    $('fsTxt').textContent = on ? 'Exit full screen' : 'Full screen';
+    $('fsIcon').innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
+    setTimeout(fit, 50);
+    wakeUi();
+  }
+  document.addEventListener('fullscreenchange', syncFsButton);
+  document.addEventListener('webkitfullscreenchange', syncFsButton);
+  $('fsBtn').addEventListener('click', toggleFs);
+  $('stage').addEventListener('dblclick', toggleFs);
+
+  // ---- idle: the dock and cursor go after 3 s (at once after Hide), back on any move, tap or key
+  let idleTimer = 0;
+  function wakeUi(){
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    if($('sheet').hidden) idleTimer = setTimeout(() => document.body.classList.add('idle'), 3000);
+  }
+  function hideControls(){ openSheet(false); clearTimeout(idleTimer); document.body.classList.add('idle'); }
+  $('hideBtn').addEventListener('click', e => { e.stopPropagation(); hideControls(); });
+  ['pointermove', 'pointerdown', 'touchstart'].forEach(t => document.addEventListener(t, e => {
+    if(t === 'pointermove' && e.pointerType === 'touch') return;
+    wakeUi();
+  }, { passive:true }));
+
+  document.addEventListener('keydown', e => {
+    if(e.target && e.target.tagName === 'INPUT' && e.target.type === 'text'){ if(e.key === 'Escape') e.target.blur(); return; }
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if(k === 'f'){ e.preventDefault(); toggleFs(); }
+    else if(k === 'h'){ hideControls(); return; }
+    else if(k === 's'){ openSheet($('sheet').hidden); }
+    else if(k === 'escape'){ openSheet(false); }
+    wakeUi();
+  });
+
+  // ---- keep the screen on (Screen Wake Lock), taken again whenever the page comes back into view
+  let lock = null;
+  async function wake(){
+    const hint = $('wakeHint');
+    if(!('wakeLock' in navigator)){ hint.textContent = 'This browser can’t; set the device’s own screen timeout'; $('optWake').disabled = true; return; }
+    if(S.wake && !lock && document.visibilityState === 'visible'){
+      try{ lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); hint.textContent = 'On while this page is showing'; }
+      catch(e){ hint.textContent = 'Not allowed right now (battery saver?)'; }
+    } else if(!S.wake && lock){ try{ await lock.release(); } catch(e){} lock = null; hint.textContent = 'While this page is showing'; }
+  }
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ tick(); wake(); } });
+
+  let toastTimer = 0;
+  function toast(text){ const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 5000); }
+
+  // Refit on any size change (rotation, window resize, phone toolbars), and once the font has loaded.
+  if('ResizeObserver' in window) new ResizeObserver(() => fit()).observe($('stage'));
+  else window.addEventListener('resize', fit);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+  apply();
+  tick();
+  wakeUi();
+})();
+</script>
+</body>
+</html>

@@ -441,20 +441,25 @@
   .mc-auth #orgAuthHint{margin:0;}
   .mc-sync #orgFacilityResyncGroup{margin-top:16px;}
   .mc-tiles{display:grid; grid-template-columns:minmax(0,1fr); gap:10px;}
+  /* Every tile reads as a button, not only Open schedule: a filled face, a firm border and a raised
+     bottom edge on the white card, which presses in on click. */
   .mc-tile{
     display:flex; flex-direction:column; gap:3px; min-width:0;
     padding:12px 14px; border-radius:12px;
-    border:1px solid rgba(20,27,44,.18); background:var(--white);
-    color:var(--ink); text-decoration:none;
-    transition:border-color .12s ease, background .12s ease;
+    border:1.5px solid rgba(20,38,60,.42); background:var(--paper-dim);
+    box-shadow:0 2px 0 rgba(20,38,60,.28);
+    color:var(--ink); text-decoration:none; cursor:pointer;
+    transition:border-color .12s ease, background .12s ease, box-shadow .12s ease, transform .12s ease;
   }
-  .mc-tile:hover{border-color:var(--cork);}
+  .mc-tile:hover{border-color:var(--cork); background:var(--white); box-shadow:0 3px 0 rgba(20,38,60,.4); transform:translateY(-1px);}
+  .mc-tile:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(20,38,60,.3);}
   .mc-tile-title{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; letter-spacing:.04em; text-transform:uppercase;}
-  .mc-tile-title::after{content:"\00a0\2197"; font-weight:400; opacity:.6;}
+  .mc-tile-title::after{content:"\00a0\2197"; font-weight:700; opacity:.85; color:var(--green-dark);}
+  .mc-tile.primary .mc-tile-title::after{color:var(--green);}
   .mc-tile-sub{font-size:12px; line-height:1.4; color:var(--muted);}
   .mc-tile-title, .mc-tile-sub{text-wrap:balance;}   /* four tiles in a row wrap some lines: no one-word last line */
-  .mc-tile.primary{background:var(--ink); border-color:var(--ink); color:var(--white);}
-  .mc-tile.primary:hover{background:var(--navy-deep); border-color:var(--navy-deep);}
+  .mc-tile.primary{background:var(--ink); border-color:var(--ink); color:var(--white); box-shadow:0 2px 0 var(--navy-deep);}
+  .mc-tile.primary:hover{background:var(--navy-deep); border-color:var(--navy-deep); box-shadow:0 3px 0 #000;}
   .mc-tile.primary .mc-tile-sub{color:rgba(255,255,255,.78);}
   .mc-trouble{padding:0;}
   .mc-trouble-summary{
@@ -502,7 +507,7 @@
     .mc-head{display:flex; align-items:flex-start; justify-content:space-between; gap:24px;}
     .mc-head .organizer-day-label{margin:4px 0 0; text-align:left;}
     .mc-auth{flex:0 1 480px; min-width:0;}
-    .mc-tiles{grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));}
+    .mc-tiles{grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:minmax(0, 1fr);}   /* one row, however many tiles */
     .mc-trouble-body{grid-template-columns:repeat(3, minmax(0,1fr)); gap:0 28px;}
   }
   .golive-current{
@@ -3398,6 +3403,8 @@ function renderScheduleLauncher(){
   const scoresheetHref = '/tools/scoresheet-generator' + (day ? `?day=${encodeURIComponent(day.key)}` : '');
   // The prize draw opens on this event and day (prize-draw-spec §6).
   const prizeDrawHref = '/tools/prize-draw?event=' + encodeURIComponent(CURRENT_EVENT_KEY) + (day ? `&day=${encodeURIComponent(day.key)}` : '');
+  const eventTitle = (EVENTS_REGISTRY.get(CURRENT_EVENT_KEY) || {}).title || '';
+  const clockHref = '/tools/clock' + (eventTitle ? '?title=' + encodeURIComponent(eventTitle) : '');
   const tile = (href, title, sub, cls) =>
     `<a class="mc-tile${cls ? ' ' + cls : ''}" target="_blank" rel="noopener" href="${escapeHtml(href)}">` +
     `<span class="mc-tile-title">${title}</span><span class="mc-tile-sub">${sub}</span></a>`;
@@ -3411,7 +3418,9 @@ function renderScheduleLauncher(){
       : '') +
     tile(base, 'Open Tournament Hub', 'What players and spectators see') +
     tile(scoresheetHref, 'Open scoresheet generator', day ? `Printable scoresheets for ${escapeHtml(day.label)}` : 'Printable scoresheets') +
-    tile(prizeDrawHref, 'Open prize draw', 'Lucky Dink: raffles and door prizes');
+    tile(prizeDrawHref, 'Open prize draw', 'Lucky Dink: raffles and door prizes') +
+    // The wall clock carries the event's name as its label; its other settings stay the browser's own.
+    tile(clockHref, 'Open clock', 'A full-screen clock for a spare screen');
 }
 
 // Never written into this file. Holds { token, expiresAt } from a successful
