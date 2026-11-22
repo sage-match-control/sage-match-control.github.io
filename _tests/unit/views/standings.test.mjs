@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { buildDayModel } from '../../../lib/v1/domain/model.js';
 import {
   sortStageKeys, pairUpMatchups, matchupHTML, stageTablesHTML, categoryCardHTML, groupByCategory,
-  clubSummaryHTML, dualMeetStandingsHTML, categoryToggleBarHTML, categoryAutocompleteHTML,
+  clubSummaryHTML, dualMeetStandingsHTML, categoryToggleBarHTML, categoryAutocompleteHTML, pointsFromMatches,
 } from '../../../lib/v1/views/standings.js';
 
 const MATCH_HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
@@ -322,4 +322,24 @@ test('markPlayer reaches a dual meet\'s club columns', () => {
     assert.match(html, /<span class="flag">Bo<\/span>/);
     assert.equal(html.replace(' class="flag"', ''), plain);
   } finally { delete globalThis.window; }
+});
+
+test('Round Robin rows show points for and against, summed from the played matches; a BYE match counts for nothing', () => {
+  const m = model({
+    display: DISPLAY,
+    matches: [
+      '1,,9:00 AM,Court 1,NOD_1,Ann,Bo,11,NOD_2,Cy,Di,7', '2,,9:30 AM,Court 1,NOD_3,Ed,Flo,9,NOD_1,Ann,Bo,11',
+      '3,,10:00 AM,Court 1,NOD_2,Cy,Di,,NOD_3,Ed,Flo,', '4,,10:30 AM,Court 1,NOD_2,Cy,Di,11,NOD_4,bye,bye,0',
+    ],
+    standings: [stand('NOD_1', 'Ann', 'Bo', 2, 0, 1.375), stand('NOD_2', 'Cy', 'Di', 0, 1, 0.6364), stand('NOD_3', 'Ed', 'Flo', 0, 1, 0.8182)],
+  });
+  const points = pointsFromMatches(m.standings, m.matches);
+  assert.deepEqual(points.get('NOD_1'), { pf: 22, pa: 16 });
+  assert.deepEqual(points.get('NOD_2'), { pf: 7, pa: 11 });
+  assert.deepEqual(points.get('NOD_3'), { pf: 9, pa: 11 });
+  for(const layout of ['grid', 'column']){
+    const html = stageTablesHTML(m.standings, m, { rrBracketLayout: layout }).html;
+    assert.match(html, /<th class="num">L<\/th><th class="pts" title="Points for">PF<\/th><th class="pts" title="Points against">PA<\/th><th class="quo">Q<\/th>/);
+    assert.match(html, /<td class="num">0<\/td>\s*<td class="pts">22<\/td>\s*<td class="pts">16<\/td>\s*<td class="quo">1\.3750<\/td>/);
+  }
 });

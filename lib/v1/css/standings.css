@@ -233,6 +233,9 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .br-table th.quo{width:54px; text-align:center;}
 
+/* PF / PA: room for a three-digit points total. */
+.br-table th.pts{width:30px; text-align:center;}
+
 .br-table th.br-badge{width:22px; text-align:center;}
 
 .br-table th{
@@ -266,6 +269,8 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 .br-table td.num{text-align:center; width:26px;}
 
 .br-table td.quo{text-align:center; width:54px;}
+
+.br-table td.pts{text-align:center; width:30px;}
 
 .br-table td.br-badge{
   text-align:center; width:22px; font-weight:700; color:#fff; border-radius:6px;
