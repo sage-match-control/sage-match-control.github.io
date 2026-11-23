@@ -154,5 +154,29 @@ export const ACCEPTED = [
     case: /^(std-index|dm-index)\/[^/]+\/finder-find-button\//, kind: 'both', row: 'owner 2026-11-23 hub P1',
     reason: 'Find matches closes the suggestion list; the baseline leaves it open over the results',
   },
+  // ---- step 2, P3: the next match on the pair summary card (only where the pair has a match left) ----
+  {
+    case: /^std-index\/[^/]+\/finder-(search|find-button)\/pre\/(phone|desktop)$|^dm-index\/[^/]+\/finder-(search|find-button)\/(pre|mid)\/(phone|desktop)$|^cc\/((piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder-search\/pre|pnf-x-bup-dual-meet\/finder-search\/mid)\/(phone|desktop)$/, kind: 'both', row: 'owner 2026-11-23 hub P3',
+    reason: 'the pair summary card opens with the pair’s next match (time, court, opponents), or the court it is on now',
+  },
+  // ---- step 3, P2 + P5: the banner folds into a bar (cases whose steps scroll the banner away) ----
+  {
+    case: /^(std-index|dm-index)\/[^/]+\/finder-(search|find-button)\/[^/]+\/phone$|^team-index\/[^/]+\/finder-(team|player)\/[^/]+\/phone$|^team-index\/[^/]+\/standings-bracket-open\/[^/]+\/(phone|desktop)$/, kind: 'both', row: 'owner 2026-11-23 hub P2+P5',
+    reason: 'the case’s steps scroll the banner out of view, so the slim pinned bar (logo, date, title and the ☰ menu or the row of sync line, day picker and tabs) is showing when it is captured',
+  },
+  // ---- steps 4, 5, 6 and 8: P6 status and tie pills, P14 open rows, P12 podium, P16 jump chips ----
+  {
+    case: /^std-index\/[^/]+\/standings\/[^/]+\/desktop$|^std-index\/[^/]+\/standings-category-2\/[^/]+\/(phone|desktop)$|^dm-index\/[^/]+\/standings(-category-2)?\/[^/]+\/(phone|desktop)$|^team-index\/[^/]+\/standings(-bracket-open)?\/[^/]+\/(phone|desktop)$/, kind: 'both', row: 'owner 2026-11-23 hub P6, P14, P12, P16',
+    reason: 'each round-robin table carries an In progress · n/m or Final pill and tied rows a tie pill; a standard or dual-meet row ends in › and opens the pair in Match Finder; a finished category opens with its podium; a dual meet’s Standings on a phone pin the club score with category jump chips',
+  },
+  {
+    case: /^cc\/[^/]+\/standings\/[^/]+\/desktop$|^cc\/(pnf-x-bup-dual-meet|pickledrive-anniversary-2026|team-demo-2026)\/standings\/[^/]+\/phone$|^cc-signed-in\/[^/]+\/standings\/[^/]+\/desktop$/, kind: 'both', row: 'owner 2026-11-23 hub P6',
+    reason: 'Control Center’s round-robin tables carry the same In progress · n/m or Final pill and tie pills',
+  },
+  // ---- step 7, P15: a dual meet's club score first, and Pairs, not Teams ----
+  {
+    case: /^(std-index|dm-index)\/[^/]+\/finder\/[^/]+\/(phone|desktop)$|^cc\/(piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder\/[^/]+\/(phone|desktop)$|^cc-signed-in\/[^/]+\/finder\/[^/]+\/(phone|desktop)$/, kind: 'both', row: 'owner 2026-11-23 hub P15',
+    reason: 'Match Finder’s first-screen count reads Pairs, not Teams; a live dual meet’s Hub shows the club score bar above the counts',
+  },
 ];
 
