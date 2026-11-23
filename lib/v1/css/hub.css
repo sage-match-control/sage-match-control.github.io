@@ -415,3 +415,254 @@ footer a:hover{ text-decoration:underline; }
 @media (max-width:480px) {
   .score-logo{width:64px; height:64px; margin-bottom:4px;}
 }
+
+/* ---------- THE BAR THE BANNER FOLDS INTO ----------
+   lib/v1/views/hub-bar.js (hub-player-experience-spec §5). Once the banner has scrolled out of view a slim navy bar
+   is pinned to the top: the logo, the date and venue line and the title on the left, and on the right a phone's menu
+   button or a computer's row of the sync line, the day picker and the tabs. The bar is 54px (HUB_BAR_HEIGHT);
+   views/reveal.js counts the same number. */
+
+.hub-bar{
+  position:fixed; top:0; left:0; right:0; z-index:50;
+  height:54px;
+  display:flex; align-items:center; gap:10px;
+  padding:0 12px;
+  background:var(--navy);
+  color:var(--white);
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+
+/* A display:flex rule would override the hidden attribute otherwise. */
+.hub-bar[hidden]{ display:none; }
+
+.hub-bar-logo{
+  width:32px; height:32px;
+  border-radius:8px;
+  background:var(--white);
+  object-fit:contain;
+  flex:none;
+}
+
+.hub-bar-text{ flex:1; min-width:0; }
+
+.hub-bar-meta, .hub-bar-title{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.hub-bar-meta{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--green);
+}
+
+.hub-bar-title{
+  font-family:'Archivo Black',sans-serif;
+  font-weight:400;
+  font-size:15px;
+  line-height:1.1;
+  text-transform:uppercase;
+}
+
+.hub-menu, .hub-menu-scrim{ display:none; }
+
+/* Everything already pinned to the top of the screen moves under the bar. */
+body.hub-bar-on .standings-col-head,
+body.hub-bar-on .club-summary{ top:54px; }
+
+.hub-bar-tab:focus-visible,
+.hub-bar-btn:focus-visible,
+.hub-menu-tab:focus-visible{ outline:2px solid var(--green); outline-offset:2px; }
+
+/* A computer: the same items in a row, right-aligned, with no menu. */
+@media (min-width:900px) {
+  .hub-bar{ padding:0 20px; gap:12px; }
+  .hub-bar-logo{ width:34px; height:34px; }
+  .hub-bar-btn{ display:none; }
+
+  .hub-bar-row{ display:flex; align-items:center; gap:8px; flex:none; }
+
+  .hub-bar-sync{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    color:rgba(255,255,255,.7);
+    white-space:nowrap;
+    margin-right:6px;
+  }
+
+  .hub-bar-day{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.08);
+    border-radius:999px;
+    padding:5px 12px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,.6);
+  }
+
+  .hub-bar-day select{
+    background:transparent;
+    border:0;
+    color:var(--white);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.04em;
+    cursor:pointer;
+  }
+
+  .hub-bar-day select option{ color:var(--ink); }
+
+  .hub-bar-tab{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--white);
+    background:transparent;
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:999px;
+    padding:6px 14px;
+    white-space:nowrap;
+    cursor:pointer;
+  }
+
+  .hub-bar-tab:hover{ border-color:var(--green); }
+
+  .hub-bar-tab.active{ background:var(--green); border-color:var(--green); color:var(--navy); }
+
+  /* The QR panel (fixed in the top-right corner) moves down under the bar while it shows. */
+  body.hub-bar-on .qr-panel{ top:80px; }
+}
+
+/* Room is short between 900 and 1100px: the sync line is left out. */
+@media (min-width:900px) and (max-width:1099px) {
+  .hub-bar-sync{ display:none; }
+}
+
+/* A phone: a button naming the open tab, which opens a menu of the tabs, the day and the sync line. */
+@media (max-width:899px) {
+  .hub-bar-row{ display:none; }
+
+  .hub-bar-btn{
+    display:flex; align-items:center; gap:8px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--white);
+    background:rgba(255,255,255,.1);
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:999px;
+    padding:6px 12px 6px 14px;
+    cursor:pointer;
+    flex:none;
+  }
+
+  /* Three bars; a cross while the menu is open. */
+  .hub-bar-burger{
+    position:relative;
+    width:16px; height:12px;
+    flex:none;
+    background:
+      linear-gradient(var(--white),var(--white)) 0 0/100% 2px no-repeat,
+      linear-gradient(var(--white),var(--white)) 0 5px/100% 2px no-repeat,
+      linear-gradient(var(--white),var(--white)) 0 10px/100% 2px no-repeat;
+  }
+
+  .hub-bar-btn[aria-expanded="true"] .hub-bar-burger{ background:none; }
+
+  .hub-bar-btn[aria-expanded="true"] .hub-bar-burger::before,
+  .hub-bar-btn[aria-expanded="true"] .hub-bar-burger::after{
+    content:"";
+    position:absolute; left:0; right:0; top:5px;
+    height:2px;
+    background:var(--white);
+    transform:rotate(45deg);
+  }
+
+  .hub-bar-btn[aria-expanded="true"] .hub-bar-burger::after{ transform:rotate(-45deg); }
+
+  .hub-menu-scrim{
+    display:block;
+    position:fixed; inset:54px 0 0 0; z-index:48;
+    background:rgba(10,18,30,.45);
+  }
+
+  .hub-menu{
+    display:block;
+    position:fixed; top:54px; left:0; right:0; z-index:49;
+    background:var(--navy);
+    padding:6px 14px 16px;
+    border-top:1px solid rgba(255,255,255,.12);
+  }
+
+  .hub-menu-scrim[hidden], .hub-menu[hidden]{ display:none; }
+
+  .hub-menu-tab{
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%;
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:18px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    text-align:left;
+    color:var(--white);
+    background:none;
+    border:0;
+    border-bottom:1px solid rgba(255,255,255,.1);
+    padding:13px 6px;
+    cursor:pointer;
+  }
+
+  .hub-menu-tab.active{ color:var(--green); }
+
+  .hub-menu-tab.active::after{ content:"●"; font-size:10px; }
+
+  .hub-menu-day{
+    display:flex; align-items:center; gap:10px;
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:10px;
+    background:rgba(255,255,255,.08);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,.6);
+  }
+
+  .hub-menu-day select{
+    flex:1; min-width:0;
+    background:transparent;
+    border:0;
+    color:var(--white);
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:16px;
+  }
+
+  .hub-menu-day select option{ color:var(--ink); }
+
+  .hub-menu-sync{
+    margin-top:12px;
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:12.5px;
+    color:rgba(255,255,255,.7);
+  }
+
+  /* The search box (pinned on a phone, 8px from the top) sits under the bar while it shows. */
+  body.hub-bar-on .search-panel{ top:62px; }
+}
