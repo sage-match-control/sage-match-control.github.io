@@ -180,9 +180,11 @@ meeting another team in a matchup won on total points (or on games won, with
 
    Two things to fill in beyond the shared tokens:
 
-   - **`{{SCHEDULE_DAY_KEY}}`** — the board shows exactly one day. Set this
-     to that day's key in `events.json` (step 7). For a multi-day event, point
-     it at whichever day is being played; there is no day picker on the board.
+   - **`{{SCHEDULE_DAY_KEY}}`** — the day the board shows. Set this to that
+     day's key in `events.json` (step 7); for a multi-day event, the first
+     day. At an event with two days or more the board's bar has a **Day**
+     picker, filled from `events.json`, and on each event day the board opens
+     on that day by its date (`lib/v1/domain/board-day.js`).
    - **`CAT_META`** — one entry per `<DIVISION><EVENT>` code, giving each
      category its chip label and the hue that tints its cells. For a team
      event it is one hue per bracket (`G` and the bracket's number or letter:

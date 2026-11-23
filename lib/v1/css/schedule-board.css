@@ -42,6 +42,7 @@ body{
    export button. Ctrl+P still prints, so nothing is actually lost. */
 .bezel.compact{ padding:4px 16px; }
 
+.bezel.compact .dayfilter,
 .bezel.compact .venuefilter,
 .bezel.compact .courtfilter,
 .bezel.compact .bezel-export{ display:none; }
@@ -154,6 +155,34 @@ body{
 .venuefilter[hidden]{ display:none; }
 
 .venuefilter .cf-btn{ padding:2px 9px; }
+
+/* ---------- DAY PICKER ----------
+   Rendered only on a page whose markup has #dayfilter, and only when the event has two days or more
+   (apps/schedule-board.js). Choosing a day reloads the board on it, by ?day=. Bordered like the court
+   filter's buttons; the chevron is white for the navy bar. */
+.dayfilter{
+  display:flex; align-items:center; gap:4px;
+  margin-left:18px; padding-left:16px;
+  border-left:1px solid rgba(255,255,255,.22);
+}
+
+.dayfilter[hidden]{ display:none; }
+
+.day-select{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700; font-size:12px; letter-spacing:.04em;
+  padding:2px 24px 2px 9px;
+  border-radius:5px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.28);
+  background:transparent url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" stroke="%23FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 7px center;
+  background-size:10px;
+  color:var(--white);
+  appearance:none; -webkit-appearance:none; -moz-appearance:none;
+}
+
+.day-select:hover, .day-select:focus{ border-color:var(--green); outline:none; }
+
+.day-select option{ color:var(--ink); background:var(--white); }
 
 .legend{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
 
@@ -443,6 +472,7 @@ body{
      what is left of a 375px line. */
   .meta{ order:5; flex:1 0 100%; white-space:normal; font-size:10px; }
 
+  .dayfilter,
   .venuefilter,
   .courtfilter{
     order:6; flex:1 0 100%; flex-wrap:wrap;
