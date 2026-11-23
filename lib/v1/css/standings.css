@@ -924,3 +924,67 @@ div.bk-full{
 .bk-full--compact .bk-short{display:inline; font-size:20px;}
 
 .bk-full--compact .bk-head{font-size:16px;}
+
+/* ---------- PODIUM (views/podium.js; the Hub's Standings, hub-player-experience-spec §8) ---------- */
+/* A finished category's gold, silver and bronze, first in its card's body; a team event's open its Standings.
+   The medal colours are the pair summary card's (finder.css .ps-status--gold/silver/bronze). */
+.podium{
+  background:var(--white);
+  border-radius:14px;
+  box-shadow:var(--card-shadow);
+  padding:12px 14px;
+  margin:0 0 14px;
+}
+
+.podium-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--muted);
+}
+
+.podium-list{list-style:none; margin:0; padding:0;}
+
+.podium-place{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:6px 0;
+}
+
+.podium-place + .podium-place{border-top:1px dashed var(--line);}
+
+.podium-rank{
+  flex:none;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Archivo Black',sans-serif;
+  font-size:13px;
+  line-height:1;
+}
+
+.podium-place--gold .podium-rank{background:#F3D46B; color:#4A3500;}
+
+.podium-place--silver .podium-rank{background:#DADDE3; color:#2E333D;}
+
+.podium-place--bronze .podium-rank{background:#E3B48A; color:#4A2A0C;}
+
+.podium-names{
+  min-width:0;
+  font-size:14px;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+
+.podium-names small{
+  display:block;
+  font-size:12px;
+  font-weight:400;
+  color:var(--ink-soft);
+}
