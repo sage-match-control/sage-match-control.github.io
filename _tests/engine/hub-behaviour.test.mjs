@@ -1,5 +1,6 @@
 // What the Tournament Hub does when it is scrolled and tapped (hub-player-experience-spec §2.4): steps 1 (a search shows
-// its results), 3 (the bar the banner folds into), 5 (a Standings row opens that pair in Match Finder).
+// its results), 3 (the bar the banner folds into), 5 (a Standings row opens that pair in Match Finder), 8 (a dual meet's
+// category chips).
 // The comparison harness's screenshots are full-page: the viewport grows to the page's height, so nothing is ever
 // scrolled. This file opens a harness case at its real viewport (375 × 812 on a phone, 1280 × 800 on a computer)
 // and asserts on the live page. `npm run compare` runs it with the rest of engine/.
@@ -561,5 +562,137 @@ describe('a Standings row on a computer', () => {
       const top = await topOf(page, '#searchPanel');
       assert.ok(top >= 0 && top < 800, `the search box is in the viewport (top ${top}px)`);
     });
+  });
+});
+
+// ---- step 8: a dual meet's Standings jump to a category (phones only) ---------------------------------------------
+
+const DM_FINAL_PHONE = 'dm-index/pnf-x-bup-dual-meet/standings/final/phone';
+const DM_FINAL_DESKTOP = 'dm-index/pnf-x-bup-dual-meet/standings/final/desktop';
+const CC_DM_FINAL_PHONE = 'cc/pnf-x-bup-dual-meet/standings/final/phone';
+const CC_DM_FINAL_DESKTOP = 'cc/pnf-x-bup-dual-meet/standings/final/desktop';
+
+/** Where a chip's category sits against the pinned row: the gap between the pin's bottom and the column's top. */
+const jumpGap = (page, n) => page.evaluate(i => {
+  const chip = document.querySelectorAll('.dm-jump-chip')[i];
+  const col = [...document.querySelectorAll('#standingsBody .standings-col')].find(c => c.dataset.catKey === chip.dataset.jumpCat);
+  return col.getBoundingClientRect().top - document.querySelector('.dm-pin').getBoundingClientRect().bottom;
+}, n);
+const activeChips = page => page.evaluate(() => [...document.querySelectorAll('.dm-jump-chip')].map((c, i) => c.classList.contains('active') ? i : -1).filter(i => i >= 0));
+
+describe('a dual meet’s category chips on a phone', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+  const withPage = (id, options, fn) => withCase(browser, site, id, options, fn);
+
+  it('are pinned under the club bar, one for each of the seven categories, in the columns’ order', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      assert.equal(await page.locator('.dm-pin').count(), 1);
+      assert.equal(await page.locator('.dm-pin > .club-summary').count(), 1);
+      assert.equal(await page.locator('.dm-pin > .dm-jump').count(), 1);
+      const chips = await page.locator('.dm-jump-chip').evaluateAll(list => list.map(c => ({ cat: c.dataset.jumpCat, text: c.textContent.trim() })));
+      assert.equal(chips.length, 7);
+      const cols = await page.locator('#standingsBody .standings-col').evaluateAll(list => list.map(c => c.dataset.catKey));
+      assert.deepEqual(chips.map(c => c.cat), cols);
+      assert.match(chips[0].text, /^[A-Z]+ [A-Z]+$/, 'a division and an event code');
+      // the club bar and the chips come before the board
+      assert.equal(await page.evaluate(() => document.querySelector('.dm-pin').nextElementSibling.classList.contains('standings-board')), true);
+    });
+  });
+
+  it('a tap on the third chip lands that category just under the pinned row and marks its chip', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      await page.locator('.dm-jump-chip').nth(2).click();
+      await settle(page);
+      const gap = await jumpGap(page, 2);
+      assert.ok(gap >= 0 && gap <= 16, `the category starts ${gap}px under the pinned row`);
+      assert.deepEqual(await activeChips(page), [2]);
+      // the pinned row really is pinned, at the top of the screen (the bar shows here, so under it)
+      const pinTop = await topOf(page, '.dm-pin');
+      assert.ok(Math.abs(pinTop - BAR_HEIGHT) <= 1, `the pinned row is ${pinTop}px from the top`);
+    });
+  });
+
+  it('the jump still lands right when the bar is already showing before the tap', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      await scrollTo(page, 1200);
+      assert.equal(await barOn(page), true, 'the bar is showing');
+      await page.locator('.dm-jump-chip').nth(2).click();
+      await settle(page);
+      const gap = await jumpGap(page, 2);
+      assert.ok(gap >= 0 && gap <= 16, `the category starts ${gap}px under the pinned row`);
+      assert.deepEqual(await activeChips(page), [2]);
+      const pinTop = await topOf(page, '.dm-pin');
+      assert.ok(Math.abs(pinTop - BAR_HEIGHT) <= 1, `the pinned row sits at ${pinTop}px, under the bar`);
+    });
+  });
+
+  it('a tap on the last chip lands as near as the page lets it and marks that chip', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      await page.locator('.dm-jump-chip').nth(6).click();
+      await settle(page);
+      assert.ok(await jumpGap(page, 6) >= 0, 'the last category is not hidden under the pinned row');
+      assert.deepEqual(await activeChips(page), [6]);
+    });
+  });
+
+  it('scrolling by hand moves the highlight to the category at the top, and back', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      const tops = await page.evaluate(() => [...document.querySelectorAll('#standingsBody .standings-col')].map(c => c.getBoundingClientRect().top + window.scrollY));
+      const pinH = await page.evaluate(() => document.querySelector('.dm-pin').getBoundingClientRect().height);
+      await scrollTo(page, tops[4] - pinH - BAR_HEIGHT + 40);
+      await page.waitForTimeout(120);
+      assert.deepEqual(await activeChips(page), [4]);
+      await scrollTo(page, tops[1] - pinH - BAR_HEIGHT + 40);
+      await page.waitForTimeout(120);
+      assert.deepEqual(await activeChips(page), [1]);
+    });
+  });
+
+  it('a chip row wider than the screen scrolls sideways on its own and the page does not', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      const m = await page.evaluate(() => {
+        const nav = document.querySelector('.dm-jump');
+        return { scroll: nav.scrollWidth, client: nav.clientWidth, doc: document.documentElement.scrollWidth, view: window.innerWidth };
+      });
+      assert.ok(m.scroll > m.client, `the chips (${m.scroll}px) overflow their row (${m.client}px)`);
+      assert.ok(m.doc <= m.view, `the page is ${m.doc}px wide on a ${m.view}px screen`);
+    });
+  });
+
+  it('the category heads no longer pin under the chips', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      assert.equal(await page.locator('#standingsBody .standings-col-head').first().evaluate(el => getComputedStyle(el).position), 'static');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.dm-pin .club-summary')).position), 'static');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.dm-pin')).position), 'sticky');
+    });
+  });
+
+  it('the page stays whole: every category is still drawn after a jump', async () => {
+    await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
+      await page.locator('.dm-jump-chip').nth(3).click();
+      await settle(page);
+      assert.equal(await page.locator('#standingsBody .standings-col').count(), 7);
+      assert.equal(await page.locator('#standingsBody .standings-col:visible').count(), 7);
+    });
+  });
+
+  it('the chips are a phone’s: a computer’s Standings draw neither the pinned row nor chips', async () => {
+    await withPage(DM_FINAL_DESKTOP, { runSteps: true }, async ({ page }) => {
+      assert.equal(await page.locator('.dm-pin').count(), 0);
+      assert.equal(await page.locator('.dm-jump-chip').count(), 0);
+      assert.equal(await page.locator('#standingsBody .standings-col').count() > 0, true);
+    });
+  });
+
+  it('Control Center’s dual-meet Standings draw neither, on a phone or a computer', async () => {
+    for (const id of [CC_DM_FINAL_PHONE, CC_DM_FINAL_DESKTOP]) {
+      await withPage(id, { runSteps: true }, async ({ page }) => {
+        assert.ok(await page.locator('.standings-col').count() > 0, `${id} draws its Standings`);
+        assert.equal(await page.locator('.dm-pin').count(), 0, id);
+        assert.equal(await page.locator('.dm-jump-chip').count(), 0, id);
+      });
+    }
   });
 });

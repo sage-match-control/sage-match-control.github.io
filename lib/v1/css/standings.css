@@ -524,6 +524,48 @@ tr.rr-open:focus-visible{ outline:2px solid var(--green-dark); outline-offset:-2
   }
 }
 
+/* A dual meet's category chips on the Hub's phone layout (options.jumpChips): the club bar and a row of chips are
+   pinned together, and a tap scrolls that category's column to just under them. The category heads stop pinning
+   under the row, which would hide them behind it. */
+@media (max-width:899px), (max-height:599px) {
+  .dm-pin{
+    position:sticky;
+    top:0;
+    z-index:6;
+    background:var(--paper);
+    padding-bottom:6px;
+  }
+  .dm-pin .club-summary{ position:static; }
+  .dm-jump{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding:6px 0 2px;
+    scrollbar-width:none;
+  }
+  .dm-jump::-webkit-scrollbar{ display:none; }
+  .dm-jump-chip{
+    font-family:'Barlow Condensed',sans-serif;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    padding:5px 11px;
+    border-radius:999px;
+    background:var(--white);
+    border:1px solid var(--line);
+    color:var(--navy);
+    cursor:pointer;
+  }
+  .dm-jump-chip.active{
+    background:var(--navy);
+    color:var(--white);
+    border-color:var(--navy);
+  }
+  .dm-pin ~ .standings-board .standings-col-head{ position:static; }
+}
+
 /* Horizontal box: logo+name (left) beside the wins stat (right) — wider,
    shorter, instead of stacking all four pieces in one tall column. */
 .club-summary-item{

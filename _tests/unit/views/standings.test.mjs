@@ -343,3 +343,93 @@ test('Round Robin rows show points for and against, summed from the played match
     assert.match(html, /<td class="num">0<\/td>\s*<td class="pts">22<\/td>\s*<td class="pts">16<\/td>\s*<td class="quo">1\.3750<\/td>/);
   }
 });
+
+// ---- step 8 of the Hub player experience: category chips in a dual meet's Standings on a phone ----------------
+
+const JUMP_DISPLAY = {
+  divisions: { N: 'Novice', A: 'Advanced' }, events: { OD: 'Open Doubles', MD: 'Mens Doubles' }, clubs: { PNF: 'P', BUP: 'B' },
+};
+// Three categories, the first listed last, so the order the chips come in is the display order, not the data's.
+const jumpModel = (extra = []) => model({
+  type: 'dual-meet', display: JUMP_DISPLAY,
+  standings: [
+    stand('PNF_NMD_1', 'a', 'b', 1, 0, 1), stand('BUP_NMD_1', 'c', 'd', 0, 1, 0),
+    stand('PNF_AOD_1', 'e', 'f', 1, 0, 1), stand('BUP_AOD_1', 'g', 'h', 0, 1, 0),
+    stand('PNF_NOD_1', 'i', 'j', 1, 0, 1), stand('BUP_NOD_1', 'k', 'l', 0, 1, 0),
+    ...extra,
+  ],
+});
+const withScreen = (matches, fn) => {
+  globalThis.window = { matchMedia: () => ({ matches }) };
+  try { return fn(); } finally { delete globalThis.window; }
+};
+const catKeys = html => [...html.matchAll(/class="standings-col[^"]*" data-cat-key="([^"]*)"/g)].map(m => m[1].replace(/&amp;/g, '&'));
+const chips = html => [...html.matchAll(/<button type="button" class="dm-jump-chip" data-jump-cat="([^"]*)">([^<]*)<\/button>/g)]
+  .map(m => ({ cat: m[1].replace(/&amp;/g, '&'), text: m[2] }));
+
+test('a dual meet phone: the club bar and one chip per category sit together in .dm-pin, in category order', () => {
+  withScreen(false, () => {
+    const html = dualMeetStandingsHTML(jumpModel(), { jumpChips: true });
+    assert.match(html, /^<div class="dm-pin"><div class="club-summary/);
+    assert.match(html, /<nav class="dm-jump" aria-label="Jump to a category">/);
+    const keys = catKeys(html);
+    assert.equal(keys.length, 3);
+    const list = chips(html);
+    assert.deepEqual(list.map(c => c.cat), keys, 'one chip per column, in the columns\' order, each pointing at its data-cat-key');
+    assert.deepEqual(list.map(c => c.text), ['N OD', 'N MD', 'A OD'], 'the division and event codes');
+    // the pinned row holds the bar and the chips and nothing of the board
+    const pin = html.slice(0, html.indexOf('<div class="standings-board">'));
+    assert.match(pin, /<\/nav><\/div>$/);
+    assert.doesNotMatch(pin, /standings-col/);
+  });
+});
+
+test('a category the display settings cannot split is a chip of its category code', () => {
+  withScreen(false, () => {
+    const html = dualMeetStandingsHTML(jumpModel([stand('PNF_QZZ_1', 'm', 'n', 0, 0, 0), stand('BUP_QZZ_1', 'o', 'p', 0, 0, 0)]), { jumpChips: true });
+    const list = chips(html);
+    assert.equal(list.length, 4);
+    assert.equal(list[3].text, 'QZZ');
+    assert.deepEqual(list.map(c => c.cat), catKeys(html));
+  });
+});
+
+test('a category label with a quote or an ampersand is escaped in its chip', () => {
+  withScreen(false, () => {
+    const display = { divisions: { N: 'Novice & "Co"' }, events: { OD: 'Open <Doubles>' }, clubs: { PNF: 'P', BUP: 'B' } };
+    const m = model({ type: 'dual-meet', display, standings: [stand('PNF_NOD_1', 'a', 'b', 1, 0, 1), stand('BUP_NOD_1', 'c', 'd', 0, 1, 0)] });
+    const html = dualMeetStandingsHTML(m, { jumpChips: true });
+    assert.match(html, /data-jump-cat="Novice &amp; &quot;Co&quot; Open &lt;Doubles&gt;"/);
+    assert.doesNotMatch(html, /<Doubles>/);
+  });
+});
+
+test('without jumpChips a phone\'s dual meet standings are the markup they were: no pin, no chips', () => {
+  withScreen(false, () => {
+    const m = jumpModel();
+    const plain = dualMeetStandingsHTML(m, {});
+    assert.equal(plain, dualMeetStandingsHTML(m, { jumpChips: false }));
+    assert.doesNotMatch(plain, /dm-pin|dm-jump/);
+    // byte for byte: the club bar, then the board, as before
+    const withChips = dualMeetStandingsHTML(m, { jumpChips: true });
+    assert.equal(withChips.replace(/^<div class="dm-pin">/, '').replace(/<nav class="dm-jump".*?<\/nav><\/div>/s, ''), plain, 'jumpChips only wraps the bar and adds the nav');
+  });
+});
+
+test('on a computer jumpChips changes nothing', () => {
+  withScreen(true, () => {
+    const m = jumpModel();
+    const plain = dualMeetStandingsHTML(m, {});
+    assert.equal(dualMeetStandingsHTML(m, { jumpChips: true }), plain);
+    assert.doesNotMatch(plain, /dm-pin|dm-jump/);
+  });
+});
+
+test('a day with fewer than two clubs has no club bar, and so no pin to put chips in', () => {
+  withScreen(false, () => {
+    const m = model({ type: 'dual-meet', display: JUMP_DISPLAY, standings: [stand('PNF_NOD_1', 'a', 'b', 1, 0, 1)] });
+    const html = dualMeetStandingsHTML(m, { jumpChips: true });
+    assert.equal(chips(html).length, 1, 'the chips are still there to jump with');
+    assert.match(html, /^<div class="dm-pin"><nav class="dm-jump"/);
+  });
+});

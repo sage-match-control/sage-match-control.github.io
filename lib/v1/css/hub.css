@@ -474,6 +474,7 @@ footer a:hover{ text-decoration:underline; }
 /* Everything already pinned to the top of the screen moves under the bar. */
 body.hub-bar-on .standings-col-head,
 body.hub-bar-on .club-summary{ top:54px; }
+body.hub-bar-on .dm-pin{ top:54px; }
 
 .hub-bar-tab:focus-visible,
 .hub-bar-btn:focus-visible,
