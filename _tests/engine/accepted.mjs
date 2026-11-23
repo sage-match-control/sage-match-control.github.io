@@ -149,5 +149,10 @@ export const ACCEPTED = [
     case: /^(team-index\/[^/]+|cc(-signed-in)?\/(pickledrive-anniversary-2026|team-demo-2026))\/(finder[^/]*|standings[^/]*|teams[^/]*)\//, kind: 'both', row: 'owner 2026-11-22 match numbers',
     reason: 'a team match line’s number is a small dark tab',
   },
+  // ---- Hub player experience, step 1 (sage-docs/docs/specs/.../hub-player-experience-spec.md §3) ----
+  {
+    case: /^(std-index|dm-index)\/[^/]+\/finder-find-button\//, kind: 'both', row: 'owner 2026-11-23 hub P1',
+    reason: 'Find matches closes the suggestion list; the baseline leaves it open over the results',
+  },
 ];
 

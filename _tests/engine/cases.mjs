@@ -186,6 +186,8 @@ function* hubCases(registry) {
       const views = p.views ? p.views(word) : [
         ['finder', []],
         ['finder-search', [type('#teamInput', word), click('#acList .ac-item')]],
+        // Find matches closes the suggestions (hub-player-experience-spec §3); the baseline leaves them open.
+        ['finder-find-button', [type('#teamInput', word), click('#searchBtn')]],
         ['live', [tab('Live Matches')]],
         ['standings', [tab('Standings')]],
         ['standings-category-2', [tab('Standings'), ifVisible('#catFilterInput', click('#catFilterInput')), ifVisible('#catAcList .ac-item', clickNth('#catAcList .ac-item', 1))]],
