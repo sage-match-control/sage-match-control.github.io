@@ -371,6 +371,14 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .stage-caption .rr-status, .standings-section-text .rr-status, .group-title .rr-status{border:0;}
 
+/* A named Round Robin row opens that pair (views/standings.js `openRows`; the Hub opens it in Match Finder): the row
+   is clickable and focusable, and a › ends its Q cell. Control Center does not draw them. */
+tr.rr-open{ cursor:pointer; }
+
+tr.rr-open:focus-visible{ outline:2px solid var(--green-dark); outline-offset:-2px; }
+
+.rr-open-mark{ color:var(--muted); font-weight:700; margin-left:4px; }
+
 .matchup{
   display:flex;
   flex-direction:column;

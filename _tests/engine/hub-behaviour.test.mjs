@@ -1,5 +1,5 @@
 // What the Tournament Hub does when it is scrolled and tapped (hub-player-experience-spec §2.4): steps 1 (a search shows
-// its results), 3 (the bar the banner folds into).
+// its results), 3 (the bar the banner folds into), 5 (a Standings row opens that pair in Match Finder).
 // The comparison harness's screenshots are full-page: the viewport grows to the page's height, so nothing is ever
 // scrolled. This file opens a harness case at its real viewport (375 × 812 on a phone, 1280 × 800 on a computer)
 // and asserts on the live page. `npm run compare` runs it with the rest of engine/.
@@ -470,5 +470,96 @@ describe('the bar at a multi-day event', () => {
     } finally {
       await h.close();
     }
+  });
+});
+
+// ---- step 5: a Standings row opens that pair's matches ---------------------------------------------------------
+
+const finderIsActive = page => page.evaluate(() => !!document.querySelector('.view-tab[data-view="finder"].active'));
+const standingsHidden = page => page.evaluate(() => document.getElementById('standingsResults').style.display === 'none');
+const rowPairLabel = (page, selector) => page.locator(selector).first().evaluate(tr => [...tr.querySelectorAll('td.pair > span')].map(s => s.textContent.trim()).join(' / '));
+
+describe('a Standings row on a phone', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+
+  const PHONE = 'std-index/pickle-for-sight-2026/standings-category-2/mid/phone';
+
+  it('opens that pair in Match Finder, its summary card in view just under the pinned search box', async () => {
+    await withCase(browser, site, PHONE, { runSteps: true }, async ({ page }) => {
+      assert.ok(await page.locator('tr.rr-open').count() > 0, 'the named rows are marked');
+      const team = await page.locator('tr.rr-open').first().getAttribute('data-team');
+      assert.ok(team, 'the row names its pair');
+      await page.locator('tr.rr-open').first().click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true, 'Match Finder is the active tab');
+      assert.equal(await standingsHidden(page), true, 'Standings is hidden');
+      assert.ok(await page.locator('#results .pair-summary').count() > 0, 'the summary card is drawn');
+      const gap = await page.evaluate(() => document.getElementById('results').getBoundingClientRect().top - document.getElementById('searchPanel').getBoundingClientRect().bottom);
+      assert.ok(gap >= 0 && gap <= 16, `the results start ${gap}px under the search box`);
+      const top = await resultsTop(page);
+      assert.ok(top < 812 / 3, `the results start in the top third of the screen (${top}px)`);
+      assert.ok(await page.evaluate(() => document.querySelector('#results .pair-summary').getBoundingClientRect().bottom < innerHeight), 'the summary card is on screen');
+    });
+  });
+
+  it('opens the pair the row names, in Match Finder\'s search box', async () => {
+    await withCase(browser, site, PHONE, { runSteps: true }, async ({ page }) => {
+      const label = await rowPairLabel(page, 'tr.rr-open');
+      await page.locator('tr.rr-open').first().click();
+      await settle(page);
+      const value = await page.locator('#teamInput').inputValue();
+      // the box holds the pair's label; its names are the row's
+      label.split(' / ').forEach(name => assert.ok(value.includes(name), `"${value}" holds "${name}"`));
+    });
+  });
+
+  it('Enter on a focused row does the same', async () => {
+    await withCase(browser, site, PHONE, { runSteps: true }, async ({ page }) => {
+      await page.locator('tr.rr-open').first().focus();
+      await page.keyboard.press('Enter');
+      await settle(page);
+      assert.equal(await finderIsActive(page), true);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0);
+    });
+  });
+
+  it('leaves room for the bar when the page was scrolled down (the bar showing) before the tap', async () => {
+    await withCase(browser, site, PHONE, { runSteps: true }, async ({ page }) => {
+      await scrollTo(page, 600);
+      assert.equal(await barOn(page), true, 'the bar is showing');
+      await page.locator('tr.rr-open').first().click();
+      await settle(page);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0);
+      const bottom = await page.evaluate(() => document.getElementById('searchPanel').getBoundingClientRect().bottom);
+      const resultsT = await resultsTop(page);
+      const barBottom = await page.evaluate(() => document.querySelector('.hub-bar').getBoundingClientRect().bottom);
+      assert.ok(resultsT >= bottom - 1, 'the results start under the search box');
+      assert.ok(bottom >= barBottom - 1, 'the search box is under the bar');
+    });
+  });
+});
+
+describe('a Standings row on a computer', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+
+  const DESKTOP = 'std-index/pickle-for-sight-2026/standings/mid/desktop';
+
+  it('opens that pair in Match Finder with the search box in view', async () => {
+    await withCase(browser, site, DESKTOP, { runSteps: true }, async ({ page }) => {
+      const row = page.locator('tr.rr-open').nth(3);
+      await row.scrollIntoViewIfNeeded();
+      const before = await scrollY(page);
+      assert.ok(before > 0, 'the page was scrolled to reach the row');
+      await row.click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true, 'Match Finder is the active tab');
+      assert.ok(await page.locator('#results .pair-summary').count() > 0, 'the summary card is drawn');
+      const top = await topOf(page, '#searchPanel');
+      assert.ok(top >= 0 && top < 800, `the search box is in the viewport (top ${top}px)`);
+    });
   });
 });
