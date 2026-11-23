@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ultimate Generation Cup 2026 — Schedule</title>
+<meta name="description" content="Live court-by-court schedule board for The Ultimate Generation Cup 2026.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Ultimate Generation Cup 2026 — Schedule">
+<meta property="og:description" content="Live court-by-court schedule board, updated automatically as matches are assigned.">
+<meta property="og:image" content="/assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
+<link rel="manifest" href="/assets/favicons/site.webmanifest">
+<link rel="stylesheet" href="/lib/v1/css/schedule-board.css">
+<style>
+  /* The Ultimate Generation Cup 2026 palette, the same tokens as this event's
+     index.html (sage-docs/docs/specs/.../ultimate-generation-cup-2026-spec.md §3):
+     deep violet structure, the pubmat's pink for the accent, a cool off-white
+     paper. The event title in the bezel takes the pubmat's condensed capitals,
+     Anton; the rest of the board keeps Archivo Black, Barlow Condensed and Inter. */
+  :root{
+    --navy:#2A1052;
+    --navy-deep:#170830;
+    --green:#FF4FA3;
+    --green-dark:#B0125F;
+    --paper:#F7F5FA;
+    --paper-dim:#EEEAF4;
+    --line:#DCD5E6;
+    --ink:#1E1030;
+    --ink-soft:#5E5470;
+    --white:#FFFFFF;
+    --radius:14px;
+  }
+                                                                                                                /* ---------- NARROW SCREENS ----------
+     This board is built for a venue wall display, but Mission Control's
+     launcher means it also gets opened on a phone or tablet, and there it was
+     unusable for a structural reason: .bezel was one non-wrapping flex row,
+     so its min-content width (~966px for this event) became the *document*
+     width on any narrower device. The court filter, legend, PDF button and
+     collapse chevron all ended up past the right edge — including the court
+     filter, which is exactly the control the narrow-screen story depends on
+     ("fewer courts means wider cells").
+
+     The wrap is unconditional rather than under a breakpoint: that width
+     depends on the event's title length, court count and category count, so
+     no single threshold is right for every event. Wrapping is a no-op
+     whenever the bar fits, so the wall display is unaffected.
+
+     Below, two tiers: <=980px tidies the wrapped bar into full-width rows,
+     and <=720px makes the phone-shaped changes. The grid stays
+     courts-as-columns and keeps scrolling horizontally at every size — that
+     is the identity of the board, and it is what the print path shares. */
+
+
+  /* ==== lib/v1/css/schedule-board.css's house colours, through this page's tokens ====
+     The same rules as the engine's, with color-mix(in srgb, var(--token) N%, transparent) in place of
+     rgba(<house token>, N/100): the same pixels on the house palette, the event's own colours on any
+     other. Keep it whole when re-skinning; _tests/unit/house-colours.test.mjs checks it. */
+  .bezel{ box-shadow:0 10px 30px -14px color-mix(in srgb, var(--navy-deep) 55%, transparent); }
+  .cell.live{ box-shadow:0 0 0 2px var(--green), 0 6px 18px -6px color-mix(in srgb, var(--green) 60%, transparent); }
+  /* Generation Cup: the event title in the pubmat's condensed capitals. */
+  .bezel h1{ font-family:'Anton',sans-serif; font-weight:400; letter-spacing:.03em; }
+</style>
+</head>
+<body>
+
+<div class="bezel">
+  <img class="bezel-logo" src="/assets/logo-landscape-white.png" alt="S.A.G.E. Match Control Experts">
+  <div class="titles">
+    <h1>The Ultimate Generation Cup 2026</h1>
+  </div>
+  <span class="meta" id="sub">Loading schedule&hellip;</span>
+  <div class="dayfilter" id="dayfilter" hidden></div>
+  <div class="venuefilter" id="venuefilter" hidden></div>
+  <div class="courtfilter" id="courtfilter"></div>
+  <div class="legend" id="legend"></div>
+  <div class="legend-live"><span class="dot"></span>Live now</div>
+  <button class="bezel-export" id="exportBtn" type="button"
+          title="Print / save as PDF — splits across sheets automatically">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4.5 6V2.5h7V6M4.5 12H3V7h10v5h-1.5M4.5 10h7v3.5h-7z"
+            stroke="currentColor" stroke-width="1.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>PDF</span>
+  </button>
+  <button class="bezel-toggle" id="bezelToggle" type="button"
+          aria-expanded="true" aria-controls="courtfilter" title="Hide header details">
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 10l5-5 5 5" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </button>
+</div>
+
+<div class="grid-wrap">
+  <div class="sched-grid" id="grid"></div>
+  <div class="board-msg" id="boardMsg" style="display:none;"></div>
+</div>
+
+<!-- Populated only when printing; hidden on screen. -->
+<div id="printRoot" aria-hidden="true"></div>
+
+<script type="module">
+// ============================================================================
+// SETTINGS — the only script in this page: the event, the one day this board shows, and the categories'
+// colours. The rest of the board is lib/v1/apps/schedule-board.js. EVENT_KEY doubles as this event's folder in
+// the shared event-data repo; DAY_KEY must match one of that event's days in events.json. The court count is
+// not listed: the board derives it from the data.
+// ============================================================================
+import { mountScheduleBoard } from '/lib/v1/apps/schedule-board.js';
+
+const EVENT_KEY = 'generation-cup-2026';
+const DAY_KEY = 'generation-cup-day1';
+
+// The live Worker's address: '' turns push off for this page, as a finished event's pages do
+// (_templates/CLAUDE.md §7).
+const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
+
+// Category colours: the workbooks' own where they have one, read off the two SCHEDULE tabs through the Sheets API
+// (sage-docs/docs/specs/.../ultimate-generation-cup-2026-spec.md §3). Hue = event (Men's blue, Women's magenta,
+// Mixed orange), lighter = lower level. The workbooks leave AMD, AXD and OWD grey, so those three take the
+// generator's own Advanced shade, and OWD its darkest magenta. Keys are the category token of each team code
+// (LIMD_3 -> LIMD). Cells apply the hue as a 40% tint over white.
+const CAT_META = {
+  NMD:  { short:'N MD',    color:'#C9DAF8' },
+  NWD:  { short:'N WD',    color:'#EAD1DC' },
+  NXD:  { short:'N XD',    color:'#FCE5CD' },
+  LIMD: { short:'LI MD',   color:'#6D9EEB' },
+  LIWD: { short:'LI WD',   color:'#C27BA0' },
+  LIXD: { short:'LI XD',   color:'#F6B26B' },
+  HIMD: { short:'HI MD',   color:'#1155CC' },
+  HIXD: { short:'HI XD',   color:'#B45F06' },
+  AMD:  { short:'A MD',    color:'#1C4587' },
+  AXD:  { short:'A XD',    color:'#783F04' },
+  OWD:  { short:'OPEN WD', color:'#4C1130' }
+};
+
+mountScheduleBoard({
+  eventKey: EVENT_KEY, dayKey: DAY_KEY, liveBaseUrl: LIVE_BASE_URL,
+  categoryColors: CAT_META,
+});
+</script>
+</body>
+</html>
