@@ -178,5 +178,14 @@ export const ACCEPTED = [
     case: /^(std-index|dm-index)\/[^/]+\/finder\/[^/]+\/(phone|desktop)$|^cc\/(piggleball-2026|pickle-for-sight-2026|pnf-x-bup-dual-meet)\/finder\/[^/]+\/(phone|desktop)$|^cc-signed-in\/[^/]+\/finder\/[^/]+\/(phone|desktop)$/, kind: 'both', row: 'owner 2026-11-23 hub P15',
     reason: 'Match Finder’s first-screen count reads Pairs, not Teams; a live dual meet’s Hub shows the club score bar above the counts',
   },
+  // ---- after the build: the banner folds by hand, and Control Center has the bar (owner 2026-11-23) ----
+  {
+    case: /^(std-index|dm-index|team-index|cc|cc-signed-in)\/[^/]+\/[^/]+\/[^/]+\/phone$/, kind: 'both', row: 'owner 2026-11-23 bar by hand',
+    reason: 'a phone never shows the banner: the slim bar (logo, title, the ☰ menu) is the top of the page, in Control Center too',
+  },
+  {
+    case: /^(std-index|dm-index|team-index|cc|cc-signed-in)\/[^/]+\/[^/]+\/[^/]+\/desktop$/, kind: 'pixels', row: 'owner 2026-11-23 bar by hand',
+    reason: 'a computer’s banner carries the chevron that folds it into the bar, in its top-left corner',
+  },
 ];
 
