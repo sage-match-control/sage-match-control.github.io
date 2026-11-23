@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const { HUB_BAR_HEIGHT, FOLDED_KEY, cleanText, readBarItems, barRowHTML, menuHTML, buttonLabel, barShows, barFolds, tabScrollTop } =
+const { HUB_BAR_HEIGHT, TITLE_MIN_PX, titleFit, shortDay, dayPillLabel, FOLDED_KEY, cleanText, readBarItems, barRowHTML, menuHTML, buttonLabel, barShows, barFolds, tabScrollTop } =
   await import('../../../lib/v1/views/hub-bar.js');
 
 // ---- fake elements -------------------------------------------------------------------------------------------------
@@ -211,9 +211,29 @@ test('with a stylesheet from before the fold rules, the bar shows only when the 
 });
 
 test('a tab scrolls its panel to just under the bar, never above the top of the page', () => {
-  assert.equal(HUB_BAR_HEIGHT, 54);
+  assert.equal(HUB_BAR_HEIGHT, 54, 'the slim row, until the bar is measured');
   assert.equal(tabScrollTop(400, 1000), 1000 + 400 - 54 - 8);
+  assert.equal(tabScrollTop(400, 1000, 98), 1000 + 400 - 98 - 8, 'the measured height when it is given');
   assert.equal(tabScrollTop(10, 0), 0);
+});
+
+test('a phone’s day pill reads the day’s label up to its first " · ", or Day before one is picked', () => {
+  assert.equal(shortDay('Nov 28 · Next Gen'), 'Nov 28');
+  assert.equal(shortDay('  Sep 27 '), 'Sep 27', 'a label without a dot is the whole label');
+  const day = { value: '1', options: [{ value: '0', label: 'Nov 28 · Next Gen' }, { value: '1', label: 'Nov 29 · Gen X' }] };
+  assert.equal(dayPillLabel(day), 'Nov 29');
+  assert.equal(dayPillLabel({ ...day, value: '' }), 'Day');
+  assert.equal(dayPillLabel(null), 'Day');
+});
+
+test('the title keeps one line: at its own size where it fits, smaller where it does not, wrapped below 13 px', () => {
+  assert.equal(TITLE_MIN_PX, 13);
+  assert.equal(titleFit({ room: 309, need: 300, base: 15 }), 'fits');
+  assert.equal(titleFit({ room: 309, need: 310, base: 15 }), 'fits', 'a pixel of rounding is not an overflow');
+  assert.deepEqual(titleFit({ room: 309, need: 326, base: 15 }), { size: 14.2 }, 'The Ultimate Generation Cup 2026 on a phone');
+  assert.deepEqual(titleFit({ room: 260, need: 300, base: 15 }), { size: 13 }, 'exactly the smallest size still fits');
+  assert.equal(titleFit({ room: 200, need: 300, base: 15 }), 'wrap', 'below 13 px it wraps at its own size instead');
+  assert.equal(titleFit({ room: 0, need: 300, base: 15 }), 'fits', 'a bar not laid out yet is left alone');
 });
 
 // ---- reveal.js leaves room for a bar that is about to appear -------------------------------------------------------
@@ -221,24 +241,31 @@ test('a tab scrolls its panel to just under the bar, never above the top of the 
 const { revealResults, PHONE_QUERY } = await import('../../../lib/v1/views/reveal.js');
 
 /** The globals reveal.js reads, with a document that has (or hasn't) a bar and the body class. */
-function page(t, { bar, barOn = false }) {
+function page(t, { bar, barOn = false, barH }) {
   const scrolls = [];
   const saved = {};
   const set = (name, value) => { saved[name] = Object.getOwnPropertyDescriptor(globalThis, name); Object.defineProperty(globalThis, name, { value, configurable: true, writable: true }); };
   set('matchMedia', query => ({ matches: query === PHONE_QUERY }));
-  set('getComputedStyle', el => ({ top: el.cssTop }));
+  const root = { isRoot: true };
+  set('getComputedStyle', el => (el === root ? { getPropertyValue: name => (name === '--hub-bar-h' && barH ? barH : '') } : { top: el.cssTop }));
   set('window', { scrollY: 100, scrollTo: arg => scrolls.push(arg) });
-  set('document', { body: { classList: { contains: c => c === 'hub-bar-on' && barOn } }, querySelector: sel => (sel === '.hub-bar' && bar ? {} : null) });
+  set('document', { body: { classList: { contains: c => c === 'hub-bar-on' && barOn } }, querySelector: sel => (sel === '.hub-bar' && bar ? {} : null), documentElement: root });
   t.after(() => { for (const [name, desc] of Object.entries(saved)) { if (desc) Object.defineProperty(globalThis, name, desc); else delete globalThis[name]; } });
   return scrolls;
 }
 const el = (top, height = 0, cssTop = '') => ({ cssTop, getBoundingClientRect: () => ({ top, height }) });
 const reveal = () => revealResults({ resultsEl: el(600), searchPanelEl: el(0, 60, '8px'), input: { blur() {} } });
 
-test('with a bar that is not showing yet, the results leave the bar’s 54 px as well', t => {
+test('with a bar that is not showing yet and no measured height (an old stylesheet), the results leave 54 px as well', t => {
   const scrolls = page(t, { bar: true, barOn: false });
   reveal();
   assert.equal(scrolls[0].top, 600 + 100 - (8 + 60 + 8) - 54);
+});
+
+test('with a bar that is not showing yet, the results leave its measured height (--hub-bar-h)', t => {
+  const scrolls = page(t, { bar: true, barOn: false, barH: '98px' });
+  reveal();
+  assert.equal(scrolls[0].top, 600 + 100 - (8 + 60 + 8) - 98);
 });
 
 test('with the bar already showing (the panel’s offset already counts it) nothing is added', t => {

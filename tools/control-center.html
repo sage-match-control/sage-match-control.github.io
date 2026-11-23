@@ -1555,6 +1555,7 @@ import { createScoreDialog } from '/lib/v1/views/score-dialog.js';
 import { scoringRuleFor } from '/lib/v1/domain/scoring.js';
 import { createCourtDialog } from '/lib/v1/views/court-dialog.js';
 import { createHubBar } from '/lib/v1/views/hub-bar.js';
+import { initialDayIndex, manilaIsoDate } from '/lib/v1/domain/initial-day.js';
 import { revealResults } from '/lib/v1/views/reveal.js';
 
 // ============================================================================
@@ -1585,6 +1586,7 @@ const FIXTURE = fixtureName();
 // doesn't sign in twice. Holds the token POST /v3/sessions returns, never the
 // raw SYNC_SHARED_SECRET/password — see AuthService.mjs on the backend.
 const STORAGE_SELECTION_KEY = 'sage.lastSelection'; // { event, day } JSON — last picked, for a bare visit (spec §5)
+const STORAGE_DAYS_KEY = 'sage.controlCenter.dayByEvent'; // { [event]: dayKey } JSON — the day last picked per event
 const STORAGE_SEARCH_KEY = 'sage.search';
 const AUTH_TOKEN_STORAGE_KEY = 'sage.authToken';
 
@@ -1879,7 +1881,8 @@ function openPairInFinder(code){
   finder.updateClear();
   finder.run();
   if(!revealResults({ resultsEl, searchPanelEl, input })){
-    const barSpace = document.body.classList.contains('hub-bar-on') ? 54 : 0;
+    const barSpace = document.body.classList.contains('hub-bar-on')
+      ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hub-bar-h')) || 54) : 0;
     window.scrollTo({ top: Math.max(0, searchPanelEl.getBoundingClientRect().top + window.scrollY - 16 - barSpace) });
   }
 }
@@ -1991,6 +1994,9 @@ viewTabs.forEach(btn => {
 // app over.
 function saveSelection(){
   try{ localStorage.setItem(STORAGE_SELECTION_KEY, JSON.stringify({ event: CURRENT_EVENT_KEY, day: DAYS[currentDayIndex] ? DAYS[currentDayIndex].key : null })); } catch(e){}
+  if(CURRENT_EVENT_KEY && DAYS[currentDayIndex]){
+    try{ localStorage.setItem(STORAGE_DAYS_KEY, JSON.stringify({ ...loadSavedDays(), [CURRENT_EVENT_KEY]: DAYS[currentDayIndex].key })); } catch(e){}
+  }
   // Round-trips through ?event=&day= (spec §5) so a bookmark or shared link
   // lands straight on the same event/day.
   try{
@@ -1999,6 +2005,13 @@ function saveSelection(){
     if(DAYS[currentDayIndex]) url.searchParams.set('day', DAYS[currentDayIndex].key); else url.searchParams.delete('day');
     window.history.replaceState(null, '', url);
   } catch(e){}
+}
+// The day last picked for each event, so switching back to an event (or opening it later) lands on that day.
+function loadSavedDays(){
+  try{
+    const days = JSON.parse(localStorage.getItem(STORAGE_DAYS_KEY) || '{}');
+    return days && typeof days === 'object' ? days : {};
+  } catch(e){ return {}; }
 }
 function loadSavedSelection(){
   try{ return JSON.parse(localStorage.getItem(STORAGE_SELECTION_KEY) || 'null'); } catch(e){ return null; }
@@ -4888,7 +4901,7 @@ const eventTitleLineEl = document.getElementById('eventTitleLine');
 
 // The bar the banner folds into (lib/v1/views/hub-bar.js, css/hub-bar.css), as on the Hub: always on a phone, where
 // the banner never shows and the bar's menu carries the tabs, the event, the day and the sync line; on a computer
-// once the operator folds the banner with its chevron (kept in this browser). It shows the event's title and reads
+// once the operator folds the banner with its chevron (kept in this browser), in two rows there. It shows the event's title and reads
 // the banner's own tabs, pickers and sync line; it is redrawn whenever one of them changes.
 const consoleBar = createHubBar({
   heroEl: document.querySelector('header.hero'),
@@ -4902,6 +4915,8 @@ const consoleBar = createHubBar({
   pickers: [{ el: eventPickerEl, wrapEl: document.getElementById('eventPickerWrap'), label: 'Event' }],
   storageKey: 'sage.controlCenter.bannerFolded',
   menuLabel: 'Control Center',
+  // Two rows on a computer too: the event's whole title, then the day and every tab (one row cut the title short).
+  computerRows: 2,
 });
 new MutationObserver(() => consoleBar.update()).observe(document.querySelector('header.hero'), {
   subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'],
@@ -5020,21 +5035,17 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
     return;
   }
 
+  // A day always loads: the address's (?day=), else the one this browser last picked for this event, else today's,
+  // else the nearest (lib/v1/domain/initial-day.js). A one-day event loads its one day.
   let dayIdx = null;
   if(initialDayKey){
     const found = DAYS.findIndex(d => d.key === initialDayKey);
     if(found !== -1) dayIdx = found;
   }
-  if(dayIdx === null && DAYS.length === 1) dayIdx = 0;
-
-  if(dayIdx !== null){
-    await selectDay(dayIdx, { isInitialLoad });
-  } else {
-    // Multi-day event, nothing specific to land on — leave currentDayIndex
-    // null until the operator picks one, same as today's per-event page.
-    dayPromptEl.textContent = 'Select a tournament day to load its matches and standings.';
-    dayPromptEl.style.display = '';
+  if(dayIdx === null){
+    dayIdx = initialDayIndex({ days: DAYS, savedKey: loadSavedDays()[eventKey] || null, today: manilaIsoDate(new Date()) });
   }
+  await selectDay(dayIdx, { isInitialLoad });
 }
 
 if(eventPickerEl){

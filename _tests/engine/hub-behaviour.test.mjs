@@ -199,7 +199,31 @@ describe('the Hub on a computer', () => {
 // On a phone the banner never shows and the bar is always there; on a computer the banner shows until the reader
 // folds it with its chevron, and the bar then stands in its place (kept in this browser).
 
-const BAR_HEIGHT = 54;
+// The bar is two rows and its height follows its title (a phone's can wrap): measured, never assumed.
+const barHeight = page => page.evaluate(() => Math.round(document.querySelector('.hub-bar').getBoundingClientRect().height));
+
+/** The bar's two rows: the title row, then the second row (a phone's menu button, a computer's row of tabs) under it;
+ *  the title whole, never cut off; and --hub-bar-h on <html> the bar's own height, for everything under it. */
+async function assertTwoRows(page, second) {
+  const r = await page.evaluate(sel => {
+    const box = el => el.getBoundingClientRect();
+    const title = document.querySelector('.hub-bar-title');
+    return {
+      titleBottom: box(title).bottom, secondTop: box(document.querySelector(sel)).top,
+      clipped: title.scrollWidth > title.clientWidth + 1,
+      bar: Math.round(box(document.querySelector('.hub-bar')).height),
+      cssHeight: getComputedStyle(document.documentElement).getPropertyValue('--hub-bar-h').trim(),
+    };
+  }, second);
+  assert.ok(r.secondTop >= r.titleBottom, `the second row (${second}) is under the title (${r.secondTop} vs ${r.titleBottom})`);
+  assert.equal(r.clipped, false, 'the title is whole');
+  assert.equal(r.cssHeight, `${r.bar}px`, '--hub-bar-h is the bar’s height');
+}
+
+const titleLines = page => page.evaluate(() => {
+  const t = document.querySelector('.hub-bar-title');
+  return Math.round(t.getBoundingClientRect().height / parseFloat(getComputedStyle(t).lineHeight));
+});
 const HUB_FOLDED = { local: { 'sage.hub.bannerFolded': '1' } };
 const CC_FOLDED = { local: { 'sage.controlCenter.bannerFolded': '1' } };
 const barVisible = page => page.locator('.hub-bar').isVisible();
@@ -246,8 +270,13 @@ describe('the bar on a phone', () => {
       assert.equal(await page.locator('.hub-bar-fold').isVisible(), false);
       assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Match Finder');
       assert.equal(await topOf(page, '.hub-bar'), 0, 'pinned to the top of the screen');
+      await assertTwoRows(page, '.hub-bar-btn');
+      assert.equal(await titleLines(page), 1, 'a title that fits keeps one line');
+      const widths = await page.evaluate(() => [document.querySelector('.hub-bar-btn').getBoundingClientRect().width, document.querySelector('.hub-bar').clientWidth]);
+      assert.ok(widths[0] >= widths[1] - 24 - 1, `the menu button spans the bar (${widths[0]} of ${widths[1]})`);
+      assert.equal(await page.locator('.hub-bar-pday').isVisible(), false, 'a one-day event has no day pill');
       const panelTop = await topOf(page, '#searchPanel');
-      assert.ok(panelTop >= BAR_HEIGHT, `the page starts under the bar (search box at ${panelTop}px)`);
+      assert.ok(panelTop >= (await barHeight(page)), `the page starts under the bar (search box at ${panelTop}px)`);
       await scrollTo(page, 1500);
       assert.equal(await barVisible(page), true);
       assert.equal(await topOf(page, '.hub-bar'), 0);
@@ -298,7 +327,7 @@ describe('the bar on a phone', () => {
         reachable: document.documentElement.scrollHeight - window.innerHeight,
         panelAbs: document.getElementById('standingsResults').getBoundingClientRect().top + window.scrollY,
       }));
-      const wanted = Math.max(0, Math.min(panelAbs - BAR_HEIGHT - 8, reachable));
+      const wanted = Math.max(0, Math.min(panelAbs - (await barHeight(page)) - 8, reachable));
       assert.ok(Math.abs(y - wanted) <= 1, `scrolled to ${y}, wanted ${wanted} (the panel is ${panelAbs}px down the page)`);
       // remembered, as a click on the banner's tab remembers it
       assert.equal(await page.evaluate(() => localStorage.getItem('pickle-for-sight-2026.view')), 'standings');
@@ -345,7 +374,8 @@ describe('the bar on a phone', () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
       await scrollTo(page, 1500);
       const panelTop = await topOf(page, '#searchPanel');
-      assert.ok(Math.abs(panelTop - 62) <= 1, `the search box is ${panelTop}px from the top`);
+      const want = (await barHeight(page)) + 8;
+      assert.ok(Math.abs(panelTop - want) <= 1, `the search box is ${panelTop}px from the top, not ${want}px`);
     });
   });
 
@@ -363,7 +393,7 @@ describe('the bar on a phone', () => {
       await scrollTo(page, 1200);
       assert.equal(await barVisible(page), true);
       const clubTop = await topOf(page, '#standingsBody .club-summary');
-      assert.ok(Math.abs(clubTop - BAR_HEIGHT) <= 1, `the club bar is ${clubTop}px from the top`);
+      assert.ok(Math.abs(clubTop - (await barHeight(page))) <= 1, `the club bar is ${clubTop}px from the top`);
     });
   });
 });
@@ -399,16 +429,20 @@ describe('the bar on a computer', () => {
       assert.equal(await stored(page, 'sage.hub.bannerFolded'), '1');
       assert.equal(await page.evaluate(() => document.activeElement.classList.contains('hub-bar-fold')), true, 'focus moves to the bar’s chevron');
       assert.equal(await page.locator('.hub-bar-btn').isVisible(), false, 'no menu button');
+      assert.equal(await barHeight(page), 54, 'the Hub keeps the slim one-row bar on a computer');
+      assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--hub-bar-h').trim()), '54px');
+      const rowTop = await topOf(page, '.hub-bar-row');
+      assert.ok(rowTop < 54 / 2, `the tabs sit beside the title, not under it (row top ${rowTop}px)`);
       assert.equal(await page.locator('.hub-bar-row').isVisible(), true);
       assert.equal(await page.locator('.hub-bar-row .hub-bar-tab').count(), 3);
       assert.equal(await activeIn(page, '.hub-bar-tab'), 1);
       assert.match(await page.locator('.hub-bar-sync').innerText(), /Sep 27 · Live · last synced/);
       assert.equal(await page.locator('.hub-bar-day').count(), 0, 'a one-day event has no day picker');
       const qrTop = await topOf(page, '.qr-panel');
-      assert.ok(qrTop >= BAR_HEIGHT, `the QR panel is ${qrTop}px from the top`);
-      assert.ok(qrTopAtRest < BAR_HEIGHT, 'and was higher with the banner showing');
+      assert.ok(qrTop >= (await barHeight(page)), `the QR panel is ${qrTop}px from the top`);
+      assert.ok(qrTopAtRest < (await barHeight(page)), 'and was higher with the banner showing');
       const panelTop = await topOf(page, '#searchPanel');
-      assert.ok(panelTop >= BAR_HEIGHT, `the page starts under the bar (search box at ${panelTop}px)`);
+      assert.ok(panelTop >= (await barHeight(page)), `the page starts under the bar (search box at ${panelTop}px)`);
       await scrollTo(page, 900);
       assert.equal(await topOf(page, '.hub-bar'), 0, 'still pinned once the page scrolls');
 
@@ -514,6 +548,33 @@ describe('the bar at a multi-day event', () => {
     }
   });
 
+  it('on a phone, puts the day beside the menu button, a quarter of the row, and choosing the second day loads it', async () => {
+    const h = await openTwoDays({ width: 375, height: 812 });
+    try {
+      const { page } = h;
+      assert.equal(await page.locator('.hub-bar-pday').isVisible(), true);
+      const r = await page.evaluate(() => {
+        const box = sel => document.querySelector(sel).getBoundingClientRect();
+        return { day: box('.hub-bar-pday'), btn: box('.hub-bar-btn') };
+      });
+      assert.ok(Math.abs(r.day.top - r.btn.top) <= 1, 'on the same row');
+      assert.ok(r.day.right <= r.btn.left, 'the day first, then the button');
+      const share = r.day.width / (r.day.width + r.btn.width);
+      assert.ok(share > 0.2 && share < 0.3, `the day takes about a quarter (${share.toFixed(2)})`);
+      assert.equal(await textOf(page, '.hub-bar-pday-text'), 'Sep 27');
+      assert.deepEqual(await texts(page, '.hub-bar-pday select option'), ['Sep 27', 'Sep 28']);
+      await page.locator('.hub-bar-pday select').selectOption('1');
+      await page.waitForFunction(() => document.getElementById('dayPicker').value === '1');
+      await settle(page);
+      assert.match(await page.locator('#syncStatus').innerText(), /^Sep 28/);
+      assert.equal(await textOf(page, '.hub-bar-pday-text'), 'Sep 28', 'the pill follows');
+      await assertTwoRows(page, '.hub-bar-btn');
+      assert.deepEqual(h.errors, []);
+    } finally {
+      await h.close();
+    }
+  });
+
   it('puts the day picker in the phone’s menu', async () => {
     const h = await openTwoDays({ width: 375, height: 812 });
     try {
@@ -532,18 +593,21 @@ describe('the bar at a multi-day event', () => {
     }
   });
 
-  it('on a phone with no day picked yet, the bar’s button reads Choose a day and its menu holds only the day', async () => {
+  it('with no day picked before, loads the day nearest today at once (domain/initial-day.js), and keeps a picked one', async () => {
     const h = await openTwoDays({ width: 375, height: 812 }, { local: {} });
     try {
       const { page } = h;
-      assert.equal(await barVisible(page), true, 'the bar shows before any day is loaded');
-      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Choose a day');
-      await page.locator('.hub-bar-btn').click();
-      assert.equal(await page.locator('#hubMenu .hub-menu-tab').count(), 0, 'no tabs before a day is loaded');
-      await page.locator('#hubMenu .hub-menu-day select').selectOption('0');
-      await page.waitForFunction(() => document.getElementById('dayPicker').value === '0');
+      assert.equal(await barVisible(page), true);
+      // The case's clock is on the first day's date (or nearer it than the added second day).
+      assert.equal(await page.locator('#dayPicker').inputValue(), '0', 'a day is loaded without a pick');
+      assert.equal(await textOf(page, '.hub-bar-pday-text'), 'Sep 27');
+      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Match Finder', 'and lands on Match Finder');
+      await page.locator('.hub-bar-pday select').selectOption('1');
+      await page.waitForFunction(() => document.getElementById('dayPicker').value === '1');
       await settle(page);
-      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Match Finder', 'the day loads and lands on Match Finder');
+      await page.reload();
+      await settle(page);
+      assert.equal(await page.locator('#dayPicker').inputValue(), '1', 'reopened, the day picked last time loads');
       assert.deepEqual(h.errors, []);
     } finally {
       await h.close();
@@ -590,6 +654,17 @@ describe('Control Center’s bar', () => {
       await settle(page);
       assert.equal(await page.locator('#hubMenu').isVisible(), false, 'the menu closes');
       assert.equal(await textOf(page, '.hub-bar-title'), 'PickleDrive Club One Year Celebration');
+      // A long title: one line no smaller than 13 px, or, where that is too wide, two lines at its own size.
+      const t = await page.evaluate(() => {
+        const el = document.querySelector('.hub-bar-title');
+        return { wrapped: el.classList.contains('hub-bar-title-wrap'), size: parseFloat(getComputedStyle(el).fontSize) };
+      });
+      if (t.wrapped) assert.equal(await titleLines(page), 2, 'wrapped onto two lines');
+      else {
+        assert.equal(await titleLines(page), 1);
+        assert.ok(t.size >= 13 && t.size < 15, `one line, made smaller to fit (${t.size}px)`);
+      }
+      await assertTwoRows(page, '.hub-bar-btn');
     });
   });
 
@@ -604,6 +679,9 @@ describe('Control Center’s bar', () => {
       assert.equal(await stored(page, 'sage.controlCenter.bannerFolded'), '1');
       assert.equal(await stored(page, 'sage.hub.bannerFolded'), null, 'the Hub’s choice is its own');
       assert.deepEqual(await texts(page, '.hub-bar-row .hub-bar-tab'), ['Mission Control', 'Awards', 'Match Finder', 'Live Matches', 'Standings']);
+      assert.equal(await page.locator('.hub-bar.hub-bar-two').count(), 1, 'Control Center has two rows on a computer');
+      await assertTwoRows(page, '.hub-bar-row');
+      assert.equal(await titleLines(page), 1);
       await page.locator('.hub-bar-tab', { hasText: 'Live Matches' }).click();
       await settle(page);
       assert.equal(await activeIn(page, '.view-tab[data-view="live"]'), 1);
@@ -611,7 +689,7 @@ describe('Control Center’s bar', () => {
     });
   });
 
-  it('seven tabs at 950 px: the title keeps its room, the row scrolls with the open tab in view, and the chevron stays on screen', async () => {
+  it('seven tabs at 950 px: the whole title above, the open tab in view in the row, and the chevron on screen', async () => {
     await withPage(CC_TEAM_DESKTOP, { runSteps: true, storage: CC_FOLDED }, async ({ page }) => {
       await page.setViewportSize({ width: 950, height: 800 });
       await settle(page);
@@ -622,10 +700,14 @@ describe('Control Center’s bar', () => {
         const box = el => document.querySelector(el).getBoundingClientRect();
         return { title: box('.hub-bar-text').width, fold: box('.hub-bar-fold').right, row: box('.hub-bar-row'), tab: box('.hub-bar-tab.active') };
       });
-      assert.ok(r.title >= 119, `the title has ${r.title}px`);
+      await assertTwoRows(page, '.hub-bar-row');
       assert.ok(r.fold <= 950, `the chevron ends at ${r.fold}px`);
       assert.ok(r.tab.left >= r.row.left - 1 && r.tab.right <= r.row.right + 1, 'the open tab is in view');
-      assert.equal(await page.locator('.hub-bar-sync').isVisible(), false, 'the sync line made room');
+      const row = await page.evaluate(() => {
+        const el = document.querySelector('.hub-bar-row');
+        return { overflows: el.scrollWidth > el.clientWidth + 1, tight: document.querySelector('.hub-bar').classList.contains('hub-bar-tight') };
+      });
+      assert.equal(row.overflows && !row.tight, false, 'a row too wide for everything gives up the sync line first');
     });
   });
 });
@@ -656,7 +738,10 @@ describe('a Standings row on a phone', () => {
       const gap = await page.evaluate(() => document.getElementById('results').getBoundingClientRect().top - document.getElementById('searchPanel').getBoundingClientRect().bottom);
       assert.ok(gap >= 0 && gap <= 16, `the results start ${gap}px under the search box`);
       const top = await resultsTop(page);
-      assert.ok(top < 812 / 3, `the results start in the top third of the screen (${top}px)`);
+      // As high as they can be: under the bar, the 8px above the pinned search box, the box and a 16px gap.
+      const panelH = await page.evaluate(() => document.getElementById('searchPanel').getBoundingClientRect().height);
+      const highest = (await barHeight(page)) + 8 + panelH + 16;
+      assert.ok(top <= highest + 1, `the results start at ${top}px, no lower than ${highest}px`);
       assert.ok(await page.evaluate(() => document.querySelector('#results .pair-summary').getBoundingClientRect().bottom < innerHeight), 'the summary card is on screen');
     });
   });
@@ -728,7 +813,7 @@ describe('a Standings row on a computer', () => {
       await settle(page);
       assert.equal(await finderIsActive(page), true);
       const top = await topOf(page, '#searchPanel');
-      assert.ok(top >= BAR_HEIGHT && top < 800, `the search box is under the bar (top ${top}px)`);
+      assert.ok(top >= (await barHeight(page)) && top < 800, `the search box is under the bar (top ${top}px)`);
     });
   });
 });
@@ -873,7 +958,7 @@ describe('a dual meet’s category chips on a phone', () => {
       assert.deepEqual(await activeChips(page), [2]);
       // the pinned row really is pinned, at the top of the screen (the bar shows here, so under it)
       const pinTop = await topOf(page, '.dm-pin');
-      assert.ok(Math.abs(pinTop - BAR_HEIGHT) <= 1, `the pinned row is ${pinTop}px from the top`);
+      assert.ok(Math.abs(pinTop - (await barHeight(page))) <= 1, `the pinned row is ${pinTop}px from the top`);
     });
   });
 
@@ -887,7 +972,7 @@ describe('a dual meet’s category chips on a phone', () => {
       assert.ok(gap >= 0 && gap <= 16, `the category starts ${gap}px under the pinned row`);
       assert.deepEqual(await activeChips(page), [2]);
       const pinTop = await topOf(page, '.dm-pin');
-      assert.ok(Math.abs(pinTop - BAR_HEIGHT) <= 1, `the pinned row sits at ${pinTop}px, under the bar`);
+      assert.ok(Math.abs(pinTop - (await barHeight(page))) <= 1, `the pinned row sits at ${pinTop}px, under the bar`);
     });
   });
 
@@ -904,10 +989,10 @@ describe('a dual meet’s category chips on a phone', () => {
     await withPage(DM_FINAL_PHONE, { runSteps: true }, async ({ page }) => {
       const tops = await page.evaluate(() => [...document.querySelectorAll('#standingsBody .standings-col')].map(c => c.getBoundingClientRect().top + window.scrollY));
       const pinH = await page.evaluate(() => document.querySelector('.dm-pin').getBoundingClientRect().height);
-      await scrollTo(page, tops[4] - pinH - BAR_HEIGHT + 40);
+      await scrollTo(page, tops[4] - pinH - (await barHeight(page)) + 40);
       await page.waitForTimeout(120);
       assert.deepEqual(await activeChips(page), [4]);
-      await scrollTo(page, tops[1] - pinH - BAR_HEIGHT + 40);
+      await scrollTo(page, tops[1] - pinH - (await barHeight(page)) + 40);
       await page.waitForTimeout(120);
       assert.deepEqual(await activeChips(page), [1]);
     });
