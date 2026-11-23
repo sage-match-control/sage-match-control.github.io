@@ -266,6 +266,26 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 
 .br-table td.pair.tbd span{color:var(--muted); font-weight:600; font-style:italic; letter-spacing:.04em; line-height:2.3;}
 
+/* How a tie was broken, under a pair's names; it beats the one-line rule above. Tied: the team events' colours. */
+.br-table td.pair span.rr-tie{
+  display:inline-block;
+  overflow:visible;
+  text-overflow:clip;
+  margin-top:4px;
+  font-family:'Inter',sans-serif;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  border-radius:100px;
+  padding:1px 8px;
+  background:var(--paper-dim);
+  color:var(--ink);
+  border:1px solid var(--line);
+}
+
+.br-table td.pair span.rr-tie--tied{background:#FFD873; color:#5A4100; border-color:#FFD873;}
+
 .br-table td.num{text-align:center; width:26px;}
 
 .br-table td.quo{text-align:center; width:54px;}
@@ -328,6 +348,28 @@ input.cat-filter-input::placeholder{color:var(--ink-soft); font-weight:500;}
 .badge-3{background:#6C5CE0;}
 
 .badge-x{background:var(--muted);}
+
+/* A Round Robin table's status pill, in its heading (domain/standings-status.js): a bracket's label, a stage
+   caption, a standard card's Round Robin title, or a team bracket's title. A light heading drops the border. */
+.rr-status{
+  display:inline-block;
+  margin-left:8px;
+  font-family:'Inter',sans-serif;
+  font-size:9.5px;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  border-radius:100px;
+  padding:2px 9px;
+  vertical-align:1px;
+  border:1px solid rgba(255,255,255,.55);
+}
+
+.rr-status--progress{background:var(--green-dark); color:var(--white);}
+
+.rr-status--final{background:var(--navy); color:var(--white);}
+
+.stage-caption .rr-status, .standings-section-text .rr-status, .group-title .rr-status{border:0;}
 
 .matchup{
   display:flex;

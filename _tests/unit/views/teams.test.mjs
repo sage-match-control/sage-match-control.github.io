@@ -477,7 +477,7 @@ const lettered = buildDayModel(
 
 test('lettered brackets: Standings titles and orders them A, B', () => {
   const html = teamStandingsHTML(lettered, {});
-  assert.deepEqual([...html.matchAll(/<h3 class="group-title">([^<]+)<\/h3>/g)].map(x => x[1]), ['Bracket A', 'Bracket B']);
+  assert.deepEqual([...html.matchAll(/<h3 class="group-title">([^<]+)(?:<span class="rr-status[^>]*>[^<]*<\/span>)?<\/h3>/g)].map(x => x[1]), ['Bracket A', 'Bracket B']);
   assert.deepEqual([...html.matchAll(/data-tm-group="([^"]+)"/g)].map(x => x[1]), ['A', 'B']);
   const open = teamStandingsHTML(lettered, { openGroups: new Set(['B']) });
   assert.match(open, /data-tm-group="B" aria-expanded="true"/);
@@ -493,7 +493,7 @@ test('lettered brackets: Match Finder groups the teams under Bracket A and Brack
 
 test('numbered brackets still read as before', () => {
   const html = teamStandingsHTML(model, {});
-  assert.match(html, /<h3 class="group-title">Bracket 1<\/h3>/);
+  assert.match(html, /<h3 class="group-title">Bracket 1(?:<span class="rr-status[^>]*>[^<]*<\/span>)?<\/h3>/);
   assert.match(html, /data-tm-group="1"/);
   const intro = introHTML(model, buildTeamIndex(model), '', new Set());
   assert.match(intro, /<h3>Bracket 1<\/h3>/);
