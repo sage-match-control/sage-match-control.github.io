@@ -344,7 +344,7 @@ describe('the bar on a phone', () => {
     await withPage(DM_STANDINGS_PHONE, { runSteps: true }, async ({ page }) => {
       await scrollTo(page, 1200);
       assert.equal(await barVisible(page), true);
-      const clubTop = await topOf(page, '.club-summary');
+      const clubTop = await topOf(page, '#standingsBody .club-summary');
       assert.ok(Math.abs(clubTop - BAR_HEIGHT) <= 1, `the club bar is ${clubTop}px from the top`);
     });
   });

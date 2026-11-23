@@ -58,9 +58,23 @@ test('every match by number leaves a BYE out and carries the hint', () => {
 test('the first screen counts matches, real pairs and categories', () => {
   const html = introHTML(model(ROWS));
   assert.match(html, /<b>4<\/b><span>Matches<\/span>/);
-  assert.match(html, /<b>4<\/b><span>Teams<\/span>/);
+  assert.match(html, /<b>4<\/b><span>Pairs<\/span>/);
+  assert.doesNotMatch(html, /<span>Teams<\/span>/);
   assert.match(html, /<span>Categories<\/span>/);
   assert.doesNotMatch(html, /Divisions/);
+});
+
+test('introTop: its HTML is printed before the counts, from the model; with none the first screen is as before', () => {
+  const m = model(ROWS);
+  let seen = null;
+  const html = introHTML(m, { introTop: mm => { seen = mm; return '<div class="top-marker">TOP</div>'; } });
+  assert.equal(seen, m);
+  assert.ok(html.indexOf('top-marker') !== -1);
+  assert.ok(html.indexOf('top-marker') < html.indexOf('class="stats-row"'));
+  assert.ok(html.indexOf('class="stats-row"') < html.indexOf('results-meta'));
+  assert.equal(introHTML(m), introHTML(m, { introTop: null }));
+  assert.equal(introHTML(m), introHTML(m, { introTop: () => '' }));
+  assert.doesNotMatch(introHTML(m), /top-marker/);
 });
 
 test('a pair’s results are its matches in schedule order, a BYE excluded, with the first unplayed marked Next Up', () => {

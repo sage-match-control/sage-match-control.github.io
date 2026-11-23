@@ -332,3 +332,7 @@ button#searchBtn:active{transform:scale(.97);}
   font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
   background:rgba(255,255,255,.14); border-radius:999px; padding:3px 9px;
 }
+
+/* A dual meet's club score above Match Finder's first screen (views/club-bar.js). Standings pins the bar; here it scrolls. */
+.finder-club-bar{ margin:0 0 14px; }
+.finder-club-bar .club-summary{ position:static; }
