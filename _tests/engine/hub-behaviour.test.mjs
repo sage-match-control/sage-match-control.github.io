@@ -733,6 +733,34 @@ describe('a Standings row on a computer', () => {
   });
 });
 
+// On a computer each Standings column scrolls by itself (the shells cap it at 92vh), so a category head pins to its
+// own column's top. The bar's 54px offset is for heads that pin to the screen; given to these, it pushed every head
+// 54px down its column, over the rows below it.
+describe('Standings heads with the banner folded on a computer', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+
+  /** How far each drawn category head sits below the inside of its column's top border, in px. */
+  const headOffsets = page => page.evaluate(() => [...document.querySelectorAll('.standings-board-desktop .standings-col-head')]
+    .filter(h => h.offsetParent)
+    .map(h => { const col = h.closest('.standings-col'); return Math.round(h.getBoundingClientRect().top - col.getBoundingClientRect().top - col.clientTop); }));
+
+  for (const [where, id, storage] of [
+    ['the Hub', 'std-index/pickle-for-sight-2026/standings/mid/desktop', HUB_FOLDED],
+    ['Control Center', 'cc/pickle-for-sight-2026/standings/mid/desktop', CC_FOLDED],
+  ]) {
+    it(`${where}: every head sits at its column's top`, async () => {
+      await withCase(browser, site, id, { runSteps: true, storage }, async ({ page }) => {
+        assert.equal(await page.evaluate(() => document.body.classList.contains('hub-bar-on')), true, 'the bar is on');
+        const offsets = await headOffsets(page);
+        assert.ok(offsets.length > 0, 'heads are drawn');
+        assert.deepEqual(offsets, offsets.map(() => 0));
+      });
+    });
+  }
+});
+
 describe('a Standings row in Control Center', () => {
   let browser, site;
   before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
