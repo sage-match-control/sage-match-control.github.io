@@ -12,9 +12,22 @@ export const step = (name, run) => ({ name, run });
 export const click = selector =>
   step(`click ${selector}`, page => page.locator(selector).first().click({ timeout: 8000 }));
 
-/** Click a `.view-tab` by its label. */
+/**
+ * The banner is folded away (a phone, where css/hub-bar.css hides it, or a computer where the reader folded it):
+ * its tabs and pickers are still the page's own and still switch it, as the bar's menu does by clicking them.
+ */
+const bannerFolded = page => page.evaluate(() => {
+  const hero = document.querySelector('header.hero');
+  return !!hero && getComputedStyle(hero).display === 'none';
+});
+
+/** Click a `.view-tab` by its label; with the banner folded away, the hidden tab is clicked from script. */
 export const tab = label =>
-  step(`tab "${label}"`, page => page.locator('.view-tab', { hasText: label }).first().click({ timeout: 8000 }));
+  step(`tab "${label}"`, async page => {
+    const el = page.locator('.view-tab', { hasText: label }).first();
+    if (await bannerFolded(page)) return el.evaluate(b => b.click(), undefined, { timeout: 8000 });
+    return el.click({ timeout: 8000 });
+  });
 
 /** Type into an input one key at a time, so the page's input handlers fire. */
 export const type = (selector, text) =>
@@ -29,9 +42,16 @@ export const type = (selector, text) =>
 export const clickNth = (selector, n) =>
   step(`click ${selector} #${n}`, page => page.locator(selector).nth(n).click({ timeout: 8000 }));
 
-/** Select an <option> by its visible label or value. */
+/**
+ * Select an <option> by its visible label or value. A select in a banner that is folded away is set from script
+ * and sent its `change`, as the bar's menu does.
+ */
 export const choose = (selector, value) =>
-  step(`choose ${value} in ${selector}`, page => page.selectOption(selector, value));
+  step(`choose ${value} in ${selector}`, async page => {
+    const el = page.locator(selector).first();
+    if (await bannerFolded(page) && !(await el.isVisible())) return el.selectOption(value, { force: true });
+    return page.selectOption(selector, value);
+  });
 
 export const press = key => step(`press ${key}`, page => page.keyboard.press(key));
 

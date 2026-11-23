@@ -1213,6 +1213,7 @@
 </style>
 <!-- after the page's styles, where the stylesheet this replaces was injected -->
 <link rel="stylesheet" href="/lib/v1/css/attendance.css">
+<link rel="stylesheet" href="/lib/v1/css/hub-bar.css">
 <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicons/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicons/favicon-16x16.png">
@@ -1254,7 +1255,7 @@
 </header>
 
 <div class="wrap">
-  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day above to load its matches and standings.</div>
+  <div id="dayPrompt" class="empty-state" style="max-width:480px; margin:60px auto; text-align:center;">Select a tournament day to load its matches and standings.</div>
   <div id="liveResults" style="display:none;">
     <div class="live-board-meta" id="liveBoardMeta"></div>
     <div class="facility-progress" id="facilityProgress"></div>
@@ -1553,6 +1554,8 @@ import { createTeams } from '/lib/v1/views/teams.js';
 import { createScoreDialog } from '/lib/v1/views/score-dialog.js';
 import { scoringRuleFor } from '/lib/v1/domain/scoring.js';
 import { createCourtDialog } from '/lib/v1/views/court-dialog.js';
+import { createHubBar } from '/lib/v1/views/hub-bar.js';
+import { revealResults } from '/lib/v1/views/reveal.js';
 
 // ============================================================================
 // CONFIGURATION — platform-wide constants only. Everything event-specific
@@ -1860,7 +1863,26 @@ const standings = createStandings({
   // A playoff bracket card with a scheduled match opens the score dialog, like a ticket (scoreAttrs; the listeners below).
   decorateBracketMatch: m => { const attrs = scoreAttrs(m); return attrs ? { className: ' scoreable', attrs } : {}; },
   markPlayer: (name, m) => (CURRENT_TYPE === 'team' ? '' : attMarkPlayer(name, m)),
+  // A named Round Robin row opens that pair in Match Finder, as on the Hub (a team event's Standings are teams.js's).
+  onPairSelect: openPairInFinder,
 });
+
+// A Standings row's pair in Match Finder: the tab switches, the search box holds the pair and the results show it,
+// with the summary card first. On a phone the results land under the pinned search box (views/reveal.js); on a
+// computer the page goes to the search box, leaving room for the bar when it shows.
+function openPairInFinder(code){
+  const team = finder.pairs.find(t => t.codes.includes(code));
+  if(!team) return;
+  showView('finder');
+  input.value = team.label;
+  finder.selection = team;
+  finder.updateClear();
+  finder.run();
+  if(!revealResults({ resultsEl, searchPanelEl, input })){
+    const barSpace = document.body.classList.contains('hub-bar-on') ? 54 : 0;
+    window.scrollTo({ top: Math.max(0, searchPanelEl.getBoundingClientRect().top + window.scrollY - 16 - barSpace) });
+  }
+}
 
 function renderStandings(){
   UNRESOLVED_CATEGORIES.clear();
@@ -4864,6 +4886,27 @@ if(orgResyncBtn){
 const eventPickerEl = document.getElementById('eventPicker');
 const eventTitleLineEl = document.getElementById('eventTitleLine');
 
+// The bar the banner folds into (lib/v1/views/hub-bar.js, css/hub-bar.css), as on the Hub: always on a phone, where
+// the banner never shows and the bar's menu carries the tabs, the event, the day and the sync line; on a computer
+// once the operator folds the banner with its chevron (kept in this browser). It shows the event's title and reads
+// the banner's own tabs, pickers and sync line; it is redrawn whenever one of them changes.
+const consoleBar = createHubBar({
+  heroEl: document.querySelector('header.hero'),
+  tabsWrapEl: viewTabsWrapEl, dayPickerEl, dayPickerWrapEl, syncStatusEl,
+  panelFor: v => ({
+    organizer: organizerResultsEl, awards: awardsResultsEl, attendance: attConsoleResultsEl, finder: searchPanelEl,
+    live: liveResultsEl, standings: standingsResultsEl, teams: document.getElementById('teamsResults'),
+  })[v],
+  text: () => ({ meta: 'Control Center', title: eventTitleLineEl.textContent.trim() || 'Control Center' }),
+  logoSrc: '/assets/logo.png',
+  pickers: [{ el: eventPickerEl, wrapEl: document.getElementById('eventPickerWrap'), label: 'Event' }],
+  storageKey: 'sage.controlCenter.bannerFolded',
+  menuLabel: 'Control Center',
+});
+new MutationObserver(() => consoleBar.update()).observe(document.querySelector('header.hero'), {
+  subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'],
+});
+
 // The picker reads "2026-10-03 Event title": the event's first day leads, so
 // two events on different dates are told apart at a glance. An event whose days
 // carry no date just shows its title.
@@ -4989,7 +5032,7 @@ async function selectEvent(eventKey, { isInitialLoad = false, initialDayKey = nu
   } else {
     // Multi-day event, nothing specific to land on — leave currentDayIndex
     // null until the operator picks one, same as today's per-event page.
-    dayPromptEl.textContent = 'Select a tournament day above to load its matches and standings.';
+    dayPromptEl.textContent = 'Select a tournament day to load its matches and standings.';
     dayPromptEl.style.display = '';
   }
 }

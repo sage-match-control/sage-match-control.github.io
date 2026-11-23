@@ -64,7 +64,10 @@ describe('the Hub on a phone', () => {
 
   it('picking a suggestion scrolls to the results and closes the keyboard and the suggestions', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
-      assert.ok(await resultsTop(page) > 300, 'before a search the results are far down the first screen');
+      // The banner no longer fills a phone's first screen (it never shows there), so the results already start
+      // near the top; the search still has to land them just under the search box, with the keyboard closed.
+      const panelBottom = await page.evaluate(() => document.getElementById('searchPanel').getBoundingClientRect().bottom);
+      assert.ok(await resultsTop(page) >= panelBottom, 'before a search the results start below the search box');
       await typeInto(page, 'Josh');
       assert.equal(await suggestionsOpen(page), true, 'typing opens the suggestions');
       await page.locator('#acList .ac-item').first().click();
@@ -193,9 +196,14 @@ describe('the Hub on a computer', () => {
 });
 
 // ---- step 3: the bar the banner folds into ----------------------------------------------------------------------
+// On a phone the banner never shows and the bar is always there; on a computer the banner shows until the reader
+// folds it with its chevron, and the bar then stands in its place (kept in this browser).
 
 const BAR_HEIGHT = 54;
+const HUB_FOLDED = { local: { 'sage.hub.bannerFolded': '1' } };
+const CC_FOLDED = { local: { 'sage.controlCenter.bannerFolded': '1' } };
 const barVisible = page => page.locator('.hub-bar').isVisible();
+const heroVisible = page => page.locator('header.hero').isVisible();
 const scrollTo = async (page, y) => { await page.evaluate(top => window.scrollTo(0, top), y); await settle(page); };
 const topOf = (page, selector) => page.evaluate(sel => document.querySelector(sel).getBoundingClientRect().top, selector);
 // textContent, not innerText: the bar sets its text in capitals with CSS, and the spec’s labels are the tabs’ own.
@@ -203,6 +211,7 @@ const texts = (page, selector) => page.locator(selector).evaluateAll(list => lis
 const textOf = (page, selector) => page.locator(selector).first().evaluate(el => el.textContent.trim());
 const activeIn = (page, selector) => page.locator(`${selector}.active`).count();
 const barOn = page => page.evaluate(() => document.body.classList.contains('hub-bar-on'));
+const stored = (page, key) => page.evaluate(k => localStorage.getItem(k), key);
 
 /** Open a harness case and run `fn(h)`, closing the page whatever happens; the page's own errors fail the test. */
 async function withCase(browser, site, id, options, fn) {
@@ -225,27 +234,39 @@ describe('the bar on a phone', () => {
   const TEAM_PHONE = 'team-index/pickledrive-anniversary-2026/finder/mid/phone';
   const DM_STANDINGS_PHONE = 'dm-index/pnf-x-bup-dual-meet/standings/mid/phone';
 
-  it('is hidden at the top, shows once the banner has scrolled away, and hides again at the top', async () => {
+  it('is always there, pinned to the top, and the banner never shows', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
       assert.equal(await page.locator('.hub-bar').count(), 1, 'the bar is made once');
-      assert.equal(await barVisible(page), false, 'hidden while the banner shows');
-      assert.equal(await barOn(page), false);
-      await scrollTo(page, 1500);
-      assert.equal(await barVisible(page), true);
+      assert.equal(await heroVisible(page), false, 'no banner at the top of the page');
+      assert.equal(await barVisible(page), true, 'the bar shows without scrolling');
       assert.equal(await barOn(page), true);
       assert.equal(await page.locator('.hub-bar-btn').isVisible(), true, 'a phone has the menu button');
       assert.equal(await page.locator('.hub-bar-row').isVisible(), false, 'and no row');
+      assert.equal(await page.locator('.hub-fold-btn').isVisible(), false, 'and no chevron');
+      assert.equal(await page.locator('.hub-bar-fold').isVisible(), false);
       assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Match Finder');
       assert.equal(await topOf(page, '.hub-bar'), 0, 'pinned to the top of the screen');
+      const panelTop = await topOf(page, '#searchPanel');
+      assert.ok(panelTop >= BAR_HEIGHT, `the page starts under the bar (search box at ${panelTop}px)`);
+      await scrollTo(page, 1500);
+      assert.equal(await barVisible(page), true);
+      assert.equal(await topOf(page, '.hub-bar'), 0);
       await scrollTo(page, 0);
-      assert.equal(await barVisible(page), false);
-      assert.equal(await barOn(page), false);
+      assert.equal(await barVisible(page), true, 'and still there back at the top');
+      assert.equal(await heroVisible(page), false);
+    });
+  });
+
+  it('a reader who folded the banner on a computer gets the same bar on a phone, and no chevron', async () => {
+    await withPage(STD_PHONE, { storage: HUB_FOLDED }, async ({ page }) => {
+      assert.equal(await barVisible(page), true);
+      assert.equal(await heroVisible(page), false);
+      assert.equal(await page.locator('.hub-bar-fold').isVisible(), false);
     });
   });
 
   it('carries the logo, the date and venue line and the title', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
-      await scrollTo(page, 1500);
       assert.match((await page.locator('.hub-bar-meta').innerText()).trim(), /^Sep 27\s+·\s+PCPH Main$/i);
       assert.equal((await page.locator('.hub-bar-title').innerText()).trim().toLowerCase(), 'pickle for sight');
       assert.equal(await page.locator('.hub-bar-logo').getAttribute('src'), await page.locator('header.hero .hero-logos img').first().getAttribute('src'));
@@ -254,7 +275,6 @@ describe('the bar on a phone', () => {
 
   it('the button opens a menu of the tabs; a tab closes it, switches the view and scrolls to its panel', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
-      await scrollTo(page, 1500);
       await page.locator('.hub-bar-btn').click();
       assert.equal(await page.locator('#hubMenu').isVisible(), true);
       assert.equal(await page.locator('.hub-menu-scrim').isVisible(), true);
@@ -263,6 +283,7 @@ describe('the bar on a phone', () => {
       assert.equal(await activeIn(page, '.hub-menu-tab'), 1);
       assert.equal(await textOf(page, '.hub-menu-tab.active'), 'Match Finder');
       assert.equal(await page.locator('#hubMenu .hub-menu-day').count(), 0, 'a one-day event has no day picker');
+      assert.equal(await page.locator('#hubMenu .hub-menu-picker').count(), 0, 'the Hub has no other picker');
       assert.match(await page.locator('#hubMenu .hub-menu-sync').innerText(), /last synced/);
 
       await page.locator('.hub-menu-tab', { hasText: 'Standings' }).click();
@@ -277,7 +298,7 @@ describe('the bar on a phone', () => {
         reachable: document.documentElement.scrollHeight - window.innerHeight,
         panelAbs: document.getElementById('standingsResults').getBoundingClientRect().top + window.scrollY,
       }));
-      const wanted = Math.min(panelAbs - BAR_HEIGHT - 8, reachable);
+      const wanted = Math.max(0, Math.min(panelAbs - BAR_HEIGHT - 8, reachable));
       assert.ok(Math.abs(y - wanted) <= 1, `scrolled to ${y}, wanted ${wanted} (the panel is ${panelAbs}px down the page)`);
       // remembered, as a click on the banner's tab remembers it
       assert.equal(await page.evaluate(() => localStorage.getItem('pickle-for-sight-2026.view')), 'standings');
@@ -286,7 +307,6 @@ describe('the bar on a phone', () => {
 
   it('Escape, the scrim and the button each close an open menu, and Escape returns focus to the button', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
-      await scrollTo(page, 1500);
       const menu = page.locator('#hubMenu');
       await page.locator('.hub-bar-btn').click();
       assert.equal(await menu.isVisible(), true);
@@ -304,26 +324,24 @@ describe('the bar on a phone', () => {
     });
   });
 
-  it('an open menu closes when the screen widens to a computer, and when the bar goes away', async () => {
+  it('widening to a computer closes an open menu and brings the banner back (not folded there)', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
-      await scrollTo(page, 1500);
       await page.locator('.hub-bar-btn').click();
       assert.equal(await page.locator('#hubMenu').isVisible(), true);
       await page.setViewportSize({ width: 1280, height: 800 });
       await settle(page);
       assert.equal(await page.locator('#hubMenu').isVisible(), false);
+      assert.equal(await barVisible(page), false, 'a computer shows the banner until it is folded');
+      assert.equal(await heroVisible(page), true);
+      assert.equal(await barOn(page), false);
       await page.setViewportSize({ width: 375, height: 812 });
       await settle(page);
-      await scrollTo(page, 1500);
-      await page.locator('.hub-bar-btn').click();
-      assert.equal(await page.locator('#hubMenu').isVisible(), true);
-      await scrollTo(page, 0);
-      assert.equal(await barVisible(page), false);
-      assert.equal(await page.locator('#hubMenu').isVisible(), false, 'hiding the bar closes the menu');
+      assert.equal(await barVisible(page), true, 'and narrowing again brings the bar back');
+      assert.equal(await heroVisible(page), false);
     });
   });
 
-  it('the search box pins under the bar while it shows', async () => {
+  it('the search box pins under the bar', async () => {
     await withPage(STD_PHONE, {}, async ({ page }) => {
       await scrollTo(page, 1500);
       const panelTop = await topOf(page, '#searchPanel');
@@ -333,7 +351,6 @@ describe('the bar on a phone', () => {
 
   it('a team event’s menu has four tabs', async () => {
     await withPage(TEAM_PHONE, {}, async ({ page }) => {
-      await scrollTo(page, 1500);
       assert.equal(await barVisible(page), true);
       await page.locator('.hub-bar-btn').click();
       assert.equal((await texts(page, '.hub-menu-tab')).length, 4);
@@ -359,12 +376,28 @@ describe('the bar on a computer', () => {
 
   const STD_DESKTOP = 'std-index/pickle-for-sight-2026/finder/mid/desktop';
 
-  it('shows a row of the sync line and the tabs, with no menu, and the QR panel moves under it', async () => {
+  it('shows the banner with a chevron, and no bar, however far the page scrolls', async () => {
     await withPage(STD_DESKTOP, {}, async ({ page }) => {
-      assert.equal(await barVisible(page), false, 'hidden at the top');
-      const qrTopAtRest = await topOf(page, '.qr-panel');
+      assert.equal(await heroVisible(page), true);
+      assert.equal(await barVisible(page), false);
+      assert.equal(await page.locator('header.hero .hub-fold-btn').isVisible(), true, 'the banner has its chevron');
+      assert.equal(await page.locator('.hub-fold-btn').getAttribute('aria-label'), 'Fold the banner');
       await scrollTo(page, 900);
+      assert.equal(await barVisible(page), false, 'scrolling the banner away brings no bar');
+      assert.equal(await barOn(page), false);
+    });
+  });
+
+  it('the chevron folds the banner into the bar, pinned at the top, and the choice is kept', async () => {
+    await withPage(STD_DESKTOP, {}, async ({ page }) => {
+      const qrTopAtRest = await topOf(page, '.qr-panel');
+      await page.locator('.hub-fold-btn').click();
+      await settle(page);
+      assert.equal(await heroVisible(page), false, 'the banner is folded away');
       assert.equal(await barVisible(page), true);
+      assert.equal(await topOf(page, '.hub-bar'), 0);
+      assert.equal(await stored(page, 'sage.hub.bannerFolded'), '1');
+      assert.equal(await page.evaluate(() => document.activeElement.classList.contains('hub-bar-fold')), true, 'focus moves to the bar’s chevron');
       assert.equal(await page.locator('.hub-bar-btn').isVisible(), false, 'no menu button');
       assert.equal(await page.locator('.hub-bar-row').isVisible(), true);
       assert.equal(await page.locator('.hub-bar-row .hub-bar-tab').count(), 3);
@@ -373,7 +406,34 @@ describe('the bar on a computer', () => {
       assert.equal(await page.locator('.hub-bar-day').count(), 0, 'a one-day event has no day picker');
       const qrTop = await topOf(page, '.qr-panel');
       assert.ok(qrTop >= BAR_HEIGHT, `the QR panel is ${qrTop}px from the top`);
-      assert.ok(qrTopAtRest < BAR_HEIGHT, 'and was higher at the top of the page');
+      assert.ok(qrTopAtRest < BAR_HEIGHT, 'and was higher with the banner showing');
+      const panelTop = await topOf(page, '#searchPanel');
+      assert.ok(panelTop >= BAR_HEIGHT, `the page starts under the bar (search box at ${panelTop}px)`);
+      await scrollTo(page, 900);
+      assert.equal(await topOf(page, '.hub-bar'), 0, 'still pinned once the page scrolls');
+
+      await page.reload();
+      await settle(page);
+      assert.equal(await barVisible(page), true, 'still folded after a reload');
+      assert.equal(await heroVisible(page), false);
+    });
+  });
+
+  it('the bar’s chevron brings the banner back, and that is kept too', async () => {
+    await withPage(STD_DESKTOP, { storage: HUB_FOLDED }, async ({ page }) => {
+      assert.equal(await barVisible(page), true);
+      assert.equal(await page.locator('.hub-bar-fold').getAttribute('aria-label'), 'Show the banner');
+      await page.locator('.hub-bar-fold').click();
+      await settle(page);
+      assert.equal(await heroVisible(page), true);
+      assert.equal(await barVisible(page), false);
+      assert.equal(await stored(page, 'sage.hub.bannerFolded'), '0');
+      assert.equal(await page.evaluate(() => document.activeElement.classList.contains('hub-fold-btn')), true, 'focus returns to the banner’s chevron');
+    });
+  });
+
+  it('a tab on the bar switches the view, on the bar and in the banner', async () => {
+    await withPage(STD_DESKTOP, { storage: HUB_FOLDED }, async ({ page }) => {
       await page.locator('.hub-bar-tab', { hasText: 'Standings' }).click();
       await settle(page);
       assert.equal(await activeIn(page, '.hub-bar-tab[data-view="standings"]'), 1, 'active on the bar');
@@ -383,7 +443,7 @@ describe('the bar on a computer', () => {
   });
 
   it('leaves the search box to scroll away with the page', async () => {
-    await withPage(STD_DESKTOP, {}, async ({ page }) => {
+    await withPage(STD_DESKTOP, { storage: HUB_FOLDED }, async ({ page }) => {
       await scrollTo(page, 900);
       const panelBottom = await page.evaluate(() => document.getElementById('searchPanel').getBoundingClientRect().bottom);
       assert.ok(panelBottom < 0, `the search box is above the screen (${panelBottom}px), not pinned`);
@@ -391,10 +451,9 @@ describe('the bar on a computer', () => {
   });
 
   it('leaves the sync line out below 1100 px and still shows the tabs at 950 px', async () => {
-    await withPage(STD_DESKTOP, {}, async ({ page }) => {
+    await withPage(STD_DESKTOP, { storage: HUB_FOLDED }, async ({ page }) => {
       await page.setViewportSize({ width: 950, height: 800 });
       await settle(page);
-      await scrollTo(page, 900);
       assert.equal(await page.locator('.hub-bar-sync').isVisible(), false);
       assert.equal(await page.locator('.hub-bar-row .hub-bar-tab').first().isVisible(), true);
       assert.equal(await page.locator('.hub-bar-btn').isVisible(), false);
@@ -420,21 +479,21 @@ describe('the bar at a multi-day event', () => {
     return { c, registry, snapshots };
   }
 
-  /** Open it on its first day (saved, so the page loads it rather than waiting for a pick). */
-  async function openTwoDays(viewport) {
+  /** Open it on its first day (saved, so the page loads it rather than waiting for a pick), or with no day yet. */
+  async function openTwoDays(viewport, { local = { 'pickle-for-sight-2026.dayIndex': '0' } } = {}) {
     const { c, registry, snapshots } = twoDays();
     site.register(c.id, c.instantiate);
     const h = await openPage(browser, site.baseUrl + c.path, {
       viewport: viewport || c.viewport, time: c.time, registry, snapshots,
       fixtureFiles: c.fixtureFiles, external: c.external, cloudRun: c.cloudRun, allowErrors: c.allowErrors,
-      storage: { ...c.storage, local: { 'pickle-for-sight-2026.dayIndex': '0' } }, caseId: c.id,
+      storage: { ...c.storage, local }, caseId: c.id,
     });
     await settle(h.page);
     return h;
   }
 
-  it('lists both days in the bar’s picker on a computer, and choosing the second loads it', async () => {
-    const h = await openTwoDays();
+  it('lists both days in the folded bar’s picker on a computer, and choosing the second loads it', async () => {
+    const h = await openTwoDays(null, { local: { 'pickle-for-sight-2026.dayIndex': '0', 'sage.hub.bannerFolded': '1' } });
     try {
       const { page } = h;
       await scrollTo(page, 900);
@@ -448,6 +507,7 @@ describe('the bar at a multi-day event', () => {
       assert.equal(await page.locator('#dayPicker').inputValue(), '1');
       assert.equal(await scrollY(page), 0, 'choosing a day scrolls to the top');
       assert.match(await page.locator('#syncStatus').innerText(), /^Sep 28/);
+      assert.equal(await barVisible(page), true, 'still folded once the day has loaded');
       assert.deepEqual(h.errors, []);
     } finally {
       await h.close();
@@ -458,7 +518,6 @@ describe('the bar at a multi-day event', () => {
     const h = await openTwoDays({ width: 375, height: 812 });
     try {
       const { page } = h;
-      await scrollTo(page, 1500);
       await page.locator('.hub-bar-btn').click();
       assert.equal(await page.locator('#hubMenu .hub-menu-day select').count(), 1);
       assert.deepEqual(await texts(page, '#hubMenu .hub-menu-day select option'), ['Sep 27', 'Sep 28']);
@@ -471,6 +530,103 @@ describe('the bar at a multi-day event', () => {
     } finally {
       await h.close();
     }
+  });
+
+  it('on a phone with no day picked yet, the bar’s button reads Choose a day and its menu holds only the day', async () => {
+    const h = await openTwoDays({ width: 375, height: 812 }, { local: {} });
+    try {
+      const { page } = h;
+      assert.equal(await barVisible(page), true, 'the bar shows before any day is loaded');
+      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Choose a day');
+      await page.locator('.hub-bar-btn').click();
+      assert.equal(await page.locator('#hubMenu .hub-menu-tab').count(), 0, 'no tabs before a day is loaded');
+      await page.locator('#hubMenu .hub-menu-day select').selectOption('0');
+      await page.waitForFunction(() => document.getElementById('dayPicker').value === '0');
+      await settle(page);
+      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Match Finder', 'the day loads and lands on Match Finder');
+      assert.deepEqual(h.errors, []);
+    } finally {
+      await h.close();
+    }
+  });
+});
+
+describe('Control Center’s bar', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+  const withPage = (id, options, fn) => withCase(browser, site, id, options, fn);
+
+  const CC_PHONE = 'cc/pickle-for-sight-2026/mission-control/mid/phone';
+  const CC_DESKTOP = 'cc/pickle-for-sight-2026/mission-control/mid/desktop';
+  const CC_TEAM_DESKTOP = 'cc/pickledrive-anniversary-2026/mission-control/mid/desktop';
+
+  it('on a phone: always there, with the event’s title, and a menu of the tabs, the event and the sync line', async () => {
+    await withPage(CC_PHONE, { runSteps: true }, async ({ page }) => {
+      assert.equal(await heroVisible(page), false);
+      assert.equal(await barVisible(page), true);
+      assert.equal(await textOf(page, '.hub-bar-meta'), 'Control Center');
+      assert.equal(await textOf(page, '.hub-bar-title'), 'Pickle for Sight');
+      assert.equal(await page.locator('.hub-bar-logo').getAttribute('src'), '/assets/logo.png');
+      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Mission Control');
+      await page.locator('.hub-bar-btn').click();
+      assert.equal(await page.locator('#hubMenu').getAttribute('aria-label'), 'Control Center');
+      assert.deepEqual(await texts(page, '.hub-menu-tab'), ['Mission Control', 'Awards', 'Match Finder', 'Live Matches', 'Standings']);
+      assert.equal(await page.locator('#hubMenu .hub-menu-picker select').count(), 1, 'the event picker');
+      assert.equal(await page.locator('#hubMenu .hub-menu-picker select').inputValue(), 'pickle-for-sight-2026');
+      assert.match(await page.locator('#hubMenu .hub-menu-sync').innerText(), /last synced/);
+      await page.locator('.hub-menu-tab', { hasText: 'Standings' }).click();
+      await settle(page);
+      assert.equal(await activeIn(page, '.view-tab[data-view="standings"]'), 1);
+      assert.equal(await textOf(page, '.hub-bar-btn-label'), 'Standings');
+    });
+  });
+
+  it('on a phone: choosing another event in the menu switches to it, and the bar follows', async () => {
+    await withPage(CC_PHONE, { runSteps: true }, async ({ page }) => {
+      await page.locator('.hub-bar-btn').click();
+      await page.locator('#hubMenu .hub-menu-picker select').selectOption('pickledrive-anniversary-2026');
+      await page.waitForFunction(() => document.getElementById('eventPicker').value === 'pickledrive-anniversary-2026');
+      await settle(page);
+      assert.equal(await page.locator('#hubMenu').isVisible(), false, 'the menu closes');
+      assert.equal(await textOf(page, '.hub-bar-title'), 'PickleDrive Club One Year Celebration');
+    });
+  });
+
+  it('on a computer: the banner until it is folded; folded, the bar with every tab, kept in its own key', async () => {
+    await withPage(CC_DESKTOP, { runSteps: true }, async ({ page }) => {
+      assert.equal(await heroVisible(page), true);
+      assert.equal(await barVisible(page), false);
+      await page.locator('.hub-fold-btn').click();
+      await settle(page);
+      assert.equal(await heroVisible(page), false);
+      assert.equal(await barVisible(page), true);
+      assert.equal(await stored(page, 'sage.controlCenter.bannerFolded'), '1');
+      assert.equal(await stored(page, 'sage.hub.bannerFolded'), null, 'the Hub’s choice is its own');
+      assert.deepEqual(await texts(page, '.hub-bar-row .hub-bar-tab'), ['Mission Control', 'Awards', 'Match Finder', 'Live Matches', 'Standings']);
+      await page.locator('.hub-bar-tab', { hasText: 'Live Matches' }).click();
+      await settle(page);
+      assert.equal(await activeIn(page, '.view-tab[data-view="live"]'), 1);
+      assert.equal(await activeIn(page, '.hub-bar-tab[data-view="live"]'), 1);
+    });
+  });
+
+  it('seven tabs at 950 px: the title keeps its room, the row scrolls with the open tab in view, and the chevron stays on screen', async () => {
+    await withPage(CC_TEAM_DESKTOP, { runSteps: true, storage: CC_FOLDED }, async ({ page }) => {
+      await page.setViewportSize({ width: 950, height: 800 });
+      await settle(page);
+      assert.equal(await page.locator('.hub-bar-row .hub-bar-tab').count(), 7);
+      await page.locator('.hub-bar-tab', { hasText: 'Teams' }).click();
+      await settle(page);
+      const r = await page.evaluate(() => {
+        const box = el => document.querySelector(el).getBoundingClientRect();
+        return { title: box('.hub-bar-text').width, fold: box('.hub-bar-fold').right, row: box('.hub-bar-row'), tab: box('.hub-bar-tab.active') };
+      });
+      assert.ok(r.title >= 119, `the title has ${r.title}px`);
+      assert.ok(r.fold <= 950, `the chevron ends at ${r.fold}px`);
+      assert.ok(r.tab.left >= r.row.left - 1 && r.tab.right <= r.row.right + 1, 'the open tab is in view');
+      assert.equal(await page.locator('.hub-bar-sync').isVisible(), false, 'the sync line made room');
+    });
   });
 });
 
@@ -561,6 +717,85 @@ describe('a Standings row on a computer', () => {
       assert.ok(await page.locator('#results .pair-summary').count() > 0, 'the summary card is drawn');
       const top = await topOf(page, '#searchPanel');
       assert.ok(top >= 0 && top < 800, `the search box is in the viewport (top ${top}px)`);
+    });
+  });
+
+  it('with the banner folded, the search box lands under the bar', async () => {
+    await withCase(browser, site, DESKTOP, { runSteps: true, storage: HUB_FOLDED }, async ({ page }) => {
+      const row = page.locator('tr.rr-open').nth(3);
+      await row.scrollIntoViewIfNeeded();
+      await row.click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true);
+      const top = await topOf(page, '#searchPanel');
+      assert.ok(top >= BAR_HEIGHT && top < 800, `the search box is under the bar (top ${top}px)`);
+    });
+  });
+});
+
+describe('a Standings row in Control Center', () => {
+  let browser, site;
+  before(async () => { browser = await launchBrowser(); site = await startSite({ root: SITE_ROOT }); });
+  after(async () => { await browser.close(); await site.close(); });
+
+  const CC_DESKTOP = 'cc/pickle-for-sight-2026/standings/mid/desktop';
+  const CC_PHONE = 'cc/pickle-for-sight-2026/standings/mid/phone';
+  const CC_DM_DESKTOP = 'cc/pnf-x-bup-dual-meet/standings/mid/desktop';
+  const CC_TEAM_DESKTOP = 'cc/pickledrive-anniversary-2026/standings/mid/desktop';
+
+  it('opens that pair in Match Finder, on the pair, with the search box in view (a computer)', async () => {
+    await withCase(browser, site, CC_DESKTOP, { runSteps: true }, async ({ page }) => {
+      assert.ok(await page.locator('tr.rr-open').count() > 0, 'the named rows are marked');
+      const label = await rowPairLabel(page, 'tr.rr-open');
+      const row = page.locator('tr.rr-open').first();
+      await row.scrollIntoViewIfNeeded();
+      await row.click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true, 'Match Finder is the active tab');
+      assert.equal(await standingsHidden(page), true);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0, 'the summary card is drawn');
+      const value = await page.locator('#teamInput').inputValue();
+      label.split(' / ').forEach(name => assert.ok(value.includes(name), `"${value}" holds "${name}"`));
+      const top = await topOf(page, '#searchPanel');
+      assert.ok(top >= 0 && top < 800, `the search box is in the viewport (top ${top}px)`);
+    });
+  });
+
+  it('Enter on a focused row does the same', async () => {
+    await withCase(browser, site, CC_DESKTOP, { runSteps: true }, async ({ page }) => {
+      await page.locator('tr.rr-open').first().focus();
+      await page.keyboard.press('Enter');
+      await settle(page);
+      assert.equal(await finderIsActive(page), true);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0);
+    });
+  });
+
+  it('on a phone, the results land just under the pinned search box', async () => {
+    await withCase(browser, site, CC_PHONE, { runSteps: true }, async ({ page }) => {
+      // A phone's Standings show one category at a time: pick the first.
+      await page.locator('#catFilterInput').click();
+      await page.locator('#catAcList .ac-item').first().click();
+      await settle(page);
+      await page.locator('tr.rr-open').first().click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0);
+      const gap = await page.evaluate(() => document.getElementById('results').getBoundingClientRect().top - document.getElementById('searchPanel').getBoundingClientRect().bottom);
+      assert.ok(gap >= 0 && gap <= 16, `the results start ${gap}px under the search box`);
+    });
+  });
+
+  it('a dual meet’s rows open too; a team event’s Standings have none', async () => {
+    await withCase(browser, site, CC_DM_DESKTOP, { runSteps: true }, async ({ page }) => {
+      assert.ok(await page.locator('tr.rr-open').count() > 0);
+      await page.locator('tr.rr-open').first().click();
+      await settle(page);
+      assert.equal(await finderIsActive(page), true);
+      assert.ok(await page.locator('#results .pair-summary').count() > 0);
+    });
+    await withCase(browser, site, CC_TEAM_DESKTOP, { runSteps: true }, async ({ page }) => {
+      assert.equal(await page.locator('tr.rr-open').count(), 0);
     });
   });
 });

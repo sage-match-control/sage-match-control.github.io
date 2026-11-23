@@ -1,10 +1,10 @@
 // views/hub-bar.js: the pure parts of the bar the Hub's banner folds into (hub-player-experience-spec §5), and
 // reveal.js's allowance for it. Browser globals are stubbed or faked; there is no DOM in these tests. What the bar
-// does on a page (shows on scroll, the menu, the day picker) is engine/hub-behaviour.test.mjs.
+// does on a page (always on a phone, folding on a computer, the menu, the day picker) is engine/hub-behaviour.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-const { HUB_BAR_HEIGHT, cleanText, readBarItems, barRowHTML, menuHTML, barShows, tabScrollTop } =
+const { HUB_BAR_HEIGHT, FOLDED_KEY, cleanText, readBarItems, barRowHTML, menuHTML, buttonLabel, barShows, barFolds, tabScrollTop } =
   await import('../../../lib/v1/views/hub-bar.js');
 
 // ---- fake elements -------------------------------------------------------------------------------------------------
@@ -86,6 +86,35 @@ test('the sync line is the status element’s text, left out while the element i
   assert.equal(readBarItems(els({ syncStatusEl: null })).sync, '');
 });
 
+test('no tabs while the tab row is hidden (no day loaded yet), so a phone’s menu never offers an empty view', () => {
+  const hiddenRow = { ...tabsWrap([tabEl('finder', 'Match Finder', { active: true }), tabEl('live', 'Live Matches')]), style: { display: 'none' } };
+  assert.deepEqual(readBarItems(els({ tabsWrapEl: hiddenRow })).tabs, []);
+  assert.deepEqual(readBarItems(els({ tabsWrapEl: null })).tabs, []);
+});
+
+test('an extra picker (Control Center’s event) is an item with its label, value, options and place in the list', () => {
+  const eventPicker = { value: 'b', options: [{ value: 'a', textContent: '2026-09-27 Pickle for Sight', disabled: false }, { value: 'b', textContent: ' 2026-10-03  PickleDrive ', disabled: false }] };
+  const items = readBarItems({ ...els(), pickers: [{ el: eventPicker, label: 'Event' }] });
+  assert.deepEqual(items.pickers, [{
+    index: 0, label: 'Event', value: 'b',
+    options: [{ value: 'a', label: '2026-09-27 Pickle for Sight' }, { value: 'b', label: '2026-10-03 PickleDrive' }],
+  }]);
+});
+
+test('a picker whose wrapper is hidden, or that has no element, is left out, and the others keep their index', () => {
+  const sel = value => ({ value, options: [{ value, textContent: value, disabled: false }] });
+  const items = readBarItems({ ...els(), pickers: [
+    { el: sel('x'), wrapEl: { style: { display: 'none' } }, label: 'Hidden' },
+    { el: null, label: 'Missing' },
+    { el: sel('y'), wrapEl: { style: { display: '' } }, label: 'Shown' },
+  ] });
+  assert.deepEqual(items.pickers.map(p => [p.index, p.label]), [[2, 'Shown']]);
+});
+
+test('without pickers the item list has none', () => {
+  assert.deepEqual(readBarItems(els()).pickers, []);
+});
+
 // ---- markup --------------------------------------------------------------------------------------------------------
 
 const ITEMS = {
@@ -131,6 +160,25 @@ test('the menu leaves out a day row and a sync line there is nothing for', () =>
   assert.doesNotMatch(html, /hub-menu-day|hub-menu-sync/);
 });
 
+test('an extra picker is a labelled row after the tabs and before the day, naming its index', () => {
+  const day = { value: '0', options: [{ value: '0', label: 'Sep 27' }] };
+  const pickers = [{ index: 0, label: 'Event', value: 'b', options: [{ value: 'a', label: 'One' }, { value: 'b', label: 'Two' }] }];
+  const html = menuHTML({ ...ITEMS, day, pickers });
+  assert.match(html, /<label class="hub-menu-day hub-menu-picker" data-picker="0">Event <select>/);
+  assert.match(html, /<option value="b" selected>Two<\/option>/);
+  assert.ok(html.lastIndexOf('hub-menu-tab') < html.indexOf('hub-menu-picker'), 'after the tabs');
+  assert.ok(html.indexOf('hub-menu-picker') < html.indexOf('>Day <select'), 'before the day');
+  assert.doesNotMatch(barRowHTML({ ...ITEMS, pickers }), /picker|Event/, 'a computer’s row leaves pickers to the banner');
+});
+
+test('the phone’s button names the open tab; before a day is loaded, Choose a day while one waits to be picked, else Menu', () => {
+  assert.equal(buttonLabel(ITEMS), 'Match Finder');
+  assert.equal(buttonLabel({ tabs: [], day: { value: '', options: [] } }), 'Choose a day');
+  assert.equal(buttonLabel({ tabs: [], day: { value: '1', options: [] } }), 'Menu', 'a day picked and still loading');
+  assert.equal(buttonLabel({ tabs: [], day: null }), 'Menu');
+  assert.equal(buttonLabel({ tabs: [{ view: 'finder', label: 'Match Finder', active: false }], day: null }), 'Menu');
+});
+
 test('everything put into the markup is escaped (a sync line can carry a facility name)', () => {
   const html = barRowHTML({
     tabs: [{ view: 'finder', label: '<b>"Finder"</b>', active: true }],
@@ -145,7 +193,16 @@ test('everything put into the markup is escaped (a sync line can carry a facilit
 
 // ---- when the bar shows, and where a tab scrolls to ------------------------------------------------------------------
 
-test('the bar shows only when the tabs show, the hero is out of view and the stylesheet has loaded', () => {
+test('with the fold rules, the bar shows always on a phone, and on a computer once the banner is folded and a day is loaded', () => {
+  assert.equal(barFolds({ phone: true, folded: false, tabsShowing: false }), true, 'a phone, even before a day is loaded');
+  assert.equal(barFolds({ phone: true, folded: true, tabsShowing: true }), true);
+  assert.equal(barFolds({ phone: false, folded: true, tabsShowing: true }), true, 'a computer, folded');
+  assert.equal(barFolds({ phone: false, folded: false, tabsShowing: true }), false, 'a computer shows the banner until it is folded');
+  assert.equal(barFolds({ phone: false, folded: true, tabsShowing: false }), false, 'and keeps the banner, with its pickers, until a day is loaded');
+  assert.equal(FOLDED_KEY, 'sage.hub.bannerFolded');
+});
+
+test('with a stylesheet from before the fold rules, the bar shows only when the tabs show, the hero is out of view and it is styled', () => {
   const on = { tabsShowing: true, heroOut: true, styled: true };
   assert.equal(barShows(on), true);
   assert.equal(barShows({ ...on, tabsShowing: false }), false, 'a day not picked yet, or being loaded');
@@ -190,7 +247,7 @@ test('with the bar already showing (the panel’s offset already counts it) noth
   assert.equal(scrolls[0].top, 600 + 100 - (8 + 60 + 8));
 });
 
-test('with no bar on the page (Control Center, a page with an old shell) nothing is added', t => {
+test('with no bar on the page (a page with an old shell) nothing is added', t => {
   const scrolls = page(t, { bar: false });
   reveal();
   assert.equal(scrolls[0].top, 600 + 100 - (8 + 60 + 8));
