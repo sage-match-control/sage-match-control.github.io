@@ -122,18 +122,19 @@ const DAY_KEY = 'generation-cup-day1';
 // (_templates/CLAUDE.md §7).
 const LIVE_BASE_URL = 'wss://sage-live.sagematchcontrol.workers.dev';
 
-// Category colours: the workbooks' own where they have one, read off the two SCHEDULE tabs through the Sheets API
-// (sage-docs/docs/specs/.../ultimate-generation-cup-2026-spec.md §3). Hue = event (Men's blue, Women's magenta,
-// Mixed orange), lighter = lower level. The workbooks leave AMD, AXD and OWD grey, so those three take the
-// generator's own Advanced shade, and OWD its darkest magenta. Keys are the category token of each team code
-// (LIMD_3 -> LIMD). Cells apply the hue as a 40% tint over white.
+// Category colours: the workbooks' hues (sage-docs/docs/specs/.../ultimate-generation-cup-2026-spec.md §3), one shade
+// deeper for Novice and Low Intermediate: the workbooks' own pale shades tint a cell almost to white, so those six
+// take the next shade of the same Sheets palette (Mixed's two mid shades between). Hue = event (Men's blue, Women's
+// magenta, Mixed orange), lighter = lower level; every chip's text reads at 4.5:1 or better. The workbooks leave AMD,
+// AXD and OWD grey, so those three take the generator's own Advanced shade, and OWD its darkest magenta. Keys are
+// the category token of each team code (LIMD_3 -> LIMD). Cells apply the hue as a 40% tint over white.
 const CAT_META = {
-  NMD:  { short:'N MD',    color:'#C9DAF8' },
-  NWD:  { short:'N WD',    color:'#EAD1DC' },
-  NXD:  { short:'N XD',    color:'#FCE5CD' },
-  LIMD: { short:'LI MD',   color:'#6D9EEB' },
-  LIWD: { short:'LI WD',   color:'#C27BA0' },
-  LIXD: { short:'LI XD',   color:'#F6B26B' },
+  NMD:  { short:'N MD',    color:'#6D9EEB' },
+  NWD:  { short:'N WD',    color:'#C27BA0' },
+  NXD:  { short:'N XD',    color:'#F2A55A' },
+  LIMD: { short:'LI MD',   color:'#3470D2' },
+  LIWD: { short:'LI WD',   color:'#A64D79' },
+  LIXD: { short:'LI XD',   color:'#E38326' },
   HIMD: { short:'HI MD',   color:'#1155CC' },
   HIXD: { short:'HI XD',   color:'#B45F06' },
   AMD:  { short:'A MD',    color:'#1C4587' },
