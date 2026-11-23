@@ -310,3 +310,25 @@ button#searchBtn:active{transform:scale(.97);}
 
 .ps-res--live{background:var(--green-dark); color:var(--white);}
 
+
+/* The next match, or the court being played on now: the navy block that opens the card (views/pair-summary.js, nextMatchHTML) */
+.ps-next{background:var(--navy); color:var(--white); border-radius:12px; padding:12px 14px; margin:0 0 12px;}
+
+.ps-next small{
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--green); display:flex; align-items:center; gap:6px;
+}
+
+.ps-next .live-dot{background:var(--white); margin-right:0;}
+
+.ps-next b{display:block; font-family:'Archivo Black',sans-serif; font-weight:400; font-size:24px; line-height:1.15; margin:3px 0 4px;}
+
+.ps-next span{display:block; font-size:14px; line-height:1.35;}
+
+.ps-next span i{font-style:normal; opacity:.7;}
+
+.ps-next em{
+  display:inline-block; font-style:normal; margin-top:7px;
+  font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+  background:rgba(255,255,255,.14); border-radius:999px; padding:3px 9px;
+}

@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDayModel } from '../../../lib/v1/domain/model.js';
 import { buildPairIndex, pairResultsHTML } from '../../../lib/v1/views/finder.js';
-import { pairSummaryHTML, roundRobinStanding, playoffRounds, pairStatus, matchIdText } from '../../../lib/v1/views/pair-summary.js';
+import { pairSummaryHTML, nextMatchHTML, roundRobinStanding, playoffRounds, pairStatus, matchIdText } from '../../../lib/v1/views/pair-summary.js';
 
 const MATCH_HEADER = 'matchNumber,court,Schedule,CourtAssignment,teamCode1,team1Player1,team1Player2,team1Score,teamCode2,team2Player1,team2Player2,team2Score';
 const STAND_HEADER = 'teamCode,player1,player2,wins,loss,quotient,bracket,match,from,seat';
@@ -179,4 +179,147 @@ test('a match id in words', () => {
   assert.equal(matchIdText('F'), 'Final');
   assert.equal(matchIdText('F (2)'), 'Final · Game 2');
   assert.equal(matchIdText('X-9'), 'X-9');
+});
+
+// ---- the next-match block (P3) -------------------------------------------------------------------
+
+// Ann/Bo has played match 1 and has match 3 (later) and match 2 (earlier) still to play: schedule order, not number
+const TO_PLAY = [
+  '1,,9:00 AM,Court 1,NOD_1,Ann,Bo,11,NOD_2,Cy,Di,7',
+  '3,,2:50 PM,Court 4,NOD_5,Ike,Jo,,NOD_1,Ann,Bo,',
+  '2,,1:00 PM,Court 2,NOD_1,Ann,Bo,,NOD_3,Ed,Flo,',
+];
+const next = (m, name) => nextMatchHTML(pair(m, name), m);
+const withFacilities = (model, facilities) => ({ ...model, day: { ...model.day, facilities } });
+
+test('the next match: the first unplayed match in schedule order, with its time and court, opponent and round', () => {
+  const m = day({ matches: TO_PLAY, standings: RR_STAND });
+  const html = next(m, 'Ann');
+  assert.match(html, /^<div class="ps-next ps-next--next">/);
+  assert.match(html, /<small>Next match<\/small>/);
+  assert.doesNotMatch(html, /live-dot/);
+  assert.match(html, /<b>1:00 PM · Court 2<\/b>/);
+  assert.match(html, /<span>vs Ed \/ Flo<\/span>/);
+  assert.match(html, /<em>Round robin · Match 2<\/em>/);
+  assert.doesNotMatch(html, /<i>/);
+});
+
+test('the next match names the opponent whichever side the pair is on', () => {
+  const m = day({ matches: TO_PLAY, standings: RR_STAND });
+  assert.match(next(m, 'Ike'), /<b>2:50 PM · Court 4<\/b>\s*<span>vs Ann \/ Bo<\/span>\s*<em>Round robin · Match 3/);
+});
+
+test('the next match leaves out " · Court…" when the scheduled court is blank', () => {
+  const m = day({ matches: ['1,,2:50 PM,,NOD_1,Ann,Bo,,NOD_2,Cy,Di,'], standings: RR_STAND });
+  assert.match(next(m, 'Ann'), /<b>2:50 PM<\/b>/);
+});
+
+test('playing now: a live court takes the block, and the next match waits', () => {
+  const m = day({ matches: ['1,3,1:00 PM,Court 3,NOD_1,Ann,Bo,,NOD_2,Cy,Di,', '2,,2:00 PM,Court 1,NOD_1,Ann,Bo,,NOD_3,Ed,Flo,'], standings: RR_STAND });
+  const html = next(m, 'Ann');
+  assert.match(html, /^<div class="ps-next ps-next--live">/);
+  assert.match(html, /<small><span class="live-dot"><\/span>Playing now<\/small>/);
+  assert.match(html, /<b>Court 3<\/b>/);
+  assert.match(html, /<span>vs Cy \/ Di<\/span>/);
+  assert.match(html, /<em>Round robin · Match 1<\/em>/);
+  assert.doesNotMatch(html, /Next match/);
+});
+
+test('a live match that is already played is not "playing now"', () => {
+  const m = day({ matches: ['1,3,1:00 PM,Court 3,NOD_1,Ann,Bo,11,NOD_2,Cy,Di,5', '2,,2:00 PM,Court 1,NOD_1,Ann,Bo,,NOD_3,Ed,Flo,'], standings: RR_STAND });
+  assert.match(next(m, 'Ann'), /ps-next--next/);
+  assert.match(next(m, 'Ann'), /Match 2/);
+});
+
+test('a playoff match: the round in words; an open seat reads its label, or "To be decided" with none', () => {
+  const m = day({
+    matches: [...RR, '8,,12:00 PM,Court 1,NOD_F_1,Ann,Bo,,NOD_F_2, , ,', '6,,11:00 AM,Court 1,NOD_SF_1,Cy,Di,,NOD_SF_2, , ,'],
+    standings: [...RR_STAND, 'NOD_F_1,Ann,Bo,0,0,0,,F,W:SF-1,', 'NOD_F_2, , ,0,0,0,,F,W:SF-2,', 'NOD_SF_1,Cy,Di,0,0,0,,SF-1,,', 'NOD_SF_2, , ,0,0,0,,SF-2,,'],
+  });
+  assert.match(next(m, 'Ann'), /<b>12:00 PM · Court 1<\/b>\s*<span>vs Winner of Semifinal 2<\/span>\s*<em>Final · Match 8<\/em>/);
+  assert.match(next(m, 'Cy'), /<span>vs To be decided<\/span>\s*<em>Semifinal · Match 6<\/em>/);
+});
+
+test('a series game adds its number to the round', () => {
+  const m = day({
+    matches: [...RR, '8,,12:00 PM,Court 1,NOD_F_1_(1),Ann,Bo,8,NOD_F_2_(1),Cy,Di,11', '9,,12:30 PM,Court 1,NOD_F_1_(2),Ann,Bo,,NOD_F_2_(2),Cy,Di,'],
+    standings: [...RR_STAND, 'NOD_F_1_(1),Ann,Bo,0,0,0,,F (1),,', 'NOD_F_2_(1),Cy,Di,0,0,0,,F (1),,', 'NOD_F_1_(2),Ann,Bo,0,0,0,,F (2),,', 'NOD_F_2_(2),Cy,Di,0,0,0,,F (2),,'],
+  });
+  assert.match(next(m, 'Ann'), /<em>Final · Game 2 · Match 9<\/em>/);
+});
+
+test('the facility shows only when the day has more than one', () => {
+  const m = day({ matches: TO_PLAY, standings: RR_STAND });
+  assert.doesNotMatch(next(withFacilities(m, ['Main']), 'Ann'), /<i>/);
+  assert.match(next(withFacilities(m, ['Main', 'Annex']), 'Ann'), /<span>vs Ed \/ Flo<i> · Main<\/i><\/span>/);
+});
+
+test('nothing left to play (or only a series game that will not be played): no block', () => {
+  assert.equal(next(day({ matches: RR, standings: RR_STAND }), 'Ann'), '');
+  const decided = day({
+    matches: ['8,,12:00 PM,Court 1,NOD_F_1_(1),Ann,Bo,11,NOD_F_2_(1),Cy,Di,8', '9,,12:30 PM,Court 1,NOD_F_1_(2),Ann,Bo,,NOD_F_2_(2),Cy,Di,'],
+    standings: [...RR_STAND, 'NOD_F_1_(1),Ann,Bo,0,0,0,,F (1),,', 'NOD_F_2_(1),Cy,Di,0,0,0,,F (1),,', 'NOD_F_1_(2),Ann,Bo,0,0,0,,F (2),,', 'NOD_F_2_(2),Cy,Di,0,0,0,,F (2),,'],
+  });
+  assert.equal(next(decided, 'Ann'), '');
+});
+
+test('every value is escaped', () => {
+  const m = day({ matches: ['1,,2:50 PM,Court <4>,NOD_1,Ann,Bo,,NOD_2,<u>Cy</u>,Di,'], standings: [RR_STAND[0], 'NOD_2,<u>Cy</u>,Di,0,0,0,,,,'] });
+  const html = next(m, 'Ann');
+  assert.doesNotMatch(html, /<u>/);
+  assert.match(html, /&lt;u&gt;Cy&lt;\/u&gt; \/ Di/);
+  assert.match(html, /Court &lt;4&gt;/);
+});
+
+test('the card opens with the block, before the pair\'s standing', () => {
+  const m = day({ matches: TO_PLAY, standings: RR_STAND });
+  const html = pairSummaryHTML(pair(m, 'Ann'), m);
+  assert.match(html, /^<div class="pair-summary">\s*<div class="ps-next ps-next--next">/);
+  assert.ok(html.indexOf('class="ps-next') < html.indexOf('class="ps-top"'));
+  assert.match(html, /ps-rank/);
+});
+
+test('a card with nothing left to play has no block', () => {
+  const m = day({ matches: RR, standings: RR_STAND });
+  assert.doesNotMatch(pairSummaryHTML(pair(m, 'Ann'), m), /ps-next/);
+});
+
+test('a day not live: the block alone, and no card at all when it is empty', () => {
+  const hidden = day({ matches: TO_PLAY, standings: RR_STAND, isLive: false });
+  const html = pairSummaryHTML(pair(hidden, 'Ann'), hidden);
+  assert.match(html, /^<div class="pair-summary"><div class="ps-next ps-next--next">/);
+  assert.match(html, /<b>1:00 PM · Court 2<\/b>/);
+  assert.doesNotMatch(html, /ps-top|ps-rank|ps-stats/);
+  const allPlayed = day({ matches: RR, standings: RR_STAND, isLive: false });
+  assert.equal(pairSummaryHTML(pair(allPlayed, 'Ann'), allPlayed), '');
+});
+
+test('a day not live has no "playing now", whatever the live court says', () => {
+  const hidden = day({ matches: ['1,3,1:00 PM,Court 3,NOD_1,Ann,Bo,,NOD_2,Cy,Di,', '2,,2:00 PM,Court 1,NOD_1,Ann,Bo,,NOD_3,Ed,Flo,'], standings: RR_STAND, isLive: false });
+  const html = next(hidden, 'Ann');
+  assert.doesNotMatch(html, /Playing now/);
+  assert.match(html, /Match 2/);
+});
+
+test('a team event gets no block, live or not', () => {
+  for(const isLive of [true, false]){
+    const base = day({ matches: TO_PLAY, standings: RR_STAND, isLive });
+    const model = { ...base, event: { ...base.event, type: 'team' } };
+    assert.equal(pairSummaryHTML(pair(base, 'Ann'), model), '');
+  }
+});
+
+test('Match Finder shows the block at the top of the card, above the tickets', () => {
+  const m = day({ matches: TO_PLAY, standings: RR_STAND });
+  const { html } = pairResultsHTML('Ann Bo', m, buildPairIndex(m), pair(m, 'Ann'));
+  assert.ok(html.indexOf('class="pair-summary"') < html.indexOf('class="ps-next'));
+  assert.ok(html.indexOf('class="ps-next') < html.indexOf('matches found'));
+});
+
+test('a pair with no round-robin row: the block alone on a live day too, and nothing when it has no next match', () => {
+  const m = day({ matches: TO_PLAY, standings: [] });
+  assert.match(pairSummaryHTML(pair(m, 'Ann'), m), /^<div class="pair-summary"><div class="ps-next ps-next--next">/);
+  assert.doesNotMatch(pairSummaryHTML(pair(m, 'Ann'), m), /ps-top|ps-rank/);
+  const done = day({ matches: RR, standings: [] });
+  assert.equal(pairSummaryHTML(pair(done, 'Ann'), done), '');
 });
