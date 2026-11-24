@@ -1803,6 +1803,35 @@ function truncateToWidth(ctx, text, maxWidth){
   return t + '\u2026';
 }
 
+// The image's category title is never cut off: the largest size from
+// TITLE_MAX_PX down to TITLE_MIN_PX that fits on one line; failing that, two
+// lines split between words where they come out most even, at the largest size
+// both fit. Only a title that still can't fit (one word wider than the image)
+// is truncated. Returns { px, lines }.
+const TITLE_MAX_PX = 38;
+const TITLE_MIN_PX = 28;
+const titleFont = px => `400 ${px}px "Archivo Black", sans-serif`;
+function fitTitle(ctx, text, maxWidth){
+  const widthAt = (s, px) => { ctx.font = titleFont(px); return ctx.measureText(s).width; };
+  for(let px = TITLE_MAX_PX; px >= TITLE_MIN_PX; px--){
+    if(widthAt(text, px) <= maxWidth) return { px, lines: [text] };
+  }
+  const words = text.split(' ');
+  if(words.length > 1){
+    let best = null;
+    for(let i = 1; i < words.length; i++){
+      const lines = [words.slice(0, i).join(' '), words.slice(i).join(' ')];
+      const widest = Math.max(widthAt(lines[0], TITLE_MAX_PX), widthAt(lines[1], TITLE_MAX_PX));
+      if(!best || widest < best.widest) best = { widest, lines };
+    }
+    for(let px = TITLE_MAX_PX; px >= TITLE_MIN_PX; px--){
+      if(best.lines.every(l => widthAt(l, px) <= maxWidth)) return { px, lines: best.lines };
+    }
+  }
+  ctx.font = titleFont(TITLE_MIN_PX);
+  return { px: TITLE_MIN_PX, lines: [truncateToWidth(ctx, text, maxWidth)] };
+}
+
 // Word-wraps a name to fit maxWidth instead of truncating it with an
 // ellipsis, so long pair names stay fully readable in the exported image.
 // (If a single word alone is wider than maxWidth it's left on its own line
@@ -1946,7 +1975,13 @@ async function exportAsImage(){
   }
   const gridRowHeights = gridRows.map(row => Math.max(...row.map(c => c.layout.totalHeight)));
 
-  const topH = 168;
+  // The title is fitted up front too: a two-line title pushes everything under
+  // it down by one line.
+  const title = fitTitle(mctx, (currentCategory || 'UNTITLED CATEGORY').toUpperCase(), width - 120);
+  const titleLineH = Math.round(title.px * 1.15);
+  const titleExtra = (title.lines.length - 1) * titleLineH;
+
+  const topH = 168 + titleExtra;
   const bottomH = 74; // two footer lines: the verification stamp, then branding
   const totalGridH = gridRowHeights.reduce((s, h) => s + h, 0) + Math.max(0, gridRows.length - 1) * colGap;
   const height = topH + totalGridH + bottomH;
@@ -2000,16 +2035,15 @@ async function exportAsImage(){
   ctx.fillText(truncateToWidth(ctx, eyebrowText, width - 120), width / 2, 42);
 
   ctx.fillStyle = colors.navy;
-  ctx.font = '400 38px "Archivo Black", sans-serif';
-  const titleText = truncateToWidth(ctx, (currentCategory || 'UNTITLED CATEGORY').toUpperCase(), width - 120);
-  ctx.fillText(titleText, width / 2, 88);
+  ctx.font = titleFont(title.px);
+  title.lines.forEach((line, i) => ctx.fillText(line, width / 2, 88 + i * titleLineH));
 
   const totalPairs = currentBrackets.reduce((s, b) => s + b.pairs.length, 0);
   ctx.fillStyle = colors.inkSoft;
   ctx.font = '500 13.5px Inter, sans-serif';
   ctx.fillText(
     `${pluralize(currentBrackets.length, 'bracket')} \u00b7 ${pluralize(totalPairs, 'pair')} \u00b7 Drawn ${new Date().toLocaleString()}`,
-    width / 2, 114
+    width / 2, 114 + titleExtra
   );
 
   // Bracket grid
